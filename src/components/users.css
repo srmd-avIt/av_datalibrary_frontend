@@ -1,0 +1,987 @@
+/* --- VARIABLES & GLOBAL STYLES --- */
+:root {
+  --bg-dark-primary: #1a1d21;
+  --bg-dark-secondary: #2c3038;
+  --bg-dark-tertiary: #3a3e45;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-headings: #ffffff;
+  --accent-primary: #4a90e2;
+  --accent-primary-hover: #3a7bc8;
+  --accent-export: #1e8e3e; 
+  --accent-export-hover: #186d30;
+  --border-color: #3a3e45;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --sidebar-width: 260px;
+  --header-height: 60px;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+body { margin: 0; font-family: var(--font-family); background-color: var(--bg-dark-primary); color: var(--text-primary); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.layout { display: flex; }
+.main-content {
+  flex-grow: 1;
+  margin-left: 0;
+  width: 100%;
+  transition: margin-left 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.content-area {
+  padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* --- SIDEBAR & HEADER --- */
+.sidebar { width: var(--sidebar-width); background-color: var(--bg-dark-secondary); position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); transition: transform 0.3s ease-in-out; z-index: 1000; display: flex; flex-direction: column; }
+.layout.sidebar-open .sidebar { transform: translateX(0); }
+.sidebar-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out; }
+.sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+.sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: var(--header-height); border-bottom: 1px solid var(--border-color); }
+.sidebar-header h3 { color: var(--text-headings); font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 10px;}
+.sidebar ul { list-style: none; padding: 16px 0; margin: 0; }
+.sidebar ul li { display: flex; align-items: center; padding: 12px 20px; cursor: pointer; color: #f1ecec; transition: background-color 0.2s, color 0.2s; }
+
+.sidebar ul li svg { margin-right: 16px; font-size: 1.1rem; }
+.sidebar-divider { height: 1px; background-color: var(--border-color); margin: 10px 20px; }
+.close-sidebar-btn { background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; padding: 8px; display: none; }
+.header { display: flex; align-items: center; justify-content: space-between; height: var(--header-height); background-color: var(--bg-dark-secondary); padding: 0 24px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+.header-left, .header-right { display: flex; align-items: center; gap: 16px; }
+.menu-btn { background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer; }
+.view-title { font-size: 1.2rem; font-weight: 500; color: var(--text-headings); margin: 0; }
+.search-container { display: flex; align-items: center; background-color: var(--bg-dark-tertiary); border-radius: 6px; padding: 6px 12px; width: 0; opacity: 0; transition: width 0.3s ease, opacity 0.3s ease; }
+.search-container.visible { width: 250px; opacity: 1; }
+.search-container input { background: none; border: none; color: var(--text-primary); outline: none; width: 100%; }
+.search-container .filter-icon { color: #e9e3e3; cursor: pointer; }
+.icon-btn { background: none; border: none; color: var(--text-primary); font-size: 1.2rem; cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; }
+.icon-btn:hover { background-color: var(--bg-dark-tertiary); }
+.export-btn { background-color: #4a90e2; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; transition: background-color 0.2s; }
+.export-btn:hover { background-color: #2265b1; }
+
+/* --- TABLE --- */
+.table-container { 
+  background-color: var(--bg-dark-secondary); 
+  border-radius: 8px; 
+  overflow: auto; /* Use auto for both scrollbars */
+  margin-left: 10px;
+  margin-top: 10px;
+}
+.user-table { width: 100%; border-collapse: collapse; }
+.user-table th, .user-table td { padding: 16px; text-align: left; white-space: nowrap; }
+.user-table thead { background-color: var(--bg-dark-tertiary); }
+.user-table th { color: #ffffff; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.user-table tbody tr { border-bottom: 1px solid var(--border-color); }
+.user-table tbody tr:last-child { border-bottom: none; }
+.no-data-message { text-align: center; padding: 40px; color: var(--text-secondary); background-color: var(--bg-dark-secondary); border-radius: 8px; }
+
+.user-table tbody tr.main-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.user-table tbody tr.main-row:hover {
+  background-color: var(--bg-dark-tertiary);
+}
+
+/* --- NEW & IMPROVED: Styles for Freeze Panes (Header & First Column) --- */
+
+/* Make ALL header cells sticky to the top */
+.user-table th {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--bg-dark-tertiary); /* Header needs a solid background */
+}
+
+/* Make ALL first-column cells (header and body) sticky to the left */
+.user-table th:first-child,
+.user-table td:first-child {
+  position: -webkit-sticky;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+/* The CRUCIAL FIX: The top-left corner cell must be sticky in BOTH directions
+   and have the highest z-index to sit on top of everything. */
+.user-table th:first-child {
+  top: 0;
+  left: 0;
+  z-index: 3;
+}
+
+/* Give the sticky body cells a background so content doesn't show through */
+.user-table td:first-child {
+  background-color: var(--bg-dark-secondary);
+}
+
+/* Ensure the hover effect also applies to the sticky body cell's background */
+.user-table tbody tr:hover td:first-child {
+  background-color: var(--bg-dark-tertiary);
+}
+
+
+/* --- MODAL --- */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1001; }
+
+.modal-content {
+  background: var(--bg-dark-secondary);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding: 24px;
+  padding-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.modal-header h2 { margin: 0; font-size: 1.4rem; color: var(--text-headings); }
+.close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; }
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: auto;
+  padding: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.btn-primary, .btn-secondary { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; transition: background-color 0.2s; }
+.btn-primary { background-color: var(--accent-primary); color: white; }
+.btn-primary:hover { background-color: var(--accent-primary-hover); }
+.btn-secondary { background-color: var(--bg-dark-tertiary); color: var(--text-primary); }
+.btn-secondary:hover { background-color: #4a4f58; }
+
+.detail-view-group { margin-bottom: 20px; }
+.detail-view-group:last-child { margin-bottom: 0; }
+.detail-view-group label { display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
+.detail-view-group span { font-size: 1.1rem; color: var(--text-primary); }
+
+/* --- PAGINATION --- */
+.pagination {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center; 
+  gap: 16px;
+  flex-shrink: 0;
+}
+.pagination-arrow {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.pagination-arrow:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+.pagination-arrow:disabled {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.pagination-arrow:disabled:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+.pagination-info {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* --- RESPONSIVE & UTILITIES --- */
+.loader, .error-message { padding: 40px; text-align: center; font-size: 1.2rem; }
+.error-message { color: #e74c3c; background-color: rgba(231, 76, 60, 0.1); border: 1px solid #e74c3c; border-radius: 8px; }
+
+@media screen and (min-width: 768px) {
+  .layout.sidebar-open .main-content { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); }
+  .sidebar-overlay { display: none; }
+  .close-sidebar-btn { display: none; }
+}
+@media screen and (max-width: 767px) {
+  .close-sidebar-btn { display: block; }
+  .export-btn span { display: none; }
+  .export-btn { padding: 8px; border-radius: 50%; }
+  .view-title { font-size: 1rem; }
+  .header { padding: 0 16px; }
+  .content-area { padding: 16px; }
+}
+
+/* --- SPLIT VIEW & DETAILS PANEL (UPDATED) --- */
+
+/* 1. Main content area for the split-screen layout */
+.content-area {
+  flex-direction: row;
+  height: calc(100vh - var(--header-height));
+  overflow: hidden;
+  padding: 0;
+}
+
+.table-wrapper {
+  flex: 1 1 100%; /* Default to full width */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: flex-basis 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smooth transition */
+  padding: 24px;
+  padding-right: 12px;
+}
+
+/* When details are visible, shrink the table wrapper */
+.content-area.details-visible .table-wrapper {
+  flex-basis: 65%; /* Shrink to make room for details */
+}
+
+/* 2. Styles for highlighting the selected row (Unchanged) */
+.user-table tbody tr.main-row.selected {
+  background-color: var(--bg-dark-tertiary);
+}
+.user-table tbody tr.main-row.selected td {
+  color: #e8ecef;
+  font-weight: 500;
+}
+.user-table tbody tr.main-row.selected td:first-child {
+  background-color: var(--bg-dark-tertiary);
+}
+
+
+/* 3. Details Panel Styles */
+.details-panel {
+  /* CHANGED: Hidden by default */
+  flex-basis: 0;
+  overflow: hidden; /* Hide content during transition */
+  transition: flex-basis 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smooth transition */
+  
+  /* Rest of the styles are for when it's visible */
+  background-color: var(--bg-dark-secondary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* When details are visible, expand the panel */
+.content-area.details-visible .details-panel {
+  flex-basis: 35%; /* Expand to take up space */
+  border-left: 1px solid var(--border-color);
+  overflow-y: auto; /* Allow scrolling ONLY when visible */
+}
+
+.details-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  height: var(--header-height);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-dark-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.details-panel-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-headings);
+}
+
+.details-panel-body {
+  padding: 24px;
+  flex-grow: 1;
+}
+
+/* 4. Placeholder is REMOVED */
+/* No .details-placeholder styles are needed anymore */
+
+
+/* 5. Detail Group Styling (Unchanged) */
+.details-panel .detail-view-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+.details-panel .detail-view-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+.details-panel .detail-view-group label {
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.details-panel .detail-view-group span {
+  font-size: 1rem;
+  color: var(--text-primary);
+  word-wrap: break-word;
+}
+
+/* --- RESPONSIVE ADJUSTMENTS FOR SPLIT VIEW (Unchanged) --- */
+@media (max-width: 1024px) {
+  .content-area {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .content-area.details-visible .table-wrapper,
+  .table-wrapper {
+    flex-basis: auto;
+  }
+
+  /* CHANGED: Now the panel itself is hidden by default */
+  .details-panel {
+    flex-basis: auto; /* Allow it to take up vertical space */
+    height: 0; /* But be hidden by default */
+    transition: height 0.4s ease-in-out;
+  }
+  
+  .content-area.details-visible .details-panel {
+    height: auto; /* Let content determine height when visible */
+    min-height: 45vh; /* Give it a minimum height */
+    border-left: none;
+    border-top: 2px solid var(--border-color);
+  }
+
+  .table-wrapper {
+    height: 55vh;
+    padding: 16px;
+  }
+}
+
+/* --- NEW & MODIFIED: Filter Sidebar Styles for two-step navigation --- */
+.filter-sidebar {
+  width: 300px;
+  background-color: var(--bg-dark-secondary);
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color);
+}
+
+.filter-sidebar.open {
+  transform: translateX(0);
+}
+
+.filter-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: var(--header-height);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.filter-sidebar-header h3 {
+  position: sticky; /* better than fixed for sidebar headers */
+  top: 0;
+  left: 0;
+  width: 100%; /* takes full width of sidebar */
+  z-index: 10;
+  background-color: #292e3d; /* match sidebar background */
+  padding: 12px 16px;
+  color: #f9fafb;
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+   /* optional visual separation */
+}
+
+
+/* Make body have no padding, as its children will handle it */
+.filter-sidebar-body {
+  padding: 0;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+/* List of filterable fields */
+.filter-field-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.filter-field-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.filter-field-list li:hover {
+  background-color: var(--bg-dark-tertiary);
+}
+
+.filter-field-list li:last-child {
+  border-bottom: none;
+}
+
+.filter-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.filter-field-label span:first-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.current-filter-value {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-style: italic;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-field-list svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* View for inputting a specific filter value */
+.filter-value-view {
+  padding: 16px 24px;
+}
+
+.filter-back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 24px;
+  padding: 4px 0;
+}
+
+
+
+/* Filter Group styles for the value input view */
+.filter-group {
+  margin-bottom: 20px;
+}
+
+.filter-group label {
+  display: block;
+  
+  font-weight: 500;
+  font-size: 0.9rem;
+  color:#f2f4f7;
+}
+
+.filter-group input,
+.filter-group select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  background-color: var(--bg-dark-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+}
+
+/* Footer styles */
+.filter-sidebar-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background-color: var(--bg-dark-secondary);
+}
+
+/* Make filter icon in search bar clickable */
+.search-container .filter-icon {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.search-container .filter-icon:hover {
+  background-color: var(--bg-dark-primary);
+}
+/* --- NEW CSS for the Back button inside the filter list --- */
+
+.filter-close-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600; /* Make it bolder */
+   color: #ffffff;/* Use accent color for this action */
+  
+}
+
+
+
+/* --- NEW CSS for Range Filter Inputs --- */
+
+/* Add to users.css for styling the new range filter inputs */
+.filter-range-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* Space between labels and inputs */
+}
+
+.filter-range-group label {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: #eaecf0;
+  margin-top: 0.5rem; /* Space above the next label */
+}
+
+.filter-range-group label:first-of-type {
+  margin-top: 0;
+}
+
+.filter-range-group input[type="number"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+/* --- STYLES FOR ACTIVE FILTER CHIPS --- */
+.active-filters-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 12px 24px;
+  background-color: #3a3e45;
+  
+}
+
+.active-filters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  background-color: #e7f3ff; /* Light blue background */
+  border: 1px solid #9ac8fb;   /* Blue border */
+  color: #1c5d9a;              /* Darker blue text */
+  border-radius: 16px;
+  padding: 4px 6px 4px 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.filter-chip span {
+  margin-right: 8px;
+}
+
+.filter-chip strong {
+  font-weight: 600;
+}
+
+.filter-chip button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #a1c9f7;
+  color: #1c5d9a;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s;
+}
+
+.filter-chip button:hover {
+  background-color: #74aff1;
+  color: white;
+}
+
+.filter-chip button svg {
+  width: 10px;
+  height: 10px;
+}
+
+.clear-all-filters-btn {
+  background: none;
+  border: none;
+  color: #f9fafb;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.clear-all-filters-btn:hover {
+  color: #dce1e4;
+  
+}
+
+/* --- STYLES FOR CHECKBOX FILTER --- */
+
+/* --- STYLES FOR SEARCHABLE CHECKBOX FILTER --- */
+
+/* Style for the search input within the filter panel */
+.checkbox-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem; /* Space between search and list */
+}
+
+/* Container for the list of checkboxes */
+.checkbox-list-container {
+  max-height: 550px; /* Adjust as needed */
+  overflow-y: auto;  /* Enable vertical scrolling if list is long */
+  padding-right: 5px; /* Prevent scrollbar from overlapping content */
+}
+
+/* Styles for individual checkbox items (from previous step) */
+.filter-checkbox-group .checkbox-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.filter-checkbox-group .checkbox-item input[type="checkbox"] {
+  margin-right: 10px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.filter-checkbox-group .checkbox-item label {
+  font-weight: normal;
+  cursor: pointer;
+  user-select: none;
+}
+
+.detail-link {
+  color: #007bff;
+  text-decoration: none;
+  word-break: break-all; /* Prevents long links from overflowing */
+}
+
+.detail-link:hover {
+  text-decoration: underline;
+}
+
+/* Sidebar base */
+
+
+.sidebar ul li.bg-blue-600 {
+  background: var(--accent-primary); /* #4a90e2 */
+  color: #fff;
+  font-weight: 600;
+  border-left: 8px solid #fff;
+  border-radius: 5px;
+}
+
+/* Sidebar hover effect */
+/* Hover effect only for non-active items */
+.sidebar ul li:hover:not(.bg-blue-600) {
+  background-color: #858484; 
+  color: #ffffff;
+  border-radius: 5px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+
+
+/* --- Add/Replace these styles in your users.css file --- */
+
+/* Assistant Panel Styling */
+.assistant-panel {
+  width: 380px;
+  flex-shrink: 0;
+  background-color: #f8f9fa;
+  border-left: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 95;
+}
+
+.assistant-visible .assistant-panel {
+  transform: translateX(0);
+}
+
+.assistant-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #fff;
+  flex-shrink: 0;
+}
+
+.assistant-panel-header h2 {
+  font-size: 1.25rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #343a40;
+}
+
+/* Chat UI Body */
+.assistant-panel-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.chat-history {
+  flex-grow: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.chat-message {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.chat-message.user {
+  justify-content: flex-end;
+}
+
+.chat-message.assistant {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 0.75rem 1rem;
+  border-radius: 18px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.chat-message.user .chat-bubble {
+  background-color: #007bff;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.assistant .chat-bubble {
+  background-color: #e9ecef;
+  color: #343a40;
+  border-bottom-left-radius: 4px;
+}
+
+.assistant-suggestions {
+  padding: 0 1rem 1rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.suggestion-chip {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  border: 1px solid #007bff;
+  color: #007bff;
+  background-color: transparent;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggestion-chip:hover {
+  background-color: #e7f3ff;
+}
+
+/* Chat Input Footer */
+.assistant-panel-footer {
+  padding: 0.75rem;
+  border-top: 1px solid #e9ecef;
+  background-color: #fff;
+  flex-shrink: 0;
+}
+
+.assistant-input-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.assistant-input-form input {
+  flex-grow: 1;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.assistant-input-form button {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.assistant-input-form button:hover {
+  background-color: #0069d9;
+}
+
+/* Layout Adjustments for Split Screen */
+.content-area {
+  display: flex;
+  flex-grow: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  flex-grow: 1;
+  transition: margin-right 0.3s ease-in-out;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.content-area.assistant-visible .table-wrapper {
+  margin-right: 380px;
+}
+
+.details-panel {
+  width: 400px;
+  z-index: 100;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  height: 100%;
+}
+
+.content-area.details-visible .details-panel {
+    transform: translateX(0);
+}
+
+.content-area.details-visible .table-wrapper {
+  margin-right: 400px;
+}
+
+/* --- Add these styles to your users.css file --- */
+
+/* Adjust header to space out title and actions */
+.assistant-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Container for the new clear button and the close button */
+.assistant-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* Space between Clear and Close buttons */
+}
+
+/* Styling for the new "Clear" button */
+.clear-chat-btn {
+  background: none;
+  border: none;
+  color: #6c757d; /* A neutral gray color */
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.clear-chat-btn:hover {
+  background-color: #f1f3f5;
+  color: #343a40;
+}
