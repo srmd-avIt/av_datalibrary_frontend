@@ -54,6 +54,7 @@
     "react-redux": "^9.2.0",
     "react-refresh": "^0.11.0",
     "react-router-dom": "^7.8.0",
+    "react-scripts": "^5.0.1",
     "resolve": "^1.20.0",
     "resolve-url-loader": "^4.0.0",
     "sass-loader": "^12.3.0",
@@ -69,9 +70,9 @@
     "workbox-webpack-plugin": "^6.4.1"
   },
   "scripts": {
-    "start": "node scripts/start.js",
-    "build": "node scripts/build.js",
-    "test": "node scripts/test.js"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test"
   },
   "eslintConfig": {
     "extends": [

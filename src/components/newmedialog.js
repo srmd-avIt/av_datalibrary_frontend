@@ -377,33 +377,131 @@ const LogDetailsPanel = memo(({ event, onClose, onViewRecordingDetails }) => { i
                                 </div> 
                                 </aside> ); });
 const RecordingDetailsPanel = memo(({ event, onClose, isLoading, isError, error, onViewEventDetails }) => { if (isLoading) { return ( <aside className="details-panel"><div className="details-panel-header"><h2>Loading Recording...</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div><div className="details-panel-body"><div className="loader"></div></div></aside> ); } if (isError) { return ( <aside className="details-panel"><div className="details-panel-header"><h2>Error</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div><div className="details-panel-body"><div className="error-message">{error?.message}</div></div></aside> ); } if (!event) { return ( <aside className="details-panel"><div className="details-panel-header"><h2>Not Found</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div><div className="details-panel-body"><div className="error-message">Details for this recording could not be found.</div></div></aside> ); } return ( <aside className="details-panel"> <div className="details-panel-header"><h2>Recording Details: {event.RecordingCode}</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div> <div className="details-panel-body"> <div className="detail-view-group"> <label>Event Code</label> {event.fkEventCode ? (<button className="link-button" onClick={() => onViewEventDetails(event.fkEventCode)}> {event.fkEventCode} <FaChevronRight size="1.2em" style={{ marginLeft: '190px', opacity: 0.7 }}/> </button>) : (<span>N/A</span>)} </div> 
-<DetailItem label="Recording Name" value={event.RecordingName} /> 
-<DetailItem label="Recording Code" value={event.RecordingCode} /> 
-<DetailItem label="No. of Files" value={event.NoOfFiles} />
- <DetailItem label="In Disc Master" value={event.InDiscMaster} />
-  <DetailItem label="Digital Master Category" value={event.fkDigitalMasterCategory} /> 
-  <DetailItem label="Media Name" value={event.fkMediaName} /> 
-  <DetailItem label="Editing Status" value={event.EditingStatus} /> 
-  <DetailItem label="QC Status" value={event.Qcstatus} />
-   <DetailItem label="Preservation Status" value={event.PreservationStatus} /> 
-   <DetailItem label="Submitted Date" value={event.SubmittedDate} /> 
-   <DetailItem label="Last Modified" value={event.LastModifiedTimestamp} /> </div> </aside> ); });
+ <DetailItem label="Recording Name" value={event.RecordingName} />
+                <DetailItem label="Recording Code" value={event.RecordingCode} />
+                <DetailItem label="No. of Files" value={event.NoOfFiles} />
+                <DetailItem label="fkDigitalMasterCategory" value={event.fkDigitalMasterCategory} />
+                <DetailItem label="fkMediaName" value={event.fkMediaName} />
+                <DetailItem label="Bit Rate" value={event.BitRate} />
+                <DetailItem label="Audio Bitrate" value={event.AudioBitrate} />
+                <DetailItem label="Filesize" value={event.Filesize} />
+                <DetailItem label="Duration" value={event.Duration} />
+                <DetailItem label="Audio Total Duration" value={event.AudioTotalDuration} />
+                <DetailItem label="Recording Remarks" value={event.RecordingRemarks} />
+                <DetailItem label="Counter Error" value={event.CounterError} />
+                <DetailItem label="Reason Error" value={event.ReasonError} />
+                <DetailItem label="Qc Remarks Checked On" value={event.QcRemarksCheckedOn} />
+                <DetailItem label="Preservation Status" value={event.PreservationStatus} />
+                <DetailItem label="Qc Sevak" value={event.QcSevak} />
+                <DetailItem label="Master Product Title" value={event.MasterProductTitle} />
+                <DetailItem label="Qc Status" value={event.Qcstatus} />
+                <DetailItem label="Last Modified Timestamp" value={event.LastModifiedTimestamp} />
+                <DetailItem label="fkDistributionLabel" value={event.fkDistributionLabel} />
+                <DetailItem label="Submitted Date" value={event.SubmittedDate} />
+                <DetailItem label="PresStatGuidDt" value={event.PresStatGuidDt} />
+                <DetailItem label="Info On Cassette" value={event.InfoOnCassette} />
+                <DetailItem label="Master quality" value={event.Masterquality} />
+                <DetailItem label="Is Informal" value={event.IsInformal ? 'Yes' : 'No'} />
+                <DetailItem label="Filesize In Bytes" value={event.FilesizeInBytes} />
+                <DetailItem label="Associated DR" value={event.AssociatedDR} />
+                <DetailItem label="Dimension" value={event.Dimension} />
+                <DetailItem label="Production Bucket" value={event.ProductionBucket} />
+                <div className="detail-view-group">
+                  <label>Distribution Drive Link</label>
+                  {event.DistributionDriveLink ? 
+                  (<a href={event.DistributionDriveLink} 
+                  target="_blank" rel="noopener noreferrer" className="detail-link">
+                    {event.DistributionDriveLink}</a>) : (<span>N/A</span>)}</div>
+                    <DetailItem label="Teams" value={event.Teams} /> 
+                    </div> </aside> ); });
+
 const EventDetailsPanel = memo(({ event, onClose, isLoading, isError, error }) => { if (isLoading) { return ( <aside className="details-panel"><div className="details-panel-header"><h2>Loading Event...</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div><div className="details-panel-body"><div className="loader"></div></div></aside> ); } if (isError) { return ( <aside className="details-panel"><div className="details-panel-header"><h2>Error</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div><div className="details-panel-body"><div className="error-message">{error?.message}</div></div></aside> ); } if (!event) { return ( <aside className="details-panel"><div className="details-panel-header"><h2>Not Found</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div><div className="details-panel-body"><div className="error-message">Details for this event could not be found.</div></div></aside> ); } return ( <aside className="details-panel"> <div className="details-panel-header"><h2>Event Details: {event.EventCode}</h2><button type="button" className="close-btn" onClick={onClose}><FaTimes /></button></div> <div className="details-panel-body"> 
-<DetailItem label="Event ID" value={event.EventID} />
-<DetailItem label="Event Code" value={event.EventCode} />
-<DetailItem label="Year" value={event.Yr} />
-<DetailItem label="Event Name" value={event.EventName} />
-<DetailItem label="Event Category" value={event.fkEventCategory} />
-<DetailItem label="Is Sub Event" value={event.IsSubEvent1} isBoolean={true} />
-<DetailItem label="Is Audio Recorded" value={event.IsAudioRecorded} isBoolean={true} />
-<DetailItem label="Pravachan Count" value={event.PravachanCount} />
-<DetailItem label="Last Modified By" value={event.LastModifiedBy} />
+ <DetailItem label="Event ID" value={event.EventID} />
+    <DetailItem label="Event Code" value={event.EventCode} />
+    <DetailItem label="Year" value={event.Yr} />
+    <DetailItem label="Submitted Date" value={event.SubmittedDate} />
+    <DetailItem label="From Date" value={event.FromDate} />
+    <DetailItem label="To Date" value={event.ToDate} />
+    <DetailItem label="Event Name" value={event.EventName} />
+    <DetailItem label="Event Category" value={event.fkEventCategory} />
+    <DetailItem label="New Event Category" value={event.NewEventCategory} />
+    <DetailItem label="Event Remarks" value={event.EventRemarks} />
+    <DetailItem label="Event Month" value={event.EventMonth} />
+    <DetailItem label="Common ID" value={event.CommonID} />
+    <DetailItem label="Is Sub Event?" value={event.IsSubEvent1} />
+    <DetailItem label="Is Audio Recorded?" value={event.IsAudioRecorded} />
+    <DetailItem label="Pravachan Count" value={event.PravachanCount} />
+    <DetailItem label="Udhgosh Count" value={event.UdhgoshCount} />
+    <DetailItem label="Pagla Count" value={event.PaglaCount} />
+    <DetailItem label="Pratistha Count" value={event.PratisthaCount} />
+    <DetailItem label="Summary Remarks" value={event.SummaryRemarks} />
+    <DetailItem label="Pra-SU Duration" value={event.PraSUduration} />
+    <DetailItem label="Last Modified By" value={event.LastModifiedBy} />
+    <DetailItem label="Last Modified Timestamp" value={event.LastModifiedTimestamp} />
+    <DetailItem label="New Event From" value={event.NewEventFrom} />
+    <DetailItem label="New Event To" value={event.NewEventTo} /> 
 
 </div> </aside> ); });
-const fetchNewMediaLog = async () => { const res = await fetch('http://localhost:5000/api/newmedialog'); if (!res.ok) { throw new Error('Failed to fetch media logs'); } return res.json(); };
-const fetchDigitalRecordingDetails = async (recordingCode) => { const res = await fetch(`http://localhost:5000/api/digitalrecording/${recordingCode}`); if (!res.ok) { const errorData = await res.json().catch(() => ({})); throw new Error(errorData.message || `Recording with code ${recordingCode} not found.`); } return res.json(); };
-const fetchEventDetails = async (eventCode) => { const res = await fetch(`http://localhost:5000/api/events/${eventCode}`); if (!res.ok) { const errorData = await res.json().catch(() => ({})); throw new Error(errorData.message || `Event with code ${eventCode} not found.`); } return res.json(); };
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
+export async function fetchNewMediaLog() {
+  const res = await fetch(`${API_BASE_URL}/newmedialog`, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache"
+    }
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status}\n${text}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Response is not valid JSON. Response was:\n" + text);
+  }
+}
+
+console.log('API_BASE_URL:', API_BASE_URL);
+
+const fetchDigitalRecordingDetails = async (recordingCode) => {
+  const res = await fetch(`${API_BASE_URL}/digitalrecording/${recordingCode}`, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache"
+    }
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status}\n${text}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Response is not valid JSON. Response was:\n" + text);
+  }
+};
+
+const fetchEventDetails = async (eventCode) => {
+  const res = await fetch(`${API_BASE_URL}/events/${eventCode}`, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache"
+    }
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status}\n${text}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Response is not valid JSON. Response was:\n" + text);
+  }
+};
 // --- MAIN COMPONENT ---
 function Newmedialog() {
   const navigate = useNavigate();
@@ -422,7 +520,10 @@ function Newmedialog() {
   const [filters, setFilters] = useState(initialFilterState());
   const [isAssistantOpen, setIsAssistantOpen] = useState(false); // Assistant state
 
-  const { data: events = [], isLoading, error } = useQuery({ queryKey: ['newMediaLog'], queryFn: fetchNewMediaLog });
+  const { data: events = [], isLoading, error } = useQuery({
+  queryKey: ['newMediaLog'],
+  queryFn: fetchNewMediaLog
+});
   const { data: recordingDetails, isLoading: isRecordingDetailsLoading, isError: isRecordingDetailsError, error: recordingDetailsError, } = useQuery({ queryKey: ['digitalRecordingDetails', selectedRecordingCodeForDetails], queryFn: () => fetchDigitalRecordingDetails(selectedRecordingCodeForDetails), enabled: !!selectedRecordingCodeForDetails, });
   const { data: eventDetails, isLoading: isEventDetailsLoading, isError: isEventDetailsError, error: eventDetailsError, } = useQuery({ queryKey: ['eventDetails', selectedEventCodeForDetails], queryFn: () => fetchEventDetails(selectedEventCodeForDetails), enabled: !!selectedEventCodeForDetails, });
 

@@ -11,12 +11,21 @@ import {
 import './users.css';
 import AssistantPanel from './AssistantPanel'; // Correctly import the component
 
+
 // --- SUB-COMPONENTS ---
 
 const SidebarItem = memo(({ icon, text, onClick, active }) => ( <li onClick={onClick} className={`flex items-center gap-2 p-2 cursor-pointer rounded-md ${active ? "bg-blue-600 text-white" : "hover:bg-gray-200"}`} > {icon} <span>{text}</span> </li> ));
-const Sidebar = memo(({ isOpen, setViewTitle, onClose, navigate, onOpenAssistant, isAssistantOpen }) => { const location = useLocation(); const handleAssistantClick = () => { onOpenAssistant(); onClose(); }; return ( <> <div className={`sidebar-overlay ${isOpen ? "show" : ""}`} onClick={onClose}></div> <aside className={`sidebar ${isOpen ? "open" : ""}`}> <div className="sidebar-header"> 
+const Sidebar = memo(({ isOpen, setViewTitle, onClose, navigate, onOpenAssistant, isAssistantOpen }) =>
+ { const location = useLocation(); const handleAssistantClick = () => 
+ { onOpenAssistant(); onClose(); }; 
+ return ( 
+ <> <div className={`sidebar-overlay ${isOpen ? "show" : ""}`} onClick={onClose}></div>
+  <aside className={`sidebar ${isOpen ? "open" : ""}`}> 
+    <div className="sidebar-header"> 
 <h3><FaTag color="#4a90e2" /> Data library - All Depts</h3>
- <button onClick={onClose} className="close-sidebar-btn"><FaTimes /></button> </div>
+ <button onClick={onClose} className="close-sidebar-btn"><FaTimes /></button>
+  </div>
+  
   <ul> <SidebarItem icon={<FaTable />} text="Events" onClick={() => navigate("/")} active={location.pathname === "/"} />
    <SidebarItem icon={<FaListAlt />} text="All Except Satsang" onClick={() => navigate("/newmedialog")} active={location.pathname === "/newmedialog"} /> 
    <SidebarItem icon={<FaFolderOpen />} text="Satsang Category" onClick={() => navigate("/digitalrecording")} active={location.pathname === "/digitalrecording"} />
@@ -151,7 +160,30 @@ const EventDetailsPanel = memo(({ event, onClose }) => { if (!event) return null
     <DetailItem label="New Event From" value={event.NewEventFrom} />
     <DetailItem label="New Event To" value={event.NewEventTo} /> </div> </aside> ); });
 
-const fetchEvents = async () => { const res = await fetch('http://localhost:5000/api/users'); if (!res.ok) throw new Error('Network response was not ok'); const data = await res.json(); if (!Array.isArray(data)) throw new Error("Data from API is not in the expected array format."); return data; };
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+
+export async function fetchEvents() {
+  const res = await fetch(`http://localhost:5000/api/users`, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache"
+    }
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status}\n${text}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Response is not valid JSON. Response was:\n" + text);
+  }
+}
+
+console.log('API_BASE_URL:', API_BASE_URL);
 
 // --- MAIN COMPONENT ---
 function Users() {
