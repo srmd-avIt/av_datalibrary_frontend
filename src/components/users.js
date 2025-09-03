@@ -163,7 +163,7 @@ const EventDetailsPanel = memo(({ event, onClose }) => { if (!event) return null
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 export async function fetchEvents() {
-  const res = await fetch(`http://localhost:5000/api/users`, {
+  const res = await fetch(`${API_BASE_URL}/users`, {
     cache: "no-store",
     headers: {
       "Cache-Control": "no-cache"
