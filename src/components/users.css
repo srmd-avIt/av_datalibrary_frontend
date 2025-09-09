@@ -985,3 +985,14 @@ body { margin: 0; font-family: var(--font-family); background-color: var(--bg-da
   background-color: #f1f3f5;
   color: #343a40;
 }
+
+/* Find this block in your users.css file and replace it */
+
+.content-area {
+  padding: 24px;
+  flex-grow: 1; /* Allows the content to fill available vertical space */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* This is the key property: shows a scrollbar ONLY when content overflows */
+  /* Remove any scrollbar-hiding properties */
+}

@@ -1,0 +1,920 @@
+/* src/components/Dashboard.css */
+
+/* ==========================================================================
+   MAIN DASHBOARD & GRID LAYOUT
+   ========================================================================== */
+
+.dashboard-content-wrapper {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem 6rem; /* Adjusted padding slightly for better spacing */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-dark-tertiary) var(--bg-dark-secondary);
+}
+
+.dashboard-content-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboard-content-wrapper::-webkit-scrollbar-track {
+  background: var(--bg-dark-secondary);
+}
+
+.dashboard-content-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--bg-dark-tertiary);
+  border-radius: 10px;
+  border: 2px solid var(--bg-dark-secondary);
+}
+
+.dashboard-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+}
+
+/* Charts Grid Layout */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.charts-grid1 {
+   display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+/* Base styles for all widgets */
+.chart-widget {
+  background-color: var(--bg-dark-secondary);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-widget1 {
+  background-color: var(--bg-dark-secondary);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  width: 1338px;
+  height: 500px;
+}
+
+/* Use this class if you ever need a widget to span the full width */
+.chart-widget.full-width {
+  grid-column: 1 / -1;
+}
+
+.chart-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chart-widget-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-headings);
+}
+
+.chart-widget-header select {
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-dark-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.chart-container {
+  flex-grow: 1;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Feedback messages for loading/error states */
+.chart-feedback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    color: var(--text-secondary);
+}
+.chart-feedback.error {
+    color: #ff6b6b;
+}
+
+
+/* ==========================================================================
+   ASSISTANT SEARCH BAR
+   ========================================================================== */
+
+.assistant-search-bar {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-dark-secondary);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  margin-bottom: 2.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.assistant-search-bar input {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  padding: 0.5rem;
+  background-color: transparent;
+  color: var(--text-primary);
+}
+
+.assistant-search-bar .icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+  margin-left: 0.5rem;
+}
+
+.assistant-search-bar .icon-btn:hover {
+  background-color: var(--bg-dark-tertiary);
+  color: var(--text-primary);
+}
+
+
+/* ==========================================================================
+   FLIPPABLE CARD STYLES (Cities & Countries)
+   ========================================================================== */
+
+.flippable-card-content,
+.city-count-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  height: 100%;
+  width: 100%;
+}
+
+.city-count-view .count {
+  font-size: 4rem;
+  font-weight: 500;
+  color: #0088FE; /* Blue for Cities */
+  margin-bottom: 0.5rem;
+}
+
+.city-count-view .muted-text {
+  color: var(--text-secondary);
+}
+
+.city-list-view {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 0.5rem; /* Space for scrollbar */
+}
+
+.city-list-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  font-size: 0.875rem;
+
+  /* scrollbar setup */
+  max-height: 300px;   /* or height: 300px; */
+  overflow-y: auto;    /* auto = show only when needed, scroll = always show */
+}
+
+
+.city-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  background-color: var(--bg-dark-tertiary);
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.city-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.city-list-item-index {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background-color: #0088FE; /* Blue for Cities */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: white;
+  font-weight: 500;
+}
+
+.city-list-item-name {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-details-icon {
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  margin-left: auto;
+}
+
+.city-list-item:hover .item-details-icon {
+  opacity: 1;
+}
+
+
+/* ==========================================================================
+   SATSANG HOURS WIDGET STYLES
+   ========================================================================== */
+
+.view-toggle {
+  display: flex;
+  background-color: var(--bg-dark-tertiary);
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  margin-top: -1rem;
+  margin-bottom: 1.5rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.toggle-btn.active {
+  background-color: var(--bg-dark-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.satsang-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 300px;   /* or height: 300px; */
+  overflow-y: auto;
+}
+
+.satsang-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--bg-dark-tertiary);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.satsang-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.satsang-list-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
+}
+
+.satsang-hours-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.satsang-hours-display strong {
+  color: #FFBB28;
+  font-size: 1.1rem;
+}
+
+.satsang-hours-display > span {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.satsang-list-item:hover .item-details-icon {
+    opacity: 1;
+}
+
+
+/* ==========================================================================
+   WORLD MAP WIDGET STYLES
+   ========================================================================== */
+
+.world-map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #edeff3;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.world-map-bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.map-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 9999px;
+  background-color: #f59e0b; /* Amber/Orange */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+  transition: all 0.2s ease-in-out;
+}
+
+.map-marker:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+  z-index: 11;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.7);
+}
+
+.map-marker-text {
+  color: white;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-shadow: 0 0 3px black;
+}
+
+.map-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.75rem;
+  z-index: 20;
+  background-color: var(--bg-dark-tertiary);
+  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.map-tooltip-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.map-tooltip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.map-tooltip-row:not(:last-child) {
+    margin-bottom: 0.25rem;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  background-color: rgba(15, 23, 42, 0.8);
+  color: #e2e8f0;
+  backdrop-filter: blur(4px);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.legend-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.legend-row:not(:last-child){
+    margin-bottom: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color-box {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 9999px;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.pratishtha { background-color: #82ca9d; }
+.padhramani { background-color: #8884d8; }
+
+
+/* ==========================================================================
+   DATA DETAILS SHEET (SLIDING PANEL)
+   ========================================================================== */
+
+.sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sheet-content {
+  width: 100%;
+  height: 900px;
+  max-width: 450px;
+  background-color: var(--bg-dark-secondary);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-content.open {
+  transform: translateX(0);
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sheet-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-headings);
+}
+
+.close-sheet-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.close-sheet-btn:hover {
+  color: var(--text-primary);
+}
+
+.sheet-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+  color: var(--text-primary);
+}
+
+.sheet-body strong {
+    color: var(--text-headings);
+}
+
+
+/* ==========================================================================
+   RESPONSIVE STYLES
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr; /* Stack widgets vertically */
+  }
+  .dashboard-content-wrapper {
+    padding: 1rem; /* Reduce padding on smaller screens */
+  }
+}
+
+
+/* ==========================================================================
+   LEAFLET.JS DYNAMIC MAP STYLES
+   ========================================================================== */
+
+/* This ensures the map container itself takes up the full space */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.5rem; /* Match widget rounding */
+  outline: none; /* Removes focus border */
+}
+
+/* Custom styles for our circular markers */
+.leaflet-div-icon-custom {
+  background-color: #f59e0b; /* Amber/Orange color */
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  color: white;
+  font-size: 0.7rem;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+  transition: transform 0.2s ease-in-out;
+  width: 20px;
+  height: 20px;
+  
+}
+
+.leaflet-div-icon-custom:hover {
+  transform: scale(1.1);
+}
+
+/* Dark theme for Leaflet popups */
+.leaflet-popup-content-wrapper {
+  background-color: var(--bg-dark-tertiary); /* Your theme's dark background */
+  color: var(--text-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.leaflet-popup-content {
+  margin: 1rem;
+  line-height: 1.5;
+}
+
+.leaflet-popup-tip {
+  background-color: var(--bg-dark-tertiary);
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--text-secondary);
+  padding: 8px 8px 0 0;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: var(--text-primary);
+}
+
+/* Custom content styles within the dark popup */
+.map-popup-content h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.map-popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  gap: 1rem;
+}
+
+.map-popup-row:not(:last-child) {
+    margin-bottom: 0.25rem;
+}
+
+
+
+/* Add this to your Dashboard.css file */
+
+.sheet-body {
+  overflow-y: auto; /* Allow scrolling for long lists */
+  max-height: 70vh; /* Prevent sheet from taking up the whole screen */
+  padding: 0; /* Remove padding to allow list items to span full width */
+}
+
+.sheet-feedback {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.sheet-feedback.error {
+  color: #e53e3e; /* Red for errors */
+}
+
+.details-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.details-list-item {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.details-list-item:hover {
+    background-color: var(--background-secondary);
+}
+
+.details-list-item:last-child {
+  border-bottom: none;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.item-title {
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.item-code {
+  font-family: monospace;
+  background-color: #f0ebeb;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #050505;
+}
+
+.item-body p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.item-body p strong {
+    color: var(--text-primary);
+    min-width: 50px; /* Align the text */
+    display: inline-block;
+}
+
+/* Add this to Dashboard.css */
+
+.map-popup-row.clickable {
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  border-radius: 4px;
+  margin: 2px -4px; /* Adjust spacing */
+  padding: 2px 4px; /* Adjust spacing */
+}
+
+.map-popup-row.clickable:hover {
+  background-color: var(--background-highlight);
+  text-decoration: underline;
+}
+
+
+
+/* Add these styles to Dashboard.css */
+
+.item-code.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  transition: background-color 0.2s;
+}
+
+.item-code.clickable:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.filter-header {
+  padding: 0 1rem 1rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.filter-header p {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  color: var(--text-secondary);
+}
+
+.back-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: var(--background-secondary);
+}
+
+/* Add these styles to Dashboard.css */
+
+.item-code.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  transition: background-color 0.2s;
+}
+
+.item-code.clickable:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.summary-view {
+  padding: 1rem;
+}
+
+.back-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: var(--background-secondary);
+}
+
+/* Add these styles to your Dashboard.css file */
+
+.item-code.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  transition: background-color 0.2s;
+}
+
+.item-code.clickable:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.filter-header {
+  padding: 0 1rem 1rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.filter-header p {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  color: var(--text-secondary);
+}
+
+.back-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: var(--background-secondary);
+}
+
+/* Add these styles to your Dashboard.css file */
+
+.sheet-view-controls {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--background-secondary);
+}
+
+.control-btn {
+  background-color: var(--background-highlight);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+  background-color: var(--border-color);
+}
+
+.control-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.details-list-item.clickable {
+  cursor: pointer;
+}
+
+.details-list-item.clickable:hover {
+  background-color: var(--background-highlight);
+}
+
+.item-footer {
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--primary-color);
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.back-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: var(--background-secondary);
+}
+
+.summary-count {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+

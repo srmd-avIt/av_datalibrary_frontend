@@ -30,8 +30,21 @@ const parseQuery = (query, currentPath) => {
   }
 
   // --- CONTEXT: NEW MEDIA LOG PAGE ---
-  if (currentPath === '/newmedialog') {
-    // --- NEW: Handle filtering by State/Location for this page ---
+if (currentPath === '/newmedialog') {
+    // --- 1. Language filter (check before state filter) ---
+    const languageMatch = lowerQuery.match(/\b(gujarati|hindi|english)\b/);
+    if (languageMatch && languageMatch[1]) {
+        const lang = languageMatch[1];
+        const formattedLang = lang.charAt(0).toUpperCase() + lang.slice(1); 
+        return { 
+            status: 'success', 
+            feedback: `Okay, filtering for language: "${formattedLang}".`, 
+            action: 'FILTER',
+            payload: { filters: { Language: [formattedLang] }, searchQuery: '' } 
+        };
+    }
+
+    // --- 2. State filter ---
     if (lowerQuery.includes('gujarat')) {
         return {
             status: 'success',
@@ -41,26 +54,34 @@ const parseQuery = (query, currentPath) => {
         };
     }
 
+    // --- 3. Special speakers ---
     const specialSpeakers = { 'pujya gurudevshri': 'Pujya Gurudevshri', 'gurudevshri': 'Pujya Gurudevshri' };
     for (const key in specialSpeakers) {
-      if (lowerQuery.includes(key)) {
-        return { status: 'success', feedback: `Okay, searching for logs by ${specialSpeakers[key]}.`, action: 'FILTER', payload: { filters: { SpeakerSinger: specialSpeakers[key] }, searchQuery: '' } };
-      }
+        if (lowerQuery.includes(key)) {
+            return {
+                status: 'success',
+                feedback: `Okay, searching for logs by ${specialSpeakers[key]}.`,
+                action: 'FILTER',
+                payload: { filters: { SpeakerSinger: specialSpeakers[key] }, searchQuery: '' }
+            };
+        }
     }
+
+    // --- 4. Generic speaker filter ---
     const speakerMatch = lowerQuery.match(/(?:speaker|by) (.+)/i);
     if (speakerMatch && speakerMatch[1]) {
-      const speakerName = speakerMatch[1].trim();
-      if (speakerName.length > 2) {
-          return { status: 'success', feedback: `Searching for logs with speaker/singer: "${speakerName}".`, action: 'FILTER', payload: { filters: { SpeakerSinger: speakerName }, searchQuery: '' } };
-      }
+        const speakerName = speakerMatch[1].trim();
+        if (speakerName.length > 2) {
+            return {
+                status: 'success',
+                feedback: `Searching for logs with speaker/singer: "${speakerName}".`,
+                action: 'FILTER',
+                payload: { filters: { SpeakerSinger: speakerName }, searchQuery: '' }
+            };
+        }
     }
-    const languageMatch = lowerQuery.match(/\b(gujarati|hindi|english)\b/);
-    if (languageMatch && languageMatch[1]) {
-        const lang = languageMatch[1];
-        const formattedLang = lang.charAt(0).toUpperCase() + lang.slice(1); 
-        return { status: 'success', feedback: `Okay, filtering for language: "${formattedLang}".`, action: 'FILTER', payload: { filters: { Language: [formattedLang] }, searchQuery: '' } };
-    }
-  }
+}
+
   
   // --- CONTEXT: DIGITAL RECORDING PAGE ---
   if (currentPath === '/digitalrecording') {
