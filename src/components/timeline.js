@@ -1,7 +1,7 @@
 import React, { useState, useCallback, memo, useMemo } from 'react';
 import { useNavigate,useLocation} from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { FaListAlt, FaFolderOpen, FaVideo, FaTable, FaTag, FaMicrophone, FaInfoCircle, FaCommentDots, FaShareAlt, FaTimes, FaBars, FaSearch, FaFilter, FaFileExport, FaChevronRight, FaArrowLeft, FaStream, FaClock, FaThLarge, FaCalendarAlt, FaHashtag, FaCheckCircle,FaChartBar } from 'react-icons/fa';
+import { FaListAlt, FaFolderOpen, FaVideo, FaTable, FaTag, FaMicrophone, FaInfoCircle, FaCommentDots, FaShareAlt, FaTimes, FaBars, FaSearch, FaFilter, FaFileExport, FaChevronRight, FaArrowLeft, FaStream, FaClock, FaThLarge, FaCalendarAlt, FaHashtag, FaCheckCircle,FaChartBar,FaHome,FaUser } from 'react-icons/fa';
 import './users.css';
 import './timeline.css';
 import { format, isValid, parse } from 'date-fns';
@@ -9,7 +9,34 @@ import AssistantPanel from './AssistantPanel'; // Import the Assistant
 
 // --- SUB-COMPONENTS ---
 const SidebarItem = memo(({ icon, text, onClick, active }) => ( <li onClick={onClick} className={`flex items-center gap-2 p-2 cursor-pointer rounded-md ${active ? "bg-blue-600 text-white" : "hover:bg-gray-200"}`} > {icon} <span>{text}</span> </li> ));
-const Sidebar = memo(({ isOpen, setViewTitle, onClose, navigate, onOpenAssistant, isAssistantOpen }) => { const location = useLocation(); const handleAssistantClick = () => { onOpenAssistant(); onClose(); }; return ( <> <div className={`sidebar-overlay ${isOpen ? "show" : ""}`} onClick={onClose}></div> <aside className={`sidebar ${isOpen ? "open" : ""}`}> <div className="sidebar-header"> <h3><FaTag color="#4a90e2" /> Data library - All Depts</h3> <button onClick={onClose} className="close-sidebar-btn"><FaTimes /></button> </div> <ul> <SidebarItem icon={<FaTable />} text="Events" onClick={() => navigate("/")} active={location.pathname === "/"} /> <SidebarItem icon={<FaListAlt />} text="All Except Satsang" onClick={() => navigate("/newmedialog")} active={location.pathname === "/newmedialog"} /> <SidebarItem icon={<FaFolderOpen />} text="Satsang Category" onClick={() => navigate("/digitalrecording")} active={location.pathname === "/digitalrecording"} /> <SidebarItem icon={<FaChartBar />} text="AuxFiles" onClick={() => navigate("/auxfiles")} active={location.pathname === "/auxfiles"} /> <SidebarItem icon={<FaVideo />} text="Satsang Extracted Clips" onClick={() => setViewTitle("Satsang Extracted Clips")} active={false} /> <SidebarItem icon={<FaTable />} text="All Data View - Formal - Informal" /> <SidebarItem icon={<FaStream />} text="Timeline" onClick={() => navigate("/timeline")} active={location.pathname === "/timeline"} /> <li className="sidebar-divider"></li> <SidebarItem icon={<FaMicrophone />} text="Assistant" onClick={handleAssistantClick} active={isAssistantOpen} /> <SidebarItem icon={<FaInfoCircle />} text="About" onClick={() => alert("App version 1.0.0\nCreated by Gaurav.")} active={false} /> <SidebarItem icon={<FaCommentDots />} text="Feedback" onClick={() => alert("Send your feedback to feedback@example.com")} active={false} /> <SidebarItem icon={<FaShareAlt />} text="Share" onClick={() => alert("Share this app: https://yourapp.com")} active={false} /> </ul> </aside> </> ); });
+const Sidebar = memo(({ isOpen, setViewTitle, onClose, navigate, onOpenAssistant, isAssistantOpen }) => { const location = useLocation(); const handleAssistantClick = () => { onOpenAssistant(); onClose(); }; return ( <> <div className={`sidebar-overlay ${isOpen ? "show" : ""}`} onClick={onClose}></div> <aside className={`sidebar ${isOpen ? "open" : ""}`}> <div className="sidebar-header"> <h3><FaTag color="#4a90e2" /> Data library - All Depts</h3> <button onClick={onClose} className="close-sidebar-btn"><FaTimes /></button> </div>  <ul>  <SidebarItem icon={<FaHome />} text="Home" onClick={() => navigate("/")} active={location.pathname === "/"} />
+               
+                   {/* CHANGE: "Events" now points to /events */}
+                   <SidebarItem icon={<FaTable />} text="Events" onClick={() => navigate("/events")} active={location.pathname === "/events"} />
+                   
+                  <SidebarItem icon={<FaListAlt />} text="NewMediaLog" onClick={() => navigate("/newmedialog")} active={location.pathname === "/newmedialog"} /> 
+                  <SidebarItem icon={<FaFolderOpen />} text="Digital Recording" onClick={() => navigate("/digitalrecording")} active={location.pathname === "/digitalrecording"} />
+                   <SidebarItem icon={<FaChartBar />} text="AuxFiles" onClick={() => navigate("/auxfiles")} active={location.pathname === "/auxfiles"} /> 
+                   <SidebarItem icon={<FaVideo />} text="Satsang Extracted Clips" onClick={() => setViewTitle("Satsang Extracted Clips")} active={false} /> 
+                   <SidebarItem icon={<FaTable />} text="All Data View - Formal - Informal" />
+                    <SidebarItem icon={<FaStream />} text="Timeline" onClick={() => navigate("/timeline")} active={location.pathname === "/timeline"} /> <li className="sidebar-divider"></li> 
+                    <SidebarItem icon={<FaMicrophone />} text="Assistant" onClick={handleAssistantClick} active={isAssistantOpen} /> 
+                    <SidebarItem icon={<FaInfoCircle />} text="About" onClick={() => alert("App version 1.0.0\nCreated by Gaurav.")} active={false} /> 
+                    <SidebarItem icon={<FaCommentDots />} text="Feedback" onClick={() => alert("Send your feedback to feedback@example.com")} active={false} /> 
+                    <SidebarItem icon={<FaShareAlt />} text="Share" onClick={() => alert("Share this app: https://yourapp.com")} active={false} /> </ul>
+                    
+                    <div className="sidebar-profile"
+                                                    style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', padding: '1rem', cursor: 'pointer' }}>
+                                                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)' }}>
+                                                           <div style={{width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#4a4f58', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaUser /></div>
+                                                            <div> <span style={{ fontWeight: 600 }}>Admin User</span>
+                                                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)'}}>Settings / Logout</div>
+                                                              </div>
+                                                              
+                                                               </div> 
+                                                              
+                                                              </div> 
+                     </aside> </> ); });
 const Header = memo(({ viewTitle, onMenuClick, onExportClick, searchQuery, onSearchChange, onFilterClick }) => { const [searchVisible, setSearchVisible] = useState(false); const handleSearchToggle = () => { if (searchVisible && searchQuery) { onSearchChange({ target: { value: '' } }); } setSearchVisible(prev => !prev); }; return ( <header className="header"> <div className="header-left"> <button className="menu-btn" onClick={onMenuClick}><FaBars /></button> <h2 className="view-title">{viewTitle}</h2> </div> <div className="header-right"> <div className={`search-container ${searchVisible ? 'visible' : ''}`}> <input type="text" placeholder="Search Event Code, Name, or Year..." value={searchQuery} onChange={onSearchChange}/> <FaFilter className="filter-icon" title="Advanced Filters" onClick={onFilterClick}/> </div> <button className="icon-btn search-toggle-btn" onClick={handleSearchToggle}> {searchVisible ? <FaTimes /> : <FaSearch />} </button> <button onClick={onExportClick} className="export-btn"> <FaFileExport /> <span>Export</span> </button> </div> </header> ); });
 const filterFields = [ {key:'EventID',label:'Event ID',type:'range'},{key:'EventCode',label:'Event Code',type:'text'},{key:'Yr',label:'Year',type:'range'},{key:'SubmittedDate',label:'Submitted Date',type:'text'},{key:'FromDate',label:'From Date',type:'text'},{key:'ToDate',label:'To Date',type:'text'},{key:'EventName',label:'Event Name',type:'text'},{key:'fkEventCategory',label:'Event Category',type:'text'},{key:'EventRemarks',label:'Event Remarks',type:'text'},{key:'EventMonth',label:'Event Month',type:'text'},{key:'CommonID',label:'Common ID',type:'text'},{key:'IsSubEvent1',label:'Is Sub Event?',type:'select',options:['All','Yes','No']},{key:'IsAudioRecorded',label:'Is Audio Recorded?',type:'select',options:['All','Yes','No']},{key:'PravachanCount',label:'Pravachan Count',type:'text'},{key:'UdhgoshCount',label:'Udhgosh Count',type:'text'},{key:'PaglaCount',label:'Pagla Count',type:'text'},{key:'PratisthaCount',label:'Pratistha Count',type:'text'},{key:'SummaryRemarks',label:'Summary Remarks',type:'text'},{key:'PraSUduration',label:'Pra-SU Duration',type:'text'},{key:'LastModifiedBy',label:'Last Modified By',type:'text'},{key:'LastModifiedTimestamp',label:'Last Modified Timestamp',type:'text'},{key:'NewEventCategory',label:'New Event Category',type:'text'},{key:'NewDateForm',label:'New Date Form',type:'text'} ];
 const FilterSidebar = memo(({isOpen, onClose, filters, onFilterChange, onApply, onClear, activeFilter, onSelectFilter, onGoBack}) => { const renderFieldList = () => ( <ul className="filter-field-list"> {filterFields.map(field => ( <li key={field.key} onClick={() => onSelectFilter(field.key)}> <div className="filter-field-label"><span>{field.label}</span></div> <FaChevronRight /> </li> ))} </ul> ); const renderValueInput = () => { const field = filterFields.find(f => f.key === activeFilter); if (!field) return null; const renderContent = () => { if (field.type === 'range') { return ( <div className="filter-group filter-range-group"> <label htmlFor={`filter-input-${field.key}-min`}>Min</label> <input type="number" id={`filter-input-${field.key}-min`} name={field.key} data-range-part="min" value={filters[field.key]?.min || ''} onChange={onFilterChange} placeholder="e.g. 100" autoFocus /> <label htmlFor={`filter-input-${field.key}-max`}>Max</label> <input type="number" id={`filter-input-${field.key}-max`} name={field.key} data-range-part="max" value={filters[field.key]?.max || ''} onChange={onFilterChange} placeholder="e.g. 200"/> </div> ); } if (field.type === 'select') { return ( <div className="filter-group"> <label htmlFor={`filter-input-${field.key}`}>{field.label}</label> <select id={`filter-input-${field.key}`} name={field.key} value={filters[field.key] || 'All'} onChange={onFilterChange}> {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)} </select> </div> ); } return ( <div className="filter-group"> <label htmlFor={`filter-input-${field.key}`}>Search</label> <input type="text" id={`filter-input-${field.key}`} name={field.key} value={filters[field.key] || ''} onChange={onFilterChange} placeholder={field.placeholder} autoFocus/> </div> ); }; return ( <div className="filter-value-view"> <button onClick={onGoBack} className="filter-back-button"><FaArrowLeft /><span>All Filters</span></button> {renderContent()} </div> ); }; const headerTitle = activeFilter ? filterFields.find(f => f.key === activeFilter)?.label || 'Filter' : 'Filters'; return ( <> <div className={`sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={onClose}></div> <aside className={`filter-sidebar ${isOpen ? 'open' : ''}`}> <div className="filter-sidebar-header"> <li className="filter-close-list-item" onClick={onClose}><FaArrowLeft /></li> <h3>{headerTitle}</h3> <button onClick={onClose} className="close-sidebar-btn" title="Dismiss"><FaTimes /></button> </div> <div className="filter-sidebar-body">{activeFilter ? renderValueInput() : renderFieldList()}</div> <div className="filter-sidebar-footer"> <button className="btn-secondary" onClick={onClear}>Clear All</button> <button className="btn-primary" onClick={onApply}>Apply Filters</button> </div> </aside> </> ); });
@@ -21,21 +48,35 @@ const EventDetailsPanel = memo(({ event, onClose }) => { if (!event) return null
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const fetchEvents = async () => {
-  const res = await fetch(`${API_BASE_URL}/users`, {
+  // Since your backend supports pagination, we should fetch all data for the timeline view.
+  // A better long-term solution would be to implement pagination in the frontend query.
+  // For now, let's just get the data as your backend provides it.
+  const res = await fetch(`${API_BASE_URL}/users?limit=10000`, { // Fetch all for now
     cache: "no-store",
     headers: {
       "Cache-Control": "no-cache"
     }
   });
+
   const text = await res.text();
   if (!res.ok) {
     throw new Error(`API error: ${res.status}\n${text}`);
   }
+
   try {
-    const data = JSON.parse(text);
-    if (!Array.isArray(data)) throw new Error("Data from API is not in the expected array format.");
-    return data;
+    // 1. Parse the full response OBJECT
+    const responseJson = JSON.parse(text);
+
+    // 2. Check that the response is an object and contains a 'data' property which is an array
+    if (!responseJson || !Array.isArray(responseJson.data)) {
+      throw new Error("Data from API is not in the expected format (expected { data: [...] }).");
+    }
+
+    // 3. Return ONLY the array of events, which is what the rest of your component expects
+    return responseJson.data;
+
   } catch (e) {
+    console.error("Failed to parse JSON response:", e);
     throw new Error("Response is not valid JSON. Response was:\n" + text);
   }
 };

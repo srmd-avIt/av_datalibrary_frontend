@@ -3,7 +3,7 @@ import './users.css';
 import './link-button.css';
 import { useNavigate,useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { FaListAlt, FaFolderOpen, FaVideo, FaTable, FaTag, FaMicrophone, FaInfoCircle, FaCommentDots, FaShareAlt, FaTimes, FaBars, FaSearch, FaFilter, FaFileExport, FaChevronRight, FaArrowLeft, FaStream,FaChartBar } from 'react-icons/fa';
+import { FaListAlt, FaFolderOpen, FaVideo, FaTable, FaTag, FaMicrophone, FaInfoCircle, FaCommentDots, FaShareAlt, FaTimes, FaBars, FaSearch, FaFilter, FaFileExport, FaChevronRight, FaArrowLeft, FaStream,FaChartBar,FaHome,FaUser } from 'react-icons/fa';
 import AssistantPanel from './AssistantPanel';
 
 // --- SUB-COMPONENTS ---
@@ -21,19 +21,33 @@ const Sidebar = memo(({ isOpen, setViewTitle, onClose, navigate, onOpenAssistant
                <h3><FaTag color="#4a90e2" /> Data library - All Depts</h3> 
                <button onClick={onClose} className="close-sidebar-btn"><FaTimes />
                </button> </div>
-                <ul> 
-                  <SidebarItem icon={<FaTable />} text="Events" onClick={() => navigate("/")} active={location.pathname === "/"} />
-                   <SidebarItem icon={<FaListAlt />} text="All Except Satsang" onClick={() => navigate("/newmedialog")} active={location.pathname === "/newmedialog"} /> 
-                   <SidebarItem icon={<FaFolderOpen />} text="Satsang Category" onClick={() => navigate("/digitalrecording")} active={location.pathname === "/digitalrecording"} /> 
-                   <SidebarItem icon={<FaChartBar />} text="AuxFiles" onClick={() => navigate("/auxfiles")} active={location.pathname === "/auxfiles"} /> 
-                   <SidebarItem icon={<FaVideo />} text="Satsang Extracted Clips" onClick={() => setViewTitle("Satsang Extracted Clips")} active={false} />
-                    <SidebarItem icon={<FaTable />} text="All Data View - Formal - Informal" />
-                     <SidebarItem icon={<FaStream />} text="Timeline" onClick={() => navigate("/timeline")} active={location.pathname === "/timeline"} /> <li className="sidebar-divider"></li> 
-                     <SidebarItem icon={<FaMicrophone />} text="Assistant" onClick={handleAssistantClick} active={isAssistantOpen} /> 
-                     <SidebarItem icon={<FaInfoCircle />} text="About" onClick={() => alert("App version 1.0.0\nCreated by Gaurav.")} active={false} /> 
-                     <SidebarItem icon={<FaCommentDots />} text="Feedback" onClick={() => alert("Send your feedback to feedback@example.com")} active={false} /> 
-                     <SidebarItem icon={<FaShareAlt />} text="Share" onClick={() => alert("Share this app: https://yourapp.com")} active={false} /> 
-                     </ul> 
+                <ul>  <SidebarItem icon={<FaHome />} text="Home" onClick={() => navigate("/")} active={location.pathname === "/"} />
+                              
+                                  {/* CHANGE: "Events" now points to /events */}
+                                  <SidebarItem icon={<FaTable />} text="Events" onClick={() => navigate("/events")} active={location.pathname === "/events"} />
+                                  
+                                 <SidebarItem icon={<FaListAlt />} text="NewMediaLog" onClick={() => navigate("/newmedialog")} active={location.pathname === "/newmedialog"} /> 
+                                 <SidebarItem icon={<FaFolderOpen />} text="Digital Recording" onClick={() => navigate("/digitalrecording")} active={location.pathname === "/digitalrecording"} />
+                                  <SidebarItem icon={<FaChartBar />} text="AuxFiles" onClick={() => navigate("/auxfiles")} active={location.pathname === "/auxfiles"} /> 
+                                  <SidebarItem icon={<FaVideo />} text="Satsang Extracted Clips" onClick={() => setViewTitle("Satsang Extracted Clips")} active={false} /> 
+                                  <SidebarItem icon={<FaTable />} text="All Data View - Formal - Informal" />
+                                   <SidebarItem icon={<FaStream />} text="Timeline" onClick={() => navigate("/timeline")} active={location.pathname === "/timeline"} /> <li className="sidebar-divider"></li> 
+                                   <SidebarItem icon={<FaMicrophone />} text="Assistant" onClick={handleAssistantClick} active={isAssistantOpen} /> 
+                                   <SidebarItem icon={<FaInfoCircle />} text="About" onClick={() => alert("App version 1.0.0\nCreated by Gaurav.")} active={false} /> 
+                                   <SidebarItem icon={<FaCommentDots />} text="Feedback" onClick={() => alert("Send your feedback to feedback@example.com")} active={false} /> 
+                                   <SidebarItem icon={<FaShareAlt />} text="Share" onClick={() => alert("Share this app: https://yourapp.com")} active={false} /> </ul>
+
+                                   <div className="sidebar-profile"
+                                                                   style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', padding: '1rem', cursor: 'pointer' }}>
+                                                                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)' }}>
+                                                                          <div style={{width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#4a4f58', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaUser /></div>
+                                                                           <div> <span style={{ fontWeight: 600 }}>Admin User</span>
+                                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)'}}>Settings / Logout</div>
+                                                                             </div>
+                                                                             
+                                                                              </div> 
+                                                                             
+                                                                             </div> 
                      </aside> 
                      </> ); 
                      });

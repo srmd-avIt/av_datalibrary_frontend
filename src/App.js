@@ -36,10 +36,12 @@ function App() {
           {/* --- Keep all your existing routes --- */}
           <Route path="/events" element={<Users />} />
           <Route path="/newmedialog" element={<Newmedialog />} />
+          
           <Route path="/digitalrecording" element={<Digitalrecording />} />
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/auxfiles" element={<AuxFiles />} />
           <Route path="/assistantpanel" element={<AssistantPanel/>}/>
+          <Route path="/newmedialog/:view?" element={<Newmedialog />} />
 
         </Routes>
       </Router>

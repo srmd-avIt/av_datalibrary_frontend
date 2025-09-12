@@ -46,7 +46,7 @@ body { margin: 0; font-family: var(--font-family); background-color: var(--bg-da
 .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: var(--header-height); border-bottom: 1px solid var(--border-color); }
 .sidebar-header h3 { color: var(--text-headings); font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 10px;}
-.sidebar ul { list-style: none; padding: 16px 0; margin: 0; }
+.sidebar ul { list-style: none; padding: 16px 0; margin: 0; overflow-y: auto;}
 .sidebar ul li { display: flex; align-items: center; padding: 12px 20px; cursor: pointer; color: #f1ecec; transition: background-color 0.2s, color 0.2s; }
 
 .sidebar ul li svg { margin-right: 16px; font-size: 1.1rem; }
@@ -995,4 +995,527 @@ body { margin: 0; font-family: var(--font-family); background-color: var(--bg-da
   flex-direction: column;
   overflow-y: auto; /* This is the key property: shows a scrollbar ONLY when content overflows */
   /* Remove any scrollbar-hiding properties */
+}
+/* --- Timeline Controls --- */
+.view-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.view-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.view-controls-group label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.control-select {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.view-mode-toggle .view-mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.view-mode-toggle .view-mode-btn:hover {
+    background-color: var(--background-hover);
+}
+
+
+/* --- Professional Timeline Accordion --- */
+.timeline-container.professional .timeline-section {
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.timeline-container.professional .timeline-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    background-color: var(--background-secondary);
+    cursor: pointer;
+    position: sticky;
+    top: 0; /* Adjust if you have a taller header */
+    z-index: 10;
+    transition: background-color 0.2s;
+}
+.timeline-container.professional .timeline-header:hover {
+    background-color: var(--background-hover);
+}
+
+.collapse-toggle {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-container.professional .timeline-list {
+    padding-left: 2rem;
+    border-left: 3px solid var(--border-color);
+    margin: 0 0 0 2.2rem; /* Aligns with header text */
+}
+
+.timeline-container.professional .timeline-item {
+    position: relative;
+    padding: 1rem 1rem 1rem 2.5rem;
+    border-bottom: 1px solid var(--border-color-light);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.timeline-container.professional .timeline-item:last-child {
+    border-bottom: none;
+}
+.timeline-container.professional .timeline-item.selected,
+.timeline-container.professional .timeline-item:hover {
+    background-color: var(--background-hover);
+}
+
+.timeline-container.professional .timeline-marker {
+    position: absolute;
+    left: -9px; /* (15px width / 2) + 3px border */
+    top: 1.5rem;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 3px solid var(--background-primary);
+    background-color: #888; /* Default color */
+}
+
+.timeline-content .timeline-title {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    color: var(--text-primary);
+}
+
+.timeline-content .timeline-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.timeline-content .timeline-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tag-pill {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+/* --- Details Panel for Linked DRs --- */
+.details-panel-body .linked-drs-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+.details-panel-body .linked-drs-section h4 {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.linked-drs-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.linked-drs-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: var(--background-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.linked-drs-list li:hover {
+    background-color: var(--background-hover);
+}
+.no-drs-message {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+.details-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* --- ADD THIS CSS FOR THE COLLAPSIBLE SIDEBAR MENU --- */
+
+/* Style for the main collapsible menu item */
+.sidebar-menu-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 6px;
+  user-select: none; /* Prevents text selection on double click */
+}
+
+.sidebar-menu-toggle:hover {
+  background-color: var(--background-hover, #f0f0f0);
+}
+
+/* Highlight the parent menu item when a child is active */
+.sidebar-menu-toggle.active-parent {
+  color: var(--primary-color, #ebecef);
+  font-weight: 600;
+}
+
+.sidebar-menu-toggle .toggle-content {
+  display: flex;
+  align-items: center;
+}
+
+
+/* Style for the nested submenu */
+.sidebar-submenu {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0 1.5rem; /* Indent the submenu */
+  overflow: hidden;
+  max-height: 500px; /* Set a max-height for the transition */
+  transition: max-height 0.3s ease-in-out;
+}
+
+/* Styling for the child items within the submenu */
+.sidebar-submenu .flex.items-center { /* Target the SidebarItem component inside */
+   /* Add some padding to align text better */
+  font-size: 0.9rem;
+}
+
+
+/* --- ADD THIS CSS FOR THE "VIEW" FILTER CHIP --- */
+.filter-chip.view-chip {
+  background-color: #e0eafc; /* A light blue background */
+  border: 1px solid #a0b5e8;
+  cursor: default;
+}
+
+.filter-chip.view-chip button {
+  display: none; /* Hide the 'x' button */
+}
+
+
+
+/* --- ADD THIS CSS TO YOUR users.css FILE --- */
+
+/* --- ClickUp Style View Container --- */
+.clickup-view-container {
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: var(--bg-dark-primary);
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.views-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.view-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.view-btn:hover {
+  background-color: var(--bg-dark-tertiary);
+  color: var(--text-primary);
+}
+.view-btn.active {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+/* --- Card --- */
+.card {
+  background-color: var(--bg-dark-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-content {
+  flex-grow: 1;
+  overflow-y: auto; /* Important for table scrolling */
+}
+
+.card-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+
+/* --- Controls inside Card Header --- */
+.top-controls, .filter-controls, .search-customize-group, .filter-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tabs-list {
+  display: inline-flex;
+  background-color: var(--bg-dark-tertiary);
+  border-radius: 6px;
+  padding: 4px;
+}
+.tabs-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tabs-trigger.active {
+  background-color: var(--bg-dark-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.header-actions, .filter-group, .search-customize-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-dark-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.control-btn:hover {
+  background-color: #4a4f58;
+}
+.control-btn.primary {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+.control-btn.primary:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+.control-select {
+  background-color: var(--bg-dark-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.search-container-modern {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-dark-tertiary);
+  border: 1px solid var(--border-color);
+  padding: 0 12px;
+  border-radius: 6px;
+}
+.search-container-modern input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  height: 30px;
+}
+.search-container-modern svg {
+  color: var(--text-secondary);
+}
+
+/* --- Popover --- */
+.popover-container {
+  position: relative;
+}
+.popover-content {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background-color: var(--bg-dark-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  z-index: 10;
+  padding: 16px;
+  width: 250px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.popover-content strong {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+.popover-content label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.popover-content .control-select {
+  width: 100%;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- New Modern Table --- */
+.table-container-modern {
+  overflow: auto;
+  height: 100%;
+}
+
+.user-table-modern {
+  width: 100%;
+  border-collapse: collapse;
+}
+.user-table-modern th, .user-table-modern td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.user-table-modern th {
+  background-color: var(--bg-dark-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  cursor: pointer;
+}
+.user-table-modern th .sort-icon {
+  opacity: 0.3;
+  margin-left: 4px;
+}
+.user-table-modern th:hover .sort-icon {
+  opacity: 0.7;
+}
+.user-table-modern th .sort-icon.active {
+  opacity: 1;
+  color: var(--accent-primary);
+}
+.user-table-modern tbody tr:hover {
+  background-color: var(--bg-dark-tertiary);
+}
+.group-header-row {
+  background-color: var(--bg-dark-tertiary) !important;
+  font-weight: 600;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* --- Placeholder for other views --- */
+.placeholder-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
 }
