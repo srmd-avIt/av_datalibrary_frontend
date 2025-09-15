@@ -108,7 +108,7 @@ export function ClickUpListViewUpdated({
   const [timelineViewMode, setTimelineViewMode] = useState<"day" | "week" | "month" | "year">("month");
   const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
 
-  const itemsPerPage = 30;
+  const itemsPerPage = 50;
 
   const defaultViews: ViewConfig[] = [
     { id: "all", name: "All" },

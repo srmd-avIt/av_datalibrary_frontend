@@ -48,7 +48,7 @@ export default function App() {
         return (
           <ClickUpListViewUpdated
             title="Events"
-            apiEndpoint="/users" 
+            apiEndpoint="/events" 
             idKey="EvnetID"// <-- THE FIX: Change the endpoint to "/users"
             onRowSelect={(row) => handleRowSelect(row, "event")}
             filterConfigs={getFilterConfigs("countries")}
