@@ -96,6 +96,12 @@ export default function App() {
           <ClickUpListViewUpdated
             title="Cities"
             apiEndpoint="/cities" // Pass the API endpoint
+            idKey="id" // Add a unique ID key for cities
+            columns={[ // Add columns for the cities view
+              { key: "id", label: "ID", sortable: true },
+              { key: "name", label: "City Name", sortable: true },
+              { key: "country", label: "Country", sortable: true, filterable: true },
+            ]}
             onRowSelect={(row) => handleRowSelect(row, "city")}
             // ... and so on for the other views
           />

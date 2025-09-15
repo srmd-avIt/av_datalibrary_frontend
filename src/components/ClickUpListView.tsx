@@ -153,7 +153,7 @@ export function ClickUpListView({
   }, [data, searchTerm, searchKey, activeFilters, activeSortBy, activeSortDirection]);
 
   // Group data if groupBy is set
-  const groupedData = useMemo(() => {
+  const groupedData: Record<string, ListItem[]> = useMemo(() => {
     if (!activeGroupBy || activeGroupBy === "none") return { "": processedData };
     
     return processedData.reduce((groups, item) => {

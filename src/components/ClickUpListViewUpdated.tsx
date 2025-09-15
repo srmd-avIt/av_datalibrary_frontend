@@ -21,7 +21,11 @@ import { TimelineView } from "./TimelineView";
 import { Pagination } from "./ui/Pagination";
 
 // --- Interfaces ---
-interface ListItem { id: string | number; [key: string]: any; }
+interface ListItem { 
+  id: string | number; 
+  date: string; // Add date to satisfy TimelineItem
+  [key: string]: any; 
+}
 interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number" | "checkbox"; options?: string[]; }
 interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; }
@@ -178,7 +182,7 @@ export function ClickUpListViewUpdated({
 
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
   
-  const groupedData = useMemo(() => {
+  const groupedData: Record<string, ListItem[]> = useMemo(() => {
     if (!activeGroupBy || activeGroupBy === "none" || !items.length) return { "": items };
     
     const groups = items.reduce((acc, item) => {
@@ -445,7 +449,7 @@ export function ClickUpListViewUpdated({
                             onClick={() => col.sortable && handleSort(col.key)} 
                             className={`${col.sortable ? 'cursor-pointer group' : ''} sticky top-0 z-10 bg-card/95 backdrop-blur-sm ${index === 0 ? 'left-0 z-20' : ''}`}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 px-4 py-3">
                               {col.label}
                               {col.sortable && getSortIcon(col.key)}
                             </div>
@@ -456,13 +460,19 @@ export function ClickUpListViewUpdated({
                     <TableBody>
                       {Object.entries(groupedData).map(([groupName, groupItems]) => (
                         <React.Fragment key={groupName}>
-                          {activeGroupBy !== 'none' && <TableRow><TableCell colSpan={visibleColumns.length} className="font-bold bg-muted/50 sticky left-0 z-10">{groupName} ({groupItems.length})</TableCell></TableRow>}
+                          {activeGroupBy !== 'none' && (
+                            <TableRow className="sticky top-12 z-[15]">
+                              <TableCell colSpan={visibleColumns.length} className="bg-muted/90 backdrop-blur-sm font-semibold">
+                                {groupName} ({groupItems.length})
+                              </TableCell>
+                            </TableRow>
+                          )}
                           {groupItems.map(item => (
                             <TableRow key={item[idKey]} onClick={() => onRowSelect?.(item)} className="hover:bg-muted/50">
                               {visibleColumns.map((col, index) => (
                                 <TableCell 
                                   key={col.key} 
-                                  className={index === 0 ? 'sticky left-0 bg-card' : ''}
+                                  className={`${index === 0 ? 'sticky left-0 z-10 bg-card' : ''} border-b`}
                                 >
                                   {col.render ? col.render(item[col.key], item) : String(item[col.key] ?? '')}
                                 </TableCell>
@@ -479,7 +489,7 @@ export function ClickUpListViewUpdated({
           )}
           {activeTab === 'timeline' && (
             <TimelineView 
-              data={items} 
+              data={items.map(item => ({ ...item, id: String(item.id) }))} 
               onItemSelect={onRowSelect}
               viewMode={timelineViewMode}
               onViewModeChange={setTimelineViewMode}
