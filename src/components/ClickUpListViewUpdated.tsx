@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { TimelineView } from "./TimelineView";
-import { Pagination } from "./ui/Pagination";
+import { Pagination } from "./ui/pagination";
 
 // --- Interfaces ---
 interface ListItem { 
