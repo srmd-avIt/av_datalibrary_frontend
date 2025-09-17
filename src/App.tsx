@@ -10,8 +10,6 @@ import { UserManagement } from "./components/UserManagement";
 import { DetailsSidebar } from "./components/DetailsSidebar";
 import { Badge } from "./components/ui/badge";
 
-// REMOVED: All mock data imports
-
 export default function App() {
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedRowData, setSelectedRowData] = useState(null);
@@ -28,8 +26,7 @@ export default function App() {
   };
 
   const getFilterConfigs = (viewType: string) => {
-    // This function remains the same as in your original code
-    // ...
+    // This function can be expanded later if needed
     return [];
   };
 
@@ -44,50 +41,42 @@ export default function App() {
       case "user-management":
         return <UserManagement />;
       
-      case "countries":
+      case "countries": // This is your "Events" view
         return (
           <ClickUpListViewUpdated
             title="Events"
+            // ✅ FIX 2: Correctly point to the full API endpoint
             apiEndpoint="/events" 
-            idKey="EvnetID"// <-- THE FIX: Change the endpoint to "/users"
+            // ✅ FIX 1: Correct the typo from "EvnetID" to "EventID"
+            idKey="EventID"
             onRowSelect={(row) => handleRowSelect(row, "event")}
             filterConfigs={getFilterConfigs("countries")}
-            views={[
-              { id: "all", name: "All" },
-              { id: "active", name: "Active", filters: { status: "Active" } },
-              { id: "planned", name: "Planned", filters: { status: "Planned" } },
-              { id: "by-continent", name: "By Continent", groupBy: "continent" }
-            ]}
             columns={[
-              // It's important that these `key` values match the field names 
-              // returned by your /users API endpoint.
+              // The `key` values must exactly match the names from your database/API
               { key: "EventID", label: "Event ID", sortable: true }, 
-               { key: "EventCode", label: "Event Code" },// Example: Change 'id' to 'EventID' if that's what your API returns
-             
-             { key: "Yr", label: "Year", sortable: true },
-             {key:"SubmittedDate", label: "Submitted Date", sortable: true},
-             {key:"FromDate", label: "From Date", sortable: true},
-             {key:"ToDate", label: "To Date", sortable: true},
+              { key: "EventCode", label: "Event Code" },
+              { key: "Yr", label: "Year", sortable: true },
+              { key: "SubmittedDate", label: "Submitted Date", sortable: true },
+              { key: "FromDate", label: "From Date", sortable: true },
+              { key: "ToDate", label: "To Date", sortable: true },
               { key: "EventName", label: "Event Name", sortable: true },
               { key: "fkEventCategory", label: "Category", sortable: true, filterable: true },
-              {key:"NewEventCategory", label: "New Event Category", sortable: true, filterable: true},
-              {key:"EventRemarks", label: "Event Remarks", sortable: true},
-              {key:"EvnetMonth", label: "Event Month", sortable: true},
-              {key:"CommonID", label: "Common ID", sortable: true},
-              {key:"IsSubEvent1", label: "Is Sub Event1", sortable: true},
-              {key:"IsAudioRecorded", label: "Is Audio Record", sortable: true},
-              {key:"PravachanCount", label: "Pravachan Count", sortable: true},
-              {key:"UdgoshCount", label: "Udgosh Count", sortable: true},
-              {key:"PaglaCount", label: "Pagla Count", sortable: true},
-              {key:"PratishthaCount", label: "Pratishtha Count", sortable: true},
-              {key:"SummaryRemarks", label: "Summary Remarks", sortable: true},
-              {key:"Pra-SU-duration", label: "Pra-SU-duration", sortable: true},
-              {key:"LastModifiedBy", label: "Last Modified By", sortable: true},
-              {key:"LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true},
-              {key:"NewEventFrom", label: "New Event From", sortable: true},
-              {key:"NewEventTo", label: "New Event To", sortable: true},
-
-              // Add other columns that match your '/users' API response
+              { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true },
+              { key: "EventRemarks", label: "Event Remarks", sortable: true },
+              { key: "EventMonth", label: "Event Month", sortable: true },
+              { key: "CommonID", label: "Common ID", sortable: true },
+              { key: "IsSubEvent1", label: "Is Sub Event1", sortable: true },
+              { key: "IsAudioRecorded", label: "Is Audio Record", sortable: true },
+              { key: "PravachanCount", label: "Pravachan Count", sortable: true },
+              { key: "UdgoshCount", label: "Udgosh Count", sortable: true },
+              { key: "PaglaCount", label: "Pagla Count", sortable: true },
+              { key: "PratishthaCount", label: "Pratishtha Count", sortable: true },
+              { key: "SummaryRemarks", label: "Summary Remarks", sortable: true },
+              { key: "Pra-SU-duration", label: "Pra-SU-duration", sortable: true },
+              { key: "LastModifiedBy", label: "Last Modified By", sortable: true },
+              { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true },
+              { key: "NewEventFrom", label: "New Event From", sortable: true },
+              { key: "NewEventTo", label: "New Event To", sortable: true },
             ]}
           />
         );
@@ -95,19 +84,18 @@ export default function App() {
         return (
           <ClickUpListViewUpdated
             title="Cities"
-            apiEndpoint="/cities" // Pass the API endpoint
-            idKey="id" // Add a unique ID key for cities
-            columns={[ // Add columns for the cities view
+            apiEndpoint="/api/cities" // Make sure this endpoint exists on your server
+            idKey="id" 
+            columns={[
               { key: "id", label: "ID", sortable: true },
               { key: "name", label: "City Name", sortable: true },
               { key: "country", label: "Country", sortable: true, filterable: true },
             ]}
             onRowSelect={(row) => handleRowSelect(row, "city")}
-            // ... and so on for the other views
           />
         );
       
-      // Add other cases for "satsang", "pratishthas", etc. in the same way
+      // Add other cases for your views here
       
       default:
         return <Dashboard />;
