@@ -11,10 +11,10 @@ interface SidebarProps {
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
-    { id: "countries", label: "Events", icon: Map },
-    { id: "cities", label: "NewMediaLog", icon: Users },
-    { id: "satsang", label: "Digital Recordings", icon: Calendar },
-    { id: "pratishthas", label: "AuxFile", icon: FileText },
+    { id: "events", label: "Events", icon: Map },
+    { id: "digitalrecordings", label: "Digital Recordings", icon: Calendar },
+    { id: "medialog", label: "New Media Log", icon: Users },
+    { id: "aux", label: "Aux File", icon: FileText },
     { id: "padhramanis", label: "Padhramanis", icon: Database },
     { id: "ai-assistant", label: "AI Assistant", icon: Bot },
     { id: "user-management", label: "User Management", icon: User },

@@ -83,196 +83,200 @@ export function DetailsSidebar({ isOpen, onClose, data, type }: DetailsSidebarPr
             </Card>
           </div>
         );
-
-      case "city":
+case "digitalrecording":
         return (
           <div className="space-y-6">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-green-500 to-blue-600 flex items-center justify-center">
-                <Users className="w-8 h-8 text-white" />
+                <FileAudio className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold">{data.name}</h3>
-              <p className="text-muted-foreground">{data.country}</p>
-              <Badge className="mt-2">{data.status}</Badge>
+              <h3 className="text-xl font-bold">{data.RecordingName || 'Digital Recording'}</h3>
+              <p className="text-muted-foreground">Code: {data.RecordingCode}</p>
+              <Badge className="mt-2">{data.QcStatus || 'N/A'}</Badge>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">City Details</CardTitle>
+                <CardTitle className="text-lg">Recording Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Population</span>
-                  <span className="font-medium">{data.population?.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Satsang Hours</span>
-                  <Badge variant="secondary">{data.satsangHours}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Attendees</span>
-                  <span className="font-medium">{data.attendees?.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Coordinator</span>
-                  <span className="font-medium">{data.coordinator}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Last Event</span>
-                  <span className="font-medium">{data.lastEvent}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "satsang":
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center">
-                <Clock className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-bold">{data.topic}</h3>
-              <p className="text-muted-foreground">{data.location}, {data.country}</p>
-              <Badge className="mt-2">{data.type}</Badge>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Session Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date</span>
-                  <span className="font-medium">{data.date}</span>
+                  <span className="text-muted-foreground">Event Code</span>
+                  <span className="font-medium">{data.fkEventCode || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
-                  <Badge variant="secondary">{data.duration} hours</Badge>
+                  <Badge variant="secondary">{data.Duration || 'N/A'}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Attendees</span>
-                  <span className="font-medium">{data.attendees}</span>
+                  <span className="text-muted-foreground">File Size</span>
+                  <span className="font-medium">{data.FilesizeInBytes ? `${(data.FilesizeInBytes / 1024 / 1024).toFixed(2)} MB` : 'N/A'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Speaker</span>
-                  <span className="font-medium">{data.speaker}</span>
+                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Preservation</span>
+                  <span className="font-medium">{data.PreservationStatus || 'N/A'}</span>
                 </div>
-                {data.notes && (
-                  <div>
-                    <span className="text-muted-foreground">Notes</span>
-                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.notes}</p>
+                {data.DistributionDriveLink && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Link</span>
+                    <Button size="sm" variant="ghost" asChild>
+                      <a href={data.DistributionDriveLink} target="_blank" rel="noopener noreferrer">
+                        Open Link <ExternalLink className="w-3 h-3 ml-2" />
+                      </a>
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Metadata</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last Modified</span>
+                      <span className="font-medium">{data.LastModifiedTimestamp || 'N/A'}</span>
+                  </div>
+              </CardContent>
+            </Card>
           </div>
         );
 
-      case "pratishtha":
+      case "aux":
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-600 flex items-center justify-center">
-                <MapPin className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 flex items-center justify-center">
+                <File className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold">{data.name}</h3>
-              <p className="text-muted-foreground">{data.location}, {data.country}</p>
-              <Badge className="mt-2">{data.status}</Badge>
+              <h3 className="text-xl font-bold">{data.AuxTopic || 'Auxiliary File'}</h3>
+              <p className="text-muted-foreground">ID: {data.new_auxid}</p>
+              <Badge className="mt-2">{data.AuxFileType}</Badge>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Pratishtha Information</CardTitle>
+                <CardTitle className="text-lg">File Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Established</span>
-                  <span className="font-medium">{data.establishedDate}</span>
+                  <span className="text-muted-foreground">Language</span>
+                  <Badge variant="secondary">{data.AuxLanguage || 'N/A'}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Capacity</span>
-                  <Badge variant="secondary">{data.capacity}</Badge>
+                  <span className="text-muted-foreground">File Name</span>
+                  <span className="font-medium truncate">{data.ProjFileName || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Weekly Events</span>
-                  <span className="font-medium">{data.weeklyEvents}</span>
+                  <span className="text-muted-foreground">File Size</span>
+                  <span className="font-medium">{data.FilesizeBytes ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB` : 'N/A'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Coordinator</span>
-                  <span className="font-medium">{data.coordinator}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Contact</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{data.contact}</span>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                      <Phone className="w-3 h-3" />
+                <Separator />
+                {data.GoogleDriveLink && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Google Drive</span>
+                    <Button size="sm" variant="ghost" asChild>
+                      <a href={data.GoogleDriveLink} target="_blank" rel="noopener noreferrer">
+                        Open Link <ExternalLink className="w-3 h-3 ml-2" />
+                      </a>
                     </Button>
                   </div>
-                </div>
-                {data.facilities && (
+                )}
+                {data.SRTLink && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">SRT Link</span>
+                    <Button size="sm" variant="ghost" asChild>
+                      <a href={data.SRTLink} target="_blank" rel="noopener noreferrer">
+                        Open Link <ExternalLink className="w-3 h-3 ml-2" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
+                {data.NotesRemarks && (
                   <div>
-                    <span className="text-muted-foreground">Facilities</span>
-                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.facilities}</p>
+                    <span className="text-muted-foreground">Remarks</span>
+                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.NotesRemarks}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
-        );
-
-      case "padhramani":
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-600 flex items-center justify-center">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-bold">{data.name}</h3>
-              <p className="text-muted-foreground">{data.location}, {data.country}</p>
-              <Badge className="mt-2">{data.status}</Badge>
-            </div>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Padhramani Details</CardTitle>
+                <CardTitle className="text-lg">Metadata</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Established</span>
-                  <span className="font-medium">{data.establishedDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Capacity</span>
-                  <Badge variant="secondary">{data.capacity}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Monthly Events</span>
-                  <span className="font-medium">{data.monthlyEvents}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Type</span>
-                  <Badge variant="outline">{data.type}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Coordinator</span>
-                  <span className="font-medium">{data.coordinator}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Contact</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{data.contact}</span>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                      <Phone className="w-3 h-3" />
-                    </Button>
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Modified By</span>
+                      <Badge variant="secondary">{data.ModifiedBy || 'N/A'}</Badge>
                   </div>
-                </div>
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Modified On</span>
+                      <span className="font-medium">{data.ModifiedOn || 'N/A'}</span>
+                  </div>
               </CardContent>
             </Card>
           </div>
         );
+
+      case "medialog":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                <ListChecks className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold">{data.Topic || 'Media Log'}</h3>
+              <p className="text-muted-foreground">ID: {data.MLUniqueID}</p>
+              <Badge className="mt-2">{data.EditingStatus || 'N/A'}</Badge>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Log Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">DR Code</span>
+                  <span className="font-medium">{data.fkDigitalRecordingCode || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Language</span>
+                  <Badge variant="secondary">{data.Language || 'N/A'}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="font-medium">{data.TotalDuration || 'N/A'}</span>
+                </div>
+                <Separator />
+                {data.Synopsis && (
+                  <div>
+                    <span className="text-muted-foreground">Synopsis</span>
+                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.Synopsis}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Metadata</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last Modified By</span>
+                      <Badge variant="secondary">{data.LastModifiedBy || 'N/A'}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last Modified</span>
+                      <span className="font-medium">{data.LastModifiedTimestamp || 'N/A'}</span>
+                  </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      
 
       default:
         return null;

@@ -279,9 +279,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">
           <div className="flex items-center justify-between">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-2 w-fit">
+              <TabsList className={`grid ${title === 'Events' ? 'grid-cols-2' : 'grid-cols-1'} w-fit`}>
                 <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
-                <TabsTrigger value="timeline" className="flex items-center gap-2"><Calendar className="w-4 h-4" />Timeline</TabsTrigger>
+                {title === 'Events' && <TabsTrigger value="timeline" className="flex items-center gap-2"><Calendar className="w-4 h-4" />Timeline</TabsTrigger>}
               </TabsList>
             </Tabs>
             <div className="flex items-center gap-2">
@@ -339,7 +339,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               }
             </div>
           )}
-         {activeTab === 'timeline' && (
+         {activeTab === 'timeline' && title === 'Events' && (
     <TimelineView 
         apiEndpoint={apiEndpoint} 
         onItemSelect={onRowSelect} 
