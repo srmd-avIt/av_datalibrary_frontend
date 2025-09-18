@@ -2184,7 +2184,7 @@
   }
 
   .p-0 {
-    padding: calc(var(--spacing) * 0);
+    padding: calc(var(--spacing) * 2);
   }
 
   .p-1 {
