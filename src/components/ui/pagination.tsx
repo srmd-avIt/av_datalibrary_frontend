@@ -8,7 +8,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+export function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void; }) {
   if (totalPages <= 1) {
     return null; // Don't render pagination if there's only one page
   }

@@ -340,9 +340,18 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
             </div>
           )}
          {activeTab === 'timeline' && title === 'Events' && (
-    <TimelineView 
-        apiEndpoint={apiEndpoint} 
-        onItemSelect={onRowSelect} 
+    <TimelineView
+      apiEndpoint={apiEndpoint}
+      page={currentPage}
+      limit={itemsPerPage}
+      onPageChange={setCurrentPage}
+      filters={activeViewFilters}
+      advancedFilters={advancedFilters}
+      groupBy={groupBy}
+      groupDirection={groupDirection}
+      sortBy={sortBy}
+      sortDirection={sortDirection}
+      onItemSelect={onRowSelect}
     />
 )}
         </CardContent>
