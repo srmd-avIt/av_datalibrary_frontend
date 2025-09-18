@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -40,6 +40,7 @@ export function DataTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any>>({});
+  const [columnOrder, setColumnOrder] = useState(columns.map(col => col.key));
   const itemsPerPage = 15;
 
   const filteredData = useMemo(() => {
@@ -110,6 +111,20 @@ export function DataTable({
     return selectedRow && selectedRow.id === row.id;
   };
 
+  // Drag-and-drop handlers
+  const dragCol = useRef<string | null>(null);
+  const handleDragStart = (key: string) => { dragCol.current = key; };
+  const handleDrop = (key: string) => {
+    if (dragCol.current && dragCol.current !== key) {
+      const newOrder = [...columnOrder];
+      const from = newOrder.indexOf(dragCol.current);
+      const to = newOrder.indexOf(key);
+      newOrder.splice(to, 0, newOrder.splice(from, 1)[0]);
+      setColumnOrder(newOrder);
+    }
+    dragCol.current = null;
+  };
+
   return (
     <div className="p-6">
       <Card className="shadow-xl border-0 bg-gradient-to-br from-background via-background to-muted/20">
@@ -162,15 +177,25 @@ export function DataTable({
         </CardHeader>
         
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="overflow-x-auto scrollbar scrollbar-thumb-muted scrollbar-track-transparent min-w-full rounded-lg">
+            <Table className="min-w-full">
               <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/50">
-                  {columns.map((column) => (
-                    <TableHead key={column.key} className="font-semibold text-foreground">
-                      {column.label}
-                    </TableHead>
-                  ))}
+                <TableRow className="bg-muted/30 hover:bg-muted/50 sticky top-0 z-10 rounded-t-lg">
+                  {columnOrder.map((key, idx) => {
+                    const column = columns.find(col => col.key === key)!;
+                    return (
+                      <TableHead
+                        key={column.key}
+                        className={`font-semibold text-foreground bg-muted/40 cursor-move ${idx === 0 ? 'pl-4' : ''}`}
+                        draggable
+                        onDragStart={() => handleDragStart(column.key)}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={() => handleDrop(column.key)}
+                      >
+                        {column.label}
+                      </TableHead>
+                    );
+                  })}
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -184,11 +209,15 @@ export function DataTable({
                     `}
                     onClick={() => handleRowClick(item)}
                   >
-                    {columns.map((column) => (
-                      <TableCell key={column.key} className="py-4">
-                        {column.render
-                          ? column.render(item[column.key], item)
-                          : item[column.key]}
+                    {columnOrder.map((key, idx) => (
+                      <TableCell key={key} className={`py-4 ${idx === 0 ? 'pl-4' : ''}`}>
+                        {(() => {
+                          const col = columns.find(col => col.key === key);
+                          if (col && typeof col.render === "function") {
+                            return col.render(item[key], item);
+                          }
+                          return item[key];
+                        })()}
                       </TableCell>
                     ))}
                     <TableCell className="text-center">
@@ -196,7 +225,7 @@ export function DataTable({
                         variant="ghost" 
                         size="sm" 
                         className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           handleRowClick(item);
                         }}
