@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Users, Clock, Phone, Mail, ExternalLink } from "lucide-react";
+import { X, MapPin, Calendar, Users, Clock, Phone, Mail, ExternalLink, File, ListChecks, FileAudio } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -238,12 +238,16 @@ case "digitalrecording":
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">DR Code</span>
-                  <span className="font-medium">{data.fkDigitalRecordingCode || 'N/A'}</span>
+                  <span className="text-muted-foreground">Content From</span>
+                  <span className="font-medium">{data.ContentFrom || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Language</span>
-                  <Badge variant="secondary">{data.Language || 'N/A'}</Badge>
+                  <span className="text-muted-foreground">Content To</span>
+                  <span className="font-medium">{data.ContentTo || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Recording Code</span>
+                  <Badge variant="secondary">{data.fkDigitalRecordingCode || 'N/A'}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
@@ -252,8 +256,8 @@ case "digitalrecording":
                 <Separator />
                 {data.Synopsis && (
                   <div>
-                    <span className="text-muted-foreground">Synopsis</span>
-                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.Synopsis}</p>
+                    <span className="text-muted-foreground">Content Detail</span>
+                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.Detail}</p>
                   </div>
                 )}
               </CardContent>
