@@ -42,18 +42,16 @@ export default function App() {
       case "user-management":
         return <UserManagement />;
       
-      case "events": // This is your "Events" view
+      case "events": 
         return (
           <ClickUpListViewUpdated
             title="Events"
-            // ✅ FIX 2: Correctly point to the full API endpoint
             apiEndpoint="/events" 
-            // ✅ FIX 1: Correct the typo from "EvnetID" to "EventID"
             idKey="EventID"
             onRowSelect={(row) => handleRowSelect(row, "event")}
             filterConfigs={getFilterConfigs("countries")}
             columns={[
-              // The `key` values must exactly match the names from your database/API
+              
               { key: "EventID", label: "Event ID", sortable: true }, 
               { key: "EventCode", label: "Event Code" },
               { key: "Yr", label: "Year", sortable: true },
@@ -85,7 +83,7 @@ export default function App() {
         return (
           <ClickUpListViewUpdated
             title="Media Log"
-            apiEndpoint="/newmedialog" // Make sure this endpoint exists on your server
+            apiEndpoint="/newmedialog" 
             idKey="MLUniqueID"
             onRowSelect={(row) => handleRowSelect(row, "medialog")}
             columns={[
@@ -164,7 +162,7 @@ export default function App() {
         return (
           <ClickUpListViewUpdated
             title="Digital Recordings"
-            apiEndpoint="/digitalrecording" // Make sure this endpoint exists on your server
+            apiEndpoint="/digitalrecording" 
             idKey="RecordingCode"
             onRowSelect={(row) => handleRowSelect(row, "digitalrecording")}
             columns={[
