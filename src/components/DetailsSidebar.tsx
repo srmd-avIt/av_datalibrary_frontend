@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Users, Clock, Phone, Mail, ExternalLink, File, ListChecks, FileAudio } from "lucide-react";
+import { X, MapPin, Calendar, Users, Clock, Phone, Mail, ExternalLink, File, ListChecks, FileAudio, FolderKanban, Palette, Sparkles, Film } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -33,9 +33,9 @@ export function DetailsSidebar({ isOpen, onClose, data, type }: DetailsSidebarPr
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Event Details</CardTitle>
+                <CardTitle className="text-lg px-2">Event Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Event Code</span>
                   <span className="font-medium">{data.EventCode}</span>
@@ -44,9 +44,9 @@ export function DetailsSidebar({ isOpen, onClose, data, type }: DetailsSidebarPr
                   <span className="text-muted-foreground">Year</span>
                   <span className="font-medium">{data.Yr}</span>
                 </div>
-                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">EventName</span>
-                  <span className="font-medium">{data.EventName}</span>
+                 <div className="flex justify-between items-start gap-4">
+                  <span className="text-muted-foreground flex-shrink-0">EventName</span>
+                  <span className="font-medium text-right break-words">{data.EventName}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
@@ -67,9 +67,9 @@ export function DetailsSidebar({ isOpen, onClose, data, type }: DetailsSidebarPr
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Statistics</CardTitle>
+                <CardTitle className="text-lg px-2">Statistics</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                   <div className="flex justify-between">
                       <span className="text-muted-foreground">LastModifiedBy</span>
                       <Badge variant="secondary">{data.LastModifiedBy}</Badge>
@@ -97,9 +97,9 @@ case "digitalrecording":
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Recording Details</CardTitle>
+                <CardTitle className="text-lg px-2">Recording Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Event Code</span>
                   <span className="font-medium">{data.fkEventCode || 'N/A'}</span>
@@ -131,9 +131,9 @@ case "digitalrecording":
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Metadata</CardTitle>
+                <CardTitle className="text-lg px-2">Metadata</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                   <div className="flex justify-between">
                       <span className="text-muted-foreground">Last Modified</span>
                       <span className="font-medium">{data.LastModifiedTimestamp || 'N/A'}</span>
@@ -143,12 +143,12 @@ case "digitalrecording":
           </div>
         );
 
-      case "aux":
+      case "aux":    
         return (
           <div className="space-y-6">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 flex items-center justify-center">
-                <File className="w-8 h-8 text-white" />
+                <ListChecks className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold">{data.AuxTopic || 'Auxiliary File'}</h3>
               <p className="text-muted-foreground">ID: {data.new_auxid}</p>
@@ -157,16 +157,16 @@ case "digitalrecording":
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">File Details</CardTitle>
+                <CardTitle className="text-lg px-2">File Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Language</span>
                   <Badge variant="secondary">{data.AuxLanguage || 'N/A'}</Badge>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">File Name</span>
-                  <span className="font-medium truncate">{data.ProjFileName || 'N/A'}</span>
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-muted-foreground flex-shrink-0">File Name</span>
+                  <span className="font-medium text-right break-words">{data.ProjFileName || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">File Size</span>
@@ -204,9 +204,9 @@ case "digitalrecording":
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Metadata</CardTitle>
+                <CardTitle className="text-lg px-2">Metadata</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                   <div className="flex justify-between">
                       <span className="text-muted-foreground">Modified By</span>
                       <Badge variant="secondary">{data.ModifiedBy || 'N/A'}</Badge>
@@ -234,9 +234,9 @@ case "digitalrecording":
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Log Details</CardTitle>
+                <CardTitle className="text-lg px-2">Log Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Content From</span>
                   <span className="font-medium">{data.ContentFrom || 'N/A'}</span>
@@ -265,9 +265,9 @@ case "digitalrecording":
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Metadata</CardTitle>
+                <CardTitle className="text-lg px-2">Metadata</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4">
                   <div className="flex justify-between">
                       <span className="text-muted-foreground">Last Modified By</span>
                       <Badge variant="secondary">{data.LastModifiedBy || 'N/A'}</Badge>
