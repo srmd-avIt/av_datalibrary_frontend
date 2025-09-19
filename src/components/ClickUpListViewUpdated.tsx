@@ -1,6 +1,22 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  ColumnDef,
+  ColumnOrderState,
+} from "@tanstack/react-table";
+import { DndContext, closestCenter } from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
 
 // --- UI Imports ---
 import { Card, CardContent, CardHeader } from "./ui/card";
@@ -9,6 +25,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { DraggableResizableTable } from "./DraggableResizableTable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -157,6 +174,25 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [timelineViewMode, setTimelineViewMode] = useState<"day" | "week" | "month" | "year">("month");
   const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
 
+  // --- state for column order & resizing per view ---
+  const [viewColumnOrder, setViewColumnOrder] = useState<Record<string, string[]>>({});
+  const [viewColumnSizing, setViewColumnSizing] = useState<Record<string, Record<string, number>>>({});
+
+  useEffect(() => {
+    setViewColumnOrder((prev) => ({
+      ...prev,
+      [activeView]: columns.map((col) => col.key), // Always reset to current columns
+    }));
+    setViewColumnSizing((prev) => ({
+      ...prev,
+      [activeView]: {}, // Always reset sizing for new columns
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView, columns.map(col => col.key).join(",")]);
+
+  const columnOrder = viewColumnOrder[activeView] || columns.map((col) => col.key);
+  const columnSizing = viewColumnSizing[activeView] || {};
+
   const itemsPerPage = 50;
 
   useEffect(() => { setActiveView(views[0]?.id || ""); }, [views]);
@@ -269,6 +305,69 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const getSortIcon = (columnKey: string) => { if (activeSortBy !== columnKey) return <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50" />; return activeSortDirection === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />; };
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
+  // Convert your columns to TanStack Table format
+  const colDefs = useMemo<ColumnDef<any>[]>(() =>
+    columns.map((col) => ({
+      accessorKey: col.key,
+      header: col.label,
+      enableResizing: true,
+      cell: (info) => col.render ? col.render(info.getValue(), info.row.original) : info.getValue(),
+    }))
+  , [columns]);
+
+  const table = useReactTable({
+    data: finalItems || [],
+    columns: colDefs,
+    state: { columnOrder, columnSizing },
+    onColumnOrderChange: (newOrder) =>
+      setViewColumnOrder((prev) => ({ ...prev, [activeView]: newOrder })),
+    onColumnSizingChange: (newSizing) =>
+      setViewColumnSizing((prev) => ({ ...prev, [activeView]: newSizing })),
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // DnD-kit Sortable header
+  function DraggableHeader({ header }: { header: any }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+      useSortable({ id: header.column.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      cursor: "grab",
+      background: isDragging ? "#e0e7ff" : undefined,
+      position: "relative",
+      width: header.getSize(),
+      minWidth: 120, // Set a reasonable min width for header
+      maxWidth: 400, // Optional: set a max width
+      userSelect: "none",
+      whiteSpace: "nowrap", // Prevent text wrapping
+      textAlign: "left", // Align text left
+      padding: "0.5rem 0.5rem", // Consistent padding
+      boxSizing: "border-box", // Ensure padding doesn't affect width
+    };
+    return (
+      <th
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        colSpan={header.colSpan}
+        className="border-b bg-card text-sm font-medium"
+      >
+        <div className="flex items-center justify-start relative w-full h-full">
+          {flexRender(header.column.columnDef.header, header.getContext())}
+          {header.column.getCanResize() && (
+            <div
+              onMouseDown={header.getResizeHandler()}
+              onTouchStart={header.getResizeHandler()}
+              className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none bg-transparent hover:bg-blue-400"
+            />
+          )}
+        </div>
+      </th>
+    );
+  }
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -338,24 +437,23 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         <CardContent className="p-0">
           {activeTab === 'table' && (
             <div className="overflow-x-auto relative" style={{ maxHeight: '60vh' }}>
-              { (isLoading && !isFetching) && <div className="p-8 text-center">Loading...</div> }
-              { error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div> }
-              { !isLoading && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div> }
-              { finalItems.length > 0 &&
+              {(isLoading && !isFetching) && <div className="p-8 text-center">Loading...</div>}
+              {error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div>}
+              {!isLoading && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
+              {finalItems.length > 0 && (
                 <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
-                  <Table className="min-w-full table-fixed">
-                    <TableHeader><TableRow>{visibleColumns.map((col, index) => (<TableHead key={col.key} onClick={() => col.sortable && handleSort(col.key)} className={`${col.sortable ? 'cursor-pointer group' : ''} sticky top-0 z-10 bg-card/95 backdrop-blur-sm ${index === 0 ? 'left-0 z-20' : ''}`}><div className="flex items-center gap-2 px-4 py-3">{col.label}{col.sortable && getSortIcon(col.key)}</div></TableHead>))}</TableRow></TableHeader>
-                    <TableBody>
-                      {Object.entries(groupedData).map(([groupName, groupItems]) => (
-                        <React.Fragment key={groupName}>
-                          {activeGroupBy !== 'none' && (<TableRow className="sticky top-12 z-[15]"><TableCell colSpan={visibleColumns.length} className="bg-muted/90 backdrop-blur-sm font-semibold">{groupName} ({groupItems.length})</TableCell></TableRow>)}
-                          {groupItems.map(item => (<TableRow key={item[idKey]} onClick={() => onRowSelect?.(item)} className="hover:bg-muted/50">{visibleColumns.map((col, index) => (<TableCell key={col.key} className={`${index === 0 ? 'sticky left-0 z-10 bg-card' : ''} border-b`}>{col.render ? col.render(item[col.key], item) : String(item[col.key] ?? '')}</TableCell>))}</TableRow>))}
-                        </React.Fragment>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DraggableResizableTable
+                    data={finalItems}
+                    columns={visibleColumns}
+                    onRowSelect={(item) => onRowSelect?.(item)}
+                    onSort={handleSort}
+                    getSortIcon={getSortIcon}
+                    groupedData={groupedData}
+                    activeGroupBy={activeGroupBy}
+                    idKey={idKey}
+                  />
                 </div>
-              }
+              )}
             </div>
           )}
          {activeTab === 'timeline' && title === 'Events' && (

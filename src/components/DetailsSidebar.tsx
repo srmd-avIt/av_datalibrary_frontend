@@ -1,4 +1,4 @@
-import { X, MapPin, Calendar, Users, Clock, Phone, Mail, ExternalLink, File, ListChecks, FileAudio, FolderKanban, Palette, Sparkles, Film } from "lucide-react";
+import { X, MapPin, Calendar, Users, Clock, Phone,FileText, Mail, ExternalLink, File, ListChecks, FileAudio, FolderKanban, Palette, Sparkles, Film } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -147,8 +147,8 @@ case "digitalrecording":
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-orange-600 flex items-center justify-center">
-                <ListChecks className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-green-500 to-red-600 flex items-center justify-center">
+                <FileText className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold">{data.AuxTopic || 'Auxiliary File'}</h3>
               <p className="text-muted-foreground">ID: {data.new_auxid}</p>
@@ -224,7 +224,7 @@ case "digitalrecording":
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-green-500 to-purple-600 flex items-center justify-center">
                 <ListChecks className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold">{data.Topic || 'Media Log'}</h3>

@@ -23,7 +23,11 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b sticky top-0 z-10 bg-card", className)}
+      className={cn(
+        // ENHANCED TABLE STYLING: Added glassmorphism effects with backdrop blur for modern ClickUp-like appearance
+        "[&_tr]:border-b sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60",
+        className
+      )}
       {...props}
     />
   );
@@ -56,8 +60,9 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
-      className={cn(
-        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+      className={cn
+        (// ENHANCED TABLE STYLING: Improved hover states with smooth transitions and better color changes for dark theme optimization
+        "hover:bg-muted/30 data-[state=selected]:bg-accent/50 border-b border-border/50 transition-all duration-200 cursor-pointer group",
         className,
       )}
       {...props}
@@ -70,7 +75,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "text-muted-foreground h-12 px-6 py-4 text-center align-middle tracking-wide uppercase text-xs whitespace-nowrap border-b border-border/50 bg-muted/20 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:pl-8 [&:last-child]:pr-8 uppercase",
         className,
       )}
       {...props}
@@ -83,7 +88,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "px-6 py-4 align-middle text-center text-sm text-foreground/90 group-hover:text-foreground transition-colors [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:pl-8 [&:last-child]:pr-8",
         className,
       )}
       {...props}
