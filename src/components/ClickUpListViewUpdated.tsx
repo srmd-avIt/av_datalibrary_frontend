@@ -27,7 +27,7 @@ interface ListItem {
 }
 interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number" | "checkbox"; options?: string[]; }
-interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; }
+interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; apiEndpoint?: string; }
 interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
 interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
 
@@ -174,6 +174,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const currentView = useMemo(() => views.find(v => v.id === activeView), [views, activeView]);
   const activeViewFilters = useMemo(() => currentView?.filters || {}, [currentView]);
 
+  // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
+  const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
+
   const activeSortBy = sortBy !== "none" ? sortBy : currentView?.sortBy || "none";
   const activeSortDirection = sortDirection || currentView?.sortDirection || "asc";
   const activeGroupBy = groupBy !== "none" ? groupBy : currentView?.groupBy || "none";
@@ -203,7 +206,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
 
   const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse, Error, ApiResponse>({
   queryKey: [
-    apiEndpoint,
+    effectiveApiEndpoint,
     currentPage,
     searchTerm,
     JSON.stringify(activeViewFilters),
@@ -211,7 +214,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   ],
   queryFn: () =>
     fetchDataFromApi({
-      apiEndpoint,
+      apiEndpoint: effectiveApiEndpoint,
       page: currentPage,
       limit: itemsPerPage,
       searchTerm,
@@ -288,10 +291,26 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your {title.toLowerCase()} data with advanced filtering and views.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your {title.toLowerCase()} data with advanced filtering and views.
+          </p>
         </div>
       </div>
-
+      {/* --- Add this block for horizontal view buttons --- */}
+      {views && views.length > 1 && (
+        <div className="flex gap-2 mb-4">
+          {views.map((view) => (
+            <Button
+              key={view.id}
+              variant={activeView === view.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveView(view.id)}
+            >
+              {view.name}
+            </Button>
+          ))}
+        </div>
+      )}
       <Card className="border-0 shadow-sm bg-card">
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">
           <div className="flex items-center justify-between">

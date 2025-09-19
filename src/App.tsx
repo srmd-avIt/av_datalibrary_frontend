@@ -11,6 +11,7 @@ import { DetailsSidebar } from "./components/DetailsSidebar";
 import { Badge } from "./components/ui/badge";
 import { title } from "process";
 
+
 export default function App() {
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedRowData, setSelectedRowData] = useState(null);
@@ -80,91 +81,98 @@ export default function App() {
           />
         );
       case "medialog":
-        return (
-          <ClickUpListViewUpdated
-            title="Media Log"
-            apiEndpoint="/newmedialog" 
-            idKey="MLUniqueID"
-            onRowSelect={(row) => handleRowSelect(row, "medialog")}
-            columns={[
-              { key: "MLUniqueID", label: "MLUniqueID", sortable: true },
-              { key: "FootageSrNo", label: "FootageSrNo", sortable: true },
-              { key: "LogSerialNo", label: "LogSerialNo", sortable: true },
-              { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true },
-              { key: "ContentFrom", label: "ContentFrom", sortable: true },
-              { key: "ContentTo", label: "ContentTo", sortable: true },
-              { key: "TimeOfDay", label: "TimeOfDay", sortable: true },
-              { key: "fkOccasion", label: "fkOccasion", sortable: true },
-              { key: "EditingStatus", label: "EditingStatus", sortable: true },
-              { key: "FootageType", label: "FootageType", sortable: true },
-              { key: "VideoDistribution", label: "VideoDistribution", sortable: true },
-              { key: "Detail", label: "Detail", sortable: true },
-              { key: "SubDetail", label: "SubDetail", sortable: true },
-              { key: "CounterFrom", label: "CounterFrom", sortable: true },
-              { key: "CounterTo", label: "CounterTo", sortable: true },
-              { key: "SubDuration", label: "SubDuration", sortable: true },
-              { key: "TotalDuration", label: "TotalDuration", sortable: true },
-              { key: "Language", label: "Language", sortable: true },
-              { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true },
-              { key: "fkOrganization", label: "fkOrganization", sortable: true },
-              { key: "Designation", label: "Designation", sortable: true },
-              { key: "fkCountry", label: "fkCountry", sortable: true },
-              { key: "fkState", label: "fkState", sortable: true },
-              { key: "fkCity", label: "fkCity", sortable: true },
-              { key: "Venue", label: "Venue", sortable: true },
-              { key: "fkGranth", label: "fkGranth", sortable: true },
-              { key: "Number", label: "Number", sortable: true },
-              { key: "Topic", label: "Topic", sortable: true },
-              { key: "SeriesName", label: "SeriesName", sortable: true },
-              { key: "SatsangStart", label: "SatsangStart", sortable: true },
-              { key: "SatsangEnd", label: "SatsangEnd", sortable: true },
-              { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true },
-              { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true },
-              { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true },
-              { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true },
-              { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true },
-              { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true },
-              { key: "Remarks", label: "Remarks", sortable: true },
-              { key: "IsStartPage", label: "IsStartPage", sortable: true },
-              { key: "EndPage", label: "EndPage", sortable: true },
-              { key: "IsInformal", label: "IsInformal", sortable: true },
-              { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true },
-              { key: "Guidance", label: "Guidance", sortable: true },
-              { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true },
-              { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true },
-              { key: "EventRefMLID", label: "EventRefMLID", sortable: true },
-              { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true },
-              { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true },
-              { key: "DubbingArtist", label: "DubbingArtist", sortable: true },
-              { key: "HasSubtitle", label: "HasSubtitle", sortable: true },
-              { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true },
-              { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true },
-              { key: "EditingType", label: "EditingType", sortable: true },
-              { key: "BhajanType", label: "BhajanType", sortable: true },
-              { key: "IsDubbed", label: "IsDubbed", sortable: true },
-              { key: "NumberSource", label: "NumberSource", sortable: true },
-              { key: "TopicSource", label: "TopicSource", sortable: true },
-              { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
-              { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
-              { key: "Synopsis", label: "Synopsis", sortable: true },
-              { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true },
-              { key: "Keywords", label: "Keywords", sortable: true },
-              { key: "Grading", label: "Grading", sortable: true },
-              { key: "Segment Category", label: "Segment Category", sortable: true },
-              { key: "Segment Duration", label: "Segment Duration", sortable: true },
-              { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true },
-            ]}
-            
-          />
-        );
+  return (
+    <ClickUpListViewUpdated
+      title="Media Log"
+      apiEndpoint="/newmedialog" // 👈 default view endpoint
+      idKey="MLUniqueID"
+      onRowSelect={(row) => handleRowSelect(row, "medialog")}
+      filterConfigs={getFilterConfigs("medialog")}
+      views={[
+        { id: "all", name: "All", apiEndpoint: "/newmedialog" },
+        { id: "all-except-satsang", name: "All Except Satsang", apiEndpoint: "/newmedialog/all-except-satsang" },
+        { id: "satsang-extracted-clips", name: "Satsang Extracted Clips", apiEndpoint: "/newmedialog/satsang-extracted-clips" },
+        { id: "satsang-category", name: "Satsang Category", apiEndpoint: "/newmedialog/satsang-category" }
+      ]}
+      columns={[
+        { key: "MLUniqueID", label: "MLUniqueID", sortable: true },
+        { key: "FootageSrNo", label: "FootageSrNo", sortable: true },
+        { key: "LogSerialNo", label: "LogSerialNo", sortable: true },
+        { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true },
+        { key: "ContentFrom", label: "ContentFrom", sortable: true },
+        { key: "ContentTo", label: "ContentTo", sortable: true },
+        { key: "TimeOfDay", label: "TimeOfDay", sortable: true },
+        { key: "fkOccasion", label: "fkOccasion", sortable: true },
+        { key: "EditingStatus", label: "EditingStatus", sortable: true },
+        { key: "FootageType", label: "FootageType", sortable: true },
+        { key: "VideoDistribution", label: "VideoDistribution", sortable: true },
+        { key: "Detail", label: "Detail", sortable: true },
+        { key: "SubDetail", label: "SubDetail", sortable: true },
+        { key: "CounterFrom", label: "CounterFrom", sortable: true },
+        { key: "CounterTo", label: "CounterTo", sortable: true },
+        { key: "SubDuration", label: "SubDuration", sortable: true },
+        { key: "TotalDuration", label: "TotalDuration", sortable: true },
+        { key: "Language", label: "Language", sortable: true },
+        { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true },
+        { key: "fkOrganization", label: "fkOrganization", sortable: true },
+        { key: "Designation", label: "Designation", sortable: true },
+        { key: "fkCountry", label: "fkCountry", sortable: true },
+        { key: "fkState", label: "fkState", sortable: true },
+        { key: "fkCity", label: "fkCity", sortable: true },
+        { key: "Venue", label: "Venue", sortable: true },
+        { key: "fkGranth", label: "fkGranth", sortable: true },
+        { key: "Number", label: "Number", sortable: true },
+        { key: "Topic", label: "Topic", sortable: true },
+        { key: "SeriesName", label: "SeriesName", sortable: true },
+        { key: "SatsangStart", label: "SatsangStart", sortable: true },
+        { key: "SatsangEnd", label: "SatsangEnd", sortable: true },
+        { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true },
+        { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true },
+        { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true },
+        { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true },
+        { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true },
+        { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true },
+        { key: "Remarks", label: "Remarks", sortable: true },
+        { key: "IsStartPage", label: "IsStartPage", sortable: true },
+        { key: "EndPage", label: "EndPage", sortable: true },
+        { key: "IsInformal", label: "IsInformal", sortable: true },
+        { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true },
+        { key: "Guidance", label: "Guidance", sortable: true },
+        { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true },
+        { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true },
+        { key: "EventRefMLID", label: "EventRefMLID", sortable: true },
+        { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true },
+        { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true },
+        { key: "DubbingArtist", label: "DubbingArtist", sortable: true },
+        { key: "HasSubtitle", label: "HasSubtitle", sortable: true },
+        { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true },
+        { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true },
+        { key: "EditingType", label: "EditingType", sortable: true },
+        { key: "BhajanType", label: "BhajanType", sortable: true },
+        { key: "IsDubbed", label: "IsDubbed", sortable: true },
+        { key: "NumberSource", label: "NumberSource", sortable: true },
+        { key: "TopicSource", label: "TopicSource", sortable: true },
+        { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+        { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
+        { key: "Synopsis", label: "Synopsis", sortable: true },
+        { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true },
+        { key: "Keywords", label: "Keywords", sortable: true },
+        { key: "Grading", label: "Grading", sortable: true },
+        { key: "Segment Category", label: "Segment Category", sortable: true },
+        { key: "Segment Duration", label: "Segment Duration", sortable: true },
+        { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true },
+      ]}
+    />
+  );
 
       case "digitalrecordings":
         return (
           <ClickUpListViewUpdated
             title="Digital Recordings"
-            apiEndpoint="/digitalrecording" 
+            apiEndpoint="/digitalrecording"
             idKey="RecordingCode"
             onRowSelect={(row) => handleRowSelect(row, "digitalrecording")}
+            filterConfigs={getFilterConfigs("digitalrecordings")}
             columns={[
               { key: "fkEventCode", label: "fkEventCode", sortable: true },
               { key: "RecordingName", label: "RecordingName", sortable: true },
@@ -205,10 +213,11 @@ export default function App() {
       case "aux":
         return (
           <ClickUpListViewUpdated
-            apiEndpoint="/auxfiles" // Make sure this endpoint exists on your server
+            apiEndpoint="/auxfiles"
             idKey="new_auxid"
             onRowSelect={(row) => handleRowSelect(row, "aux")}
             title="Aux File"
+            filterConfigs={getFilterConfigs("auxfiles")}
             columns={[
             
               { key: "new_auxid", label: "New aux id", sortable: true },
