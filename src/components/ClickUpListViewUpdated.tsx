@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 // --- UI Imports ---
@@ -41,6 +41,16 @@ interface ApiResponse {
 }
 
 // --- API Fetcher Function ---
+// Add this type declaration at the top of your file (or in a global .d.ts file if preferred)
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_API_URL: string;
+      [key: string]: any;
+    };
+  }
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 async function fetchDataFromApi({
@@ -170,7 +180,13 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
 
   const finalFilterConfigs = useMemo(() => {
     if (filterConfigs && filterConfigs.length > 0) return filterConfigs;
-    return columns.filter(col => col.filterable !== false).map(col => ({ key: col.key, label: col.label, type: 'text' }));
+    return columns
+      .filter(col => col.filterable !== false)
+      .map(col => ({
+        key: col.key,
+        label: col.label,
+        type: "text" as "number" | "select" | "date" | "text" | "checkbox"
+      }));
   }, [columns, filterConfigs]);
 
   const timelineDateRange = useMemo(() => {
@@ -185,7 +201,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     return { startDate, endDate };
   }, [activeTab, timelineViewMode, timelineCurrentDate]);
 
-  const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
+  const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse, Error, ApiResponse>({
   queryKey: [
     apiEndpoint,
     currentPage,
@@ -202,7 +218,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       filters: activeViewFilters,
       advancedFilters,
     }),
-  keepPreviousData: true,
+  placeholderData: keepPreviousData,
+  select: (data) => data, // Ensures the returned data is of type ApiResponse
 });
 
 
@@ -297,21 +314,55 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               <div className="flex items-center gap-1">
                 <Popover>
                   <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start"><div className="space-y-3"><div className="font-medium text-sm">Group by field</div><Select value={groupBy} onValueChange={(v) => setGroupBy(v as string)}><SelectTrigger className="h-8"><SelectValue placeholder="Select field" /></SelectTrigger><SelectContent><SelectItem value="none">No grouping</SelectItem>{getAvailableGroupByFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}</SelectContent></Select>{groupBy !== "none" && (<><div className="font-medium text-sm">Sort groups</div><Select value={groupDirection} onValueChange={(value) => setGroupDirection(value as "asc" | "desc")}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending (A-Z)</SelectItem><SelectItem value="desc">Descending (Z-A)</SelectItem></SelectContent></Select></>)}</div></PopoverContent>
+                  <PopoverContent className="w-64 p-3" align="start"><div className="space-y-3"><div className="font-medium text-sm">Group by field</div>
+<Select value={groupBy} onValueChange={(v: string) => setGroupBy(v as string)}>
+  <SelectTrigger className="h-8">
+    <SelectValue placeholder="Select field" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="none">No grouping</SelectItem>
+    {getAvailableGroupByFields().map((field) => (
+      <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+{groupBy !== "none" && (<>
+  <div className="font-medium text-sm">Sort groups</div>
+  <Select value={groupDirection} onValueChange={(value: string) => setGroupDirection(value as "asc" | "desc")}>
+    <SelectTrigger className="h-8">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="asc">Ascending (A-Z)</SelectItem>
+      <SelectItem value="desc">Descending (Z-A)</SelectItem>
+    </SelectContent>
+  </Select>
+</>)}
+</div></PopoverContent>
                 </Popover>
                 {groupBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping"><X className="w-4 h-4" /></Button>)}
               </div>
               <div className="flex items-center gap-1">
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as string)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
+                <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
                 {sortBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting"><X className="w-4 h-4" /></Button>)}
               </div>
-              {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
+              {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
             </div>
             <div className="flex items-center gap-2 ml-auto">
               <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
               <Popover>
                 <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
-                <PopoverContent className="w-64" align="end"><div className="space-y-3"><div className="font-medium">Show/Hide Columns</div>{columns.map((column) => (<div key={column.key} className="flex items-center space-x-2"><Checkbox id={`column-${column.key}`} checked={!hiddenColumns.includes(column.key)} onCheckedChange={(checked) => { if (checked) { setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); } else { setHiddenColumns([...hiddenColumns, column.key]); } }} /><label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label></div>))}</div></PopoverContent>
+                <PopoverContent className="w-64" align="end"><div className="space-y-3"><div className="font-medium">Show/Hide Columns</div>{columns.map((column) => (<div key={column.key} className="flex items-center space-x-2"><Checkbox
+  id={`column-${column.key}`}
+  checked={!hiddenColumns.includes(column.key)}
+  onCheckedChange={(checked: boolean) => {
+    if (checked) {
+      setHiddenColumns(hiddenColumns.filter(c => c !== column.key));
+    } else {
+      setHiddenColumns([...hiddenColumns, column.key]);
+    }
+  }}
+/><label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label></div>))}</div></PopoverContent>
               </Popover>
             </div>
           </div>
