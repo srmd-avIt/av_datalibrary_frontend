@@ -1,3 +1,4 @@
+// Main imports for React, TanStack Query, TanStack Table, DnD-kit, UI components, icons, and custom components
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
@@ -8,17 +9,15 @@ import {
  ColumnDef,
   ColumnOrderState,
 } from "@tanstack/react-table";
-//import { DndContext, closestCenter } from "@dnd-kit/core";
+// DnD-kit for drag-and-drop column reordering
 import {
   arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-//import { CSS } from "@dnd-kit/utilities";
 
-
-// --- UI Imports ---
+// UI components and icons
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -37,18 +36,24 @@ import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { TimelineView } from "./TimelineView";
 
 // --- Interfaces ---
+// ListItem: Represents a row of data
 interface ListItem {
   id: string | number;
   date?: string;
   [key: string]: any;
 }
+// Column: Table column definition
 interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
+// FilterConfig: Used for advanced filtering UI
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number" | "checkbox"; options?: string[]; }
+// ViewConfig: Used for saved views (grouping, sorting, filters, etc.)
 interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; apiEndpoint?: string; }
+// FilterGroup and FilterRule: Used for advanced filter logic
 interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
 interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
 
 // --- API Response Type ---
+// Structure of API response for paginated data
 interface ApiResponse {
   data: ListItem[];
   pagination: {
@@ -58,16 +63,7 @@ interface ApiResponse {
 }
 
 // --- API Fetcher Function ---
-// Add this type declaration at the top of your file (or in a global .d.ts file if preferred)
-declare global {
-  interface ImportMeta {
-    env: {
-      VITE_API_URL: string;
-      [key: string]: any;
-    };
-  }
-}
-
+// Fetches data from the backend API with support for pagination, search, filters, and advanced filters
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 async function fetchDataFromApi({
@@ -85,12 +81,14 @@ async function fetchDataFromApi({
   filters?: Record<string, any>;
   advancedFilters?: FilterGroup[];
 }): Promise<ApiResponse> {
+  // Build query params for API request
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
   });
   if (searchTerm) params.append("search", searchTerm);
 
+  // Add simple filters
   Object.entries(filters || {}).forEach(([key, value]) => {
     if (
       value !== undefined &&
@@ -102,6 +100,7 @@ async function fetchDataFromApi({
     }
   });
 
+  // Add advanced filters if present
   if (advancedFilters && advancedFilters.length > 0) {
     const sanitizedGroups = advancedFilters
       .map((group) => ({
@@ -125,10 +124,12 @@ async function fetchDataFromApi({
   if (!API_BASE_URL)
     throw new Error("API URL not configured. Set VITE_API_URL in .env");
 
+  // Build full API URL
   const url = new URL(API_BASE_URL);
   url.pathname += apiEndpoint.startsWith("/") ? apiEndpoint : `/${apiEndpoint}`;
   url.search = params.toString();
 
+  // Fetch data from API
   const response = await fetch(url.href);
   if (!response.ok)
     throw new Error(
@@ -137,7 +138,8 @@ async function fetchDataFromApi({
   return response.json();
 }
 
-// SimplePagination
+// --- SimplePagination ---
+// Pagination controls for navigating pages
 function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void; }) {
   const [jump, setJump] = useState<string>('');
   const go = (page: number) => { const p = Math.max(1, Math.min(Math.max(1, totalPages), Math.floor(Number(page) || 1))); if (p !== currentPage) onPageChange(p); };
@@ -160,7 +162,8 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
   );
 }
 
-// --- Component ---
+// --- Main Component ---
+// This is the main list/table view component with filtering, sorting, grouping, column hiding, pagination, and timeline view
 export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConfigs = [], views = [], onRowSelect, idKey }: {
   title: string;
   columns: Column[];
@@ -170,6 +173,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   onRowSelect?: (item: ListItem) => void;
   idKey: string;
 }) {
+  // --- State ---
+  // Table and view state
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("none");
@@ -184,10 +189,11 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [timelineViewMode, setTimelineViewMode] = useState<"day" | "week" | "month" | "year">("month");
   const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
 
-  // --- state for column order & resizing per view ---
+  // --- Column order and sizing state per view ---
   const [viewColumnOrder, setViewColumnOrder] = useState<Record<string, string[]>>({});
   const [viewColumnSizing, setViewColumnSizing] = useState<Record<string, Record<string, number>>>({});
 
+  // Reset column order and sizing when view or columns change
   useEffect(() => {
     setViewColumnOrder((prev) => ({
       ...prev,
@@ -200,23 +206,28 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, columns.map(col => col.key).join(",")]);
 
+  // Get current column order and sizing for the active view
   const columnOrder = viewColumnOrder[activeView] || columns.map((col) => col.key);
   const columnSizing = viewColumnSizing[activeView] || {};
 
   const itemsPerPage = 50;
 
+  // Set active view when views change
   useEffect(() => { setActiveView(views[0]?.id || ""); }, [views]);
 
+  // Get current view config and filters
   const currentView = useMemo(() => views.find(v => v.id === activeView), [views, activeView]);
   const activeViewFilters = useMemo(() => currentView?.filters || {}, [currentView]);
 
   // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
   const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
 
+  // Determine active sort/group fields
   const activeSortBy = sortBy !== "none" ? sortBy : currentView?.sortBy || "none";
   const activeSortDirection = sortDirection || currentView?.sortDirection || "asc";
   const activeGroupBy = groupBy !== "none" ? groupBy : currentView?.groupBy || "none";
 
+  // Build filter configs for advanced filter UI
   const finalFilterConfigs = useMemo(() => {
     if (filterConfigs && filterConfigs.length > 0) return filterConfigs;
     return columns
@@ -228,48 +239,53 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       }));
   }, [columns, filterConfigs]);
 
+  // Timeline date range calculation for timeline view
   const timelineDateRange = useMemo(() => {
     if (activeTab !== 'timeline') return null;
     let startDate, endDate;
     switch (timelineViewMode) {
-      case 'day': startDate = startOfDay(timelineCurrentDate); endDate = endOfDay(timelineCurrentDate); break;
-      case 'week': startDate = startOfWeek(timelineCurrentDate); endDate = endOfWeek(timelineCurrentDate); break;
       case 'month': startDate = startOfMonth(timelineCurrentDate); endDate = endOfMonth(timelineCurrentDate); break;
       case 'year': startDate = startOfYear(timelineCurrentDate); endDate = endOfYear(timelineCurrentDate); break;
     }
     return { startDate, endDate };
   }, [activeTab, timelineViewMode, timelineCurrentDate]);
 
+  // --- Data fetching with TanStack Query ---
+  // Fetches paginated, filtered, and sorted data from API
   const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse, Error, ApiResponse>({
-  queryKey: [
-    effectiveApiEndpoint,
-    currentPage,
-    searchTerm,
-    JSON.stringify(activeViewFilters),
-    JSON.stringify(advancedFilters),
-  ],
-  queryFn: () =>
-    fetchDataFromApi({
-      apiEndpoint: effectiveApiEndpoint,
-      page: currentPage,
-      limit: itemsPerPage,
+    queryKey: [
+      effectiveApiEndpoint,
+      currentPage,
       searchTerm,
-      filters: activeViewFilters,
-      advancedFilters,
-    }),
-  placeholderData: keepPreviousData,
-  select: (data) => data, // Ensures the returned data is of type ApiResponse
-});
+      JSON.stringify(activeViewFilters),
+      JSON.stringify(advancedFilters),
+    ],
+    queryFn: () =>
+      fetchDataFromApi({
+        apiEndpoint: effectiveApiEndpoint,
+        page: currentPage,
+        limit: itemsPerPage,
+        searchTerm,
+        filters: activeViewFilters,
+        advancedFilters,
+      }),
+      staleTime: 5000,
+    //placeholderData: keepPreviousData,
+    //select: (data) => data, // Ensures the returned data is of type ApiResponse
+  });
 
-
+  // --- Data and pagination ---
   const serverItems = queryData?.data || [];
   const pagination = queryData?.pagination ?? { totalPages: 1, totalItems: 0 };
   const totalPages = Math.max(1, Number(pagination.totalPages || 1));
 
+  // Reset page when filters/search/view change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, timelineDateRange]);
 
+  // --- Sorting logic ---
+  // Sorts items by selected column and direction
   const finalItems = useMemo(() => {
     const src = serverItems.slice();
     if (!activeSortBy || activeSortBy === "none") return src;
@@ -296,6 +312,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     return src;
   }, [serverItems, activeSortBy, activeSortDirection]);
 
+  // --- Grouping logic ---
+  // Groups items by selected field and sorts groups
   const groupedData: Record<string, ListItem[]> = useMemo(() => {
     if (!activeGroupBy || activeGroupBy === "none" || !finalItems.length) return { "": finalItems };
     const groups = finalItems.reduce((acc, item) => {
@@ -315,25 +333,76 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     return sortedGroups;
   }, [finalItems, activeGroupBy, groupDirection]);
 
-  const handleExport = async () => { setIsExporting(true); try { const params = new URLSearchParams(); if (searchTerm) params.append('search', searchTerm); Object.entries(activeViewFilters || {}).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== "" && value !== "all") params.append(key, String(value)); }); if (advancedFilters && advancedFilters.length > 0 && advancedFilters.some(g => g.rules.length > 0)) { params.append('advanced_filters', JSON.stringify(advancedFilters)); } if (sortBy && sortBy !== 'none') { params.append('sortBy', sortBy); params.append('sortDirection', sortDirection || 'asc'); } const exportUrl = new URL(API_BASE_URL); const cleanApiEndpoint = apiEndpoint.endsWith('/') ? apiEndpoint.slice(0, -1) : apiEndpoint; exportUrl.pathname += `${cleanApiEndpoint}/export`; exportUrl.search = params.toString(); const response = await fetch(exportUrl.href); if (!response.ok) { const errorText = await response.text(); throw new Error(`Export failed: ${response.statusText} - ${errorText}`); } const blob = await response.blob(); const contentDisposition = response.headers.get('content-disposition'); let filename = `${title.toLowerCase().replace(/\s/g, '_')}_export.csv`; if (contentDisposition) { const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/); if (filenameMatch && filenameMatch.length === 2) { filename = filenameMatch[1]; } } const link = document.createElement('a'); link.href = window.URL.createObjectURL(blob); link.download = filename; document.body.appendChild(link); link.click(); document.body.removeChild(link); window.URL.revokeObjectURL(link.href); } catch (err) { console.error("Export error:", err); alert('Failed to export data. Please check the console for details.'); } finally { setIsExporting(false); } };
+  // --- Export logic ---
+  // Exports filtered and sorted data as CSV
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      Object.entries(activeViewFilters || {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "" && value !== "all") params.append(key, String(value));
+      });
+      if (advancedFilters && advancedFilters.length > 0 && advancedFilters.some(g => g.rules.length > 0)) {
+        params.append('advanced_filters', JSON.stringify(advancedFilters));
+      }
+      if (sortBy && sortBy !== 'none') {
+        params.append('sortBy', sortBy);
+        params.append('sortDirection', sortDirection || 'asc');
+      }
+      const exportUrl = new URL(API_BASE_URL);
+      const cleanApiEndpoint = apiEndpoint.endsWith('/') ? apiEndpoint.slice(0, -1) : apiEndpoint;
+      exportUrl.pathname += `${cleanApiEndpoint}/export`;
+      exportUrl.search = params.toString();
+      const response = await fetch(exportUrl.href);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Export failed: ${response.statusText} - ${errorText}`);
+      }
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${title.toLowerCase().replace(/\s/g, '_')}_export.csv`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (filenameMatch && filenameMatch.length === 2) {
+          filename = filenameMatch[1];
+        }
+      }
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error("Export error:", err);
+      alert('Failed to export data. Please check the console for details.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // --- Utility functions for grouping/sorting UI ---
   const getAvailableGroupByFields = () => { return columns.filter(col => col.filterable !== false).map(col => ({ value: col.key, label: col.label })); };
   const getAvailableSortFields = () => { return columns.filter(col => col.sortable).map(col => ({ value: col.key, label: col.label })); };
   const handleSort = (columnKey: string) => { if (sortBy === columnKey) { setSortDirection(prev => prev === "asc" ? "desc" : "asc"); } else { setSortBy(columnKey); setSortDirection("asc"); } };
   const getSortIcon = (columnKey: string) => { if (activeSortBy !== columnKey) return <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50" />; return activeSortDirection === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />; };
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
-  // Convert your columns to TanStack Table format
-  interface ColDef extends ColumnDef<any> {
-    accessorKey: string;
-    header: string;
-    enableResizing: boolean;
-    cell: (info: { getValue: () => any; row: { original: ListItem } }) => React.ReactNode;
-  }
+  // --- TanStack Table column definitions ---
+  //interface ColDef extends ColumnDef<any> {
+  //  accessorKey: string;
+  //  header: string;
+  //  enableResizing: boolean;
+   // cell: (info: { getValue: () => any; row: { original: ListItem } }) => React.ReactNode;
+  //}
 
-  const colDefs = useMemo<ColDef[]>(
+  // Build column definitions for TanStack Table
+  const colDefs = useMemo<ColumnDef<any>[]>(
     () =>
       columns.map(
-        (col): ColDef => ({
+        (col): ColumnDef<any> => ({
           accessorKey: col.key,
           header: col.label,
           enableResizing: true,
@@ -344,32 +413,52 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     [columns]
   );
 
-  interface TableState {
-    columnOrder: ColumnOrderState;
-    columnSizing: Record<string, number>;
-  }
+  // --- Table instance for TanStack Table ---
+ // interface TableState {
+ //   columnOrder: ColumnOrderState;
+ //   columnSizing: Record<string, number>;
+ // }
 
-  interface TableInstance {
+ /* interface TableInstance {
     data: ListItem[];
     columns: ColumnDef<any>[];
     state: TableState;
     onColumnOrderChange: (newOrder: ColumnOrderState) => void;
     onColumnSizingChange: (newSizing: Record<string, number>) => void;
     getCoreRowModel: () => any;
-  }
+  } */
 
-  const table: TableInstance = useReactTable({
+  // Create table instance with TanStack Table
+  /*const table = useReactTable({
     data: finalItems || [],
     columns: colDefs,
     state: { columnOrder, columnSizing },
-    onColumnOrderChange: (newOrder: ColumnOrderState) =>
+    onColumnOrderChange: (newOrder) =>
       setViewColumnOrder((prev) => ({ ...prev, [activeView]: newOrder })),
-    onColumnSizingChange: (newSizing: Record<string, number>): void =>
+    onColumnSizingChange: (newSizing)=>
       setViewColumnSizing((prev) => ({ ...prev, [activeView]: newSizing })),
     getCoreRowModel: getCoreRowModel(),
-  });
+  });*/
 
-  // DnD-kit Sortable header
+  const table = useReactTable({
+    data: finalItems || [],
+    columns: colDefs,
+    state: { columnOrder, columnSizing },
+    onColumnOrderChange: (newOrder) =>
+      setViewColumnOrder((prev) => ({
+        ...prev,
+        [activeView]: Array.isArray(newOrder) ? newOrder : [...(prev[activeView] || [])],
+      })),
+    onColumnSizingChange: (newSizing) =>
+  setViewColumnSizing((prev) => ({
+    ...prev,
+    [activeView]: typeof newSizing === "function" ? newSizing(prev[activeView] || {}) : newSizing,
+  })),
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  // --- DnD-kit Sortable header ---
+  // Used for drag-and-drop column reordering and resizing
   function DraggableHeader({ header }: { header: any }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
       useSortable({ id: header.column.id });
@@ -411,8 +500,10 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     );
   }
 
+  // --- Render ---
   return (
     <div className="p-6 space-y-4">
+      {/* Title and description */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
@@ -421,7 +512,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
           </p>
         </div>
       </div>
-      {/* --- Add this block for horizontal view buttons --- */}
+      {/* View selection buttons */}
       {views && views.length > 1 && (
         <div className="flex gap-2 mb-4">
           {views.map((view) => (
@@ -436,15 +527,19 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
           ))}
         </div>
       )}
+      {/* Main card container */}
       <Card className="border-0 shadow-sm bg-card">
+        {/* Card header: tabs, export, filters, grouping, sorting, column hiding, search */}
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">
           <div className="flex items-center justify-between">
+            {/* Tabs for table/timeline */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className={`grid ${title === 'Events' ? 'grid-cols-2' : 'grid-cols-1'} w-fit`}>
                 <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
                 {title === 'Events' && <TabsTrigger value="timeline" className="flex items-center gap-2"><Calendar className="w-4 h-4" />Timeline</TabsTrigger>}
               </TabsList>
             </Tabs>
+            {/* Export button */}
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
                 {isExporting ? (<Loader2 className="w-4 h-4 animate-spin" />) : (<Download className="w-4 h-4" />)}
@@ -452,9 +547,12 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               </Button>
             </div>
           </div>
+          {/* Filters, grouping, sorting, column hiding, search */}
           <div className="flex items-center gap-4 pt-4">
             <div className="flex items-center gap-2">
+              {/* Advanced filters */}
               <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} />
+              {/* Grouping controls */}
               <div className="flex items-center gap-1">
                 <Popover>
                   <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
@@ -486,12 +584,15 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                 </Popover>
                 {groupBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping"><X className="w-4 h-4" /></Button>)}
               </div>
+              {/* Sorting controls */}
               <div className="flex items-center gap-1">
                 <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
                 {sortBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting"><X className="w-4 h-4" /></Button>)}
               </div>
+              {/* Sort direction */}
               {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
             </div>
+            {/* Search and column hiding */}
             <div className="flex items-center gap-2 ml-auto">
               <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
               <Popover>
@@ -511,6 +612,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
             </div>
           </div>
         </CardHeader>
+        {/* Card content: table or timeline */}
         <CardContent className="p-0">
           {activeTab === 'table' && (
             <div className="overflow-x-auto relative" style={{ maxHeight: '60vh' }}>
@@ -519,6 +621,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               {!isLoading && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
               {finalItems.length > 0 && (
                 <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
+                  {/* Main table with drag, resize, grouping, sorting, selection */}
                   <DraggableResizableTable
                     data={finalItems}
                     columns={visibleColumns}
@@ -533,6 +636,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               )}
             </div>
           )}
+         {/* Timeline view for events */}
          {activeTab === 'timeline' && title === 'Events' && (
     <TimelineView
       apiEndpoint={apiEndpoint}
@@ -549,6 +653,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     />
 )}
         </CardContent>
+        {/* Pagination and results count */}
         { !isLoading && finalItems.length > 0 &&
           <div className="flex items-center justify-between text-sm text-muted-foreground p-6 border-t">
               <div><span>{pagination.totalItems} results</span></div>
