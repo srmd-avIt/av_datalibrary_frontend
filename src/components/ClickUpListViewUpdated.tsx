@@ -1,26 +1,21 @@
-<<<<<<< HEAD
-import React, { useMemo, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-=======
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
->>>>>>> 53bcad85ff3ef137be4fb5aa1c106857a2aae3f4
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  ColumnDef,
+ useReactTable,
+ getCoreRowModel,
+ flexRender,
+ ColumnDef,
   ColumnOrderState,
 } from "@tanstack/react-table";
-import { DndContext, closestCenter } from "@dnd-kit/core";
+//import { DndContext, closestCenter } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+//import { CSS } from "@dnd-kit/utilities";
 
 
 // --- UI Imports ---
@@ -328,22 +323,48 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
   // Convert your columns to TanStack Table format
-  const colDefs = useMemo<ColumnDef<any>[]>(() =>
-    columns.map((col) => ({
-      accessorKey: col.key,
-      header: col.label,
-      enableResizing: true,
-      cell: (info) => col.render ? col.render(info.getValue(), info.row.original) : info.getValue(),
-    }))
-  , [columns]);
+  interface ColDef extends ColumnDef<any> {
+    accessorKey: string;
+    header: string;
+    enableResizing: boolean;
+    cell: (info: { getValue: () => any; row: { original: ListItem } }) => React.ReactNode;
+  }
 
-  const table = useReactTable({
+  const colDefs = useMemo<ColDef[]>(
+    () =>
+      columns.map(
+        (col): ColDef => ({
+          accessorKey: col.key,
+          header: col.label,
+          enableResizing: true,
+          cell: (info: { getValue: () => any; row: { original: ListItem } }) =>
+            col.render ? col.render(info.getValue(), info.row.original) : info.getValue(),
+        })
+      ),
+    [columns]
+  );
+
+  interface TableState {
+    columnOrder: ColumnOrderState;
+    columnSizing: Record<string, number>;
+  }
+
+  interface TableInstance {
+    data: ListItem[];
+    columns: ColumnDef<any>[];
+    state: TableState;
+    onColumnOrderChange: (newOrder: ColumnOrderState) => void;
+    onColumnSizingChange: (newSizing: Record<string, number>) => void;
+    getCoreRowModel: () => any;
+  }
+
+  const table: TableInstance = useReactTable({
     data: finalItems || [],
     columns: colDefs,
     state: { columnOrder, columnSizing },
-    onColumnOrderChange: (newOrder) =>
+    onColumnOrderChange: (newOrder: ColumnOrderState) =>
       setViewColumnOrder((prev) => ({ ...prev, [activeView]: newOrder })),
-    onColumnSizingChange: (newSizing) =>
+    onColumnSizingChange: (newSizing: Record<string, number>): void =>
       setViewColumnSizing((prev) => ({ ...prev, [activeView]: newSizing })),
     getCoreRowModel: getCoreRowModel(),
   });
