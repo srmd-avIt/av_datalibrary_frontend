@@ -255,8 +255,11 @@ export default function App() {
     <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
       <main className={`flex-1 overflow-auto transition-all duration-300 ${detailsSidebarOpen ? 'mr-96' : ''}`}>
-        {renderView()}
-      </main>
+  <div key={activeView}>
+    {renderView()}
+  </div>
+</main>
+
       
       <DetailsSidebar
         isOpen={detailsSidebarOpen}
