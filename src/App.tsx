@@ -14,7 +14,8 @@ import { title } from "process";
 
 export default function App() {
   const [activeView, setActiveView] = useState("dashboard");
-  const [selectedRowData, setSelectedRowData] = useState(null);
+  type SelectedRowData = { type: string } & Record<string, any>;
+  const [selectedRowData, setSelectedRowData] = useState<SelectedRowData | null>(null);
   const [detailsSidebarOpen, setDetailsSidebarOpen] = useState(false);
 
   const handleRowSelect = (row: any, type: string) => {

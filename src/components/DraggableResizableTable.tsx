@@ -60,7 +60,7 @@ function DraggableHeader({
   const ref = useRef<HTMLTableCellElement>(null);
   const [isResizing, setIsResizing] = useState(false);
 
-  const [{ handlerId }, drop] = useDrop({
+  const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
     accept: ITEM_TYPE,
     collect(monitor) {
       return {
@@ -129,25 +129,38 @@ function DraggableHeader({
       ref={ref}
       style={{ opacity, width: `${width}px`, minWidth: `${width}px` }}
       className={cn(
+        // ENHANCED TABLE STYLING: Professional ClickUp-style headers with better padding (px-6 py-4), uppercase text, and improved visual hierarchy
+        // ENHANCED TABLE STYLING: Better borders with refined border colors (border-border/30) and glassmorphism effects (bg-muted/20)
+        // DARK THEME OPTIMIZATION: Consistent color schemes with muted colors and smooth hover transitions
+        // TABLE HEADER FONT STYLING: text-xs (12px) for compact headers, font-medium (500 weight) for professional weight
+        // TABLE HEADER FONT STYLING: uppercase transform for ClickUp-style headers, tracking-wide for improved letter spacing
+        // TABLE HEADER FONT STYLING: text-muted-foreground for subdued header color, whitespace-nowrap prevents text wrapping
+        // TEXT ALIGNMENT: text-left for standard left-aligned headers, align-middle for vertical centering in header cells
+        // TABLE HEADER FONT STYLING: hover:text-foreground for interactive headers that become more prominent on hover
         "relative group hover:bg-muted/40 bg-muted/20 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 text-left align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors",
         column.sortable && "cursor-pointer hover:text-foreground",
         isResizing && "select-none",
+        // ENHANCED TABLE STYLING: Special edge padding for first/last columns to give data breathing room
         "first:pl-8 last:pr-8"
       )}
       data-handler-id={handlerId}
     >
+      {/* TEXT ALIGNMENT: flex items-center for horizontal centering and vertical alignment of header content */}
       <div className="flex items-center gap-3">
+        {/* ENHANCED TABLE STYLING: Enhanced drag handles with better hover states and smooth transitions */}
         <GripVertical className="w-3 h-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab hover:text-foreground" />
+        {/* TEXT ALIGNMENT: flex items-center gap-2 for proper spacing and alignment of header text and sort icons */}
         <div 
           className="flex items-center gap-2 flex-1 transition-colors"
           onClick={() => column.sortable && onSort(column.key)}
         >
+          {/* TABLE HEADER FONT STYLING: font-medium for header text emphasis, truncate to prevent overflow */}
           <span className="truncate font-medium">{column.label}</span>
           {column.sortable && getSortIcon(column.key)}
         </div>
       </div>
       
-      {/* Resize handle */}
+      {/* ENHANCED TABLE STYLING: Responsive resize handles made more subtle and responsive with better hover states */}
       <div
         className="absolute right-0 top-0 bottom-0 w-1 bg-transparent hover:bg-primary/40 cursor-col-resize z-20 transition-all duration-200 hover:w-1.5"
         onMouseDown={handleMouseDown}
@@ -215,16 +228,20 @@ export function DraggableResizableTable({
           <TableBody>
             {Object.entries(groupedData).map(([groupName, items]) => (
               <React.Fragment key={groupName}>
+                {/* ENHANCED TABLE STYLING: Glassmorphism effects with backdrop blur for group headers */}
                 {activeGroupBy && activeGroupBy !== "none" && (
                   <TableRow className="sticky top-12 z-[15] bg-muted/80 backdrop-blur">
                     <TableCell 
                       colSpan={columns.length} 
+                      // GROUP HEADER FONT STYLING: font-semibold (600 weight) for group headers to stand out from regular cells
+                      // GROUP HEADER FONT STYLING: text-foreground (full opacity) for maximum prominence and readability
                       className="bg-muted/90 backdrop-blur-sm font-semibold text-foreground px-8 py-3 border-b border-border/30"
                     >
                       {groupName} ({items.length})
                     </TableCell>
                   </TableRow>
                 )}
+                {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
                 {items.map((item) => (
                   <TableRow
                     key={item[idKey] || item.id}
@@ -235,6 +252,12 @@ export function DraggableResizableTable({
                       <TableCell 
                         key={column.key} 
                         className={cn(
+                          // ENHANCED TABLE STYLING: Better padding (px-6 py-4) increased from px-2 py-3 for more breathing room
+                          // ENHANCED TABLE STYLING: Improved visual hierarchy with better contrast ratios for dark theme optimization
+                          // ENHANCED TABLE STYLING: Special edge padding (first:pl-8 last:pr-8) so data isn't too close to edges
+                          // TABLE CELL FONT STYLING: text-sm (14px) for readable cell content, larger than header text for better data readability
+                          // TABLE CELL FONT STYLING: text-foreground/90 (90% opacity) for subtle data text, group-hover:text-foreground for emphasis on hover
+                          // TABLE CELL FONT STYLING: transition-colors for smooth opacity changes when hovering over rows
                           "px-6 py-4 text-sm text-foreground/90 group-hover:text-foreground transition-colors",
                           index === 0 && "sticky left-0 z-10 bg-card group-hover:bg-muted/30",
                           "first:pl-8 last:pr-8"
@@ -245,6 +268,7 @@ export function DraggableResizableTable({
                           maxWidth: `${columnWidths[column.key] || 150}px`
                         }}
                       >
+                        {/* TABLE CELL CONTENT STYLING: truncate class prevents text overflow and maintains table layout consistency */}
                         <div className="truncate">
                           {column.render ? column.render(item[column.key], item) : String(item[column.key] ?? '')}
                         </div>

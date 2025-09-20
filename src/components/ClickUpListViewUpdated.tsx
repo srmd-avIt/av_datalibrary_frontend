@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-=======
-import React, { useState, useMemo, useEffect } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
->>>>>>> 53bcad85ff3ef137be4fb5aa1c106857a2aae3f4
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import {
   useReactTable,
@@ -29,8 +24,8 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { DraggableResizableTable } from "./DraggableResizableTable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -40,13 +35,21 @@ import {
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { TimelineView } from "./TimelineView";
+import { ListItem } from "./types";
+
+// --- Vite env types for TypeScript ---
+interface ImportMetaEnv {
+  readonly VITE_API_URL: string;
+  // add other env variables here if needed
+}
+
+interface ImportMeta {
+  readonly env: {
+    VITE_API_URL: string;
+  };
+}
 
 // --- Interfaces ---
-interface ListItem {
-  id: string | number;
-  date?: string;
-  [key: string]: any;
-}
 interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number" | "checkbox"; options?: string[]; }
 interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; apiEndpoint?: string; }
@@ -63,16 +66,6 @@ interface ApiResponse {
 }
 
 // --- API Fetcher Function ---
-// Add this type declaration at the top of your file (or in a global .d.ts file if preferred)
-declare global {
-  interface ImportMeta {
-    env: {
-      VITE_API_URL: string;
-      [key: string]: any;
-    };
-  }
-}
-
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 async function fetchDataFromApi({
@@ -225,11 +218,11 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const finalFilterConfigs = useMemo(() => {
     if (filterConfigs && filterConfigs.length > 0) return filterConfigs;
     return columns
-      .filter(col => col.filterable !== false)
-      .map(col => ({
+      .filter((col) => col.filterable !== false)
+      .map((col) => ({
         key: col.key,
         label: col.label,
-        type: "text" as "number" | "select" | "date" | "text" | "checkbox"
+        type: "text" as "text", // Explicitly cast to the correct type
       }));
   }, [columns, filterConfigs]);
 
@@ -245,7 +238,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     return { startDate, endDate };
   }, [activeTab, timelineViewMode, timelineCurrentDate]);
 
-  const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse, Error, ApiResponse>({
+  const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
   queryKey: [
     effectiveApiEndpoint,
     currentPage,
@@ -262,8 +255,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       filters: activeViewFilters,
       advancedFilters,
     }),
-  placeholderData: keepPreviousData,
-  select: (data) => data, // Ensures the returned data is of type ApiResponse
+  staleTime: 5000, // Data will be considered fresh for 5 seconds
 });
 
 
@@ -342,9 +334,15 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     columns: colDefs,
     state: { columnOrder, columnSizing },
     onColumnOrderChange: (newOrder) =>
-      setViewColumnOrder((prev) => ({ ...prev, [activeView]: newOrder })),
+      setViewColumnOrder((prev) => ({
+        ...prev,
+        [activeView]: Array.isArray(newOrder) ? newOrder : [...(prev[activeView] || [])],
+      })),
     onColumnSizingChange: (newSizing) =>
-      setViewColumnSizing((prev) => ({ ...prev, [activeView]: newSizing })),
+  setViewColumnSizing((prev) => ({
+    ...prev,
+    [activeView]: typeof newSizing === "function" ? newSizing(prev[activeView] || {}) : newSizing,
+  })),
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -352,25 +350,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   function DraggableHeader({ header }: { header: any }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
       useSortable({ id: header.column.id });
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      cursor: "grab",
-      background: isDragging ? "#e0e7ff" : undefined,
-      position: "relative",
-      width: header.getSize(),
-      minWidth: 120, // Set a reasonable min width for header
-      maxWidth: 400, // Optional: set a max width
-      userSelect: "none",
-      whiteSpace: "nowrap", // Prevent text wrapping
-      textAlign: "left", // Align text left
-      padding: "0.5rem 0.5rem", // Consistent padding
-      boxSizing: "border-box", // Ensure padding doesn't affect width
-    };
     return (
       <th
         ref={setNodeRef}
-        style={style}
         {...attributes}
         {...listeners}
         colSpan={header.colSpan}
@@ -437,55 +419,21 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               <div className="flex items-center gap-1">
                 <Popover>
                   <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start"><div className="space-y-3"><div className="font-medium text-sm">Group by field</div>
-<Select value={groupBy} onValueChange={(v: string) => setGroupBy(v as string)}>
-  <SelectTrigger className="h-8">
-    <SelectValue placeholder="Select field" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="none">No grouping</SelectItem>
-    {getAvailableGroupByFields().map((field) => (
-      <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-{groupBy !== "none" && (<>
-  <div className="font-medium text-sm">Sort groups</div>
-  <Select value={groupDirection} onValueChange={(value: string) => setGroupDirection(value as "asc" | "desc")}>
-    <SelectTrigger className="h-8">
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="asc">Ascending (A-Z)</SelectItem>
-      <SelectItem value="desc">Descending (Z-A)</SelectItem>
-    </SelectContent>
-  </Select>
-</>)}
-</div></PopoverContent>
+                  <PopoverContent className="w-64 p-3" align="start"><div className="space-y-3"><div className="font-medium text-sm">Group by field</div><Select value={groupBy} onValueChange={(v) => setGroupBy(v as string)}><SelectTrigger className="h-8"><SelectValue placeholder="Select field" /></SelectTrigger><SelectContent><SelectItem value="none">No grouping</SelectItem>{getAvailableGroupByFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}</SelectContent></Select>{groupBy !== "none" && (<><div className="font-medium text-sm">Sort groups</div><Select value={groupDirection} onValueChange={(value) => setGroupDirection(value as "asc" | "desc")}><SelectTrigger className="h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending (A-Z)</SelectItem><SelectItem value="desc">Descending (Z-A)</SelectItem></SelectContent></Select></>)}</div></PopoverContent>
                 </Popover>
                 {groupBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping"><X className="w-4 h-4" /></Button>)}
               </div>
               <div className="flex items-center gap-1">
-                <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as string)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
                 {sortBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting"><X className="w-4 h-4" /></Button>)}
               </div>
-              {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
+              {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
             </div>
             <div className="flex items-center gap-2 ml-auto">
               <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
               <Popover>
                 <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
-                <PopoverContent className="w-64" align="end"><div className="space-y-3"><div className="font-medium">Show/Hide Columns</div>{columns.map((column) => (<div key={column.key} className="flex items-center space-x-2"><Checkbox
-  id={`column-${column.key}`}
-  checked={!hiddenColumns.includes(column.key)}
-  onCheckedChange={(checked: boolean) => {
-    if (checked) {
-      setHiddenColumns(hiddenColumns.filter(c => c !== column.key));
-    } else {
-      setHiddenColumns([...hiddenColumns, column.key]);
-    }
-  }}
-/><label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label></div>))}</div></PopoverContent>
+                <PopoverContent className="w-64" align="end"><div className="space-y-3"><div className="font-medium">Show/Hide Columns</div>{columns.map((column) => (<div key={column.key} className="flex items-center space-x-2"><Checkbox id={`column-${column.key}`} checked={!hiddenColumns.includes(column.key)} onCheckedChange={(checked) => { if (checked) { setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); } else { setHiddenColumns([...hiddenColumns, column.key]); } }} /><label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label></div>))}</div></PopoverContent>
               </Popover>
             </div>
           </div>
@@ -498,6 +446,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               {!isLoading && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
               {finalItems.length > 0 && (
                 <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
+                  {/* Main table with drag, resize, grouping, sorting, selection */}
                   <DraggableResizableTable
                     data={finalItems}
                     columns={visibleColumns}
