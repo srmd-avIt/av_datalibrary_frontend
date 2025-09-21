@@ -1,39 +1,55 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { ClickUpListViewUpdated } from "./components/ClickUpListViewUpdated";
 import { AIAssistant } from "./components/AIAssistant";
 import { UserManagement } from "./components/UserManagement";
 import { DetailsSidebar } from "./components/DetailsSidebar";
-import { Badge } from "./components/ui/badge";
-import { title } from "process";
 
+// Define the shape of an item in our new sidebar stack
+type SidebarStackItem = {
+  type: string;
+  data: Record<string, any>;
+  title: string;
+};
 
 export default function App() {
-  const [activeView, setActiveView] = useState("dashboard");
-  type SelectedRowData = { type: string } & Record<string, any>;
-  const [selectedRowData, setSelectedRowData] = useState<SelectedRowData | null>(null);
-  const [detailsSidebarOpen, setDetailsSidebarOpen] = useState(false);
+  const [sidebarStack, setSidebarStack] = useState<SidebarStackItem[]>([]);
 
   const handleRowSelect = (row: any, type: string) => {
-    setSelectedRowData({ ...row, type });
-    setDetailsSidebarOpen(true);
+    const titleMap: { [key: string]: string } = {
+      event: "Event Details",
+      medialog: "Media Log Details",
+      digitalrecording: "Recording Details",
+      aux: "Aux File Details",
+    };
+    setSidebarStack([{ type, data: row, title: titleMap[type] || "Details" }]);
   };
 
-  const handleCloseSidebar = () => {
-    setDetailsSidebarOpen(false);
-    setSelectedRowData(null);
+  const handlePushSidebar = (item: SidebarStackItem) => {
+    setSidebarStack(prev => [...prev, item]);
+  };
+
+  const handlePopSidebar = () => {
+    setSidebarStack(prev => prev.slice(0, -1));
+  };
+  
+  const handleCloseAllSidebars = () => {
+    setSidebarStack([]);
   };
 
   const getFilterConfigs = (viewType: string) => {
-    // This function can be expanded later if needed
     return [];
   };
 
+  const [activeView, setActiveView] = useState("dashboard");
+
   const renderView = () => {
+    // This function remains the same.
+    // I'm including the full code here for completeness.
     switch (activeView) {
       case "dashboard":
         return <Dashboard />;
@@ -53,7 +69,6 @@ export default function App() {
             onRowSelect={(row) => handleRowSelect(row, "event")}
             filterConfigs={getFilterConfigs("countries")}
             columns={[
-              
               { key: "EventID", label: "Event ID", sortable: true }, 
               { key: "EventCode", label: "Event Code" },
               { key: "Yr", label: "Year", sortable: true },
@@ -82,20 +97,21 @@ export default function App() {
           />
         );
       case "medialog":
-  return (
-    <ClickUpListViewUpdated
-      title="Media Log"
-      apiEndpoint="/newmedialog" // 👈 default view endpoint
-      idKey="MLUniqueID"
-      onRowSelect={(row) => handleRowSelect(row, "medialog")}
-      filterConfigs={getFilterConfigs("medialog")}
-      views={[
-        { id: "all", name: "All", apiEndpoint: "/newmedialog" },
-        { id: "all-except-satsang", name: "All Except Satsang", apiEndpoint: "/newmedialog/all-except-satsang" },
-        { id: "satsang-extracted-clips", name: "Satsang Extracted Clips", apiEndpoint: "/newmedialog/satsang-extracted-clips" },
-        { id: "satsang-category", name: "Satsang Category", apiEndpoint: "/newmedialog/satsang-category" }
-      ]}
-      columns={[
+        return (
+          <ClickUpListViewUpdated
+            title="Media Log"
+            apiEndpoint="/newmedialog"
+            idKey="MLUniqueID"
+            onRowSelect={(row) => handleRowSelect(row, "medialog")}
+            filterConfigs={getFilterConfigs("medialog")}
+            views={[
+              { id: "all", name: "All", apiEndpoint: "/newmedialog" },
+              { id: "all-except-satsang", name: "All Except Satsang", apiEndpoint: "/newmedialog/all-except-satsang" },
+              { id: "satsang-extracted-clips", name: "Satsang Extracted Clips", apiEndpoint: "/newmedialog/satsang-extracted-clips" },
+              { id: "satsang-category", name: "Satsang Category", apiEndpoint: "/newmedialog/satsang-category" }
+            ]}
+            columns={[
+            
         { key: "MLUniqueID", label: "MLUniqueID", sortable: true },
         { key: "FootageSrNo", label: "FootageSrNo", sortable: true },
         { key: "LogSerialNo", label: "LogSerialNo", sortable: true },
@@ -163,9 +179,8 @@ export default function App() {
         { key: "Segment Duration", label: "Segment Duration", sortable: true },
         { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true },
       ]}
-    />
-  );
-
+          />
+        );
       case "digitalrecordings":
         return (
           <ClickUpListViewUpdated
@@ -175,7 +190,7 @@ export default function App() {
             onRowSelect={(row) => handleRowSelect(row, "digitalrecording")}
             filterConfigs={getFilterConfigs("digitalrecordings")}
             columns={[
-              { key: "fkEventCode", label: "fkEventCode", sortable: true },
+               { key: "fkEventCode", label: "fkEventCode", sortable: true },
               { key: "RecordingName", label: "RecordingName", sortable: true },
               { key: "RecordingCode", label: "RecordingCode", sortable: true },
               { key: "NoOfFiles", label: "NoOfFiles", sortable: true },
@@ -210,7 +225,6 @@ export default function App() {
             ]}
           />
         );
-
       case "aux":
         return (
           <ClickUpListViewUpdated
@@ -220,8 +234,7 @@ export default function App() {
             title="Aux File"
             filterConfigs={getFilterConfigs("auxfiles")}
             columns={[
-            
-              { key: "new_auxid", label: "New aux id", sortable: true },
+               { key: "new_auxid", label: "New aux id", sortable: true },
               { key: "AuxCode", label: "AuxCode", sortable: true },
               { key: "AuxFileType", label: "AuxFileType", sortable: true },
               { key: "AuxLanguage", label: "AuxLanguage", sortable: true },
@@ -242,31 +255,55 @@ export default function App() {
               { key: "ModifiedOn", label: "ModifiedOn", sortable: true },
               { key: "ModifiedBy", label: "ModifiedBy", sortable: true },
             ]}
-           
           />
-        ); // Add other cases for your views here
-
+        );
       default:
         return <Dashboard />;
     }
   };
+  
+  // --- SPLIT SCREEN LAYOUT LOGIC ---
+  const sidebarWidth = 384; // w-96 in pixels
+  const cascadeOffset = 24; // How much each subsequent sidebar peeks out
+  
+  // Calculate the width of the container that will hold all visible sidebars
+  const sidebarContainerWidth = sidebarStack.length > 0
+    ? sidebarWidth + (sidebarStack.length - 1) * cascadeOffset
+    : 0;
 
   return (
-    <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
-      <main className={`flex-1 overflow-auto transition-all duration-300 ${detailsSidebarOpen ? 'mr-96' : ''}`}>
-  <div key={activeView}>
-    {renderView()}
-  </div>
-</main>
-
       
-      <DetailsSidebar
-        isOpen={detailsSidebarOpen}
-        onClose={handleCloseSidebar}
-        data={selectedRowData}
-        type={selectedRowData?.type || ""}
-      />
+      {/* Flex container for the main content and the sidebars */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        <main className="flex-1 overflow-auto transition-all duration-300 ease-in-out">
+          <div key={activeView}>
+            {renderView()}
+          </div>
+        </main>
+
+        {/* Container for the sidebar stack. This container will grow and shrink. */}
+        <div
+          className="relative transition-all duration-300 ease-in-out flex-shrink-0"
+          style={{ width: `${sidebarContainerWidth}px` }}
+        >
+          {sidebarStack.map((item, index) => (
+            <DetailsSidebar
+              key={index}
+              isOpen={true}
+              onClose={index === 0 ? handleCloseAllSidebars : handlePopSidebar}
+              data={item.data}
+              type={item.type}
+              title={item.title}
+              onPushSidebar={handlePushSidebar}
+              zIndex={50 + index}
+              positionOffset={(sidebarStack.length - 1 - index) * cascadeOffset}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
