@@ -64,6 +64,12 @@ interface ViewConfig { id: string; name: string; filters?: Record<string, any>; 
 interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
 interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
 
+// --- NEW: Saved Filter Interface ---
+interface SavedFilter {
+  name: string;
+  filterGroups: FilterGroup[];
+}
+
 // --- API Response Type ---
 // Structure of API response for paginated data
 interface ApiResponse {
@@ -85,6 +91,8 @@ async function fetchDataFromApi({
   searchTerm,
   filters,
   advancedFilters,
+  sortBy,
+  sortDirection,
 }: {
   apiEndpoint: string;
   page: number;
@@ -92,6 +100,8 @@ async function fetchDataFromApi({
   searchTerm?: string;
   filters?: Record<string, any>;
   advancedFilters?: FilterGroup[];
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 }): Promise<ApiResponse> {
   // Build query params for API request
   const params = new URLSearchParams({
@@ -131,6 +141,12 @@ async function fetchDataFromApi({
     if (sanitizedGroups.length > 0) {
       params.append("advanced_filters", JSON.stringify(sanitizedGroups));
     }
+  }
+
+  // Add sorting parameters
+  if (sortBy && sortBy !== "none") {
+    params.append("sortBy", sortBy);
+    params.append("sortDirection", sortDirection || "asc");
   }
 
   if (!API_BASE_URL)
@@ -201,6 +217,19 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [timelineViewMode, setTimelineViewMode] = useState<"day" | "week" | "month" | "year">("month");
   const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
 
+  // --- NEW: State for Saved Filters ---
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+
+  const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
+    const newSavedFilter = { name, filterGroups };
+    // Avoid duplicates by name
+    setSavedFilters(prev => [...prev.filter(f => f.name !== name), newSavedFilter]);
+  };
+
+  const handleDeleteFilter = (name:string) => {
+    setSavedFilters(prev => prev.filter(f => f.name !== name));
+  };
+
   // --- Column order and sizing state per view ---
   const [viewColumnOrder, setViewColumnOrder] = useState<Record<string, string[]>>({});
   const [viewColumnSizing, setViewColumnSizing] = useState<Record<string, Record<string, number>>>({});
@@ -263,63 +292,39 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   }, [activeTab, timelineViewMode, timelineCurrentDate]);
 
   const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
-  queryKey: [
-    effectiveApiEndpoint,
-    currentPage,
-    searchTerm,
-    JSON.stringify(activeViewFilters),
-    JSON.stringify(advancedFilters),
-  ],
-  queryFn: () =>
-    fetchDataFromApi({
-      apiEndpoint: effectiveApiEndpoint,
-      page: currentPage,
-      limit: itemsPerPage,
+    queryKey: [
+      effectiveApiEndpoint,
+      currentPage,
       searchTerm,
-      filters: activeViewFilters,
-      advancedFilters,
-    }),
-  staleTime: 5000, // Data will be considered fresh for 5 seconds
-});
+      JSON.stringify(activeViewFilters),
+      JSON.stringify(advancedFilters),
+      activeSortBy,
+      activeSortDirection,
+    ],
+    queryFn: () =>
+      fetchDataFromApi({
+        apiEndpoint: effectiveApiEndpoint,
+        page: currentPage,
+        limit: itemsPerPage,
+        searchTerm,
+        filters: activeViewFilters,
+        advancedFilters,
+        sortBy: activeSortBy,
+        sortDirection: activeSortDirection,
+      }),
+    staleTime: 5000, // Data will be considered fresh for 5 seconds
+  });
 
 
   // --- Data and pagination ---
-  const serverItems = queryData?.data || [];
+  const finalItems = queryData?.data || [];
   const pagination = queryData?.pagination ?? { totalPages: 1, totalItems: 0 };
   const totalPages = Math.max(1, Number(pagination.totalPages || 1));
 
   // Reset page when filters/search/view change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, timelineDateRange]);
-
-  // --- Sorting logic ---
-  // Sorts items by selected column and direction
-  const finalItems = useMemo(() => {
-    const src = serverItems.slice();
-    if (!activeSortBy || activeSortBy === "none") return src;
-    const compare = (a: any, b: any) => {
-      if (a == null && b == null) return 0;
-      if (a == null) return -1;
-      if (b == null) return 1;
-      const aDate = typeof a === 'string' ? Date.parse(a) : NaN;
-      const bDate = typeof b === 'string' ? Date.parse(b) : NaN;
-      if (!isNaN(aDate) && !isNaN(bDate)) { return aDate - bDate; }
-      const aNum = typeof a === 'number' ? a : (typeof a === 'string' && a.trim() !== '' && !isNaN(Number(a)) ? Number(a) : NaN);
-      const bNum = typeof b === 'number' ? b : (typeof b === 'string' && b.trim() !== '' && !isNaN(Number(b)) ? Number(b) : NaN);
-      if (!isNaN(aNum) && !isNaN(bNum)) { return aNum - bNum; }
-      const aStr = String(a).toLowerCase();
-      const bStr = String(b).toLowerCase();
-      return aStr.localeCompare(bStr);
-    };
-    src.sort((x, y) => {
-      const a = x[activeSortBy];
-      const b = y[activeSortBy];
-      const cmp = compare(a, b);
-      return activeSortDirection === "asc" ? cmp : -cmp;
-    });
-    return src;
-  }, [serverItems, activeSortBy, activeSortDirection]);
+  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, timelineDateRange, activeSortBy, activeSortDirection]);
 
   // --- Grouping logic ---
   // Groups items by selected field and sorts groups
@@ -544,7 +549,14 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
           <div className="flex items-center gap-4 pt-4">
             <div className="flex items-center gap-2">
               {/* Advanced filters */}
-              <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} />
+              <AdvancedFiltersClickUp 
+                filters={finalFilterConfigs} 
+                onFiltersChange={setAdvancedFilters} 
+                data={finalItems}
+                savedFilters={savedFilters}
+                onSaveFilter={handleSaveFilter}
+                onDeleteFilter={handleDeleteFilter}
+              />
               {/* Grouping controls */}
               <div className="flex items-center gap-1">
                 <Popover>
@@ -565,7 +577,27 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
               <Popover>
                 <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
-                <PopoverContent className="w-64" align="end"><div className="space-y-3"><div className="font-medium">Show/Hide Columns</div>{columns.map((column) => (<div key={column.key} className="flex items-center space-x-2"><Checkbox id={`column-${column.key}`} checked={!hiddenColumns.includes(column.key)} onCheckedChange={(checked) => { if (checked) { setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); } else { setHiddenColumns([...hiddenColumns, column.key]); } }} /><label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label></div>))}</div></PopoverContent>
+                <PopoverContent className="w-64" align="end">
+                  <div className="space-y-3">
+                    <div className="font-medium">Show/Hide Columns</div>
+                    {columns.map((column) => (
+                      <div key={column.key} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`column-${column.key}`} 
+                          checked={!hiddenColumns.includes(column.key)} 
+                          onCheckedChange={(checked) => { 
+                            if (checked) { 
+                              setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
+                            } else { 
+                              setHiddenColumns([...hiddenColumns, column.key]); 
+                            } 
+                          }} 
+                        />
+                        <label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
               </Popover>
             </div>
           </div>

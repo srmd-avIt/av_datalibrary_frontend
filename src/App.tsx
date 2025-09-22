@@ -70,7 +70,7 @@ export default function App() {
             filterConfigs={getFilterConfigs("countries")}
             columns={[
               { key: "EventID", label: "Event ID", sortable: true }, 
-              { key: "EventCode", label: "Event Code" },
+              { key: "EventCode", label: "Event Code", sortable: true },
               { key: "Yr", label: "Year", sortable: true },
               { key: "SubmittedDate", label: "Submitted Date", sortable: true },
               { key: "FromDate", label: "From Date", sortable: true },

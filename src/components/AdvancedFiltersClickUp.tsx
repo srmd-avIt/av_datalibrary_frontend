@@ -9,7 +9,8 @@ import { Checkbox } from "./ui/checkbox";
 import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
-import { Filter, Plus, X, RotateCcw, Calendar as CalendarIcon } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { Filter, Plus, X, RotateCcw, Calendar as CalendarIcon, Save, Trash2 } from "lucide-react";
 import { format } from 'date-fns';
 
 // --- Interfaces (assuming they are defined here or imported) ---
@@ -27,6 +28,11 @@ interface FilterGroup {
   logic: "AND" | "OR";
 }
 
+interface SavedFilter {
+  name: string;
+  filterGroups: FilterGroup[];
+}
+
 interface FilterConfig {
   key: string;
   label: string;
@@ -38,6 +44,9 @@ interface AdvancedFiltersClickUpProps {
   filters: FilterConfig[];
   onFiltersChange: (filterGroups: FilterGroup[]) => void;
   data: any[];
+  savedFilters: SavedFilter[];
+  onSaveFilter: (name: string, filterGroups: FilterGroup[]) => void;
+  onDeleteFilter: (name: string) => void;
 }
 
 // --- Constants ---
@@ -84,11 +93,27 @@ const OPERATORS: Record<OperatorType, { value: string; label: string }[]> = {
   ]
 };
 
-export function AdvancedFiltersClickUp({ filters, onFiltersChange, data }: AdvancedFiltersClickUpProps) {
+export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, savedFilters, onSaveFilter, onDeleteFilter }: AdvancedFiltersClickUpProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([
     { id: "group1", rules: [], logic: "AND" }
   ]);
+  const [saveFilterName, setSaveFilterName] = useState("");
+
+  const handleSaveFilterClick = () => {
+    if (saveFilterName.trim()) {
+      const cleanedGroups = getCleanedFilterGroups(filterGroups);
+      if (cleanedGroups.length > 0) {
+        onSaveFilter(saveFilterName.trim(), cleanedGroups);
+        setSaveFilterName("");
+      }
+    }
+  };
+
+  const handleApplySavedFilter = (savedFilter: SavedFilter) => {
+    onFiltersChange(savedFilter.filterGroups);
+    setIsOpen(false);
+  };
 
   const getUniqueValues = (key: string) => {
     const values = data.map(item => item[key]).filter(val => val !== null && val !== undefined);
@@ -198,10 +223,11 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data }: Advan
 
   const clearAllFilters = () => {
     setFilterGroups([{ id: "group1", rules: [], logic: "AND" }]);
+    onFiltersChange([]); // Also clear the parent state
   };
 
-  const applyFilters = () => {
-    const cleanedGroups = filterGroups.map(group => ({
+  const getCleanedFilterGroups = (groups: FilterGroup[]) => {
+    return groups.map(group => ({
       ...group,
       rules: group.rules.filter(rule => {
         const needsValue = !["is_empty", "is_not_empty"].includes(rule.operator);
@@ -210,7 +236,10 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data }: Advan
         return rule.value !== "" && rule.value !== null && rule.value !== undefined;
       })
     })).filter(group => group.rules.length > 0);
+  }
 
+  const applyFilters = () => {
+    const cleanedGroups = getCleanedFilterGroups(filterGroups);
     onFiltersChange(cleanedGroups);
     setIsOpen(false);
   };
@@ -269,7 +298,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data }: Advan
   };
 
   const getActiveFiltersCount = () => {
-    return filterGroups.reduce((count, group) => count + group.rules.length, 0);
+    return filterGroups.reduce((count, group) => count + group.rules.filter(rule => rule.field && rule.operator && rule.value).length, 0);
   };
 
   return (
@@ -297,6 +326,64 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data }: Advan
             </div>
           </CardHeader>
           <CardContent className="p-4 space-y-4">
+            {/* --- NEW: Saved Filters Section --- */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Saved Filters</h4>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={getActiveFiltersCount() === 0}>
+                      <Save className="w-3 h-3" />
+                      Save current filter
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Save Filter</AlertDialogTitle>
+                      <AlertDialogDescription>Enter a name for your current filter configuration.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input 
+                      placeholder="e.g., 'High Priority Tasks'" 
+                      value={saveFilterName}
+                      onChange={(e) => setSaveFilterName(e.target.value)}
+                    />
+                    <AlertDialogFooter className="flex justify-end gap-2">
+  <AlertDialogCancel
+    onClick={() => setSaveFilterName("")}
+    className="w-32"
+  >
+    Cancel
+  </AlertDialogCancel>
+  <AlertDialogAction
+    onClick={handleSaveFilterClick}
+    disabled={!saveFilterName.trim()}
+    className="w-32"
+  >
+    Save
+  </AlertDialogAction>
+</AlertDialogFooter>
+
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              {savedFilters.length > 0 ? (
+                <div className="space-y-2">
+                  {savedFilters.map(sf => (
+                    <div key={sf.name} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                      <button className="text-sm text-left flex-1" onClick={() => handleApplySavedFilter(sf)}>
+                        {sf.name}
+                      </button>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDeleteFilter(sf.name)} title={`Delete '${sf.name}'`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-2">No saved filters yet.</p>
+              )}
+            </div>
+            <Separator />
             {filterGroups.map((group, groupIndex) => (
               <div key={group.id} className="space-y-3">
                 {groupIndex > 0 && (
@@ -346,10 +433,24 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data }: Advan
             ))}
             <Button variant="outline" size="sm" onClick={addFilterGroup} className="w-full h-8 border-dashed border text-muted-foreground hover:text-foreground"><Plus className="w-4 h-4 mr-2" />Add filter group</Button>
             <Separator />
-            <div className="flex justify-end gap-2 sticky bottom-0 bg-popover py-4 px-4 -mx-4 -mb-4">
-              <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button size="sm" onClick={applyFilters}>Apply filters</Button>
-            </div>
+           <div className="flex justify-end gap-2 sticky bottom-0 bg-popover py-4 px-4 -mx-4 -mb-4">
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={() => setIsOpen(false)}
+    className="w-32"
+  >
+    Cancel
+  </Button>
+  <Button
+    size="sm"
+    onClick={applyFilters}
+    className="w-32"
+  >
+    Apply filters
+  </Button>
+</div>
+ 
           </CardContent>
         </Card>
       </PopoverContent>

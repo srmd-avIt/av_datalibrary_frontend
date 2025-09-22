@@ -1,9 +1,9 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { GripVertical } from "lucide-react";
-import { cn } from "./ui/utils";
+import { GripVertical, ChevronRight, ChevronDown } from "lucide-react";
+import { cn, getColorForString } from "./ui/utils";
 
 interface ListItem {
   id?: string;
@@ -180,13 +180,39 @@ export function DraggableResizableTable({
   idKey = "id",
 }: DraggableResizableTableProps) {
   const [columns, setColumns] = useState(initialColumns);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const widths: Record<string, number> = {};
-    initialColumns.forEach((col) => {
-      widths[col.key] = col.width || 150;
+    initialColumns.forEach(col => {
+      widths[col.key] = 150; // Default width
     });
     return widths;
   });
+
+  // --- FIX: Sync internal state when visible columns change from parent ---
+  useEffect(() => {
+    setColumns(initialColumns);
+    setColumnWidths(prevWidths => {
+      const newWidths: Record<string, number> = {};
+      initialColumns.forEach(col => {
+        // Keep existing width if column was already visible, otherwise set default
+        newWidths[col.key] = prevWidths[col.key] || 150;
+      });
+      return newWidths;
+    });
+  }, [initialColumns]);
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupName)) {
+        newSet.delete(groupName);
+      } else {
+        newSet.add(groupName);
+      }
+      return newSet;
+    });
+  };
 
   const moveColumn = useCallback((dragIndex: number, hoverIndex: number) => {
     setColumns((prevColumns) => {
@@ -209,75 +235,110 @@ export function DraggableResizableTable({
     <DndProvider backend={HTML5Backend}>
       <div className="overflow-x-auto relative border border-border rounded-lg bg-card shadow-sm" style={{ maxHeight: '60vh' }}>
         <Table className="min-w-full table-fixed">
-          <TableHeader>
-            <TableRow className="border-b border-border/50">
-              {columns.map((column, index) => (
-                <DraggableHeader
-                  key={column.key}
-                  column={column}
-                  index={index}
-                  moveColumn={moveColumn}
-                  onSort={onSort}
-                  getSortIcon={getSortIcon}
-                  width={columnWidths[column.key] || 150}
-                  onResize={handleResize}
-                />
-              ))}
-            </TableRow>
-          </TableHeader>
+          {/* Only show the main header if no grouping is active */}
+          {(!activeGroupBy || activeGroupBy === "none") && (
+            <TableHeader>
+              <TableRow className="border-b border-border/50">
+                {columns.map((column, index) => (
+                  <DraggableHeader
+                    key={column.key}
+                    column={column}
+                    index={index}
+                    moveColumn={moveColumn}
+                    onSort={onSort}
+                    getSortIcon={getSortIcon}
+                    width={columnWidths[column.key] || 150}
+                    onResize={handleResize}
+                  />
+                ))}
+              </TableRow>
+            </TableHeader>
+          )}
           <TableBody>
-            {Object.entries(groupedData).map(([groupName, items]) => (
-              <React.Fragment key={groupName}>
-                {/* ENHANCED TABLE STYLING: Glassmorphism effects with backdrop blur for group headers */}
-                {activeGroupBy && activeGroupBy !== "none" && (
-                  <TableRow className="sticky top-12 z-[15] bg-muted/80 backdrop-blur">
-                    <TableCell 
-                      colSpan={columns.length} 
-                      // GROUP HEADER FONT STYLING: font-semibold (600 weight) for group headers to stand out from regular cells
-                      // GROUP HEADER FONT STYLING: text-foreground (full opacity) for maximum prominence and readability
-                      className="bg-muted/90 backdrop-blur-sm font-semibold text-foreground px-8 py-3 border-b border-border/30"
-                    >
-                      {groupName} ({items.length})
-                    </TableCell>
-                  </TableRow>
-                )}
-                {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
-                {items.map((item) => (
-                  <TableRow
-                    key={item[idKey] || item.id}
-                    className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
-                    onClick={() => onRowSelect(item)}
-                  >
-                    {columns.map((column, index) => (
-                      <TableCell 
-                        key={column.key} 
-                        className={cn(
-                          // ENHANCED TABLE STYLING: Better padding (px-6 py-4) increased from px-2 py-3 for more breathing room
-                          // ENHANCED TABLE STYLING: Improved visual hierarchy with better contrast ratios for dark theme optimization
-                          // ENHANCED TABLE STYLING: Special edge padding (first:pl-8 last:pr-8) so data isn't too close to edges
-                          // TABLE CELL FONT STYLING: text-sm (14px) for readable cell content, larger than header text for better data readability
-                          // TABLE CELL FONT STYLING: text-foreground/90 (90% opacity) for subtle data text, group-hover:text-foreground for emphasis on hover
-                          // TABLE CELL FONT STYLING: transition-colors for smooth opacity changes when hovering over rows
-                          "px-6 py-4 text-sm text-foreground/90 group-hover:text-foreground transition-colors",
-                          index === 0 && "sticky left-0 z-10 bg-card group-hover:bg-muted/30",
-                          "first:pl-8 last:pr-8"
-                        )}
-                        style={{ 
-                          width: `${columnWidths[column.key] || 150}px`,
-                          minWidth: `${columnWidths[column.key] || 150}px`,
-                          maxWidth: `${columnWidths[column.key] || 150}px`
-                        }}
+            {Object.entries(groupedData).map(([groupName, items]) => {
+              const bgColor = getColorForString(groupName);
+              // Simple check to determine text color for contrast.
+              // Add more dark pastel colors to this array if needed.
+              const isDarkBg = ["#F7D379"].includes(bgColor);
+              const textColor = isDarkBg ? "hsl(222.2 47.4% 11.2%)" : "hsl(222.2 84% 4.9%)";
+
+              return (
+                <React.Fragment key={groupName}>
+                  {/* ENHANCED TABLE STYLING: Glassmorphism effects with backdrop blur for group headers */}
+                  {activeGroupBy && activeGroupBy !== "none" && (
+                    <TableRow className="sticky top-12 z-[15] backdrop-blur hover:brightness-95 transition-all cursor-pointer" onClick={() => toggleGroup(groupName)}>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="backdrop-blur-sm font-semibold px-4 py-3 border-b border-border/30 text-left"
                       >
-                        {/* TABLE CELL CONTENT STYLING: truncate class prevents text overflow and maintains table layout consistency */}
-                        <div className="truncate">
-                          {column.render ? column.render(item[column.key], item) : String(item[column.key] ?? '')}
+                        <div className="flex items-center gap-2">
+                          {expandedGroups.has(groupName) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          <span
+                            className="px-2.5 py-0.5 rounded-md text-sm"
+                            style={{ backgroundColor: bgColor, color: textColor }}
+                          >
+                            {groupName}
+                          </span>
+                          <span className="text-muted-foreground">({items.length})</span>
                         </div>
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </React.Fragment>
-            ))}
+                    </TableRow>
+                  )}
+                  {/* Show headers within each group if grouping is active and the group is expanded */}
+                  {activeGroupBy && activeGroupBy !== "none" && expandedGroups.has(groupName) && (
+                    <TableRow className="sticky top-24 z-10">
+                      {columns.map((column, index) => (
+                        <DraggableHeader
+                          key={column.key}
+                          column={column}
+                          index={index}
+                          moveColumn={moveColumn}
+                          onSort={onSort}
+                          getSortIcon={getSortIcon}
+                          width={columnWidths[column.key] || 150}
+                          onResize={handleResize}
+                        />
+                      ))}
+                    </TableRow>
+                  )}
+                  {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
+                  {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
+                    <TableRow
+                      key={item[idKey] || item.id}
+                      className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
+                      onClick={() => onRowSelect(item)}
+                    >
+                      {columns.map((column, index) => (
+                        <TableCell 
+                          key={column.key} 
+                          className={cn(
+                            // ENHANCED TABLE STYLING: Better padding (px-6 py-4) increased from px-2 py-3 for more breathing room
+                            // ENHANCED TABLE STYLING: Improved visual hierarchy with better contrast ratios for dark theme optimization
+                            // ENHANCED TABLE STYLING: Special edge padding (first:pl-8 last:pr-8) so data isn't too close to edges
+                            // TABLE CELL FONT STYLING: text-sm (14px) for readable cell content, larger than header text for better data readability
+                            // TABLE CELL FONT STYLING: text-foreground/90 (90% opacity) for subtle data text, group-hover:text-foreground for emphasis on hover
+                            // TABLE CELL FONT STYLING: transition-colors for smooth opacity changes when hovering over rows
+                            "px-6 py-4 text-sm text-foreground/90 group-hover:text-foreground transition-colors",
+                            index === 0 && "sticky left-0 z-10 bg-card group-hover:bg-muted/30",
+                            "first:pl-8 last:pr-8"
+                          )}
+                          style={{ 
+                            width: `${columnWidths[column.key] || 150}px`,
+                            minWidth: `${columnWidths[column.key] || 150}px`,
+                            maxWidth: `${columnWidths[column.key] || 150}px`
+                          }}
+                        >
+                          {/* TABLE CELL CONTENT STYLING: truncate class prevents text overflow and maintains table layout consistency */}
+                          <div className="truncate">
+                            {column.render ? column.render(item[column.key], item) : String(item[column.key] ?? '')}
+                          </div>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

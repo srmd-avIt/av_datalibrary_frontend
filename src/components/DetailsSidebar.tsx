@@ -206,6 +206,7 @@ export function DetailsSidebar({ isOpen, onClose, data, type, title, onPushSideb
               </div>
               <h3 className="text-xl font-bold">{data.EventName}</h3>
               <p className="text-muted-foreground">Event ID: {data.EventID}</p>
+              <Badge className="mt-2">{data.NewEventCategory || 'N/A'}</Badge>
             </div>
             <Card>
               <CardHeader><CardTitle className="text-lg px-2">Event Details</CardTitle></CardHeader>
@@ -249,28 +250,29 @@ export function DetailsSidebar({ isOpen, onClose, data, type, title, onPushSideb
                   </div>
               </CardContent>
             </Card>
-             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg px-2">Statistics</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 p-4">
-                  <div className="flex justify-between">
-                      <span className="text-muted-foreground">LastModifiedBy</span>
-                      <Badge variant="secondary">{data.LastModifiedBy}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                      <span className="text-muted-foreground">LastModifiedTimestamp</span>
-                      <Badge variant="secondary">{data.LastModifiedTimestamp}</Badge>
-                  </div>
-              </CardContent>
-            </Card>
+             <Card className="w-full">
+  <CardHeader>
+    <CardTitle className="text-lg px-2">Metadata</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4 break-words">
+    <div className="flex justify-between ">
+      <span className="text-muted-foreground">LastModifiedBy</span>
+      <Badge variant="secondary">{data.LastModifiedBy}</Badge>
+    </div>
+    <div className="flex justify-between ">
+      <span className="text-muted-foreground">LastModifiedTimestamp</span>
+      <Badge variant="secondary">{data.LastModifiedTimestamp}</Badge>
+    </div>
+  </CardContent>
+</Card>
+
           </div>
         );
 
       case "digitalrecording_list":
         return (
             <Card>
-                <CardHeader><CardTitle className="text-lg px-2">Select a Recording</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-lg px-2">Refer for DigitalRecordings</CardTitle></CardHeader>
                 <CardContent className="p-4">
                     <DigitalRecordingsList eventCode={data.eventCode} onPushSidebar={onPushSidebar} />
                 </CardContent>
@@ -307,6 +309,12 @@ export function DetailsSidebar({ isOpen, onClose, data, type, title, onPushSideb
                     <span className="font-medium">N/A</span>
                   )}
                 </div>
+
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">RecordingName</span>
+                  <span className="font-medium">{data.RecordingName || 'N/A'}</span>
+                </div>
+
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
                   <Badge variant="secondary">{data.Duration || 'N/A'}</Badge>
