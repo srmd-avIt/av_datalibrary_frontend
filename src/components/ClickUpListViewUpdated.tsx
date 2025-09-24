@@ -32,28 +32,17 @@ import {
   Calendar, Settings2, EyeOff, X, Funnel, Loader2
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
+import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
 import { TimelineView } from "./TimelineView";
 import { ListItem } from "./types";
 
 // --- Vite env types for TypeScript ---
-interface ImportMetaEnv {
-  readonly VITE_API_URL: string;
-  // add other env variables here if needed
-}
-
-interface ImportMeta {
-  readonly env: {
-    VITE_API_URL: string;
-  };
-}
+// These interfaces are typically handled by a vite-env.d.ts file.
+// Removing them to avoid conflicts with the project's global types.
 
 // --- Interfaces ---
-// ListItem: Represents a row of data
-interface ListItem {
-  id: string | number;
-  date?: string;
-  [key: string]: any;
-}
+// ListItem is now imported from './types', so the local definition is removed.
+
 // Column: Table column definition
 interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
 // FilterConfig: Used for advanced filtering UI
@@ -66,8 +55,10 @@ interface FilterRule { id: string; field: string; operator: string; value: any; 
 
 // --- NEW: Saved Filter Interface ---
 interface SavedFilter {
+  id: string;
   name: string;
   filterGroups: FilterGroup[];
+  createdAt: string;
 }
 
 // --- API Response Type ---
@@ -214,20 +205,47 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [groupDirection, setGroupDirection] = useState<"asc" | "desc">("asc");
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
-  const [timelineViewMode, setTimelineViewMode] = useState<"day" | "week" | "month" | "year">("month");
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+  const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
+  const [timelineViewMode, setTimelineViewMode] = useState<'week' | 'month' | 'year'>('month');
   const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
 
-  // --- NEW: State for Saved Filters ---
-  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
-
   const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
-    const newSavedFilter = { name, filterGroups };
-    // Avoid duplicates by name
-    setSavedFilters(prev => [...prev.filter(f => f.name !== name), newSavedFilter]);
+    const newSavedFilter: SavedFilter = { 
+      id: `filter_${Date.now()}`,
+      name, 
+      filterGroups,
+      createdAt: new Date().toISOString()
+    };
+    setSavedFilters(prev => {
+      const existing = prev.find(f => f.name === name);
+      if (existing) {
+        return prev.map(f => f.name === name ? { ...newSavedFilter, id: existing.id } : f);
+      }
+      return [...prev, newSavedFilter];
+    });
+    setActiveSavedFilterName(name);
+    setAdvancedFilters(filterGroups);
   };
 
-  const handleDeleteFilter = (name:string) => {
+  const handleDeleteFilter = (name: string) => {
     setSavedFilters(prev => prev.filter(f => f.name !== name));
+    if (activeSavedFilterName === name) {
+      setActiveSavedFilterName(null);
+      setAdvancedFilters([]);
+    }
+  };
+
+  const handleSelectFilter = (name: string | null) => {
+    setActiveSavedFilterName(name);
+    if (name) {
+      const savedFilter = savedFilters.find(f => f.name === name);
+      if (savedFilter) {
+        setAdvancedFilters(savedFilter.filterGroups);
+      }
+    } else {
+      setAdvancedFilters([]);
+    }
   };
 
   // --- Column order and sizing state per view ---
@@ -285,6 +303,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     if (activeTab !== 'timeline') return null;
     let startDate, endDate;
     switch (timelineViewMode) {
+      case 'week': startDate = startOfWeek(timelineCurrentDate); endDate = endOfWeek(timelineCurrentDate); break;
       case 'month': startDate = startOfMonth(timelineCurrentDate); endDate = endOfMonth(timelineCurrentDate); break;
       case 'year': startDate = startOfYear(timelineCurrentDate); endDate = endOfYear(timelineCurrentDate); break;
     }
@@ -300,6 +319,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       JSON.stringify(advancedFilters),
       activeSortBy,
       activeSortDirection,
+      timelineDateRange, // Add dependency
     ],
     queryFn: () =>
       fetchDataFromApi({
@@ -449,7 +469,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     state: { columnOrder, columnSizing },
     onColumnOrderChange: (newOrder) =>
       setViewColumnOrder((prev) => ({ ...prev, [activeView]: newOrder })),
-    onColumnSizingChange: (newSizing)=>
+    onColumnSizingChange: (newSizing) =>
       setViewColumnSizing((prev) => ({ ...prev, [activeView]: newSizing })),
     getCoreRowModel: getCoreRowModel(),
   });*/
@@ -525,6 +545,13 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
           ))}
         </div>
       )}
+      {/* Saved Filter Tabs */}
+      <SavedFilterTabs
+        savedFilters={savedFilters}
+        activeFilterName={activeSavedFilterName}
+        onSelectFilter={handleSelectFilter}
+        onDeleteFilter={handleDeleteFilter}
+      />
       {/* Main card container */}
       <Card className="border-0 shadow-sm bg-card">
         {/* Card header: tabs, export, filters, grouping, sorting, column hiding, search */}
@@ -552,12 +579,10 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               <AdvancedFiltersClickUp 
                 filters={finalFilterConfigs} 
                 onFiltersChange={setAdvancedFilters} 
-                data={finalItems}
-                savedFilters={savedFilters}
-                onSaveFilter={handleSaveFilter}
-                onDeleteFilter={handleDeleteFilter}
+                data={finalItems} 
+                onSaveFilter={handleSaveFilter} 
               />
-              {/* Grouping controls */}
+              {/* Grouping controls */} 
               <div className="flex items-center gap-1">
                 <Popover>
                   <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
@@ -613,12 +638,12 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                 <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
                   {/* Main table with drag, resize, grouping, sorting, selection */}
                   <DraggableResizableTable
-                    data={finalItems}
-                    columns={visibleColumns}
-                    onRowSelect={(item) => onRowSelect?.(item)}
+                    data={finalItems as any}
+                    columns={visibleColumns as any}
+                    onRowSelect={(item) => onRowSelect?.(item as any)}
                     onSort={handleSort}
                     getSortIcon={getSortIcon}
-                    groupedData={groupedData}
+                    groupedData={groupedData as any}
                     activeGroupBy={activeGroupBy}
                     idKey={idKey}
                   />
