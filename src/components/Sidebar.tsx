@@ -1,18 +1,23 @@
-import React, { useState } from "react";
+// SIDEBAR SLIDING CHANGE: Added ChevronLeft and ChevronRight icons for toggle button
 import { Home, Database, Map, Users, Calendar, FileText, Bot, Settings, LogOut, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Separator } from "./ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+// GOOGLE AUTH INTEGRATION: Added authentication context for user management and logout
+import { useAuth } from "../contexts/AuthContext";
 
+// SIDEBAR SLIDING CHANGE: Added collapsed and onToggleCollapse props for sliding functionality
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export function Sidebar({ activeView, onViewChange }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
+export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse }: SidebarProps) {
+  // GOOGLE AUTH INTEGRATION: Added authentication hooks for user info and logout
+  const { user, logout } = useAuth();
+  
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "events", label: "Events", icon: Map },
@@ -23,136 +28,154 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
     { id: "user-management", label: "User Management", icon: User },
   ];
 
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
   return (
-    <TooltipProvider delayDuration={0}>
-      <div className={`h-full flex flex-col backdrop-blur-xl bg-gradient-to-b from-slate-900/95 via-slate-800/90 to-slate-900/95 border-r border-slate-700/50 rounded-r-2xl shadow-2xl transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-72'}`}>
-        {/* Header */}
-        <div className={`p-4 border-b border-slate-700/50 ${isCollapsed ? 'px-4' : 'p-6'}`}>
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                <Database className="w-5 h-5 text-white" />
-              </div>
-              {!isCollapsed && (
-                <div>
-                  <h2 className="text-xl font-bold text-white">Data Library</h2>
-                  <p className="text-xs text-slate-400">Analytics Dashboard</p>
-                </div>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full text-slate-300 hover:text-white hover:bg-slate-800/50"
-              onClick={toggleSidebar}
-            >
-              {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-            </Button>
+    // SIDEBAR SLIDING CHANGE: Dynamic width based on collapsed state (w-16 collapsed, w-72 expanded) with smooth transitions
+    <div className={`${collapsed ? 'w-16' : 'w-72'} h-full flex flex-col backdrop-blur-xl bg-gradient-to-b from-slate-900/95 via-slate-800/90 to-slate-900/95 border-r border-slate-700/50 rounded-r-2xl shadow-2xl transition-all duration-300 relative`}>
+      {/* SIDEBAR SLIDING CHANGE: ClickUp-style toggle button positioned on the right edge */}
+    <Button
+  variant="ghost"
+  size="sm"
+  style={{
+    position: "absolute",
+    top: "1.5rem",
+    right: collapsed ? "-0.75rem" : "0.75rem", // move outside when collapsed
+    width: "1.5rem",
+    height: "1.5rem",
+    borderRadius: "9999px",
+    backgroundColor: "rgb(30 41 59)",
+    border: "1px solid rgba(51, 65, 85, 0.5)",
+    zIndex: 50,
+    padding: 0,
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  }}
+  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgb(51 65 85)")}
+  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgb(30 41 59)")}
+  onClick={onToggleCollapse}
+>
+  {collapsed ? <ChevronRight className="w-3 h-3 text-slate-300" /> : <ChevronLeft className="w-3 h-3 text-slate-300" />}
+</Button>
+
+
+
+      {/* SIDEBAR SLIDING CHANGE: Header with responsive padding and layout */}
+      <div className={`${collapsed ? 'p-3' : 'p-6'} border-b border-slate-700/50 transition-all duration-300`}>
+        {/* SIDEBAR SLIDING CHANGE: Flex layout changes to center when collapsed, gap when expanded */}
+        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} mb-4`}>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+            <Database className="w-5 h-5 text-white" />
           </div>
-          
-          {/* User Profile */}
-          <div className={`flex items-center gap-3 p-2 rounded-xl bg-slate-800/50 border border-slate-700/50 ${isCollapsed ? 'justify-center' : ''}`}>
-            <Avatar className="w-8 h-8 flex-shrink-0">
-              <AvatarImage src="" />
-              <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">JD</AvatarFallback>
-            </Avatar>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">John Doe</p>
-                <p className="text-xs text-slate-400 truncate">Administrator</p>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeView === item.id;
-              return (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={`w-full justify-start gap-3 h-11 rounded-xl transition-all duration-200 ${isCollapsed ? 'justify-center' : ''} ${
-                        isActive 
-                          ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" 
-                          : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"
-                      }`}
-                      onClick={() => onViewChange(item.id)}
-                    >
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? 'h-5 w-5' : ''}`} />
-                      {!isCollapsed && <span className="font-medium">{item.label}</span>}
-                      {!isCollapsed && isActive && (
-                        <div className="ml-auto w-2 h-2 rounded-full bg-blue-400"></div>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  {isCollapsed && (
-                    <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700">
-                      <p>{item.label}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              );
-            })}
-          </div>
-          
-          {!isCollapsed && <Separator className="my-6 bg-slate-700/50" />}
-          
-          {/* Settings & Logout */}
-          <div className={`space-y-1 ${isCollapsed ? 'mt-6 border-t border-slate-700/50 pt-4' : ''}`}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start gap-3 h-11 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50 transition-all duration-200 ${isCollapsed ? 'justify-center' : ''}`}
-                  onClick={() => onViewChange("settings")}
-                >
-                  <Settings className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? 'h-5 w-5' : ''}`} />
-                  {!isCollapsed && <span className="font-medium">Settings</span>}
-                </Button>
-              </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right" className="bg-slate-800 text-white border-slate-700">
-                  <p>Settings</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start gap-3 h-11 rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all duration-200 ${isCollapsed ? 'justify-center' : ''}`}
-                >
-                  <LogOut className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? 'h-5 w-5' : ''}`} />
-                  {!isCollapsed && <span className="font-medium">Logout</span>}
-                </Button>
-              </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right" className="bg-red-900/80 text-white border-red-700">
-                  <p>Logout</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </div>
-        </nav>
-        
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-700/50 mt-auto">
-          {!isCollapsed && (
-            <div className="text-xs text-slate-500 text-center">
-              © 2024 v2.1.0
+          {/* SIDEBAR SLIDING CHANGE: Conditionally render text content only when expanded */}
+          {!collapsed && (
+            <div>
+              <h2 className="text-xl font-bold text-white">Data Library</h2>
+              <p className="text-xs text-slate-400">Analytics Dashboard</p>
             </div>
           )}
         </div>
+        
+        {/* GOOGLE AUTH INTEGRATION: Updated user profile section to show authenticated user info */}
+        {!collapsed && (
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={user?.picture} />
+              <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">
+                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user?.name || 'User'}</p>
+              <p className="text-xs text-slate-400 truncate">{user?.email || 'No email'}</p>
+            </div>
+          </div>
+        )}
+        {/* SIDEBAR SLIDING CHANGE: Show only avatar when collapsed, centered */}
+        {collapsed && (
+          <div className="flex justify-center">
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={user?.picture} />
+              <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">
+                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
       </div>
-    </TooltipProvider>
+      
+      {/* SIDEBAR SLIDING CHANGE: Navigation with responsive padding and button layouts */}
+      <nav className={`flex-1 ${collapsed ? 'p-2' : 'p-4'} transition-all duration-300`}>
+        <div className="space-y-1">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeView === item.id;
+            return (
+              // SIDEBAR SLIDING CHANGE: Dynamic button layout - centered icons when collapsed, left-aligned with text when expanded
+              <Button
+                key={item.id}
+                variant="ghost"
+                size={collapsed ? "sm" : "default"}
+                className={`w-full ${collapsed ? 'justify-center p-0 h-10' : 'justify-start gap-3 h-11'} rounded-xl transition-all duration-200 ${
+                  isActive 
+                    ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" 
+                    : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"
+                }`}
+                onClick={() => onViewChange(item.id)}
+                // SIDEBAR SLIDING CHANGE: Add tooltips when collapsed for accessibility
+                title={collapsed ? item.label : undefined}
+              >
+                <Icon className="w-4 h-4" />
+                {/* SIDEBAR SLIDING CHANGE: Conditionally render labels and active indicators only when expanded */}
+                {!collapsed && (
+                  <>
+                    <span className="font-medium">{item.label}</span>
+                    {isActive && (
+                      <div className="ml-auto w-2 h-2 rounded-full bg-blue-400"></div>
+                    )}
+                  </>
+                )}
+              </Button>
+            );
+          })}
+        </div>
+        
+        <Separator className="my-6 bg-slate-700/50" />
+        
+        {/* SIDEBAR SLIDING CHANGE: Settings & Logout with responsive layouts and tooltips */}
+        <div className="space-y-1">
+          {/* SIDEBAR SLIDING CHANGE: Same responsive button pattern as navigation items */}
+          <Button
+            variant="ghost"
+            size={collapsed ? "sm" : "default"}
+            className={`w-full ${collapsed ? 'justify-center p-0 h-10' : 'justify-start gap-3 h-11'} rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50 transition-all duration-200`}
+            onClick={() => onViewChange("settings")}
+            // SIDEBAR SLIDING CHANGE: Tooltip for settings when collapsed
+            title={collapsed ? "Settings" : undefined}
+          >
+            <Settings className="w-4 h-4" />
+            {!collapsed && <span className="font-medium">Settings</span>}
+          </Button>
+          {/* GOOGLE AUTH INTEGRATION: Updated logout button to call authentication logout */}
+          <Button
+            variant="ghost"
+            size={collapsed ? "sm" : "default"}
+            className={`w-full ${collapsed ? 'justify-center p-0 h-10' : 'justify-start gap-3 h-11'} rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all duration-200`}
+            onClick={logout}
+            title={collapsed ? "Logout" : undefined}
+          >
+            <LogOut className="w-4 h-4" />
+            {!collapsed && <span className="font-medium">Logout</span>}
+          </Button>
+        </div>
+      </nav>
+      
+      {/* SIDEBAR SLIDING CHANGE: Footer only visible when sidebar is expanded */}
+      {!collapsed && (
+        <div className="p-4 border-t border-slate-700/50">
+          <div className="text-xs text-slate-500 text-center">
+            © 2024 Data Library v2.1.0
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,15 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { ClickUpListViewUpdated } from "./components/ClickUpListViewUpdated";
 import { AIAssistant } from "./components/AIAssistant";
 import { UserManagement } from "./components/UserManagement";
 import { DetailsSidebar } from "./components/DetailsSidebar";
+// GOOGLE AUTH INTEGRATION
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+// DEVELOPMENT BANNER
+import { DevelopmentBanner } from "./components/DevelopmentBanner";
 
-// Define the shape of an item in our new sidebar stack
+// Define the shape of an item in our sidebar stack
 type SidebarStackItem = {
   type: string;
   data: Record<string, any>;
@@ -18,7 +23,15 @@ type SidebarStackItem = {
 
 export default function App() {
   const [sidebarStack, setSidebarStack] = useState<SidebarStackItem[]>([]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState("dashboard");
 
+  // Close all stacked sidebars
+  const handleCloseSidebar = () => {
+    setSidebarStack([]);
+  };
+
+  // Open details sidebar when a row is selected
   const handleRowSelect = (row: any, type: string) => {
     const titleMap: { [key: string]: string } = {
       event: "Event Details",
@@ -29,47 +42,42 @@ export default function App() {
     setSidebarStack([{ type, data: row, title: titleMap[type] || "Details" }]);
   };
 
+  // Add a sidebar on top of the stack
   const handlePushSidebar = (item: SidebarStackItem) => {
-    setSidebarStack(prev => [...prev, item]);
+    setSidebarStack((prev) => [...prev, item]);
   };
 
+  // Remove the last sidebar
   const handlePopSidebar = () => {
-    setSidebarStack(prev => prev.slice(0, -1));
-  };
-  
-  const handleCloseAllSidebars = () => {
-    setSidebarStack([]);
+    setSidebarStack((prev) => prev.slice(0, -1));
   };
 
   const getFilterConfigs = (viewType: string) => {
     return [];
   };
 
-  const [activeView, setActiveView] = useState("dashboard");
-
+  // VIEW SWITCHER
   const renderView = () => {
-    // This function remains the same.
-    // I'm including the full code here for completeness.
     switch (activeView) {
       case "dashboard":
         return <Dashboard />;
-      
+
       case "ai-assistant":
         return <AIAssistant />;
-      
+
       case "user-management":
         return <UserManagement />;
-      
-      case "events": 
+
+      case "events":
         return (
           <ClickUpListViewUpdated
             title="Events"
-            apiEndpoint="/events" 
+            apiEndpoint="/events"
             idKey="EventID"
             onRowSelect={(row) => handleRowSelect(row, "event")}
             filterConfigs={getFilterConfigs("countries")}
             columns={[
-              { key: "EventID", label: "Event ID", sortable: true }, 
+              { key: "EventID", label: "Event ID", sortable: true },
               { key: "EventCode", label: "Event Code", sortable: true },
               { key: "Yr", label: "Year", sortable: true },
               { key: "SubmittedDate", label: "Submitted Date", sortable: true },
@@ -96,6 +104,7 @@ export default function App() {
             ]}
           />
         );
+
       case "medialog":
         return (
           <ClickUpListViewUpdated
@@ -108,79 +117,79 @@ export default function App() {
               { id: "all", name: "All", apiEndpoint: "/newmedialog" },
               { id: "all-except-satsang", name: "All Except Satsang", apiEndpoint: "/newmedialog/all-except-satsang" },
               { id: "satsang-extracted-clips", name: "Satsang Extracted Clips", apiEndpoint: "/newmedialog/satsang-extracted-clips" },
-              { id: "satsang-category", name: "Satsang Category", apiEndpoint: "/newmedialog/satsang-category" }
+              { id: "satsang-category", name: "Satsang Category", apiEndpoint: "/newmedialog/satsang-category" },
             ]}
             columns={[
-            
-        { key: "MLUniqueID", label: "MLUniqueID", sortable: true },
-        { key: "FootageSrNo", label: "FootageSrNo", sortable: true },
-        { key: "LogSerialNo", label: "LogSerialNo", sortable: true },
-        { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true },
-        { key: "ContentFrom", label: "ContentFrom", sortable: true },
-        { key: "ContentTo", label: "ContentTo", sortable: true },
-        { key: "TimeOfDay", label: "TimeOfDay", sortable: true },
-        { key: "fkOccasion", label: "fkOccasion", sortable: true },
-        { key: "EditingStatus", label: "EditingStatus", sortable: true },
-        { key: "FootageType", label: "FootageType", sortable: true },
-        { key: "VideoDistribution", label: "VideoDistribution", sortable: true },
-        { key: "Detail", label: "Detail", sortable: true },
-        { key: "SubDetail", label: "SubDetail", sortable: true },
-        { key: "CounterFrom", label: "CounterFrom", sortable: true },
-        { key: "CounterTo", label: "CounterTo", sortable: true },
-        { key: "SubDuration", label: "SubDuration", sortable: true },
-        { key: "TotalDuration", label: "TotalDuration", sortable: true },
-        { key: "Language", label: "Language", sortable: true },
-        { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true },
-        { key: "fkOrganization", label: "fkOrganization", sortable: true },
-        { key: "Designation", label: "Designation", sortable: true },
-        { key: "fkCountry", label: "fkCountry", sortable: true },
-        { key: "fkState", label: "fkState", sortable: true },
-        { key: "fkCity", label: "fkCity", sortable: true },
-        { key: "Venue", label: "Venue", sortable: true },
-        { key: "fkGranth", label: "fkGranth", sortable: true },
-        { key: "Number", label: "Number", sortable: true },
-        { key: "Topic", label: "Topic", sortable: true },
-        { key: "SeriesName", label: "SeriesName", sortable: true },
-        { key: "SatsangStart", label: "SatsangStart", sortable: true },
-        { key: "SatsangEnd", label: "SatsangEnd", sortable: true },
-        { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true },
-        { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true },
-        { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true },
-        { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true },
-        { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true },
-        { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true },
-        { key: "Remarks", label: "Remarks", sortable: true },
-        { key: "IsStartPage", label: "IsStartPage", sortable: true },
-        { key: "EndPage", label: "EndPage", sortable: true },
-        { key: "IsInformal", label: "IsInformal", sortable: true },
-        { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true },
-        { key: "Guidance", label: "Guidance", sortable: true },
-        { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true },
-        { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true },
-        { key: "EventRefMLID", label: "EventRefMLID", sortable: true },
-        { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true },
-        { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true },
-        { key: "DubbingArtist", label: "DubbingArtist", sortable: true },
-        { key: "HasSubtitle", label: "HasSubtitle", sortable: true },
-        { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true },
-        { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true },
-        { key: "EditingType", label: "EditingType", sortable: true },
-        { key: "BhajanType", label: "BhajanType", sortable: true },
-        { key: "IsDubbed", label: "IsDubbed", sortable: true },
-        { key: "NumberSource", label: "NumberSource", sortable: true },
-        { key: "TopicSource", label: "TopicSource", sortable: true },
-        { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
-        { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
-        { key: "Synopsis", label: "Synopsis", sortable: true },
-        { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true },
-        { key: "Keywords", label: "Keywords", sortable: true },
-        { key: "Grading", label: "Grading", sortable: true },
-        { key: "Segment Category", label: "Segment Category", sortable: true },
-        { key: "Segment Duration", label: "Segment Duration", sortable: true },
-        { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true },
-      ]}
+              { key: "MLUniqueID", label: "MLUniqueID", sortable: true },
+              { key: "FootageSrNo", label: "FootageSrNo", sortable: true },
+              { key: "LogSerialNo", label: "LogSerialNo", sortable: true },
+              { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true },
+              { key: "ContentFrom", label: "ContentFrom", sortable: true },
+              { key: "ContentTo", label: "ContentTo", sortable: true },
+              { key: "TimeOfDay", label: "TimeOfDay", sortable: true },
+              { key: "fkOccasion", label: "fkOccasion", sortable: true },
+              { key: "EditingStatus", label: "EditingStatus", sortable: true },
+              { key: "FootageType", label: "FootageType", sortable: true },
+              { key: "VideoDistribution", label: "VideoDistribution", sortable: true },
+              { key: "Detail", label: "Detail", sortable: true },
+              { key: "SubDetail", label: "SubDetail", sortable: true },
+              { key: "CounterFrom", label: "CounterFrom", sortable: true },
+              { key: "CounterTo", label: "CounterTo", sortable: true },
+              { key: "SubDuration", label: "SubDuration", sortable: true },
+              { key: "TotalDuration", label: "TotalDuration", sortable: true },
+              { key: "Language", label: "Language", sortable: true },
+              { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true },
+              { key: "fkOrganization", label: "fkOrganization", sortable: true },
+              { key: "Designation", label: "Designation", sortable: true },
+              { key: "fkCountry", label: "fkCountry", sortable: true },
+              { key: "fkState", label: "fkState", sortable: true },
+              { key: "fkCity", label: "fkCity", sortable: true },
+              { key: "Venue", label: "Venue", sortable: true },
+              { key: "fkGranth", label: "fkGranth", sortable: true },
+              { key: "Number", label: "Number", sortable: true },
+              { key: "Topic", label: "Topic", sortable: true },
+              { key: "SeriesName", label: "SeriesName", sortable: true },
+              { key: "SatsangStart", label: "SatsangStart", sortable: true },
+              { key: "SatsangEnd", label: "SatsangEnd", sortable: true },
+              { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true },
+              { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true },
+              { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true },
+              { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true },
+              { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true },
+              { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true },
+              { key: "Remarks", label: "Remarks", sortable: true },
+              { key: "IsStartPage", label: "IsStartPage", sortable: true },
+              { key: "EndPage", label: "EndPage", sortable: true },
+              { key: "IsInformal", label: "IsInformal", sortable: true },
+              { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true },
+              { key: "Guidance", label: "Guidance", sortable: true },
+              { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true },
+              { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true },
+              { key: "EventRefMLID", label: "EventRefMLID", sortable: true },
+              { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true },
+              { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true },
+              { key: "DubbingArtist", label: "DubbingArtist", sortable: true },
+              { key: "HasSubtitle", label: "HasSubtitle", sortable: true },
+              { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true },
+              { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true },
+              { key: "EditingType", label: "EditingType", sortable: true },
+              { key: "BhajanType", label: "BhajanType", sortable: true },
+              { key: "IsDubbed", label: "IsDubbed", sortable: true },
+              { key: "NumberSource", label: "NumberSource", sortable: true },
+              { key: "TopicSource", label: "TopicSource", sortable: true },
+              { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+              { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
+              { key: "Synopsis", label: "Synopsis", sortable: true },
+              { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true },
+              { key: "Keywords", label: "Keywords", sortable: true },
+              { key: "Grading", label: "Grading", sortable: true },
+              { key: "Segment Category", label: "Segment Category", sortable: true },
+              { key: "Segment Duration", label: "Segment Duration", sortable: true },
+              { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true },
+            ]}
           />
         );
+
       case "digitalrecordings":
         return (
           <ClickUpListViewUpdated
@@ -190,7 +199,7 @@ export default function App() {
             onRowSelect={(row) => handleRowSelect(row, "digitalrecording")}
             filterConfigs={getFilterConfigs("digitalrecordings")}
             columns={[
-               { key: "fkEventCode", label: "fkEventCode", sortable: true },
+              { key: "fkEventCode", label: "fkEventCode", sortable: true },
               { key: "RecordingName", label: "RecordingName", sortable: true },
               { key: "RecordingCode", label: "RecordingCode", sortable: true },
               { key: "NoOfFiles", label: "NoOfFiles", sortable: true },
@@ -225,6 +234,7 @@ export default function App() {
             ]}
           />
         );
+
       case "aux":
         return (
           <ClickUpListViewUpdated
@@ -234,7 +244,7 @@ export default function App() {
             title="Aux File"
             filterConfigs={getFilterConfigs("auxfiles")}
             columns={[
-               { key: "new_auxid", label: "New aux id", sortable: true },
+              { key: "new_auxid", label: "New aux id", sortable: true },
               { key: "AuxCode", label: "AuxCode", sortable: true },
               { key: "AuxFileType", label: "AuxFileType", sortable: true },
               { key: "AuxLanguage", label: "AuxLanguage", sortable: true },
@@ -257,53 +267,66 @@ export default function App() {
             ]}
           />
         );
+
       default:
         return <Dashboard />;
     }
   };
-  
+
   // --- SPLIT SCREEN LAYOUT LOGIC ---
   const sidebarWidth = 384; // w-96 in pixels
   const cascadeOffset = 24; // How much each subsequent sidebar peeks out
-  
-  // Calculate the width of the container that will hold all visible sidebars
-  const sidebarContainerWidth = sidebarStack.length > 0
-    ? sidebarWidth + (sidebarStack.length - 1) * cascadeOffset
-    : 0;
+
+  // Calculate total sidebar stack width
+  const sidebarContainerWidth =
+    sidebarStack.length > 0
+      ? sidebarWidth + (sidebarStack.length - 1) * cascadeOffset
+      : 0;
 
   return (
-    <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
-      
-      {/* Flex container for the main content and the sidebars */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        <main className="flex-1 overflow-auto transition-all duration-300 ease-in-out">
-          <div key={activeView}>
-            {renderView()}
-          </div>
-        </main>
+    <AuthProvider>
+      <ProtectedRoute>
+        <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
+          {/* MAIN SIDEBAR */}
+          <Sidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
 
-        {/* Container for the sidebar stack. This container will grow and shrink. */}
-        <div
-          className="relative transition-all duration-300 ease-in-out flex-shrink-0"
-          style={{ width: `${sidebarContainerWidth}px` }}
-        >
-          {sidebarStack.map((item, index) => (
-            <DetailsSidebar
-              key={index}
-              isOpen={true}
-              onClose={index === 0 ? handleCloseAllSidebars : handlePopSidebar}
-              data={item.data}
-              type={item.type}
-              title={item.title}
-              onPushSidebar={handlePushSidebar}
-              zIndex={50 + index}
-              positionOffset={(sidebarStack.length - 1 - index) * cascadeOffset}
-            />
-          ))}
+          {/* MAIN CONTENT + STACKED SIDE PANELS */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* MAIN CONTENT */}
+            <main className="flex-1 overflow-auto transition-all duration-300 ease-in-out">
+              <DevelopmentBanner />
+              <div key={activeView}>{renderView()}</div>
+            </main>
+
+            {/* STACKED SIDE DETAILS */}
+            <div
+              className="relative transition-all duration-300 ease-in-out flex-shrink-0"
+              style={{ width: `${sidebarContainerWidth}px` }}
+            >
+              {sidebarStack.map((item, index) => (
+                <DetailsSidebar
+                  key={index}
+                  isOpen={true}
+                  onClose={
+                    index === 0 ? handleCloseSidebar : handlePopSidebar
+                  }
+                  data={item.data}
+                  type={item.type}
+                  title={item.title}
+                  onPushSidebar={handlePushSidebar}
+                  zIndex={100 + index}
+                  positionOffset={index * cascadeOffset}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </ProtectedRoute>
+    </AuthProvider>
   );
 }
