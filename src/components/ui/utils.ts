@@ -5,17 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// --- NEW: Function to get a consistent color for a string value ---
+// --- Function to get a consistent color for a string value ---
 const PALETTE = [
-  "#BDD8E9",
-  "#7BBDE8",
-  "#6EA2B3",
-  "#4E8EA2", 
-  "#49769F",
-  "#0A4174",
-  "#001D39",
-  
-
+  "#BDD8E9", // Light Blue
+  "#7BBDE8", // Sky Blue
+  "#6EA2B3", // Cadet Blue
+  "#4E8EA2", // Steel Blue
+  "#49769F", // Darker Steel Blue
+  "#0A4174", // Dark Blue
+  "#001D39", // Very Dark Blue
 ];
 
 // A simple hashing function to get a consistent index from a string
@@ -30,9 +28,11 @@ const stringToHash = (str: string): number => {
   return Math.abs(hash);
 };
 
-export const getColorForString = (value: string | null | undefined): string => {
+export const getColorForString = (
+  value: string | null | undefined
+): string => {
   if (!value) {
-    return "#E2E8F0"; // A neutral default color for empty values
+    return "#E2E8F0"; // A neutral default color for empty values (slate-200)
   }
   const hash = stringToHash(value);
   const index = hash % PALETTE.length;

@@ -193,7 +193,7 @@ export function ClickUpListView({
               </div>
             </TableHead>
           ))}
-          <TableHead className="w-16">Actions</TableHead>
+         
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -218,33 +218,7 @@ export function ClickUpListView({
                   </TableCell>
                 ))}
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-8 h-8 p-0">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {onEdit && (
-                        <DropdownMenuItem onClick={() => onEdit(item)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-                      {onDelete && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => onDelete(item)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                 
                 </TableCell>
               </TableRow>
             ))}
@@ -302,10 +276,7 @@ export function ClickUpListView({
               </TabsList>
 
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="w-4 h-4" />
-                  Export
-                </Button>
+                
                 {onAdd && (
                   <Button size="sm" onClick={onAdd} className="gap-2">
                     <Plus className="w-4 h-4" />

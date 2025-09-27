@@ -1,10 +1,10 @@
 // SIDEBAR SLIDING CHANGE: Added ChevronLeft and ChevronRight icons for toggle button
 import { Home, Database, Map, Users, Calendar, FileText, Bot, Settings, LogOut, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
-import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Separator } from "./ui/separator";
 // GOOGLE AUTH INTEGRATION: Added authentication context for user management and logout
 import { useAuth } from "../contexts/AuthContext";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 
 // SIDEBAR SLIDING CHANGE: Added collapsed and onToggleCollapse props for sliding functionality
 interface SidebarProps {
@@ -15,7 +15,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse }: SidebarProps) {
-  // GOOGLE AUTH INTEGRATION: Added authentication hooks for user info and logout
   const { user, logout } = useAuth();
   
   const menuItems = [
@@ -75,27 +74,27 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
         </div>
         
         {/* GOOGLE AUTH INTEGRATION: Updated user profile section to show authenticated user info */}
-        {!collapsed && (
+        {!collapsed && user && (
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={user?.picture} />
+              <AvatarImage src={user.picture} />
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">
-                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'}
+                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.name || 'User'}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email || 'No email'}</p>
+              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <p className="text-xs text-slate-400 truncate">{user.email}</p>
             </div>
           </div>
         )}
         {/* SIDEBAR SLIDING CHANGE: Show only avatar when collapsed, centered */}
-        {collapsed && (
+        {collapsed && user && (
           <div className="flex justify-center">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={user?.picture} />
+              <AvatarImage src={user.picture} />
               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">
-                {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'}
+                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
               </AvatarFallback>
             </Avatar>
           </div>

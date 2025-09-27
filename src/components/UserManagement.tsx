@@ -639,8 +639,38 @@ export function UserManagement({
       )
     },
     {
+    key: "viewAccess",
+    label: "View Access",
+    width: 200,
+    render: (value: any, user: User) => {
+      // Map roles to access levels
+      const roleAccessMap: Record<string, string> = {
+        Owner: "Full Access",
+        Admin: "Full Access",
+        Member: "Limited Access",
+        Guest: "View Only",
+      };
+
+      // Get the access level based on the user's role
+      const accessLevel = roleAccessMap[user.role] || "Unknown Access";
+
+      return (
+        <div>
+          {user.permissions.map((permission) => (
+            <div key={permission.resource}>
+              {permission.resource.charAt(0).toUpperCase() +
+              permission.resource.slice(1)}{" "}
+            View ({accessLevel})
+            </div>
+          ))}
+        </div>
+      );
+    },
+  },
+  
+    {
       key: "actions",
-      label: "",
+      label: "Actions",
       width: 50,
       render: (value: any, user: User) => (
        <DropdownMenu>
@@ -798,303 +828,145 @@ export function UserManagement({
    * User Invitation Component
    */
   const UserInviteForm = () => {
-    const [inviteData, setInviteData] = useState<UserInvitation>({
-      email: "",
-      role: "Member",
-      teams: [],
-      message: "",
-      expiresIn: 7
-    });
+  const [inviteData, setInviteData] = useState<UserInvitation>({
+    email: "",
+    role: "Member",
+    teams: [],
+    message: "",
+    expiresIn: 7,
+  });
 
-    const handleInvite = () => {
-      // In a real app, this would send an API request
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: inviteData.email.split('@')[0],
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Email validation regex
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const handleInvite = async () => {
+    console.log("Send Invitation button clicked"); // Debugging
+    if (!emailPattern.test(inviteData.email)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+
+    setEmailError(null);
+
+    try {
+      const requestBody = {
         email: inviteData.email,
         role: inviteData.role,
-        status: "Invited",
-        joinedDate: new Date().toLocaleDateString('en-US', { 
-          day: '2-digit', 
-          month: 'short', 
-          year: 'numeric'
-        }),
-        lastActive: "Never",
-        lastActiveDate: new Date(),
-        permissions: [],
         teams: inviteData.teams,
-        twoFactorEnabled: false,
-        invitedBy: "Current User" // In real app, this would be the current user's name
+        message: inviteData.message,
+        appLink: "https://your-app-link.com", // Replace with your app link
       };
 
-      setUsers([...users, newUser]);
-      setIsInviteDialogOpen(false);
-      setInviteData({ email: "", role: "Member", teams: [], message: "", expiresIn: 7 });
-      toast.success(`Invitation sent to ${inviteData.email}`);
-    };
+      console.log("Request body:", requestBody); // Debugging
 
-    return (
-      <div className="space-y-6">
-       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-  <Label htmlFor="email">Email Address *</Label>
-  <Input
-    id="email"
-    type="email"
-    value={inviteData.email}
-    onChange={(e) =>
-      setInviteData({ ...inviteData, email: e.target.value })
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/send-invitation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("API Response:", response); // Debugging
+
+      if (response.ok) {
+        toast.success(`Invitation sent to ${inviteData.email}`);
+        setInviteData({
+          email: "",
+          role: "Member",
+          teams: [],
+          message: "",
+          expiresIn: 7,
+        });
+        setIsInviteDialogOpen(false);
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to send invitation: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+      toast.error("An error occurred while sending the invitation.");
     }
-    placeholder="Enter email address"
-    style={{
-      backgroundColor: "rgba(15,23,42,0.5)", // bg-slate-900/50
-      border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
-      color: "#f1f5f9", // text-slate-100
-      padding: "0.5rem 0.75rem",
-      borderRadius: "0.375rem",
-    }}
-  />
-</div>
-
-
-       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-  <Label htmlFor="role">Role *</Label>
-  <Select
-    value={inviteData.role}
-    onValueChange={(value: any) =>
-      setInviteData({ ...inviteData, role: value })
-    }
-  >
-    <SelectTrigger
-      style={{
-        backgroundColor: "rgba(15,23,42,0.5)", // bg-slate-900/50
-        border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
-        color: "#f1f5f9", // text-slate-100
-        padding: "0.5rem 0.75rem",
-        borderRadius: "0.375rem",
-      }}
-    >
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent
-      style={{
-        backgroundColor: "rgba(30,41,59,0.95)", // bg-slate-800/95
-        backdropFilter: "blur(12px)", // backdrop-blur-xl
-        border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
-        borderRadius: "0.375rem",
-        padding: "0.25rem",
-      }}
-    >
-      <SelectItem
-        value="Guest"
-        style={{
-          color: "#f1f5f9", // text-slate-100
-          padding: "0.5rem",
-          borderRadius: "0.25rem",
-          cursor: "pointer",
-        }}
-        onMouseOver={(e) =>
-          (e.currentTarget.style.backgroundColor = "rgba(51,65,85,0.5)") // hover:bg-slate-700/50
-        }
-        onMouseOut={(e) =>
-          (e.currentTarget.style.backgroundColor = "transparent")
-        }
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
-        >
-          <Eye style={{ width: "1rem", height: "1rem", color: "#9ca3af" }} />{" "}
-          {/* text-gray-400 */}
-          Guest - View only access
-        </div>
-              </SelectItem>
-             <SelectItem
-  value="Member"
-  style={{
-    color: "#f1f5f9", // text-slate-100
-    padding: "0.5rem",
-    borderRadius: "0.25rem",
-    cursor: "pointer",
-  }}
-  onMouseOver={(e) =>
-    (e.currentTarget.style.backgroundColor = "rgba(51,65,85,0.5)") // hover:bg-slate-700/50
-  }
-  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
->
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "0.5rem",
-    }}
-  >
-    <Users style={{ width: "1rem", height: "1rem", color: "#4ade80" }} />{" "}
-    {/* text-green-400 */}
-    Member - Standard access
-  </div>
-</SelectItem>
-
-<SelectItem
-  value="Admin"
-  style={{
-    color: "#f1f5f9", // text-slate-100
-    padding: "0.5rem",
-    borderRadius: "0.25rem",
-    cursor: "pointer",
-  }}
-  onMouseOver={(e) =>
-    (e.currentTarget.style.backgroundColor = "rgba(51,65,85,0.5)")
-  }
-  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
->
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "0.5rem",
-    }}
-  >
-    <Shield style={{ width: "1rem", height: "1rem", color: "#60a5fa" }} />{" "}
-    {/* text-blue-400 */}
-    Admin - Advanced access
-  </div>
-</SelectItem>
-
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Teams</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {availableTeams.map((team) => (
-              <div key={team} className="flex items-center space-x-2">
-                <Checkbox
-                  id={team}
-                  checked={inviteData.teams.includes(team)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setInviteData({ 
-                        ...inviteData, 
-                        teams: [...inviteData.teams, team] 
-                      });
-                    } else {
-                      setInviteData({ 
-                        ...inviteData, 
-                        teams: inviteData.teams.filter(t => t !== team) 
-                      });
-                    }
-                  }}
-                />
-                <Label htmlFor={team} className="text-sm text-slate-200">{team}</Label>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="message">Personal Message (Optional)</Label>
-         <Textarea
-  id="message"
-  value={inviteData.message}
-  onChange={(e) =>
-    setInviteData({ ...inviteData, message: e.target.value })
-  }
-  placeholder="Add a personal message to the invitation..."
-  rows={3}
-  style={{
-    backgroundColor: "rgba(15,23,42,0.5)", // bg-slate-900/50
-    border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
-    color: "#f1f5f9", // text-slate-100
-    borderRadius: "0.375rem", // same as rounded-md
-    padding: "0.5rem 0.75rem",
-    fontSize: "0.875rem",
-    lineHeight: "1.25rem",
-    width: "100%",
-    resize: "vertical",
-  }}
-/>
-
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="expires">Invitation Expires In</Label>
-         <Select
-  value={inviteData.expiresIn.toString()}
-  onValueChange={(value) =>
-    setInviteData({ ...inviteData, expiresIn: parseInt(value) })
-  }
->
-  <SelectTrigger
-    style={{
-      backgroundColor: "rgba(15,23,42,0.5)", // bg-slate-900/50
-      border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
-      color: "#f1f5f9", // text-slate-100
-      borderRadius: "0.375rem",
-      padding: "0.25rem 0.5rem",
-      fontSize: "0.875rem",
-      minWidth: "8rem",
-      cursor: "pointer",
-    }}
-  >
-    <SelectValue />
-  </SelectTrigger>
-  <SelectContent
-    style={{
-      backgroundColor: "rgba(30,41,59,0.95)", // bg-slate-800/95
-      backdropFilter: "blur(10px)", // backdrop-blur-xl
-      border: "1px solid rgba(51,65,85,0.5)",
-      borderRadius: "0.375rem",
-      color: "#f1f5f9",
-      maxHeight: "12rem",
-      overflowY: "auto",
-    }}
-  >
-    {[
-      { value: "1", label: "1 day" },
-      { value: "3", label: "3 days" },
-      { value: "7", label: "1 week" },
-      { value: "14", label: "2 weeks" },
-      { value: "30", label: "1 month" },
-    ].map((option) => (
-      <SelectItem
-        key={option.value}
-        value={option.value}
-        style={{
-          color: "#f1f5f9",
-          padding: "0.25rem 0.5rem",
-          cursor: "pointer",
-        }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = "rgba(51,65,85,0.5)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.backgroundColor = "transparent")
-        }
-      >
-        {option.label}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-
-        </div>
-
-        <div className="flex gap-3 pt-4">
-          <Button onClick={handleInvite} disabled={!inviteData.email} className="flex-1">
-            <Send className="w-4 h-4 mr-2" />
-            Send Invitation
-          </Button>
-          <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
   };
+
+  return (
+    <div className="space-y-6">
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <Label htmlFor="email">Email Address *</Label>
+        <Input
+          id="email"
+          type="email"
+          value={inviteData.email}
+          onChange={(e) =>
+            setInviteData({ ...inviteData, email: e.target.value })
+          }
+          placeholder="Enter email address"
+          style={{
+            backgroundColor: "rgba(15,23,42,0.5)", // bg-slate-900/50
+            border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
+            color: "#f1f5f9", // text-slate-100
+            padding: "0.5rem 0.75rem",
+            borderRadius: "0.375rem",
+          }}
+        />
+        {emailError && (
+          <span className="text-red-500 text-sm">{emailError}</span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <Label htmlFor="role">Role *</Label>
+        <Select
+          value={inviteData.role}
+          onValueChange={(value: any) =>
+            setInviteData({ ...inviteData, role: value })
+          }
+        >
+          <SelectTrigger
+            style={{
+              backgroundColor: "rgba(15,23,42,0.5)", // bg-slate-900/50
+              border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
+              color: "#f1f5f9", // text-slate-100
+              padding: "0.5rem 0.75rem",
+              borderRadius: "0.375rem",
+            }}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            style={{
+              backgroundColor: "rgba(30,41,59,0.95)", // bg-slate-800/95
+              backdropFilter: "blur(12px)", // backdrop-blur-xl
+              border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
+              borderRadius: "0.375rem",
+              padding: "0.25rem",
+            }}
+          >
+            <SelectItem value="Guest">Guest</SelectItem>
+            <SelectItem value="Member">Member</SelectItem>
+            <SelectItem value="Admin">Admin</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Button
+          onClick={handleInvite}
+          disabled={!inviteData.email}
+          className="flex-1"
+        >
+          <Send className="w-4 h-4 mr-2" />
+          Send Invitation
+        </Button>
+        <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+};
 
   /**
    * User Profile Component
@@ -1698,14 +1570,7 @@ export function UserManagement({
         onRowSelect={handleRowSelect}
         filterConfigs={getFilterConfigs()}
         hideHeader={true}
-        customActions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="w-4 h-4" />
-              Export
-            </Button>
-          </div>
-        }
+        
       />
 
       {/* Invite User Dialog */}
