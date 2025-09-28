@@ -20,7 +20,7 @@
  */
 
 import { useState, useMemo, useEffect } from "react";
-import { ClickUpListView } from "./ClickUpListView";
+import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -336,11 +336,11 @@ interface UserManagementProps {
 }
 
 export function UserManagement({ 
-  data = mockUsers, 
+  //data = mockUsers, 
   onRowSelect, 
   filterConfigs = [] 
 }: UserManagementProps) {
-  const [users, setUsers] = useState<User[]>(data);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
@@ -1295,10 +1295,14 @@ export function UserManagement({
     );
   };
 
-  // Update users when data prop changes
+
+  // Fetch users from API on mount
   useEffect(() => {
-    setUsers(data);
-  }, [data]);
+    fetch("http://localhost:5000/api/users") // Change to your backend URL
+      .then(res => res.json())
+      .then(setUsers)
+      .catch(err => console.error("Failed to fetch users from Google Sheets", err));
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -1562,10 +1566,10 @@ export function UserManagement({
 
 
       {/* User Table */}
-      <ClickUpListView
+      <ClickUpListViewUpdated
         viewType="users"
         title=""
-        data={filteredUsers}
+        data={users}
         columns={columns}
         onRowSelect={handleRowSelect}
         filterConfigs={getFilterConfigs()}
