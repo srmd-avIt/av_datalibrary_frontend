@@ -189,7 +189,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   apiEndpoint: string;
   filterConfigs?: FilterConfig[];
   views?: ViewConfig[];
-  onRowSelect?: (item: ListItem) => void;
+  onRowSelect?: (item: ListItem) => void; 
   idKey: string;
 }) {
   // --- State ---
