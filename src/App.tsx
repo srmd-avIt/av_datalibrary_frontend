@@ -75,6 +75,186 @@ const VIEW_CONFIGS: Record<string, any> = {
         { key: "new_auxid", label: "New aux id", sortable: true }, { key: "AuxCode", label: "AuxCode", sortable: true }, { key: "AuxFileType", label: "AuxFileType", sortable: true }, { key: "AuxLanguage", label: "AuxLanguage", sortable: true }, { key: "fkMLID", label: "fkMLID", sortable: true }, { key: "AuxTopic", label: "AuxTopic", sortable: true }, { key: "NotesRemarks", label: "NotesRemarks", sortable: true }, { key: "GoogleDriveLink", label: "GoogleDriveLink", sortable: true }, { key: "NoOfFiles", label: "NoOfFiles", sortable: true }, { key: "FilesizeBytes", label: "FilesizeBytes", sortable: true }, { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true }, { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true }, { key: "ProjFileCode", label: "ProjFileCode", sortable: true }, { key: "ProjFileSize", label: "ProjFileSize", sortable: true }, { key: "ProjFileName", label: "ProjFileName", sortable: true }, { key: "SRTLink", label: "SRTLink", sortable: true }, { key: "CreatedOn", label: "CreatedOn", sortable: true }, { key: "CreatedBy", label: "CreatedBy", sortable: true }, { key: "ModifiedOn", label: "ModifiedOn", sortable: true }, { key: "ModifiedBy", label: "ModifiedBy", sortable: true },
     ],
   },
+  audio: {
+    title: "Audio",
+    apiEndpoint: "/audio",
+    idKey: "AID",
+    detailsType: "audio",
+    columns: [
+      { key: "AID", label: "Audio ID", sortable: true },
+      { key: "AudioList", label: "AudioList", sortable: true },
+      { key: "Distribution", label: "Distribution", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+     
+    ],
+  },
+  bhajanType: {
+    title: "Bhajan Type",
+    apiEndpoint: "/bhajan-type",
+    idKey: "BTID",
+    detailsType: "bhajanType",
+    columns: [
+      { key: "BTID", label: "BTID", sortable: true },
+      { key: "BhajanName", label: "BhajanName", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  digitalMasterCategory: {
+    title: "Digital Master Category",
+    apiEndpoint: "/digital-master-category",
+    idKey: "DMCID",
+    detailsType: "digitalMasterCategory",
+    columns: [
+      { key: "DMCID", label: "DMCID", sortable: true },
+      { key: "DMCategory_name", label: "DMCategory_name", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  distributionLabel: {
+    title: "Distribution Label",
+    apiEndpoint: "/distribution-label",
+    idKey: "LabelID",
+    detailsType: "distributionLabel",
+    columns: [
+      { key: "LabelID", label: "Label ID", sortable: true },
+      { key: "LabelName", label: "Label Name", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  editingType: {
+    title: "Editing Type",
+    apiEndpoint: "/editing-type",
+    idKey: "EdID",
+    detailsType: "editingType",
+    columns: [
+      { key: "EdID", label: "EdID", sortable: true },
+      { key: "EdType", label: "EdType", sortable: true },
+      { key: "AudioVideo", label: "AudioVideo", sortable: true },
+    ],
+  },
+  eventCategory: {
+    title: "Event Category",
+    apiEndpoint: "/event-category",
+    idKey: "EventCategoryID",
+    detailsType: "eventCategory",
+    columns: [
+      { key: "EventCategoryID", label: "EventCategoryID", sortable: true },
+      { key: "EventCategory", label: "EventCategory", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  footageType: {
+    title: "Footage Type",
+    apiEndpoint: "/footage-type",
+    idKey: "FootageID",
+    detailsType: "footageType",
+    columns: [
+      { key: "FootageID", label: "Footage ID", sortable: true },
+      { key: "FootageTypeList", label: "FootageTypeList", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  formatType: {
+    title: "Format Type",
+    apiEndpoint: "/format-type",
+    idKey: "FTID",
+    detailsType: "formatType",
+    columns: [
+      { key: "FTID", label: "FTID", sortable: true },
+      { key: "Type", label: "Type", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  granths: {
+    title: "Granths",
+    apiEndpoint: "/granths",
+    idKey: "ID",
+    detailsType: "granths",
+    columns: [
+      { key: "ID", label: "ID", sortable: true },
+      { key: "Name", label: "Name", sortable: true }
+      
+    ],
+  },
+  language: {
+    title: "Language",
+    apiEndpoint: "/language",
+    idKey: "STID",
+    detailsType: "language",
+    columns: [
+      { key: "STID", label: "STID", sortable: true },
+      { key: "TitleLanguage", label: "TitleLanguage", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  newEventCategory: {
+    title: "New Event Category",
+    apiEndpoint: "/new-event-category",
+    idKey: "SrNo",
+    detailsType: "newEventCategory",
+    columns: [
+      { key: "SrNo", label: "SrNo", sortable: true },
+      { key: "NewEventCategoryName", label: "NewEventCategoryName", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "MARK_DISCARD", label: "MARK_DISCARD", sortable: true },
+    ],
+  },
+  newCities: {
+    title: "New Cities",
+    apiEndpoint: "/new-cities",
+    idKey: "CityID",
+    detailsType: "newCities",
+    columns: [
+      { key: "CityID", label: "City ID", sortable: true },
+      { key: "City", label: "City", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true }
+    
+    ],
+  },
+  newCountries: {
+    title: "New Countries",
+    apiEndpoint: "/new-countries",
+    idKey: "CountryID",
+    detailsType: "newCountries",
+    columns: [
+      { key: "CountryID", label: "Country ID", sortable: true },
+      { key: "Country", label: "Country", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  newStates: {
+    title: "New States",
+    apiEndpoint: "/new-states",
+    idKey: "StateID",
+    detailsType: "newStates",
+    columns: [
+      { key: "StateID", label: "State ID", sortable: true },
+      { key: "State", label: "State", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  occasions: {
+    title: "Occasions",
+    apiEndpoint: "/occasions",
+    idKey: "OccasionID",
+    detailsType: "occasions",
+    columns: [
+      { key: "OccasionID", label: "Occasion ID", sortable: true },
+      { key: "Occasion", label: "Occasion", sortable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+    ],
+  },
+  
+  topicNumberSource: {
+    title: "Topic Number Source",
+    apiEndpoint: "/topic-number-source",
+    idKey: "TNID",
+    detailsType: "topicNumberSource",
+    columns: [
+      { key: "TNID", label: "TNID", sortable: true },
+      { key: "TNName", label: "TNName", sortable: true }
+    ],
+  },
 };
 
 type SidebarStackItem = {

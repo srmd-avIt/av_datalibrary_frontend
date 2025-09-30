@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import {
   X,
   ExternalLink,
@@ -13,13 +14,13 @@ import {
   AlertTriangle,
   ChevronRight,
   FileText,
+  Lock,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { motion } from "framer-motion";
-import { AnimatePresence } from "framer-motion";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
@@ -282,6 +283,16 @@ export function DetailsSidebar({
   zIndex,
   positionOffset,
 }: DetailsSidebarProps) {
+  const { user } = useAuth();
+
+  const hasAccess = useMemo(() => {
+    return (resourceName: string): boolean => {
+      if (!user) return false;
+      if (user.role === 'Admin' || user.role === 'Owner') return true;
+      return user.permissions.some(p => p.resource === resourceName);
+    }
+  }, [user]);
+
   if (!isOpen || !data) return null;
 
   const renderContent = () => {
@@ -306,20 +317,26 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Event Code</span>
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-                    onClick={() =>
-                      onPushSidebar({
-                        type: "digitalrecording_list",
-                        data: { eventCode: data.EventCode },
-                        title: `Recordings for ${data.EventCode}`,
-                      })
-                    }
-                  >
-                    {data.EventCode}
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
+                  {hasAccess("Digital Recordings") ? (
+                    <Button
+                      variant="link"
+                      className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+                      onClick={() =>
+                        onPushSidebar({
+                          type: "digitalrecording_list",
+                          data: { eventCode: data.EventCode },
+                          title: `Recordings for ${data.EventCode}`,
+                        })
+                      }
+                    >
+                      {data.EventCode}
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  ) : (
+                    <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+                      <Lock className="w-3 h-3"/> {data.EventCode}
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Year</span>
@@ -405,7 +422,7 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Event Code</span>
-                  {data.fkEventCode ? (
+                  {data.fkEventCode && hasAccess("Events") ? (
                     <DrilldownButton
                       id={data.fkEventCode}
                       apiEndpoint="/events"
@@ -416,15 +433,15 @@ export function DetailsSidebar({
                       {data.fkEventCode}
                     </DrilldownButton>
                   ) : (
-                    <span className="font-medium">N/A</span>
+                     <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+                       {data.fkEventCode ? <><Lock className="w-3 h-3"/> {data.fkEventCode}</> : 'N/A'}
+                    </span>
                   )}
                 </div>
-
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">RecordingName</span>
                   <span className="font-medium">{data.RecordingName || "N/A"}</span>
                 </div>
-
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
                   <Badge variant="secondary">{data.Duration || "N/A"}</Badge>
@@ -470,14 +487,16 @@ export function DetailsSidebar({
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg px-2">Related Media Logs</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                <MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />
-              </CardContent>
-            </Card>
+            {hasAccess("Media Log") && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg px-2">Related Media Logs</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 
@@ -507,7 +526,7 @@ export function DetailsSidebar({
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Recording Code</span>
-                  {data.fkDigitalRecordingCode ? (
+                  {data.fkDigitalRecordingCode && hasAccess("Digital Recordings") ? (
                     <DrilldownButton
                       id={data.fkDigitalRecordingCode}
                       apiEndpoint="/digitalrecordings"
@@ -518,7 +537,9 @@ export function DetailsSidebar({
                       {data.fkDigitalRecordingCode}
                     </DrilldownButton>
                   ) : (
-                    <Badge variant="secondary">N/A</Badge>
+                    <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+                       {data.fkDigitalRecordingCode ? <><Lock className="w-3 h-3"/> {data.fkDigitalRecordingCode}</> : 'N/A'}
+                    </span>
                   )}
                 </div>
                 <div className="flex justify-between">
@@ -576,23 +597,30 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-start gap-4">
                   <span className="text-muted-foreground flex-shrink-0">fkMLID</span>
-                  {data.fkMLID ? (
+                  {data.fkMLID && hasAccess("Media Log") ? (
                     <Button
                       variant="link"
                       className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-                      onClick={() =>
-                        onPushSidebar({
-                          type: "medialog",
-                          data: { MLUniqueID: data.fkMLID }, // Pass fkMLID as MLUniqueID
-                          title: `Media Log Details for ${data.fkMLID}`,
-                        })
-                      }
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`${API_BASE_URL}/newmedialog/${data.fkMLID}`);
+                          if (!response.ok) throw new Error("Media Log not found");
+                          const logData = await response.json();
+                          onPushSidebar({
+                            type: "medialog",
+                            data: logData,
+                            title: `Media Log ${data.fkMLID}`,
+                          });
+                        } catch (e) { console.error("Failed to fetch media log:", e); }
+                      }}
                     >
                       {data.fkMLID}
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   ) : (
-                    <span className="font-medium">N/A</span>
+                    <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+                       {data.fkMLID ? <><Lock className="w-3 h-3"/> {data.fkMLID}</> : 'N/A'}
+                    </span>
                   )}
                 </div>
                 <div className="flex justify-between">
@@ -616,11 +644,7 @@ export function DetailsSidebar({
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Google Drive</span>
                     <Button size="sm" variant="ghost" asChild>
-                      <a
-                        href={data.GoogleDriveLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a href={data.GoogleDriveLink} target="_blank" rel="noopener noreferrer">
                         Open Link <ExternalLink className="w-3 h-3 ml-2" />
                       </a>
                     </Button>
@@ -630,11 +654,7 @@ export function DetailsSidebar({
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">SRT Link</span>
                     <Button size="sm" variant="ghost" asChild>
-                      <a
-                        href={data.SRTLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a href={data.SRTLink} target="_blank" rel="noopener noreferrer">
                         Open Link <ExternalLink className="w-3 h-3 ml-2" />
                       </a>
                     </Button>
