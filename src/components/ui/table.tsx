@@ -75,8 +75,8 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "text-muted-foreground h-12 px-6 py-4 text-center align-middle tracking-wide uppercase text-xs whitespace-nowrap border-b border-border/50 bg-muted/20 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:pl-8 [&:last-child]:pr-8 uppercase",
-        className,
+        "text-muted-foreground h-12 px-6 py-4 text-center align-middle tracking-wide uppercase text-xs whitespace-nowrap border-b border-border/50 bg-muted/20 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] [&:first-child]:pl-8 [&:last-child]:pr-8",
+        className // Removed duplicate "uppercase"
       )}
       {...props}
     />

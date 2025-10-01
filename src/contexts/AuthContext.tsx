@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from "sonner";
+import Swal from 'sweetalert2';
 
 // Define the shape of a single permission
 interface UserPermission {
@@ -57,18 +58,38 @@ export const AuthProvider = ({ children }) => {
   // The core function to validate the user against YOUR backend.
   const validateAndSetUserSession = async (accessToken: string, isLogin: boolean = false) => {
     try {
+      // Step 1: Get user profile from Google
       const googleProfile = await fetchGoogleUserProfile(accessToken);
 
+      // Step 2: Check if the user exists in YOUR backend system
       const apiUrl = `${import.meta.env.VITE_API_URL}/users/by-email/${googleProfile.email}`;
-      const backendResponse = await axios.get(apiUrl);
+      const backendResponse = await fetch(apiUrl);
 
-      const appUserData = backendResponse.data;
+      if (!backendResponse.ok) {
+        const errorData = await backendResponse.json();
 
+        if (backendResponse.status === 404) {
+          // Show warning popup if user is not found
+          Swal.fire({
+            icon: 'warning',
+            title: 'User Not Found',
+            text: errorData.error || 'User not found in application registry. Please contact admin.',
+          });
+          throw new Error("Access Denied: User not found in the system.");
+        } else {
+          throw new Error(errorData.error || 'An unknown error occurred.');
+        }
+      }
+
+      const appUserData = await backendResponse.json();
+
+      // Step 3: Check for valid data from your backend
       if (!appUserData || !appUserData.role) {
         toast.error("Authorization failed: User data is incomplete.");
         throw new Error("Authorization failed: User data is incomplete.");
       }
 
+      // Step 4: Create the final user object and set the session
       const finalUser: User = {
         id: appUserData.id,
         email: googleProfile.email,
@@ -82,47 +103,28 @@ export const AuthProvider = ({ children }) => {
       setUser(finalUser);
       localStorage.setItem("google-token", accessToken);
 
-      // Only update lastActive on an explicit login, not on a session restore.
+      // Step 5: Update last active status on explicit login
       if (isLogin) {
         try {
           await axios.put(`${import.meta.env.VITE_API_URL}/users/${finalUser.id}/last-active`, {
-              lastActive: new Date().toISOString()
+            lastActive: new Date().toISOString(),
           });
           console.log(`Updated last active for user ${finalUser.id}`);
         } catch (updateError) {
           console.warn("Could not update last active status:", updateError);
         }
       }
-
     } catch (error) {
+      console.error('Login error:', error.message);
+      Swal.fire({
+        icon: 'error',
+         title: "Login Failed",
+        text: "User not found. Please contact the admin for access.",
+        
+      });
+
+      // Always log out on any failure in the validation process
       logout();
-      if (axios.isAxiosError(error)) {
-        // ✅ THIS IS THE MODIFIED SECTION
-        if (error.response?.status === 404) {
-          // Show a more helpful, persistent warning popup with an action button
-          toast.warning('Access Denied', {
-            description: 'Your email is not registered in our system. Please contact the administrator to request access.',
-            // Keep the toast on screen until the user dismisses it
-            duration: Infinity, 
-            action: {
-              label: 'Contact Admin',
-              onClick: () => {
-                // IMPORTANT: Replace with your actual admin's email address
-                window.location.href = 'mailto:admin@example.com?subject=App Access Request';
-              }
-            },
-          });
-          // Still throw the error to stop the login process
-          throw new Error("Access Denied: Your account is not authorized for this application.");
-        } else {
-          // Keep the original error for other network/server issues
-          toast.error("Login failed: Could not connect to the authentication service.");
-          throw new Error("Login failed: Could not connect to the authentication service.");
-        }
-      }
-      // Fallback for non-network errors
-      toast.error("An unexpected error occurred during login.");
-      throw error;
     }
   };
   
@@ -131,7 +133,6 @@ export const AuthProvider = ({ children }) => {
     const storedToken = localStorage.getItem('google-token');
     if (storedToken) {
       console.log("Found stored token. Attempting to restore session...");
-      // `isLogin` is false here, so we don't update lastActive on page refresh
       validateAndSetUserSession(storedToken, false)
         .catch((err) => {
           // We don't show a toast on session restore failure, it's a silent process.
@@ -147,11 +148,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (accessToken: string) => {
     setLoading(true);
     try {
-      // `isLogin` is true here, triggering the lastActive update
       await validateAndSetUserSession(accessToken, true);
     } catch (error) {
-      // The error toast is now fully handled inside validateAndSetUserSession,
-      // but we still throw to let the caller know the login failed.
+      // The error toast is now fully handled inside validateAndSetUserSession.
+      // We re-throw the error so the calling component (GoogleLoginButton) knows the login failed
+      // and can stop its loading spinner.
       throw error;
     } finally {
       setLoading(false);
@@ -175,4 +176,35 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+// Helper function to handle Axios errors
+const handleAxiosError = (error: any) => {
+  if (axios.isAxiosError(error)) {
+    // Check if the error is a '404 Not Found' from YOUR backend API
+    if (error.response?.status === 404) {
+      // Show a helpful, persistent warning popup with an action button
+      toast.warning('Access Denied', {
+        description: 'Your email is not registered in our system. Please contact the administrator to request access.',
+        // Keep the toast on screen until the user dismisses it
+        duration: Infinity,
+        action: {
+          label: 'Contact Admin',
+          onClick: () => {
+            // IMPORTANT: Replace with your actual admin's email address
+            window.location.href = 'mailto:admin@example.com?subject=App Access Request';
+          },
+        },
+      });
+      // Still throw an error to stop the login process and inform the caller
+      throw new Error("Access Denied: User not found in the system.");
+    } else {
+      // Handle other errors
+      toast.error("Login failed: Could not connect to the authentication service.");
+      throw new Error("Login failed: Could not connect to the authentication service.");
+    }
+  }
+  // Fallback for non-Axios or unexpected errors
+  toast.error("An unexpected error occurred during login.");
+  throw error;
 };

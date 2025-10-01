@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -28,6 +28,10 @@ interface DraggableResizableTableProps {
   groupedData: Record<string, ListItem[]>;
   activeGroupBy?: string;
   idKey?: string;
+   // --- NEW PROPS for column freezing ---
+  frozenColumnKey: string | null;
+  columnOrder: string[];
+  columnSizing: Record<string, number>;
 }
 
 const ITEM_TYPE = "COLUMN";
@@ -46,6 +50,10 @@ interface DraggableHeaderProps {
   getSortIcon: (columnKey: string) => React.ReactNode;
   width: number;
   onResize: (columnKey: string, width: number) => void;
+  // --- NEW PROPS for applying sticky styles ---
+  isFrozen: boolean;
+  isLastFrozen: boolean;
+  leftOffset: number;
 }
 
 function DraggableHeader({
@@ -56,6 +64,8 @@ function DraggableHeader({
   getSortIcon,
   width,
   onResize,
+// --- DESTRUCTURE NEW PROPS ---
+  isFrozen, isLastFrozen, leftOffset,
 }: DraggableHeaderProps) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -122,27 +132,26 @@ function DraggableHeader({
   // Connect drag and drop
   drag(drop(ref));
 
-  const opacity = isDragging ? 0.4 : 1;
+// --- NEW: Dynamic style object for freezing ---
+const headerStyle: React.CSSProperties = {
+  opacity: isDragging ? 0.4 : 1,
+  width: `${width}px`,
+  minWidth: `${width}px`,
+  position: isFrozen ? "sticky" : undefined,
+  left: isFrozen ? leftOffset : undefined,
+  zIndex: isFrozen ? 20 : undefined,
+  background: isFrozen ? "hsl(var(--muted))" : undefined, // fully opaque
+  borderRight: isFrozen && isLastFrozen ? "2px solid hsl(var(--border))" : undefined,
+  boxShadow: isFrozen && isLastFrozen ? "2px 0 0 hsl(var(--border))" : undefined,
+};
+
+
 
   return (
-    <th
+  <th
       ref={ref}
-      style={{ opacity, width: `${width}px`, minWidth: `${width}px` }}
-      className={cn(
-        // ENHANCED TABLE STYLING: Professional ClickUp-style headers with better padding (px-6 py-4), uppercase text, and improved visual hierarchy
-        // ENHANCED TABLE STYLING: Better borders with refined border colors (border-border/30) and glassmorphism effects (bg-muted/20)
-        // DARK THEME OPTIMIZATION: Consistent color schemes with muted colors and smooth hover transitions
-        // TABLE HEADER FONT STYLING: text-xs (12px) for compact headers, font-medium (500 weight) for professional weight
-        // TABLE HEADER FONT STYLING: uppercase transform for ClickUp-style headers, tracking-wide for improved letter spacing
-        // TABLE HEADER FONT STYLING: text-muted-foreground for subdued header color, whitespace-nowrap prevents text wrapping
-        // TEXT ALIGNMENT: text-left for standard left-aligned headers, align-middle for vertical centering in header cells
-        // TABLE HEADER FONT STYLING: hover:text-foreground for interactive headers that become more prominent on hover
-        "relative group hover:bg-muted/40 bg-muted/20 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 text-left align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors",
-        column.sortable && "cursor-pointer hover:text-foreground",
-        isResizing && "select-none",
-        // ENHANCED TABLE STYLING: Special edge padding for first/last columns to give data breathing room
-        "first:pl-8 last:pr-8"
-      )}
+      style={headerStyle} // Apply the combined style object
+      className={cn( "relative group hover:bg-muted/40 bg-muted/20 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 text-left align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors", column.sortable && "cursor-pointer hover:text-foreground", isResizing && "select-none", "first:pl-8 last:pr-8" )}
       data-handler-id={handlerId}
     >
       {/* TEXT ALIGNMENT: flex items-center for horizontal centering and vertical alignment of header content */}
@@ -178,6 +187,10 @@ export function DraggableResizableTable({
   groupedData,
   activeGroupBy,
   idKey = "id",
+  // --- DESTRUCTURE NEW PROPS from parent ---
+  frozenColumnKey,
+  columnOrder,
+  columnSizing,
 }: DraggableResizableTableProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -201,6 +214,32 @@ export function DraggableResizableTable({
       return newWidths;
     });
   }, [initialColumns]);
+
+   // --- CORE FREEZING LOGIC ---
+  const { frozenColumns, leftOffsets } = useMemo(() => {
+    if (!frozenColumnKey) {
+      return { frozenColumns: [], leftOffsets: {} };
+    }
+    const orderedVisibleKeys = columnOrder.filter(key => columns.some(c => c.key === key));
+    const freezeIndex = orderedVisibleKeys.indexOf(frozenColumnKey);
+    
+    if (freezeIndex === -1) {
+      return { frozenColumns: [], leftOffsets: {} };
+    }
+    const frozenKeys = orderedVisibleKeys.slice(0, freezeIndex + 1);
+    
+    const offsets: Record<string, number> = {};
+    let cumulativeLeft = 0;
+    
+    for (const key of frozenKeys) {
+      offsets[key] = cumulativeLeft;
+      const columnWidth = columnSizing[key] || columnWidths[key] || 150;
+      cumulativeLeft += columnWidth;
+    }
+    return { frozenColumns: frozenKeys, leftOffsets: offsets };
+  }, [frozenColumnKey, columnOrder, columns, columnWidths, columnSizing]);
+
+  const lastFrozenColumnKey = frozenColumns[frozenColumns.length - 1];
 
   const toggleGroup = (groupName: string) => {
     setExpandedGroups(prev => {
@@ -239,18 +278,24 @@ export function DraggableResizableTable({
           {(!activeGroupBy || activeGroupBy === "none") && (
             <TableHeader>
               <TableRow className="border-b border-border/50">
-                {columns.map((column, index) => (
-                  <DraggableHeader
-                    key={column.key}
-                    column={column}
-                    index={index}
-                    moveColumn={moveColumn}
-                    onSort={onSort}
-                    getSortIcon={getSortIcon}
-                    width={columnWidths[column.key] || 150}
-                    onResize={handleResize}
-                  />
-                ))}
+                {columns.map((column, index) => {
+                  const isFrozen = frozenColumns.includes(column.key);
+                  return (
+                    <DraggableHeader
+                      key={column.key}
+                      column={column}
+                      index={index}
+                      moveColumn={moveColumn}
+                      onSort={onSort}
+                      getSortIcon={getSortIcon}
+                      width={columnWidths[column.key] || 150}
+                      onResize={handleResize}
+                      isFrozen={isFrozen}
+                      isLastFrozen={column.key === lastFrozenColumnKey}
+                      leftOffset={isFrozen ? leftOffsets[column.key] : 0}
+                    />
+                  );
+                })}
               </TableRow>
             </TableHeader>
           )}
@@ -287,54 +332,67 @@ export function DraggableResizableTable({
                   {/* Show headers within each group if grouping is active and the group is expanded */}
                   {activeGroupBy && activeGroupBy !== "none" && expandedGroups.has(groupName) && (
                     <TableRow className="sticky top-24 z-10">
-                      {columns.map((column, index) => (
-                        <DraggableHeader
-                          key={column.key}
-                          column={column}
-                          index={index}
-                          moveColumn={moveColumn}
-                          onSort={onSort}
-                          getSortIcon={getSortIcon}
-                          width={columnWidths[column.key] || 150}
-                          onResize={handleResize}
-                        />
-                      ))}
+                      {columns.map((column, index) => {
+                        const isFrozen = frozenColumns.includes(column.key);
+                        return (
+                          <DraggableHeader
+                            key={column.key}
+                            column={column}
+                            index={index}
+                            moveColumn={moveColumn}
+                            onSort={onSort}
+                            getSortIcon={getSortIcon}
+                            width={columnWidths[column.key] || 150}
+                            onResize={handleResize}
+                            isFrozen={isFrozen}
+                            isLastFrozen={column.key === lastFrozenColumnKey}
+                            leftOffset={isFrozen ? leftOffsets[column.key] : 0}
+                          />
+                        );
+                      })}
                     </TableRow>
                   )}
                   {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
-                  {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
-                    <TableRow
-                      key={item[idKey] || item.id}
-                      className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
-                      onClick={() => onRowSelect(item)}
-                    >
-                      {columns.map((column, index) => (
-                        <TableCell 
-                          key={column.key} 
-                          className={cn(
-                            // ENHANCED TABLE STYLING: Better padding (px-6 py-4) increased from px-2 py-3 for more breathing room
-                            // ENHANCED TABLE STYLING: Improved visual hierarchy with better contrast ratios for dark theme optimization
-                            // ENHANCED TABLE STYLING: Special edge padding (first:pl-8 last:pr-8) so data isn't too close to edges
-                            // TABLE CELL FONT STYLING: text-sm (14px) for readable cell content, larger than header text for better data readability
-                            // TABLE CELL FONT STYLING: text-foreground/90 (90% opacity) for subtle data text, group-hover:text-foreground for emphasis on hover
-                            // TABLE CELL FONT STYLING: transition-colors for smooth opacity changes when hovering over rows
-                            "px-6 py-4 text-sm text-foreground/90 group-hover:text-foreground transition-colors",
-                            index === 0 && "sticky left-0 z-10 bg-card group-hover:bg-muted/30",
-                            "first:pl-8 last:pr-8"
-                          )}
-                          style={{ 
-                            width: `${columnWidths[column.key] || 150}px`,
-                            minWidth: `${columnWidths[column.key] || 150}px`,
-                            maxWidth: `${columnWidths[column.key] || 150}px`
-                          }}
-                        >
-                          {/* TABLE CELL CONTENT STYLING: truncate class prevents text overflow and maintains table layout consistency */}
-                          <div className="truncate">
-                            {column.render ? column.render(item[column.key], item) : String(item[column.key] ?? '')}
-                          </div>
-                        </TableCell>
-                      ))}
-                    </TableRow>
+                   {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
+                   <TableRow
+  key={item[idKey] || item.id}
+  className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
+  onClick={() => onRowSelect(item)}
+>
+  {columns.map((column) => {
+    const isFrozen = frozenColumns.includes(column.key);
+// Body cell inline style
+const cellStyle: React.CSSProperties = {
+  width: `${columnWidths[column.key] || 150}px`,
+  minWidth: `${columnWidths[column.key] || 150}px`,
+  maxWidth: `${columnWidths[column.key] || 150}px`,
+  position: isFrozen ? "sticky" : undefined,
+  left: isFrozen ? leftOffsets[column.key] : undefined,
+  zIndex: isFrozen ? 10 : undefined,
+  background: isFrozen ? "hsl(var(--card))" : undefined, // fully opaque
+  borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined,
+  boxShadow: isFrozen && column.key === lastFrozenColumnKey ? "2px 0 0 hsl(var(--border))" : undefined,
+};
+
+    return (
+      <TableCell
+        key={column.key}
+        style={cellStyle}
+        className={cn(
+          "px-6 py-4 text-sm text-foreground/90 transition-colors",
+          isFrozen && "bg-card" // force bg for frozen
+        )}
+      >
+        <div className="truncate">
+          {column.render
+            ? column.render(item[column.key], item)
+            : String(item[column.key] ?? "")}
+        </div>
+      </TableCell>
+    );
+  })}
+</TableRow>
+
                   ))}
                 </React.Fragment>
               );

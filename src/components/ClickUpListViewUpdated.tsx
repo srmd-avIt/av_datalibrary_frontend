@@ -29,7 +29,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Search, Download, ArrowUpDown, ArrowUp, ArrowDown, Users, Table as TableIcon,
-  Calendar, Settings2, EyeOff, X, Funnel, Loader2
+  Calendar, Settings2, EyeOff, X, Funnel, Loader2,Pin
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
@@ -209,7 +209,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
   const [timelineViewMode, setTimelineViewMode] = useState<'week' | 'month' | 'year'>('month');
   const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
-
+  // --- NEW STATE for column freezing ---
+  const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
   const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
     const newSavedFilter: SavedFilter = { 
       id: `filter_${Date.now()}`,
@@ -262,6 +263,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       ...prev,
       [activeView]: {}, // Always reset sizing for new columns
     }));
+     // --- NEW: Reset freeze when view or columns change to prevent invalid state ---
+    setFrozenColumnKey(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, columns.map(col => col.key).join(",")]);
 
@@ -582,6 +585,36 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                 data={finalItems} 
                 onSaveFilter={handleSaveFilter} 
               />
+
+                {/* --- NEW: Freeze Column Button & Popover --- */}
+              <div className="flex items-center gap-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8">
+                      <Pin className="w-4 h-4" />
+                      {frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3" align="start">
+                    <div className="space-y-3">
+                      <div className="font-medium text-sm">Freeze up to column</div>
+                      <Select value={frozenColumnKey || 'none'} onValueChange={(value) => setFrozenColumnKey(value === 'none' ? null : value)}>
+                        <SelectTrigger className="h-8"><SelectValue placeholder="Select column to freeze" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No columns frozen</SelectItem>
+                          {visibleColumns.map((col) => (<SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {frozenColumnKey && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+
               {/* Grouping controls */} 
               <div className="flex items-center gap-1">
                 <Popover>
@@ -646,6 +679,10 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                     groupedData={groupedData as any}
                     activeGroupBy={activeGroupBy}
                     idKey={idKey}
+                     // --- NEW: Pass freeze props to the table component ---
+                    frozenColumnKey={frozenColumnKey}
+                    columnOrder={columnOrder}
+                    columnSizing={columnSizing}
                   />
                 </div>
               )}
