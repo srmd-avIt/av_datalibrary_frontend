@@ -129,7 +129,7 @@ const getCategoryColor = (category?: string) => {
   return (category && colors[category]) || "bg-gray-500";
 };
 
-type ViewMode = "all" |"month" | "year";
+type ViewMode = "all" | "date" | "month" | "year";
 
 export function TimelineView({ apiEndpoint, page, limit, onPageChange, onItemSelect, filters, advancedFilters, groupBy, groupDirection, sortBy, sortDirection }: TimelineViewProps) {
   const { data, isLoading, isFetching } = useQuery<ApiResponse>({
@@ -173,7 +173,14 @@ export function TimelineView({ apiEndpoint, page, limit, onPageChange, onItemSel
     let groups: Record<string, TimelineItem[]> = {};
 
     switch (viewMode) {
-     
+      case "date":
+        // Group by the full FromDate string (e.g., "DD-MM-YYYY")
+        sorted.forEach(item => {
+          const key = item.FromDate || "Unknown Date";
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(item);
+        });
+        break;
       case "month":
         // Group by month and year from FromDate (format: "DD-MM-YYYY")
         sorted.forEach(item => {
@@ -242,13 +249,20 @@ export function TimelineView({ apiEndpoint, page, limit, onPageChange, onItemSel
       const date = parse(key, "yyyy-MM", new Date());
       return format(date, "MMMM yyyy");
     }
+    // Handle "dd-MM-yyyy" format for the date view
+    if (/^\d{2}-\d{2}-\d{4}$/.test(key)) {
+      const date = parse(key, "dd-MM-yyyy", new Date());
+      return isValid(date) ? format(date, "MMMM do, yyyy") : key;
+    }
     return key;
   };
 
   const navigateDate = (direction: "prev" | "next") => {
     const newDate = new Date(currentDate);
     switch (viewMode) {
-     
+      case "date":
+        newDate.setDate(currentDate.getDate() + (direction === "next" ? 1 : -1));
+        break;
       case "month":
         newDate.setMonth(currentDate.getMonth() + (direction === "next" ? 1 : -1));
         break;
@@ -280,7 +294,7 @@ export function TimelineView({ apiEndpoint, page, limit, onPageChange, onItemSel
   onChange={e => setViewMode(e.target.value as ViewMode)}
 >
   <option style={{ backgroundColor: '#000', color: '#fff' }} value="all">All</option>
-
+  <option style={{ backgroundColor: '#000', color: '#fff' }} value="date">Date</option>
   <option style={{ backgroundColor: '#000', color: '#fff' }} value="month">Month</option>
   <option style={{ backgroundColor: '#000', color: '#fff' }} value="year">Year</option>
 </select>

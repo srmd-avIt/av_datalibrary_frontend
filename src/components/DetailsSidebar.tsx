@@ -291,11 +291,18 @@ export function DetailsSidebar({
 }: DetailsSidebarProps) {
   const { user } = useAuth();
 
+  // ✅ ENHANCED: This function can now check for 'write' access specifically.
   const hasAccess = useMemo(() => {
-    return (resourceName: string): boolean => {
+    return (resourceName: string, accessLevel: 'read' | 'write' = 'read'): boolean => {
       if (!user) return false;
+      // Admins and Owners have full access.
       if (user.role === 'Admin' || user.role === 'Owner') return true;
-      return user.permissions.some((p) => p.resource === resourceName);
+      
+      const permission = user.permissions.find((p) => p.resource === resourceName);
+      if (!permission) return false;
+
+      // Check if the required access level is present in the user's actions.
+      return permission.actions.includes(accessLevel);
     };
   }, [user]);
 
@@ -332,7 +339,8 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Event Code</span>
-                  {hasAccess("Digital Recordings") ? (
+                  {/* Read access check for drilldown */}
+                  {hasAccess("Digital Recordings", 'read') ? (
                     <Button
                       variant="link"
                       className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
@@ -437,7 +445,8 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Event Code</span>
-                  {data.fkEventCode && hasAccess("Events") ? (
+                  {/* Read access check for drilldown */}
+                  {data.fkEventCode && hasAccess("Events", 'read') ? (
                     <DrilldownButton
                       id={data.fkEventCode}
                       apiEndpoint="/events"
@@ -508,7 +517,14 @@ export function DetailsSidebar({
                   <CardTitle className="text-lg px-2">Related Media Logs</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />
+                  {/* Read access check for list */}
+                  {hasAccess("Media Log", 'read') ? (
+                    <MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />
+                  ) : (
+                    <div className="text-muted-foreground p-4 text-center flex items-center justify-center gap-2">
+                      <Lock className="w-4 h-4"/> You don't have access to view Media Logs.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -541,7 +557,8 @@ export function DetailsSidebar({
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Recording Code</span>
-                  {data.fkDigitalRecordingCode && hasAccess("Digital Recordings") ? (
+                  {/* Read access check for drilldown */}
+                  {data.fkDigitalRecordingCode && hasAccess("Digital Recordings", 'read') ? (
                     <DrilldownButton
                       id={data.fkDigitalRecordingCode}
                       apiEndpoint="/digitalrecordings"
@@ -731,9 +748,12 @@ export function DetailsSidebar({
                       ) : (
                         <span className="text-sm text-muted-foreground">Not set</span>
                       )}
-                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setIsEditingSRT(true)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                      {hasAccess("Aux Files", 'write') && (
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setIsEditingSRT(true)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -858,14 +878,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingAudioList(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Audio", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingAudioList(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -974,14 +997,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingBhajanName(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Bhajan Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingBhajanName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1090,21 +1116,26 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingDMCategoryName(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Digital Master Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingDMCategoryName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
 
           <div className="flex justify-between">
             <span className="text-muted-foreground">Last Modified</span>
-            <span className="font-medium">{data.LastModifiedTimestamp || "N/A"}</span>
+            <span className="font-medium">
+              {data.LastModifiedTimestamp || "N/A"}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -1206,14 +1237,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingLabelName(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Distribution Label", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingLabelName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1323,14 +1357,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingEdType(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Editing Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingEdType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1443,14 +1480,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingEventCategory(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Event Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingEventCategory(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1560,14 +1600,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingFootageType(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Footage Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingFootageType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1581,7 +1624,6 @@ export function DetailsSidebar({
     </div>
   );
 }
-
      case "formatType": {
   const [isEditingType, setIsEditingType] = useState(false);
   const [type, setType] = useState(data.Type || "");
@@ -1677,14 +1719,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingType(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Format Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1793,14 +1838,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingName(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Granths", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1910,14 +1958,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingTitleLanguage(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Language", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTitleLanguage(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -2027,14 +2078,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingNewEventCategoryName(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("New Event Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingNewEventCategoryName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -2148,14 +2202,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingCity(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("New Cities", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingCity(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -2265,14 +2322,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingCountry(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("New Countries", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingCountry(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -2381,14 +2441,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingState(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("New States", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingState(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -2497,14 +2560,17 @@ export function DetailsSidebar({
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingOccasion(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Occasions", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingOccasion(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -2612,14 +2678,17 @@ case "topicNumberSource": {
                 ) : (
                   <span className="text-sm text-muted-foreground">Not set</span>
                 )}
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8"
-                  onClick={() => setIsEditingTNName(true)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Topic Number Source", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTNName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>

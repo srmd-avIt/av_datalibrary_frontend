@@ -151,22 +151,25 @@ const headerStyle: React.CSSProperties = {
   <th
       ref={ref}
       style={headerStyle} // Apply the combined style object
-      className={cn( "relative group hover:bg-muted/40 bg-muted/20 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 text-left align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors", column.sortable && "cursor-pointer hover:text-foreground", isResizing && "select-none", "first:pl-8 last:pr-8" )}
+      className={cn( "relative group hover:bg-muted/40 bg-muted/20 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors", column.sortable && "cursor-pointer hover:text-foreground", isResizing && "select-none", "first:pl-8 last:pr-8" )}
       data-handler-id={handlerId}
     >
-      {/* TEXT ALIGNMENT: flex items-center for horizontal centering and vertical alignment of header content */}
-      <div className="flex items-center gap-3">
-        {/* ENHANCED TABLE STYLING: Enhanced drag handles with better hover states and smooth transitions */}
+      {/* The main flex container for the header content */}
+      <div className="flex items-center justify-between gap-3">
+        {/* Drag handle remains on the left */}
         <GripVertical className="w-3 h-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab hover:text-foreground" />
-        {/* TEXT ALIGNMENT: flex items-center gap-2 for proper spacing and alignment of header text and sort icons */}
+        
+        {/* This container now centers the text and sort icon */}
         <div 
-          className="flex items-center gap-2 flex-1 transition-colors"
+          className="flex items-center justify-center gap-2 flex-1 transition-colors"
           onClick={() => column.sortable && onSort(column.key)}
         >
-          {/* TABLE HEADER FONT STYLING: font-medium for header text emphasis, truncate to prevent overflow */}
           <span className="truncate font-medium">{column.label}</span>
           {column.sortable && getSortIcon(column.key)}
         </div>
+
+        {/* Add a placeholder to balance the flex layout, keeping the text centered */}
+        <div className="w-3 h-3"></div>
       </div>
       
       {/* ENHANCED TABLE STYLING: Responsive resize handles made more subtle and responsive with better hover states */}

@@ -35,6 +35,7 @@ import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
 import { TimelineView } from "./TimelineView";
 import { ListItem } from "./types";
+import useLocalStorageState from "../hooks/useLocalStorageState"; // <-- IMPORT THE NEW HOOK
 
 // --- Vite env types for TypeScript ---
 // These interfaces are typically handled by a vite-env.d.ts file.
@@ -192,25 +193,54 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   onRowSelect?: (item: ListItem) => void; 
   idKey: string;
 }) {
+  // --- State Management Strategy ---
+  // The component uses a combination of "global" and "user-specific" state to meet the requirements.
+  //
+  // GLOBAL / SHARED STATE:
+  // - `savedFilters`: This state is persisted in localStorage with a key that is the same for all users viewing this table
+  //   (e.g., 'global-saved-filters-My-Table'). This simulates a shared database of saved filters that everyone can see and use.
+  //
+  // USER-SPECIFIC STATE:
+  // - All other view-related settings (sorting, grouping, applied filters, column order, frozen columns, etc.)
+  //   are persisted in localStorage with a unique key prefix for this table instance. This ensures that each user's
+  //   personalization settings are saved and restored without affecting other users.
+  //
+  // TRANSIENT STATE:
+  // - `currentPage`, `isExporting`, etc., are managed with `useState` as they are session-specific and not meant to be persisted.
+
+  // --- Create a unique key prefix for this specific table instance ---
+  const localStorageKeyPrefix = `tableView-${title.replace(/\s/g, '-')}`;
+
   // --- State ---
-  // Table and view state
+  
+  // --- GLOBAL / SHARED STATE ---
+  // This state is persisted to a "global" localStorage key for this table, making it visible to all users.
+  const [savedFilters, setSavedFilters] = useLocalStorageState<SavedFilter[]>(`global-saved-filters-${localStorageKeyPrefix}`, []);
+  
+  // --- TRANSIENT STATE (Session-specific) ---
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<string>("none");
+  const [isExporting, setIsExporting] = useState(false);
+  const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
+
+  // --- TRANSIENT STATE for Sort, Group, and Freeze ---
+  const [sortBy, setSortBy] = useState("none");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [groupBy, setGroupBy] = useState("none");
+  const [groupDirection, setGroupDirection] = useState<"asc" | "desc">("asc");
+  const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
+
+  // --- USER-SPECIFIC STATE (persisted for the current user/browser) ---
+   const [searchTerm, setSearchTerm] = useState("");
   const [advancedFilters, setAdvancedFilters] = useState<FilterGroup[]>([]);
   const [activeView, setActiveView] = useState(views[0]?.id || "");
   const [activeTab, setActiveTab] = useState("table");
-  const [groupBy, setGroupBy] = useState<string>("none");
-  const [groupDirection, setGroupDirection] = useState<"asc" | "desc">("asc");
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
-  const [isExporting, setIsExporting] = useState(false);
-  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
-  const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
-  const [timelineViewMode, setTimelineViewMode] = useState<'week' | 'month' | 'year'>('month');
-  const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
-  // --- NEW STATE for column freezing ---
-  const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
+  const [hiddenColumns, setHiddenColumns] = useLocalStorageState<string[]>(`${localStorageKeyPrefix}-hiddenColumns`, []);
+  const [activeSavedFilterName, setActiveSavedFilterName] = useLocalStorageState<string | null>(`${localStorageKeyPrefix}-activeSavedFilterName`, null);
+  const [timelineViewMode, setTimelineViewMode] = useLocalStorageState<'week' | 'month' | 'year'>(`${localStorageKeyPrefix}-timelineViewMode`, 'month');
+  const [viewColumnOrder, setViewColumnOrder] = useLocalStorageState<Record<string, string[]>>(`${localStorageKeyPrefix}-viewColumnOrder`, {});
+  const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
+
+
   const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
     const newSavedFilter: SavedFilter = { 
       id: `filter_${Date.now()}`,
@@ -248,10 +278,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       setAdvancedFilters([]);
     }
   };
-
-  // --- Column order and sizing state per view ---
-  const [viewColumnOrder, setViewColumnOrder] = useState<Record<string, string[]>>({});
-  const [viewColumnSizing, setViewColumnSizing] = useState<Record<string, Record<string, number>>>({});
 
   // Reset column order and sizing when view or columns change
   useEffect(() => {
@@ -313,6 +339,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     return { startDate, endDate };
   }, [activeTab, timelineViewMode, timelineCurrentDate]);
 
+  // --- Query for PAGINATED data (when not grouping) ---
   const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
     queryKey: [
       effectiveApiEndpoint,
@@ -335,13 +362,36 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         sortBy: activeSortBy,
         sortDirection: activeSortDirection,
       }),
+    // Only run this query if grouping is NOT active.
+    enabled: activeGroupBy === "none",
     staleTime: 5000, // Data will be considered fresh for 5 seconds
+  });
+
+  // --- NEW: Query for ALL data (when grouping IS active) ---
+  const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
+    queryKey: [effectiveApiEndpoint, 'all', searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeSortBy, activeSortDirection],
+    queryFn: () =>
+      fetchDataFromApi({
+        apiEndpoint: effectiveApiEndpoint,
+        page: 1,
+        limit: 1000000, // Fetch a very large number of items to get all data
+        searchTerm,
+        filters: activeViewFilters,
+        advancedFilters,
+        sortBy: activeSortBy,
+        sortDirection: activeSortDirection,
+      }),
+    // CRITICAL: Only run this query when grouping is enabled.
+    enabled: activeGroupBy !== "none",
+    staleTime: 60000, // Cache all-data requests for 1 minute
   });
 
 
   // --- Data and pagination ---
-  const finalItems = queryData?.data || [];
-  const pagination = queryData?.pagination ?? { totalPages: 1, totalItems: 0 };
+  // Use data from the grouping query if active, otherwise use paginated data.
+  const finalItems = activeGroupBy !== "none" ? (allDataForGrouping?.data || []) : (queryData?.data || []);
+  const paginationSource = activeGroupBy !== "none" ? allDataForGrouping : queryData;
+  const pagination = paginationSource?.pagination ?? { totalPages: 1, totalItems: 0 };
   const totalPages = Math.max(1, Number(pagination.totalPages || 1));
 
   // Reset page when filters/search/view change
@@ -350,21 +400,28 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, timelineDateRange, activeSortBy, activeSortDirection]);
 
   // --- Grouping logic ---
-  // Groups items by selected field and sorts groups
+  // This logic now correctly operates on `finalItems`, which contains the full dataset when grouping is active.
   const groupedData: Record<string, ListItem[]> = useMemo(() => {
-    if (!activeGroupBy || activeGroupBy === "none" || !finalItems.length) return { "": finalItems };
+    if (activeGroupBy === "none" || !finalItems.length) {
+      // When not grouping, return a single group with the current page's items
+      return { "": finalItems };
+    }
+    
+    // When grouping, reduce the entire dataset into groups
     const groups = finalItems.reduce((acc, item) => {
       const groupValue = item[activeGroupBy] ?? "Ungrouped";
       if (!acc[groupValue]) acc[groupValue] = [];
       acc[groupValue].push(item);
       return acc;
     }, {} as Record<string, ListItem[]>);
+
     const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
       const direction = groupDirection === "asc" ? 1 : -1;
       if (a < b) return -1 * direction;
       if (a > b) return 1 * direction;
       return 0;
     });
+
     const sortedGroups: Record<string, ListItem[]> = {};
     sortedGroupKeys.forEach(key => { sortedGroups[key] = groups[key]; });
     return sortedGroups;
@@ -428,14 +485,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
   // --- TanStack Table column definitions ---
-  //interface ColDef extends ColumnDef<any> {
-  //  accessorKey: string;
-  //  header: string;
-  //  enableResizing: boolean;
-   // cell: (info: { getValue: () => any; row: { original: ListItem } }) => React.ReactNode;
-  //}
-
-  // Build column definitions for TanStack Table
   const colDefs = useMemo<ColumnDef<any>[]>(
     () =>
       columns.map(
@@ -451,32 +500,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   );
 
   // --- Table instance for TanStack Table ---
- // interface TableState {
- //   columnOrder: ColumnOrderState;
- //   columnSizing: Record<string, number>;
- // }
-
- /* interface TableInstance {
-    data: ListItem[];
-    columns: ColumnDef<any>[];
-    state: TableState;
-    onColumnOrderChange: (newOrder: ColumnOrderState) => void;
-    onColumnSizingChange: (newSizing: Record<string, number>) => void;
-    getCoreRowModel: () => any;
-  } */
-
-  // Create table instance with TanStack Table
-  /*const table = useReactTable({
-    data: finalItems || [],
-    columns: colDefs,
-    state: { columnOrder, columnSizing },
-    onColumnOrderChange: (newOrder) =>
-      setViewColumnOrder((prev) => ({ ...prev, [activeView]: newOrder })),
-    onColumnSizingChange: (newSizing) =>
-      setViewColumnSizing((prev) => ({ ...prev, [activeView]: newSizing })),
-    getCoreRowModel: getCoreRowModel(),
-  });*/
-
   const table = useReactTable({
     data: finalItems || [],
     columns: colDefs,
@@ -492,10 +515,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     [activeView]: typeof newSizing === "function" ? newSizing(prev[activeView] || {}) : newSizing,
   })),
     getCoreRowModel: getCoreRowModel(),
-  });
+  });
 
   // --- DnD-kit Sortable header ---
-  // Used for drag-and-drop column reordering and resizing
   function DraggableHeader({ header }: { header: any }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
       useSortable({ id: header.column.id });
@@ -664,11 +686,18 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         <CardContent className="p-0">
           {activeTab === 'table' && (
             <div className="overflow-x-auto relative" style={{ maxHeight: '60vh' }}>
-              {(isLoading && !isFetching) && <div className="p-8 text-center">Loading...</div>}
+              {/* Initial loading state (blocks the whole view) */}
+              {(isLoading || isGroupingDataLoading) && <div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>}
+              
+              {/* Error state */}
               {error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div>}
-              {!isLoading && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
+
+              {/* Empty state */}
+              {!(isLoading || isGroupingDataLoading) && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
+              
+              {/* Data display */}
               {finalItems.length > 0 && (
-                <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
+                <div className={`transition-opacity duration-300 ${isFetching && !isLoading && !isGroupingDataLoading ? 'opacity-50' : 'opacity-100'}`}>
                   {/* Main table with drag, resize, grouping, sorting, selection */}
                   <DraggableResizableTable
                     data={finalItems as any}
@@ -684,6 +713,14 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                     columnOrder={columnOrder}
                     columnSizing={columnSizing}
                   />
+                </div>
+              )}
+
+              {/* Background fetching indicator (buffering) */}
+              {isFetching && !isLoading && !isGroupingDataLoading && (
+                <div className="absolute top-4 right-4 z-20 bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Buffering...</span>
                 </div>
               )}
             </div>
@@ -706,15 +743,18 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
 )}
         </CardContent>
         {/* Pagination and results count */}
-        { !isLoading && finalItems.length > 0 &&
+        { !(isLoading || isGroupingDataLoading) && finalItems.length > 0 &&
           <div className="flex items-center justify-between text-sm text-muted-foreground p-6 border-t">
               <div><span>{pagination.totalItems} results</span></div>
-              <div className="flex items-center gap-4">
-                  {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
-                      <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>
-                  )}
-                  <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))}/>
-              </div>
+              {/* Hide pagination when grouping is active, as all data is shown */}
+              {activeGroupBy === 'none' && (
+                <div className="flex items-center gap-4">
+                    {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
+                        <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>
+                    )}
+                    <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))}/>
+                </div>
+              )}
           </div>
         }
       </Card>
