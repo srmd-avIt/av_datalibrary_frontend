@@ -116,12 +116,14 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error.message);
-      Swal.fire({
-        icon: 'error',
-         title: "Login Failed",
-        text: "User not found. Please contact the admin for access.",
-        
-      });
+      // Only show the popup on an explicit login attempt
+      if (isLogin) {
+        Swal.fire({
+          icon: 'error',
+          title: "Login Failed",
+          text: "User not found. Please contact the admin for access.",
+        });
+      }
 
       // Always log out on any failure in the validation process
       logout();

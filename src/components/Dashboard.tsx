@@ -119,11 +119,11 @@ export function Dashboard() {
   // Click handler for the Pratishthas/Padhramanis cards
   const handleShowRecent = (type: 'Pratishtha' | 'Padhramani') => {
     if (type === 'Pratishtha' && pratishthaData) {
-      alert(`Showing ${pratishthaData.data.length} recent ${type} entries.`);
-      console.log(pratishthaData.data);
+      alert(`Total Pratishtha entries older than 15 days: ${pratishthaData.count}`);
+      console.log("Pratishtha Data:", pratishthaData.data);
     } else if (type === 'Padhramani' && padhramaniData) {
-      alert(`Showing ${padhramaniData.data.length} recent ${type} entries.`);
-      console.log(padhramaniData.data);
+      alert(`Total Padhramani entries older than 15 days: ${padhramaniData.count}`);
+      console.log("Padhramani Data:", padhramaniData.data);
     }
   };
 
@@ -359,7 +359,7 @@ export function Dashboard() {
                 pratishthasCount
               )}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established before last 15 days</p>
+            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established before last 90 days</p>
             <Badge onClick={() => handleShowRecent('Pratishtha')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <MapPin style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New centers
             </Badge>
@@ -390,7 +390,7 @@ export function Dashboard() {
                 padhramanisCount
               )}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established before last 15 days</p>
+            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established before last 90 days</p>
             <Badge onClick={() => handleShowRecent('Padhramani')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <MapPin style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New locations
             </Badge>

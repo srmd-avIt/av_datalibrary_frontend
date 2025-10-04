@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
  useReactTable,
  getCoreRowModel,
@@ -29,11 +29,10 @@ import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Search, Download, ArrowUpDown, ArrowUp, ArrowDown, Users, Table as TableIcon,
-  Calendar, Settings2, EyeOff, X, Funnel, Loader2,Pin
+  Settings2, EyeOff, X, Funnel, Loader2,Pin
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
-import { TimelineView } from "./TimelineView";
 import { ListItem } from "./types";
 import useLocalStorageState from "../hooks/useLocalStorageState"; // <-- IMPORT THE NEW HOOK
 
@@ -41,8 +40,10 @@ import useLocalStorageState from "../hooks/useLocalStorageState"; // <-- IMPORT 
 // These interfaces are typically handled by a vite-env.d.ts file.
 // Removing them to avoid conflicts with the project's global types.
 
+
 // --- Interfaces ---
 // ListItem is now imported from './types', so the local definition is removed.
+
 
 // Column: Table column definition
 interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
@@ -220,7 +221,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // --- TRANSIENT STATE (Session-specific) ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
-  const [timelineCurrentDate, setTimelineCurrentDate] = useState(new Date());
 
   // --- TRANSIENT STATE for Sort, Group, and Freeze ---
   const [sortBy, setSortBy] = useState("none");
@@ -233,10 +233,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
    const [searchTerm, setSearchTerm] = useState("");
   const [advancedFilters, setAdvancedFilters] = useState<FilterGroup[]>([]);
   const [activeView, setActiveView] = useState(views[0]?.id || "");
-  const [activeTab, setActiveTab] = useState("table");
   const [hiddenColumns, setHiddenColumns] = useLocalStorageState<string[]>(`${localStorageKeyPrefix}-hiddenColumns`, []);
   const [activeSavedFilterName, setActiveSavedFilterName] = useLocalStorageState<string | null>(`${localStorageKeyPrefix}-activeSavedFilterName`, null);
-  const [timelineViewMode, setTimelineViewMode] = useLocalStorageState<'week' | 'month' | 'year'>(`${localStorageKeyPrefix}-timelineViewMode`, 'month');
   const [viewColumnOrder, setViewColumnOrder] = useLocalStorageState<Record<string, string[]>>(`${localStorageKeyPrefix}-viewColumnOrder`, {});
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 
@@ -327,18 +325,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       }));
   }, [columns, filterConfigs]);
 
-  // Timeline date range calculation for timeline view
-  const timelineDateRange = useMemo(() => {
-    if (activeTab !== 'timeline') return null;
-    let startDate, endDate;
-    switch (timelineViewMode) {
-      case 'week': startDate = startOfWeek(timelineCurrentDate); endDate = endOfWeek(timelineCurrentDate); break;
-      case 'month': startDate = startOfMonth(timelineCurrentDate); endDate = endOfMonth(timelineCurrentDate); break;
-      case 'year': startDate = startOfYear(timelineCurrentDate); endDate = endOfYear(timelineCurrentDate); break;
-    }
-    return { startDate, endDate };
-  }, [activeTab, timelineViewMode, timelineCurrentDate]);
-
   // --- Query for PAGINATED data (when not grouping) ---
   const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
     queryKey: [
@@ -349,7 +335,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       JSON.stringify(advancedFilters),
       activeSortBy,
       activeSortDirection,
-      timelineDateRange, // Add dependency
     ],
     queryFn: () =>
       fetchDataFromApi({
@@ -397,7 +382,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // Reset page when filters/search/view change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, timelineDateRange, activeSortBy, activeSortDirection]);
+  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, activeSortBy, activeSortDirection]);
 
   // --- Grouping logic ---
   // This logic now correctly operates on `finalItems`, which contains the full dataset when grouping is active.
@@ -583,10 +568,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">
           <div className="flex items-center justify-between">
             {/* Tabs for table/timeline */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className={`grid ${title === 'Events' ? 'grid-cols-2' : 'grid-cols-1'} w-fit`}>
+            <Tabs value="table">
+              <TabsList className="grid grid-cols-1 w-fit">
                 <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
-                {title === 'Events' && <TabsTrigger value="timeline" className="flex items-center gap-2"><Calendar className="w-4 h-4" />Timeline</TabsTrigger>}
               </TabsList>
             </Tabs>
             {/* Export button */}
@@ -684,7 +668,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         </CardHeader>
         {/* Card content: table or timeline */}
         <CardContent className="p-0">
-          {activeTab === 'table' && (
             <div className="overflow-x-auto relative" style={{ maxHeight: '60vh' }}>
               {/* Initial loading state (blocks the whole view) */}
               {(isLoading || isGroupingDataLoading) && <div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>}
@@ -724,23 +707,6 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                 </div>
               )}
             </div>
-          )}
-         {/* Timeline view for events */}
-         {activeTab === 'timeline' && title === 'Events' && (
-    <TimelineView
-      apiEndpoint={apiEndpoint}
-      page={currentPage}
-      limit={itemsPerPage}
-      onPageChange={setCurrentPage}
-      filters={activeViewFilters}
-      advancedFilters={advancedFilters}
-      groupBy={groupBy}
-      groupDirection={groupDirection}
-      sortBy={sortBy}
-      sortDirection={sortDirection}
-      onItemSelect={onRowSelect}
-    />
-)}
         </CardContent>
         {/* Pagination and results count */}
         { !(isLoading || isGroupingDataLoading) && finalItems.length > 0 &&
