@@ -9,28 +9,28 @@ import { ChevronLeft, ChevronRight, Users, MapPin, Clock, Building, Calendar, Tr
 const gurudevImages = [
   {
     src: "/images/Image1.jpg", // Assumes public/images/Image1.jpg
-    title: "My Beloved Bapa",
-    subtitle: "Divine presence guiding our spiritual journey"
+    title: "",
+    subtitle: ""
   },
   {
     src: "/images/Image2.jpg", // Assumes public/images/Image2.jpg
-    title: "Transforming Battles into Blessings",
-    subtitle: "He transforms my battles into blessings"
+    title: "",
+    subtitle: ""
   },
   {
     src: "/images/Image3.jpg", // Assumes public/images/Image3.jpg
-    title: "Igniting the Path with Purpose",
-    subtitle: "He ignites my path with purpose"
+    title: "",
+    subtitle: ""
   },
   {
     src: "/images/Image4.jpg", // Assumes public/images/Image4.jpg
-    title: "A Beacon of Hope",
-    subtitle: "Guiding souls towards eternal peace"
+    title: "",
+    subtitle: ""
   },
   {
     src: "/images/Image5.jpg", // Assumes public/images/Image5.jpg
-    title: "The Essence of Seva",
-    subtitle: "Inspiring selfless service in every heart"
+    title: "",
+    subtitle: ""
   }
 ];
 
@@ -94,7 +94,7 @@ export function Dashboard() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % gurudevImages.length);
-    }, 5000);
+    }, 11000);
     return () => clearInterval(interval);
   }, []);
 
@@ -359,7 +359,7 @@ export function Dashboard() {
                 pratishthasCount
               )}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established before last 90 days</p>
+            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established in last 90 days</p>
             <Badge onClick={() => handleShowRecent('Pratishtha')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <MapPin style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New centers
             </Badge>
@@ -390,7 +390,7 @@ export function Dashboard() {
                 padhramanisCount
               )}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established before last 90 days</p>
+            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established in last 90 days</p>
             <Badge onClick={() => handleShowRecent('Padhramani')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <MapPin style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New locations
             </Badge>
