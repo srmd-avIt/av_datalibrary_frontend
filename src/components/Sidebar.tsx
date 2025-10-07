@@ -6,7 +6,7 @@ import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { useMemo } from "react";
-
+import'../styles/globals.css';
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
@@ -156,7 +156,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
 
       {/* Add overflow-y-auto to make the sidebar scrollable */}
       <nav
-        className={`flex-1 ${collapsed ? "p-2" : "p-4"} overflow-y-auto transition-all duration-300`}
+        className={`flex-1 ${collapsed ? "p-2" : "p-4"} overflow-y-auto transition-all duration-300 custom-sidebar-scrollbar`}
       >
         <div className="space-y-1">
           {/* We now map over the dynamically filtered `visibleMenuItems` */}

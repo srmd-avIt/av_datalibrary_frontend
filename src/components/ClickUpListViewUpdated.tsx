@@ -34,7 +34,8 @@ import {
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
 import { ListItem } from "./types";
-import useLocalStorageState from "../hooks/useLocalStorageState"; // <-- IMPORT THE NEW HOOK
+import useLocalStorageState from "../hooks/useLocalStorageState"; 
+import'../styles/globals.css';
 
 // --- Vite env types for TypeScript ---
 // These interfaces are typically handled by a vite-env.d.ts file.
@@ -381,45 +382,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
   const allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
   
-  // --- MODIFIED: Client-side sorting logic ---
-  const sortedData = useMemo(() => {
-    const itemsToSort = [...allItems];
-    if (activeSortBy === "none") return itemsToSort;
-
-    itemsToSort.sort((a, b) => {
-      const aVal = a[activeSortBy];
-      const bVal = b[activeSortBy];
-      const direction = activeSortDirection === 'asc' ? 1 : -1;
-
-      // Handle nulls and undefined values
-      if (aVal == null && bVal == null) return 0;
-      if (aVal == null) return -1 * direction;
-      if (bVal == null) return 1 * direction;
-
-      // Attempt to parse as numbers
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
-      if (!isNaN(aNum) && !isNaN(bNum) && String(aVal).length === String(aNum).length && String(bVal).length === String(bNum).length) {
-        if (aNum < bNum) return -1 * direction;
-        if (aNum > bNum) return 1 * direction;
-        return 0;
-      }
-
-      // Attempt to parse as dates
-      const aDate = new Date(aVal);
-      const bDate = new Date(bVal);
-      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
-        if (aDate < bDate) return -1 * direction;
-        if (aDate > bDate) return 1 * direction;
-        return 0;
-      }
-
-      // Fallback to case-insensitive string comparison
-      return String(aVal).localeCompare(String(bVal), undefined, { numeric: true, sensitivity: 'base' }) * direction;
-    });
-
-    return itemsToSort;
-  }, [allItems, activeSortBy, activeSortDirection]);
+  // --- REMOVED: Redundant client-side sorting logic ---
+  // The 'sortedData' useMemo block has been removed.
+  // The API now handles all sorting, so client-side sorting is no longer needed.
 
   // --- NEW: Client-side pagination when grouping is active ---
   const finalItems = useMemo(() => {
@@ -726,7 +691,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         </CardHeader>
         {/* Card content: table or timeline */}
         <CardContent className="p-0">
-            <div className="overflow-x-auto relative" style={{ maxHeight: '60vh' }}>
+            <div className="overflow-x-auto relative custom-scrollbar" style={{ maxHeight: '60vh' }}>
               {/* Initial loading state (blocks the whole view) */}
               {(isLoading || isGroupingDataLoading) && <div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>}
               

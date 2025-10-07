@@ -39,8 +39,8 @@ const StyledSelectItem = ({ children, value }) => {
     padding: "0.25rem 2rem 0.25rem 0.5rem",
     fontSize: "0.875rem",
     outline: "none",
-    backgroundColor: isHovered ? "rgba(51, 65, 85, 0.5)" : "transparent",
-    color: isHovered ? "rgb(226, 232, 240)" : "inherit",
+    backgroundColor: isHovered ? "#f1f5f9" : "transparent",
+    color: "inherit",
   };
   const combinedStyle = { ...baseStyle };
 
@@ -244,9 +244,9 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
 
     const commonStyle = {
         height: "2rem",
-        backgroundColor: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(51, 65, 85, 0.5)",
-        color: "rgb(241, 245, 249)",
+        backgroundColor: "#ffffff",
+        border: "1px solid #cbd5e1",
+        color: "#0f172a",
         borderRadius: "0.375rem",
     };
 
@@ -258,7 +258,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       return (
         <ShadcnSelect value={value || ""} onValueChange={(selectedValue) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
           <SelectTrigger style={commonStyle}><SelectValue placeholder="Select a category" /></SelectTrigger>
-          <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", maxHeight: '250px', overflowY: 'auto' }}>
+          <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a", maxHeight: '250px', overflowY: 'auto' }}>
             {segmentCategoryOptions.map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
           </SelectContent>
         </ShadcnSelect>
@@ -276,7 +276,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       return (
         <ShadcnSelect value={value || ""} onValueChange={(selectedValue) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
           <SelectTrigger style={commonStyle}><SelectValue placeholder="Select an option" /></SelectTrigger>
-          <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", maxHeight: '250px', overflowY: 'auto' }}>
+          <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a", maxHeight: '250px', overflowY: 'auto' }}>
             {(dynamicOptions[field] || []).map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
           </SelectContent>
         </ShadcnSelect>
@@ -315,26 +315,26 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
         </ShadcnButton>
       </PopoverTrigger>
     <PopoverContent 
-    style={{ width: "600px", 
-    padding: 0,
+    className="w-64 p-3" align="start"
+    style={{ width:"500px",
      maxHeight: "500px", 
      overflowY: "auto",
-      backgroundColor: "rgba(30, 41, 59, 0.95)",
-       backdropFilter: "blur(16px)",
-        border: "1px solid rgba(51, 65, 85, 0.5)", 
-        color: "rgb(241, 245, 249)",
+      backgroundColor: "#ffffff", 
+        border: "1px solid #e2e8f0", 
+        color: "#0f172a",
          borderRadius: "0.5rem", 
+       
         }} 
          >
-        <Card style={{ borderWidth: 0, boxShadow: "none", backgroundColor: "transparent", color: "rgb(241, 245, 249)" }}>
+        <Card style={{ borderWidth: 0, boxShadow: "none", backgroundColor: "transparent", color: "#0f172a" }}>
           <CardHeader style={{ padding: "1rem", paddingBottom: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <CardTitle style={{ fontSize: "1.125rem", color: "rgb(241, 245, 249)" }}>Advanced Filters</CardTitle>
+              <CardTitle style={{ fontSize: "1.125rem", color: "#0f172a" }}>Advanced Filters</CardTitle>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <StyledButton onClick={clearAllFilters} disabled={false} baseStyle={{ height: "2rem", padding: "0 0.5rem", fontSize: "0.75rem", color: "rgba(245, 246, 248, 1)", backgroundColor: "transparent", display: "flex", alignItems: "center", gap: "0.25rem", borderRadius: "0.375rem" }} hoverStyle={{ backgroundColor: "white", color: "rgb(15, 23, 42)" }}>
+                <StyledButton onClick={clearAllFilters} disabled={false} baseStyle={{ height: "2rem", padding: "0 0.5rem", fontSize: "0.75rem", color: "#475569", backgroundColor: "transparent", display: "flex", alignItems: "center", gap: "0.25rem", borderRadius: "0.375rem" }} hoverStyle={{ backgroundColor: "#f1f5f9", color: "#0f172a" }}>
                   <RotateCcw style={{ width: "0.75rem", height: "0.75rem" }} /> Clear All
                 </StyledButton>
-                <StyledButton onClick={() => setIsOpen(false)} disabled={false} baseStyle={{ height: "2rem", width: "2rem", padding: 0, color: "rgb(156, 163, 175)", backgroundColor: "transparent", borderRadius: "0.375rem" }} hoverStyle={{ backgroundColor: "white", color: "rgb(15, 23, 42)" }}>
+                <StyledButton onClick={() => setIsOpen(false)} disabled={false} baseStyle={{ height: "2rem", width: "2rem", padding: 0, color: "#64748b", backgroundColor: "transparent", borderRadius: "0.375rem" }} hoverStyle={{ backgroundColor: "#f1f5f9", color: "#0f172a" }}>
                   <X style={{ width: "1rem", height: "1rem" }} />
                 </StyledButton>
               </div>
@@ -346,18 +346,18 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                 {groupIndex > 0 && (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "-0.5rem 0" }}>
                     <ShadcnSelect value={group.logic} onValueChange={(value) => updateGroupLogic(group.id, value)}>
-                      <SelectTrigger style={{ width: "5rem", height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "#cbd5e1", borderRadius: "0.375rem", fontSize: "0.875rem" }}><SelectValue /></SelectTrigger>
-                      <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                      <SelectTrigger style={{ width: "5rem", height: "2rem", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: "0.375rem", fontSize: "0.875rem" }}><SelectValue /></SelectTrigger>
+                      <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                         <StyledSelectItem value="AND">AND</StyledSelectItem>
                         <StyledSelectItem value="OR">OR</StyledSelectItem>
                       </SelectContent>
                     </ShadcnSelect>
                   </div>
                 )}
-                <div style={{ backgroundColor: "#0f172a", border: "1px solid rgba(51, 65, 85, 0.5)", borderRadius: "0.75rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "0.75rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "rgb(226, 232, 240)" }}>Filter Group {groupIndex + 1}</span>
-                    {filterGroups.length > 1 && (<StyledButton onClick={() => removeFilterGroup(group.id)} disabled={false} baseStyle={{ height: "1.5rem", width: "1.5rem", padding: 0, color: "rgb(156, 163, 175)", backgroundColor: "transparent", borderRadius: "0.375rem" }} hoverStyle={{ backgroundColor: "white", color: "rgb(15, 23, 42)" }}><X style={{ width: "0.875rem", height: "0.875rem" }} /></StyledButton>)}
+                    <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#0f172a" }}>Filter Group {groupIndex + 1}</span>
+                    {filterGroups.length > 1 && (<StyledButton onClick={() => removeFilterGroup(group.id)} disabled={false} baseStyle={{ height: "1.5rem", width: "1.5rem", padding: 0, color: "#64748b", backgroundColor: "transparent", borderRadius: "0.375rem" }} hoverStyle={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}><X style={{ width: "0.875rem", height: "0.875rem" }} /></StyledButton>)}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                     {group.rules.map((rule, ruleIndex) => {
@@ -368,8 +368,8 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                           {ruleIndex > 0 && (
                             <div style={{ display: "flex", alignItems: "center" }}>
                               <ShadcnSelect value={rule.logic || "AND"} onValueChange={(value) => updateFilterRule(group.id, rule.id, { logic: value })}>
-                                <SelectTrigger style={{ width: "4rem", height: "1.5rem", fontSize: "0.75rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem" }}><SelectValue /></SelectTrigger>
-                                <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                                <SelectTrigger style={{ width: "4rem", height: "1.5rem", fontSize: "0.75rem", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#475569", borderRadius: "0.375rem" }}><SelectValue /></SelectTrigger>
+                                <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                                   <StyledSelectItem value="AND">AND</StyledSelectItem>
                                   <StyledSelectItem value="OR">OR</StyledSelectItem>
                                 </SelectContent>
@@ -379,16 +379,16 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: "0.5rem", alignItems: "flex-start" }}>
                             <div style={{ gridColumn: "span 3" }}>
                               <ShadcnSelect value={rule.field} onValueChange={(value) => updateFilterRule(group.id, rule.id, { field: value, operator: "contains", value: "" })}>
-                                <SelectTrigger style={{ height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem" }}><SelectValue placeholder="Field" /></SelectTrigger>
-                                <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                                <SelectTrigger style={{ height: "2rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.375rem" }}><SelectValue placeholder="Field" /></SelectTrigger>
+                                <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                                   {filters.map((filter) => <StyledSelectItem key={filter.key} value={filter.key}>{filter.label}</StyledSelectItem>)}
                                 </SelectContent>
                               </ShadcnSelect>
                             </div>
                             <div style={{ gridColumn: "span 3" }}>
                               <ShadcnSelect value={rule.operator} onValueChange={(value) => updateFilterRule(group.id, rule.id, { operator: value, value: "" })}>
-                                <SelectTrigger style={{ height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem" }}><SelectValue placeholder="Operator" /></SelectTrigger>
-                                <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                                <SelectTrigger style={{ height: "2rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.375rem" }}><SelectValue placeholder="Operator" /></SelectTrigger>
+                                <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                                   {operators.map((operator) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
                                 </SelectContent>
                               </ShadcnSelect>
@@ -397,46 +397,46 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                               {filterConfig && renderValueInput(group.id, rule, filterConfig)}
                             </div>
                             <div style={{ gridColumn: "span 1" }}>
-                              <StyledButton onClick={() => removeFilterRule(group.id, rule.id)} baseStyle={{ height: "2rem", width: "2rem", padding: 0, color: "rgb(156, 163, 175)", backgroundColor: "transparent" }} hoverStyle={{ backgroundColor: "rgba(51, 65, 85, 0.5)", color: "rgb(226, 232, 240)" }}><X style={{ width: "0.875rem", height: "0.875rem" }} /></StyledButton>
+                              <StyledButton onClick={() => removeFilterRule(group.id, rule.id)} baseStyle={{ height: "2rem", width: "2rem", padding: 0, color: "#64748b", backgroundColor: "transparent" }} hoverStyle={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}><X style={{ width: "0.875rem", height: "0.875rem" }} /></StyledButton>
                             </div>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                  <StyledButton onClick={() => addFilterRule(group.id)} disabled={false} baseStyle={{ width: "auto", height: "1.75rem", padding: "0 0.5rem", fontSize: "0.75rem", color: "rgb(203, 213, 225)", backgroundColor: "transparent", display: "flex", alignItems: "center", gap: "0.375rem", border: "1px dashed rgb(71, 85, 105)", borderRadius: "0.375rem",}} hoverStyle={{ backgroundColor: "white", color: "rgb(15, 23, 42)", border: "1px solid rgb(71, 85, 105)", borderRadius: "0.5rem" }}>
+                  <StyledButton onClick={() => addFilterRule(group.id)} disabled={false} baseStyle={{ width: "auto", height: "1.75rem", padding: "0 0.5rem", fontSize: "0.75rem", color: "#475569", backgroundColor: "transparent", display: "flex", alignItems: "center", gap: "0.375rem", border: "1px dashed #cbd5e1", borderRadius: "0.375rem",}} hoverStyle={{ backgroundColor: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", borderRadius: "0.5rem" }}>
                     <Plus style={{ width: "0.875rem", height: "0.875rem" }} /> Add Rule
                   </StyledButton>
                 </div>
               </React.Fragment>
             ))}
-            <StyledButton onClick={addFilterGroup} disabled={false} baseStyle={{ width: "100%", height: "2rem", padding: "0 0.5rem", fontSize: "0.875rem", color: "rgb(203, 213, 225)", backgroundColor: "transparent", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", border: "1px dashed rgb(71, 85, 105)", borderRadius: "0.375rem", }} hoverStyle={{ backgroundColor: "white", color: "rgb(15, 23, 42)", border: "1px solid rgb(71, 85, 105)", borderRadius: "0.5rem" }}>
+            <StyledButton onClick={addFilterGroup} disabled={false} baseStyle={{ width: "100%", height: "2rem", padding: "0 0.5rem", fontSize: "0.875rem", color: "#475569", backgroundColor: "transparent", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", border: "1px dashed #cbd5e1", borderRadius: "0.375rem", }} hoverStyle={{ backgroundColor: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", borderRadius: "0.5rem" }}>
               <Plus style={{ width: "1rem", height: "1rem" }} /> Add Filter Group
             </StyledButton>
-            <Separator style={{ backgroundColor: "rgba(51, 65, 85, 0.5)", height: "1px", margin: "1rem 0" }} />
+            <Separator style={{ backgroundColor: "#e2e8f0", height: "1px", margin: "1rem 0" }} />
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-start" }}>
-              <StyledButton onClick={applyFilters} disabled={false} baseStyle={{ flex: 1, height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "white", backgroundColor: "#0f0f20", border: "none", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center",}} hoverStyle={{ backgroundColor: "#1a1a2e" }}>
+              <StyledButton onClick={applyFilters} disabled={false} baseStyle={{ flex: 1, height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#ffffff", backgroundColor: "#1e293b", border: "none", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center",}} hoverStyle={{ backgroundColor: "#0f172a" }}>
                 Apply Filters ({getActiveFiltersCount()})
               </StyledButton>
               {onSaveFilter && getActiveFiltersCount() > 0 && (
                 <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                  <DialogTrigger asChild><StyledButton baseStyle={{ height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#0f172a", backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.25rem",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}><Star style={{ width: "0.875rem", height: "0.875rem" }} /> Save</StyledButton></DialogTrigger>
-                  <DialogContent style={{ maxWidth: "28rem", backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.5rem" }}>
-                    <DialogHeader><DialogTitle style={{ color: "rgb(241, 245, 249)" }}>Save Filter</DialogTitle></DialogHeader>
+                  <DialogTrigger asChild><StyledButton baseStyle={{ height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#0f172a", backgroundColor: "#ffffff", border: "1px solid #000000", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.25rem",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}><Star style={{ width: "0.875rem", height: "0.875rem" }} /> Save</StyledButton></DialogTrigger>
+                  <DialogContent style={{ maxWidth: "28rem", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: "0.5rem" }}>
+                    <DialogHeader><DialogTitle style={{ color: "#0f172a" }}>Save Filter</DialogTitle></DialogHeader>
                     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                      <div>
-                        <Label htmlFor="filter-name" style={{ color: "rgb(226, 232, 240)", marginBottom: "0.8rem", display: "block" }}>Filter Name</Label>
-                        <ShadcnInput id="filter-name" placeholder="Enter filter name..." value={filterName} onChange={(e) => setFilterName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSaveFilter()} style={{ height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem", width: "100%", padding: "0 0.75rem" }}/>
+                        <Label htmlFor="filter-name" style={{ color: "#334155", marginBottom: "0.8rem", display: "block" }}>Filter Name</Label>
+                        <ShadcnInput id="filter-name" placeholder="Enter filter name..." value={filterName} onChange={(e) => setFilterName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSaveFilter()} style={{ height: "2rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.375rem", width: "100%", padding: "0 0.75rem" }}/>
                      </div>
                       <div style={{ display: "flex", gap: "0.5rem" }}>
-                        <StyledButton onClick={handleSaveFilter} disabled={!filterName.trim()} baseStyle={{ flex: 1, display: "flex", gap: "0.5rem", alignItems: "center", justifyContent: "center", backgroundColor: "#0f0f20", color: "white", borderRadius: "0.375rem", height: "2.25rem", opacity: !filterName.trim() ? 0.5 : 1,}} hoverStyle={{ backgroundColor: "#1a1a2e" }}><Save style={{ width: "1rem", height: "1rem" }} /> Save Filter</StyledButton>
-                        <StyledButton onClick={() => setShowSaveDialog(false)} disabled={false} baseStyle={{ height: "2.25rem", padding: "0 1rem", backgroundColor: "white", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: "0.375rem",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}>Cancel</StyledButton>
+                        <StyledButton onClick={handleSaveFilter} disabled={!filterName.trim()} baseStyle={{ flex: 1, display: "flex", gap: "0.5rem", alignItems: "center", justifyContent: "center", backgroundColor: "#1e293b", color: "white", borderRadius: "0.375rem", height: "2.25rem", opacity: !filterName.trim() ? 0.5 : 1,}} hoverStyle={{ backgroundColor: "#0f172a" }}><Save style={{ width: "1rem", height: "1rem" }} /> Save Filter</StyledButton>
+                        <StyledButton onClick={() => setShowSaveDialog(false)} disabled={false} baseStyle={{ height: "2.25rem", padding: "0 1rem", backgroundColor: "#ffffff", border: "1px solid #000000", color: "#0f172a", borderRadius: "0.375rem",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}>Cancel</StyledButton>
                       </div>
                     </div>
                   </DialogContent>
                 </Dialog>
               )}
-              <StyledButton onClick={clearAllFilters} disabled={false} baseStyle={{ height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#0f172a", backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}>Clear</StyledButton>
+              <StyledButton onClick={clearAllFilters} disabled={false} baseStyle={{ height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#0f172a", backgroundColor: "#ffffff", border: "1px solid #000000", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}>Clear</StyledButton>
             </div>
           </CardContent>
         </Card>

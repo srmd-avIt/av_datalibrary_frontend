@@ -187,3 +187,59 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Add this to your global CSS file (e.g., index.css) */
+
+/* For Webkit-based browsers (Chrome, Safari, Edge) */
+.custom-sidebar-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Make the track transparent to show the sidebar gradient */
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85 / 0.5); /* Semi-transparent slate-700 */
+  border-radius: 10px;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(71 85 105 / 0.7); /* Lighter slate-600 on hover */
+}
+
+/* For Firefox */
+.custom-sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85 / 0.5) transparent; /* thumb color and track color */
+}
+
+/* --- REVISED SCROLLBAR STYLES FOR TABLE --- */
+
+/* For Webkit-based browsers (Chrome, Safari, Edge) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: color-mix(in srgb, var(--muted) 20%, transparent);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) color-mix(in srgb, var(--muted) 20%, transparent);
+}
