@@ -71,7 +71,7 @@ const DYNAMIC_FIELD_CONFIG = {
   'fkState': { endpoint: '/states/options', dataKey: 'State' },
   'fkCity': { endpoint: '/cities/options', dataKey: 'City' },
   'fkDigitalMasterCategory': { endpoint: '/digital-master-category/options', dataKey: 'DMCategory_name' },
-  'fkGranth': { endpoint: '/granth/options', dataKey: 'Name' },
+  'fkGranth': { endpoint: '/granths/options', dataKey: 'Name' },
   'Language': { endpoint: '/language/options', dataKey: 'TitleLanguage' },
   'fkDistributionLabel': { endpoint: '/distribution-label/options', dataKey: 'LabelName' },
   'fkEventCategory': { endpoint: '/event-category/options', dataKey: 'EventCategory' },

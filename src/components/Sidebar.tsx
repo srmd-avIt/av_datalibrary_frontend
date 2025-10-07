@@ -1,12 +1,13 @@
 // src/components/Sidebar.js
 
-import { Home, Database, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit } from "lucide-react";
+import { Home, Database, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import'../styles/globals.css';
+
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
@@ -14,36 +15,50 @@ interface SidebarProps {
   onToggleCollapse: () => void;
 }
 
+// Define types for menu items, including children for nesting
+type MenuItem = {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  children?: Omit<MenuItem, 'children'>[];
+};
+
 export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse }: SidebarProps) {
   const { user, logout } = useAuth();
+  const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
   
   // This is the MASTER list of all possible views in the app.
   // The 'label' MUST match the resource name in your UserManagement component's APP_RESOURCES array.
-  const allMenuItems = [
+  const allMenuItems: MenuItem[] = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "events", label: "Events", icon: Map },
     { id: "digitalrecordings", label: "Digital Recordings", icon: Calendar },
     { id: "medialog", label: "Media Log", icon: Users },
     { id: "aux", label: "Aux Files", icon: FileText },
-   
-    { id: "audio", label: "Audio", icon: FileText },
-    { id: "bhajanType", label: "Bhajan Type", icon: Music },
-    { id: "digitalMasterCategory", label: "Digital Master Category", icon: Database },
-    { id: "distributionLabel", label: "Distribution Label", icon: Tag },
-    { id: "editingType", label: "Editing Type", icon: Edit },
-    { id: "eventCategory", label: "Event Category", icon: Calendar },
-    { id: "footageType", label: "Footage Type", icon: Film },
-    { id: "formatType", label: "Format Type", icon: Layers },
-    { id: "granths", label: "Granths", icon: Book },
-    { id: "language", label: "Language", icon: Globe },
-    { id: "newEventCategory", label: "New Event Category", icon: Tag },
-    { id: "newCities", label: "New Cities", icon: MapPin },
-    { id: "newCountries", label: "New Countries", icon: Flag },
-    { id: "newStates", label: "New States", icon: Map },
-    { id: "occasions", label: "Occasions", icon: Gift },
-    
-    { id: "topicNumberSource", label: "Topic Number Source", icon: Hash },
-     { id: "user-management", label: "User Management", icon: User }
+    {
+      id: "master-data",
+      label: "Dropdowns",
+      icon: Layers,
+      children: [
+        { id: "audio", label: "Audio", icon: Music },
+        { id: "bhajanType", label: "Bhajan Type", icon: Music },
+        { id: "digitalMasterCategory", label: "Digital Master Category", icon: Database },
+        { id: "distributionLabel", label: "Distribution Label", icon: Tag },
+        { id: "editingType", label: "Editing Type", icon: Edit },
+        { id: "eventCategory", label: "Event Category", icon: Calendar },
+        { id: "footageType", label: "Footage Type", icon: Film },
+        { id: "formatType", label: "Format Type", icon: Layers },
+        { id: "granths", label: "Granths", icon: Book },
+        { id: "language", label: "Language", icon: Globe },
+        { id: "newEventCategory", label: "New Event Category", icon: Tag },
+        { id: "newCities", label: "New Cities", icon: MapPin },
+        { id: "newCountries", label: "New Countries", icon: Flag },
+        { id: "newStates", label: "New States", icon: Map },
+        { id: "occasions", label: "Occasions", icon: Gift },
+        { id: "topicNumberSource", label: "Topic Number Source", icon: Hash },
+      ],
+    },
+    { id: "user-management", label: "User Management", icon: User }
   ];
 
   // Logic to filter the menu items based on user permissions
@@ -162,7 +177,66 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
           {/* We now map over the dynamically filtered `visibleMenuItems` */}
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeView === item.id;
+            const isParentActive = item.children?.some(child => child.id === activeView);
+            const isActive = activeView === item.id || (isParentActive && !isMasterDataOpen);
+
+            if (item.children) {
+              return (
+                <div key={item.id}>
+                  <Button
+                    variant="ghost"
+                    size={collapsed ? "sm" : "default"}
+                    className={`w-full ${
+                      collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"
+                    } rounded-xl transition-all duration-200 ${
+                      isActive || (isParentActive && isMasterDataOpen)
+                        ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"
+                    }`}
+                    onClick={() => setIsMasterDataOpen(!isMasterDataOpen)}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {!collapsed && (
+                      <>
+                        <span className="font-medium">{item.label}</span>
+                        {isMasterDataOpen ? (
+                          <ChevronDown className="ml-auto w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="ml-auto w-4 h-4" />
+                        )}
+                      </>
+                    )}
+                  </Button>
+                  {!collapsed && isMasterDataOpen && (
+                    <div className="pl-4 pt-1 space-y-1">
+                      {item.children.map(child => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = activeView === child.id;
+                        return (
+                          <Button
+                            key={child.id}
+                            variant="ghost"
+                            size="default"
+                            className={`w-full justify-start gap-3 h-11 rounded-xl transition-all duration-200 ${
+                              isChildActive
+                                ? "bg-slate-700/50 text-white"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                            }`}
+                            onClick={() => onViewChange(child.id)}
+                          >
+                            <ChildIcon className="w-4 h-4" />
+                            <span className="font-medium">{child.label}</span>
+                            {isChildActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Button
                 key={item.id}

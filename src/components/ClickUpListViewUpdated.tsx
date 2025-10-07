@@ -382,21 +382,57 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
   const allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
   
-  // --- REMOVED: Redundant client-side sorting logic ---
-  // The 'sortedData' useMemo block has been removed.
-  // The API now handles all sorting, so client-side sorting is no longer needed.
+  // --- RE-ENABLED: Client-side sorting logic ---
+  const sortedData = useMemo(() => {
+    const itemsToSort = [...allItems];
+    if (activeSortBy === "none") return itemsToSort;
 
-  // --- NEW: Client-side pagination when grouping is active ---
+    itemsToSort.sort((a, b) => {
+      const aVal = a[activeSortBy];
+      const bVal = b[activeSortBy];
+      const direction = activeSortDirection === 'asc' ? 1 : -1;
+
+      // Handle nulls and undefined values
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return -1 * direction;
+      if (bVal == null) return 1 * direction;
+
+      // Attempt to parse as numbers
+      const aNum = parseFloat(aVal);
+      const bNum = parseFloat(bVal);
+      if (!isNaN(aNum) && !isNaN(bNum) && String(aVal).length === String(aNum).length && String(bVal).length === String(bNum).length) {
+        if (aNum < bNum) return -1 * direction;
+        if (aNum > bNum) return 1 * direction;
+        return 0;
+      }
+
+      // Attempt to parse as dates
+      const aDate = new Date(aVal);
+      const bDate = new Date(bVal);
+      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
+        if (aDate < bDate) return -1 * direction;
+        if (aDate > bDate) return 1 * direction;
+        return 0;
+      }
+
+      // Fallback to case-insensitive string comparison
+      return String(aVal).localeCompare(String(bVal), undefined, { numeric: true, sensitivity: 'base' }) * direction;
+    });
+
+    return itemsToSort;
+  }, [allItems, activeSortBy, activeSortDirection]);
+
+  // --- MODIFIED: Client-side pagination now uses sortedData ---
   const finalItems = useMemo(() => {
     if (shouldFetchAllForGrouping) {
       const start = (currentPage - 1) * itemsPerPage;
       const end = start + itemsPerPage;
-      return allItems.slice(start, end);
+      return sortedData.slice(start, end);
     }
-    return allItems; // For paginated view, allItems is already the current page
-  }, [allItems, currentPage, itemsPerPage, shouldFetchAllForGrouping]);
+    return sortedData; // For paginated view, use the client-sorted data
+  }, [sortedData, currentPage, itemsPerPage, shouldFetchAllForGrouping]);
 
-  const totalItems = shouldFetchAllForGrouping ? (allItems.length) : (queryData?.pagination.totalItems || 0);
+  const totalItems = shouldFetchAllForGrouping ? (sortedData.length) : (queryData?.pagination.totalItems || 0);
   const totalPages = shouldFetchAllForGrouping ? Math.ceil(totalItems / itemsPerPage) : (queryData?.pagination.totalPages || 1);
 
 
@@ -406,16 +442,15 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, activeSortBy, activeSortDirection]);
 
   // --- Grouping logic ---
-  // This logic now correctly operates on `finalItems`, which contains the full dataset when grouping is active.
+  // This logic now correctly operates on `sortedData` and `finalItems`.
   const groupedData: Record<string, ListItem[]> = useMemo(() => {
     if (activeGroupBy === "none") {
       // When not grouping, return a single group with the current page's items
       return { "": finalItems };
     }
     
-    // When grouping, reduce the entire 'allItems' dataset into groups.
-    // The data is already sorted by the API.
-    const groups = allItems.reduce((acc, item) => {
+    // When grouping, reduce the entire 'sortedData' dataset into groups.
+    const groups = sortedData.reduce((acc, item) => {
       const groupValue = item[activeGroupBy] ?? "Ungrouped";
       if (!acc[groupValue]) acc[groupValue] = [];
       acc[groupValue].push(item);
@@ -433,7 +468,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     const sortedGroups: Record<string, ListItem[]> = {};
     sortedGroupKeys.forEach(key => { sortedGroups[key] = groups[key]; });
     return sortedGroups;
-  }, [allItems, finalItems, activeGroupBy, groupDirection]);
+  }, [sortedData, finalItems, activeGroupBy, groupDirection]);
 
   // --- Export logic ---
   // Exports filtered and sorted data as CSV
