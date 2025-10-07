@@ -313,6 +313,10 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const activeSortDirection = sortDirection || currentView?.sortDirection || "asc";
   const activeGroupBy = groupBy !== "none" ? groupBy : currentView?.groupBy || "none";
 
+  // --- NEW: Determine if we need to fetch all data ---
+  // Fetch all data if grouping is active. Sorting is now handled by the API.
+  const shouldFetchAllForGrouping = activeGroupBy !== "none";
+
   // Build filter configs for advanced filter UI
   const finalFilterConfigs = useMemo(() => {
     if (filterConfigs && filterConfigs.length > 0) return filterConfigs;
@@ -348,13 +352,15 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         sortDirection: activeSortDirection,
       }),
     // Only run this query if grouping is NOT active.
-    enabled: activeGroupBy === "none",
+    // The API will handle pagination and sorting.
+    enabled: !shouldFetchAllForGrouping,
     staleTime: 5000, // Data will be considered fresh for 5 seconds
   });
 
   // --- NEW: Query for ALL data (when grouping IS active) ---
+  // This query fetches the entire dataset, pre-sorted by the API.
   const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
-    queryKey: [effectiveApiEndpoint, 'all', searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeSortBy, activeSortDirection],
+    queryKey: [effectiveApiEndpoint, 'all-for-grouping', searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeSortBy, activeSortDirection],
     queryFn: () =>
       fetchDataFromApi({
         apiEndpoint: effectiveApiEndpoint,
@@ -367,17 +373,67 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         sortDirection: activeSortDirection,
       }),
     // CRITICAL: Only run this query when grouping is enabled.
-    enabled: activeGroupBy !== "none",
+    enabled: shouldFetchAllForGrouping,
     staleTime: 60000, // Cache all-data requests for 1 minute
   });
 
-
   // --- Data and pagination ---
-  // Use data from the grouping query if active, otherwise use paginated data.
-  const finalItems = activeGroupBy !== "none" ? (allDataForGrouping?.data || []) : (queryData?.data || []);
-  const paginationSource = activeGroupBy !== "none" ? allDataForGrouping : queryData;
-  const pagination = paginationSource?.pagination ?? { totalPages: 1, totalItems: 0 };
-  const totalPages = Math.max(1, Number(pagination.totalPages || 1));
+  // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
+  const allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
+  
+  // --- MODIFIED: Client-side sorting logic ---
+  const sortedData = useMemo(() => {
+    const itemsToSort = [...allItems];
+    if (activeSortBy === "none") return itemsToSort;
+
+    itemsToSort.sort((a, b) => {
+      const aVal = a[activeSortBy];
+      const bVal = b[activeSortBy];
+      const direction = activeSortDirection === 'asc' ? 1 : -1;
+
+      // Handle nulls and undefined values
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return -1 * direction;
+      if (bVal == null) return 1 * direction;
+
+      // Attempt to parse as numbers
+      const aNum = parseFloat(aVal);
+      const bNum = parseFloat(bVal);
+      if (!isNaN(aNum) && !isNaN(bNum) && String(aVal).length === String(aNum).length && String(bVal).length === String(bNum).length) {
+        if (aNum < bNum) return -1 * direction;
+        if (aNum > bNum) return 1 * direction;
+        return 0;
+      }
+
+      // Attempt to parse as dates
+      const aDate = new Date(aVal);
+      const bDate = new Date(bVal);
+      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
+        if (aDate < bDate) return -1 * direction;
+        if (aDate > bDate) return 1 * direction;
+        return 0;
+      }
+
+      // Fallback to case-insensitive string comparison
+      return String(aVal).localeCompare(String(bVal), undefined, { numeric: true, sensitivity: 'base' }) * direction;
+    });
+
+    return itemsToSort;
+  }, [allItems, activeSortBy, activeSortDirection]);
+
+  // --- NEW: Client-side pagination when grouping is active ---
+  const finalItems = useMemo(() => {
+    if (shouldFetchAllForGrouping) {
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      return allItems.slice(start, end);
+    }
+    return allItems; // For paginated view, allItems is already the current page
+  }, [allItems, currentPage, itemsPerPage, shouldFetchAllForGrouping]);
+
+  const totalItems = shouldFetchAllForGrouping ? (allItems.length) : (queryData?.pagination.totalItems || 0);
+  const totalPages = shouldFetchAllForGrouping ? Math.ceil(totalItems / itemsPerPage) : (queryData?.pagination.totalPages || 1);
+
 
   // Reset page when filters/search/view change
   useEffect(() => {
@@ -387,19 +443,21 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // --- Grouping logic ---
   // This logic now correctly operates on `finalItems`, which contains the full dataset when grouping is active.
   const groupedData: Record<string, ListItem[]> = useMemo(() => {
-    if (activeGroupBy === "none" || !finalItems.length) {
+    if (activeGroupBy === "none") {
       // When not grouping, return a single group with the current page's items
       return { "": finalItems };
     }
     
-    // When grouping, reduce the entire dataset into groups
-    const groups = finalItems.reduce((acc, item) => {
+    // When grouping, reduce the entire 'allItems' dataset into groups.
+    // The data is already sorted by the API.
+    const groups = allItems.reduce((acc, item) => {
       const groupValue = item[activeGroupBy] ?? "Ungrouped";
       if (!acc[groupValue]) acc[groupValue] = [];
       acc[groupValue].push(item);
       return acc;
     }, {} as Record<string, ListItem[]>);
 
+    // --- Sort group keys ---
     const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
       const direction = groupDirection === "asc" ? 1 : -1;
       if (a < b) return -1 * direction;
@@ -410,7 +468,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     const sortedGroups: Record<string, ListItem[]> = {};
     sortedGroupKeys.forEach(key => { sortedGroups[key] = groups[key]; });
     return sortedGroups;
-  }, [finalItems, activeGroupBy, groupDirection]);
+  }, [allItems, finalItems, activeGroupBy, groupDirection]);
 
   // --- Export logic ---
   // Exports filtered and sorted data as CSV
@@ -470,7 +528,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
   // --- TanStack Table column definitions ---
-  const colDefs = useMemo<ColumnDef<any>[]>(
+  const colDefs: ColumnDef<any>[] = useMemo(
     () =>
       columns.map(
         (col): ColumnDef<any> => ({
@@ -683,7 +741,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                 <div className={`transition-opacity duration-300 ${isFetching && !isLoading && !isGroupingDataLoading ? 'opacity-50' : 'opacity-100'}`}>
                   {/* Main table with drag, resize, grouping, sorting, selection */}
                   <DraggableResizableTable
-                    data={finalItems as any}
+                    data={activeGroupBy === 'none' ? finalItems : (groupedData as any)}
                     columns={visibleColumns as any}
                     onRowSelect={(item) => onRowSelect?.(item as any)}
                     onSort={handleSort}
@@ -709,11 +767,11 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
             </div>
         </CardContent>
         {/* Pagination and results count */}
-        { !(isLoading || isGroupingDataLoading) && finalItems.length > 0 &&
+        { !(isLoading || isGroupingDataLoading) && totalItems > 0 &&
           <div className="flex items-center justify-between text-sm text-muted-foreground p-6 border-t">
-              <div><span>{pagination.totalItems} results</span></div>
-              {/* Hide pagination when grouping is active, as all data is shown */}
-              {activeGroupBy === 'none' && (
+              <div><span>{totalItems} results</span></div>
+              {/* Show pagination unless grouping is active and there's only one page */}
+              {!(activeGroupBy !== 'none' && totalPages <= 1) && (
                 <div className="flex items-center gap-4">
                     {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
                         <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>

@@ -38,11 +38,20 @@ const gurudevImages = [
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // --- API Fetching Functions ---
-const fetchDashboardSummary = async () => {
-  // Fetches data for Satsangs and Users cards
-  const response = await fetch(`${API_BASE_URL}/dashboard/summary`);
+const fetchCities = async () => {
+  // Fetches data for the Recent City card
+  const response = await fetch(`${API_BASE_URL}/newmedialog/city`);
   if (!response.ok) {
-    throw new Error('Network response was not ok');
+    throw new Error('Failed to fetch City data.');
+  }
+  return response.json();
+};
+
+const fetchCountries = async () => {
+  // Fetches data for the Recent Country card
+  const response = await fetch(`${API_BASE_URL}/newmedialog/country`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch Country data.');
   }
   return response.json();
 };
@@ -66,14 +75,21 @@ const fetchPadhramanis = async () => {
 };
 
 
-export function Dashboard() {
+export function Dashboard({ onShowDetails }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // --- Data Fetching for Summary Cards ---
-  const { data: summaryData, isLoading: isLoadingSummary } = useQuery({
-    queryKey: ['dashboardSummary'],
-    queryFn: fetchDashboardSummary,
-    staleTime: 1000 * 60 * 5, // Cache data for 5 minutes
+  // --- Data Fetching for Cities ---
+  const { data: cityData, isLoading: isLoadingCity, error: cityError } = useQuery({
+    queryKey: ['cities'],
+    queryFn: fetchCities,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // --- Data Fetching for Countries ---
+  const { data: countryData, isLoading: isLoadingCountry, error: countryError } = useQuery({
+    queryKey: ['countries'],
+    queryFn: fetchCountries,
+    staleTime: 1000 * 60 * 5,
   });
 
   // --- Data Fetching for Pratishthas ---
@@ -107,9 +123,8 @@ export function Dashboard() {
   };
 
   // --- Get counts from fetched data ---
-  const lastModifiedDate = summaryData?.lastModifiedDate ? new Date(summaryData.lastModifiedDate) : new Date();
-  const recentSatsangsCount = summaryData?.satsangs?.recentCount ?? 0;
-  const recentUsersCount = summaryData?.users?.recentCount ?? 0;
+  const cityCount = cityData?.count ?? 0;
+  const countryCount = countryData?.count ?? 0;
   
   // Get counts from the separate API calls
   const pratishthasCount = pratishthaData?.count ?? 0;
@@ -117,13 +132,20 @@ export function Dashboard() {
 
 
   // Click handler for the Pratishthas/Padhramanis cards
-  const handleShowRecent = (type: 'Pratishtha' | 'Padhramani') => {
-    if (type === 'Pratishtha' && pratishthaData) {
-      alert(`Total Pratishtha entries older than 15 days: ${pratishthaData.count}`);
-      console.log("Pratishtha Data:", pratishthaData.data);
-    } else if (type === 'Padhramani' && padhramaniData) {
-      alert(`Total Padhramani entries older than 15 days: ${padhramaniData.count}`);
-      console.log("Padhramani Data:", padhramaniData.data);
+  const handleShowRecent = (type: 'Pratishtha' | 'Padhramani' | 'City' | 'Country') => {
+    let sidebarData;
+    if (type === 'Pratishtha' && pratishthaData?.data) {
+      sidebarData = { type: 'medialog_list', data: { items: pratishthaData.data }, title: 'Recent Pratishthas' };
+    } else if (type === 'Padhramani' && padhramaniData?.data) {
+      sidebarData = { type: 'medialog_list', data: { items: padhramaniData.data }, title: 'Recent Padhramanis' };
+    } else if (type === 'City' && cityData?.data) {
+      sidebarData = { type: 'medialog_list', data: { items: cityData.data }, title: 'Recent Cities' };
+    } else if (type === 'Country' && countryData?.data) {
+      sidebarData = { type: 'medialog_list', data: { items: countryData.data }, title: 'Recent Countries' };
+    }
+
+    if (sidebarData) {
+      onShowDetails(sidebarData);
     }
   };
 
@@ -134,9 +156,6 @@ export function Dashboard() {
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Welcome to the spiritual data library</p>
-        </div>
-       <div className="text-sm text-muted-foreground">
-          Last updated: {isLoadingSummary ? '...' : lastModifiedDate.toLocaleDateString()}
         </div>
       </div>
 
@@ -285,7 +304,7 @@ export function Dashboard() {
 
       {/* Recent Records Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Satsangs Card */}
+        {/* Recent City Card */}
         <Card
           style={{
             backgroundImage: "linear-gradient(to bottom right, rgba(59,130,246,0.1), rgba(37,99,235,0.1))",
@@ -296,21 +315,27 @@ export function Dashboard() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "0.5rem" }}>
-            <h3 style={{ fontSize: "0.875rem", fontWeight: 500, margin: 0 }}>Recent Satsangs</h3>
-            <Clock style={{ width: "1rem", height: "1rem", color: "rgb(59,130,246)" }} />
+            <h3 style={{ fontSize: "0.875rem", fontWeight: 500, margin: 0 }}>Recent Cities</h3>
+            <MapPin style={{ width: "1rem", height: "1rem", color: "rgb(59,130,246)" }} />
           </div>
           <div>
             <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(59,130,246)" }}>
-              {isLoadingSummary ? <Loader2 className="w-6 h-6 animate-spin" /> : recentSatsangsCount}
+              {isLoadingCity ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : cityError ? (
+                <span className="text-sm text-red-500">Error</span>
+              ) : (
+                cityCount
+              )}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Added in last 15 days</p>
-            <Badge variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem" }}>
-              <TrendingUp style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New sessions
+            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Visited in last 90 days</p>
+            <Badge onClick={() => handleShowRecent('City')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
+              <TrendingUp style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New cities
             </Badge>
           </div>
         </Card>
 
-        {/* Users Card */}
+        {/* Recent Country Card */}
         <Card
           style={{
             backgroundImage: "linear-gradient(to bottom right, rgba(34,197,94,0.1), rgba(22,163,74,0.1))",
@@ -321,16 +346,22 @@ export function Dashboard() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "0.5rem" }}>
-            <h3 style={{ fontSize: "0.875rem", fontWeight: 500, margin: 0 }}>New Users</h3>
-            <Users style={{ width: "1rem", height: "1rem", color: "rgb(34,197,94)" }} />
+            <h3 style={{ fontSize: "0.875rem", fontWeight: 500, margin: 0 }}>Recent Countries</h3>
+            <MapPin style={{ width: "1rem", height: "1rem", color: "rgb(34,197,94)" }} />
           </div>
           <div>
             <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(34,197,94)" }}>
-              {isLoadingSummary ? <Loader2 className="w-6 h-6 animate-spin" /> : recentUsersCount}
+              {isLoadingCountry ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : countryError ? (
+                <span className="text-sm text-red-500">Error</span>
+              ) : (
+                countryCount
+              )}
             </div>
-            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Joined in last 15 days</p>
-            <Badge variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem" }}>
-              <Calendar style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> Recent joins
+            <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Visted in last 90 days</p>
+            <Badge onClick={() => handleShowRecent('Country')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
+              <Calendar style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New countries
             </Badge>
           </div>
         </Card>

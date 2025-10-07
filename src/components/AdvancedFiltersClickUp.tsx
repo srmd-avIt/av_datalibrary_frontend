@@ -31,7 +31,6 @@ const StyledButton = ({ baseStyle, hoverStyle, children, onClick, disabled, ...p
 const StyledSelectItem = ({ children, value }) => {
   const [isHovered, setIsHovered] = useState(false);
   const baseStyle = {
-    color: "rgb(241, 245, 249)",
     cursor: "pointer",
     position: "relative",
     display: "flex",
@@ -40,9 +39,10 @@ const StyledSelectItem = ({ children, value }) => {
     padding: "0.25rem 2rem 0.25rem 0.5rem",
     fontSize: "0.875rem",
     outline: "none",
+    backgroundColor: isHovered ? "rgba(51, 65, 85, 0.5)" : "transparent",
+    color: isHovered ? "rgb(226, 232, 240)" : "inherit",
   };
-  const hoverStyle = { backgroundColor: "transparent" };
-  const combinedStyle = { ...baseStyle, ...(isHovered && hoverStyle) };
+  const combinedStyle = { ...baseStyle };
 
   return (
     <SelectItem
@@ -258,7 +258,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       return (
         <ShadcnSelect value={value || ""} onValueChange={(selectedValue) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
           <SelectTrigger style={commonStyle}><SelectValue placeholder="Select a category" /></SelectTrigger>
-          <SelectContent style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", maxHeight: '250px', overflowY: 'auto' }}>
+          <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", maxHeight: '250px', overflowY: 'auto' }}>
             {segmentCategoryOptions.map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
           </SelectContent>
         </ShadcnSelect>
@@ -276,7 +276,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       return (
         <ShadcnSelect value={value || ""} onValueChange={(selectedValue) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
           <SelectTrigger style={commonStyle}><SelectValue placeholder="Select an option" /></SelectTrigger>
-          <SelectContent style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", maxHeight: '250px', overflowY: 'auto' }}>
+          <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", maxHeight: '250px', overflowY: 'auto' }}>
             {(dynamicOptions[field] || []).map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
           </SelectContent>
         </ShadcnSelect>
@@ -347,7 +347,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "-0.5rem 0" }}>
                     <ShadcnSelect value={group.logic} onValueChange={(value) => updateGroupLogic(group.id, value)}>
                       <SelectTrigger style={{ width: "5rem", height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "#cbd5e1", borderRadius: "0.375rem", fontSize: "0.875rem" }}><SelectValue /></SelectTrigger>
-                      <SelectContent style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                      <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
                         <StyledSelectItem value="AND">AND</StyledSelectItem>
                         <StyledSelectItem value="OR">OR</StyledSelectItem>
                       </SelectContent>
@@ -369,7 +369,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                             <div style={{ display: "flex", alignItems: "center" }}>
                               <ShadcnSelect value={rule.logic || "AND"} onValueChange={(value) => updateFilterRule(group.id, rule.id, { logic: value })}>
                                 <SelectTrigger style={{ width: "4rem", height: "1.5rem", fontSize: "0.75rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem" }}><SelectValue /></SelectTrigger>
-                                <SelectContent style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                                <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
                                   <StyledSelectItem value="AND">AND</StyledSelectItem>
                                   <StyledSelectItem value="OR">OR</StyledSelectItem>
                                 </SelectContent>
@@ -380,7 +380,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                             <div style={{ gridColumn: "span 3" }}>
                               <ShadcnSelect value={rule.field} onValueChange={(value) => updateFilterRule(group.id, rule.id, { field: value, operator: "contains", value: "" })}>
                                 <SelectTrigger style={{ height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem" }}><SelectValue placeholder="Field" /></SelectTrigger>
-                                <SelectContent style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                                <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
                                   {filters.map((filter) => <StyledSelectItem key={filter.key} value={filter.key}>{filter.label}</StyledSelectItem>)}
                                 </SelectContent>
                               </ShadcnSelect>
@@ -388,7 +388,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                             <div style={{ gridColumn: "span 3" }}>
                               <ShadcnSelect value={rule.operator} onValueChange={(value) => updateFilterRule(group.id, rule.id, { operator: value, value: "" })}>
                                 <SelectTrigger style={{ height: "2rem", backgroundColor: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)", borderRadius: "0.375rem" }}><SelectValue placeholder="Operator" /></SelectTrigger>
-                                <SelectContent style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
+                                <SelectContent side="bottom" style={{ backgroundColor: "rgba(30, 41, 59, 0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(51, 65, 85, 0.5)", color: "rgb(241, 245, 249)" }}>
                                   {operators.map((operator) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
                                 </SelectContent>
                               </ShadcnSelect>

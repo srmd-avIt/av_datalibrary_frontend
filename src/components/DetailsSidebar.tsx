@@ -425,6 +425,63 @@ export function DetailsSidebar({
           </Card>
         );
 
+      case "medialog_list": {
+        const renderListItem = (log: any) => {
+          // Common card structure for each item
+          const cardProps = {
+            key: log.MLUniqueID,
+            className: "cursor-pointer hover:bg-muted/50 transition-colors",
+            onClick: () =>
+              onPushSidebar({
+                type: "medialog",
+                data: log,
+                title: "Media Log Details",
+              }),
+          };
+
+          // Determine what to display based on the title of the sidebar
+          let primaryText = log.Topic || log['Segment Category'] || `ID: ${log.MLUniqueID}`;
+          let secondaryText = log.Detail || `ID: ${log.MLUniqueID}`;
+
+          if (title.includes("Cities") || title.includes("Countries")) {
+            primaryText = log.fkCity ? `${log.fkCity}, ${log.fkCountry}` : log.fkCountry;
+            secondaryText = log.Topic || `ID: ${log.MLUniqueID}`;
+          } else if (title.includes("Padhramnis")) {
+            primaryText = log['Segment Category'];
+            secondaryText = log.Topic || `ID: ${log.MLUniqueID}`;
+          } else if (title.includes("Pratishthas")) {
+            primaryText = log['Segment Category'];
+            secondaryText = log.Topic || `ID: ${log.MLUniqueID}`;
+          }
+
+          return (
+            <Card {...cardProps}>
+              <CardContent className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-sm">{primaryText}</p>
+                  <p className="text-xs text-muted-foreground">{secondaryText}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          );
+        };
+
+        return (
+          <Card>
+            <CardHeader>
+              {/* Use the dynamic title passed from the dashboard */}
+              <CardTitle className="text-lg px-2">{title}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="space-y-2">
+                {data.items.map((log: any) => renderListItem(log))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      }
+
       case "digitalrecording":
         return (
           <div className="space-y-6">
@@ -547,6 +604,11 @@ export function DetailsSidebar({
                 <CardTitle className="text-lg px-2">Log Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Topic</span>
+                  <span className="font-medium">{data.Topic || "N/A"}</span>
+                </div>
+
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Content From</span>
                   <span className="font-medium">{data.ContentFrom || "N/A"}</span>

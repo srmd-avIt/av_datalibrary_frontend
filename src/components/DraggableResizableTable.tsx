@@ -139,8 +139,8 @@ const headerStyle: React.CSSProperties = {
   minWidth: `${width}px`,
   position: isFrozen ? "sticky" : undefined,
   left: isFrozen ? leftOffset : undefined,
-  zIndex: isFrozen ? 20 : undefined,
-  background: isFrozen ? "hsl(var(--muted))" : undefined, // fully opaque
+  zIndex: isFrozen ? 30 : undefined,
+  background: isFrozen ? "#000" : undefined, // Changed to black for frozen columns
   borderRight: isFrozen && isLastFrozen ? "2px solid hsl(var(--border))" : undefined,
   boxShadow: isFrozen && isLastFrozen ? "2px 0 0 hsl(var(--border))" : undefined,
 };
@@ -229,7 +229,8 @@ export function DraggableResizableTable({
     if (freezeIndex === -1) {
       return { frozenColumns: [], leftOffsets: {} };
     }
-    const frozenKeys = orderedVisibleKeys.slice(0, freezeIndex + 1);
+    // --- MODIFICATION: Only freeze the single selected column ---
+    const frozenKeys = [frozenColumnKey];
     
     const offsets: Record<string, number> = {};
     let cumulativeLeft = 0;
@@ -273,91 +274,93 @@ export function DraggableResizableTable({
     }));
   }, []);
 
+  // REMOVED the wrapping <div> with `overflow-x-auto`.
+  // The parent component now controls the scrolling container.
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="overflow-x-auto relative border border-border rounded-lg bg-card shadow-sm" style={{ maxHeight: '60vh' }}>
-        <Table className="min-w-full table-fixed">
-          {/* Only show the main header if no grouping is active */}
-          {(!activeGroupBy || activeGroupBy === "none") && (
-            <TableHeader>
-              <TableRow className="border-b border-border/50">
-                {columns.map((column, index) => {
-                  const isFrozen = frozenColumns.includes(column.key);
-                  return (
-                    <DraggableHeader
-                      key={column.key}
-                      column={column}
-                      index={index}
-                      moveColumn={moveColumn}
-                      onSort={onSort}
-                      getSortIcon={getSortIcon}
-                      width={columnWidths[column.key] || 150}
-                      onResize={handleResize}
-                      isFrozen={isFrozen}
-                      isLastFrozen={column.key === lastFrozenColumnKey}
-                      leftOffset={isFrozen ? leftOffsets[column.key] : 0}
-                    />
-                  );
-                })}
-              </TableRow>
-            </TableHeader>
-          )}
-          <TableBody>
-            {Object.entries(groupedData).map(([groupName, items]) => {
-              const bgColor = getColorForString(groupName);
-              // Simple check to determine text color for contrast.
-              // Add more dark pastel colors to this array if needed.
-              const isDarkBg = ["#F7D379"].includes(bgColor);
-              const textColor = isDarkBg ? "hsl(222.2 47.4% 11.2%)" : "hsl(222.2 84% 4.9%)";
+      <Table className="min-w-full table-fixed border-separate" style={{ borderSpacing: 0 }}>
+        {/* Only show the main header if no grouping is active */}
+        {(!activeGroupBy || activeGroupBy === "none") && (
+          <TableHeader>
+            {/* The TableRow is now the sticky element, ensuring the entire header freezes */}
+            <TableRow className="sticky top-0 z-30 bg-card">
+              {columns.map((column, index) => {
+                const isFrozen = frozenColumns.includes(column.key);
+                return (
+                  <DraggableHeader
+                    key={column.key}
+                    column={column}
+                    index={index}
+                    moveColumn={moveColumn}
+                    onSort={onSort}
+                    getSortIcon={getSortIcon}
+                    width={columnWidths[column.key] || 150}
+                    onResize={handleResize}
+                    isFrozen={isFrozen}
+                    isLastFrozen={column.key === lastFrozenColumnKey}
+                    leftOffset={isFrozen ? leftOffsets[column.key] : 0}
+                  />
+                );
+              })}
+            </TableRow>
+          </TableHeader>
+        )}
+        <TableBody>
+          {Object.entries(groupedData).map(([groupName, items]) => {
+            const bgColor = getColorForString(groupName);
+            // Simple check to determine text color for contrast.
+            // Add more dark pastel colors to this array if needed.
+            const isDarkBg = ["#F7D379"].includes(bgColor);
+            const textColor = isDarkBg ? "hsl(222.2 47.4% 11.2%)" : "hsl(222.2 84% 4.9%)";
 
-              return (
-                <React.Fragment key={groupName}>
-                  {/* ENHANCED TABLE STYLING: Glassmorphism effects with backdrop blur for group headers */}
-                  {activeGroupBy && activeGroupBy !== "none" && (
-                    <TableRow className="sticky top-12 z-[15] backdrop-blur hover:brightness-95 transition-all cursor-pointer" onClick={() => toggleGroup(groupName)}>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="backdrop-blur-sm font-semibold px-4 py-3 border-b border-border/30 text-left"
-                      >
-                        <div className="flex items-center gap-2">
-                          {expandedGroups.has(groupName) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                          <span
-                            className="px-2.5 py-0.5 rounded-md text-sm"
-                            style={{ backgroundColor: bgColor, color: textColor }}
-                          >
-                            {groupName}
-                          </span>
-                          <span className="text-muted-foreground">({items.length})</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {/* Show headers within each group if grouping is active and the group is expanded */}
-                  {activeGroupBy && activeGroupBy !== "none" && expandedGroups.has(groupName) && (
-                    <TableRow className="sticky top-24 z-10">
-                      {columns.map((column, index) => {
-                        const isFrozen = frozenColumns.includes(column.key);
-                        return (
-                          <DraggableHeader
-                            key={column.key}
-                            column={column}
-                            index={index}
-                            moveColumn={moveColumn}
-                            onSort={onSort}
-                            getSortIcon={getSortIcon}
-                            width={columnWidths[column.key] || 150}
-                            onResize={handleResize}
-                            isFrozen={isFrozen}
-                            isLastFrozen={column.key === lastFrozenColumnKey}
-                            leftOffset={isFrozen ? leftOffsets[column.key] : 0}
-                          />
-                        );
-                      })}
-                    </TableRow>
-                  )}
-                  {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
-                   {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
-                   <TableRow
+            return (
+              <React.Fragment key={groupName}>
+                {/* ENHANCED TABLE STYLING: Group headers are now opaque for better freezing behavior */}
+                {activeGroupBy && activeGroupBy !== "none" && (
+                  <TableRow className="sticky top-0 z-20 bg-card hover:brightness-95 transition-all cursor-pointer" onClick={() => toggleGroup(groupName)}>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="bg-muted/40 font-semibold px-4 py-3 border-b border-border/30 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        {expandedGroups.has(groupName) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        <span
+                          className="px-2.5 py-0.5 rounded-md text-sm"
+                          style={{ backgroundColor: bgColor, color: textColor }}
+                        >
+                          {groupName}
+                        </span>
+                        <span className="text-muted-foreground">({items.length})</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {/* Show headers within each group if grouping is active and the group is expanded */}
+                {activeGroupBy && activeGroupBy !== "none" && expandedGroups.has(groupName) && (
+                  <TableRow className="sticky top-[53px] z-20 bg-card">
+                    {columns.map((column, index) => {
+                      const isFrozen = frozenColumns.includes(column.key);
+                      return (
+                        <DraggableHeader
+                          key={column.key}
+                          column={column}
+                          index={index}
+                          moveColumn={moveColumn}
+                          onSort={onSort}
+                          getSortIcon={getSortIcon}
+                          width={columnWidths[column.key] || 150}
+                          onResize={handleResize}
+                          isFrozen={isFrozen}
+                          isLastFrozen={column.key === lastFrozenColumnKey}
+                          leftOffset={isFrozen ? leftOffsets[column.key] : 0}
+                        />
+                      );
+                    })}
+                  </TableRow>
+                )}
+                {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
+                 {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
+                 <TableRow
   key={item[idKey] || item.id}
   className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
   onClick={() => onRowSelect(item)}
@@ -371,8 +374,8 @@ const cellStyle: React.CSSProperties = {
   maxWidth: `${columnWidths[column.key] || 150}px`,
   position: isFrozen ? "sticky" : undefined,
   left: isFrozen ? leftOffsets[column.key] : undefined,
-  zIndex: isFrozen ? 10 : undefined,
-  background: isFrozen ? "hsl(var(--card))" : undefined, // fully opaque
+  zIndex: isFrozen ? 20 : undefined,
+  background: isFrozen ? "#000" : undefined, // Changed to black for frozen columns
   borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined,
   boxShadow: isFrozen && column.key === lastFrozenColumnKey ? "2px 0 0 hsl(var(--border))" : undefined,
 };
@@ -383,7 +386,7 @@ const cellStyle: React.CSSProperties = {
         style={cellStyle}
         className={cn(
           "px-6 py-4 text-sm text-foreground/90 transition-colors",
-          isFrozen && "bg-card" // force bg for frozen
+          isFrozen && "bg-black" // force bg for frozen
         )}
       >
         <div className="truncate">
@@ -396,13 +399,12 @@ const cellStyle: React.CSSProperties = {
   })}
 </TableRow>
 
-                  ))}
-                </React.Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </TableBody>
+      </Table>
     </DndProvider>
   );
 }

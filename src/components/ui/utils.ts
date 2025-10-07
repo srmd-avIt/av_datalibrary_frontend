@@ -14,6 +14,34 @@ const PALETTE = [
   "#49769F", // Darker Steel Blue
   "#0A4174", // Dark Blue
   "#001D39", // Very Dark Blue
+  "#D1A980",
+  "#98A1BC",
+  "#FFDCDC",
+  "#FFE4B5",
+  "#687FE5",
+  "#A3D2CA",
+  "#FFE156",
+  "#6A0572",
+  "#AB83A1",
+  "#FF6F91",
+  "#FF9671",
+  "#FFC75F",
+  "#D65DB1",
+  "#845EC2",
+  "#008F7A",
+  "#4B4453",
+  "#2C73D2",
+  "#16DB93",
+  "#F9F871",
+  "#FF9671",
+  "#FFC75F",
+  "#D65DB1",
+  "#845EC2",
+  "#008F7A",
+  "#4B4453",
+  "#2C73D2",
+  "#16DB93",
+  "#F9F871",
 ];
 
 // A simple hashing function to get a consistent index from a string
