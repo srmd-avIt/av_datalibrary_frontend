@@ -528,7 +528,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
   // --- TanStack Table column definitions ---
-  const colDefs = useMemo<ColumnDef<any>(
+  const colDefs: ColumnDef<any>[] = useMemo(
     () =>
       columns.map(
         (col): ColumnDef<any> => ({
