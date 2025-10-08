@@ -3,7 +3,7 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "allowJs": true,
+    "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -14,11 +14,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx", // Or "preserve" if you're not using React
-
-    /* Enable error reporting in JS files */
-    "checkJs": true
+    "jsx": "react-jsx"
   },
-  "include": ["src"], // This tells TypeScript to only check files inside the 'src' folder
+  "include": ["gaurav/src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

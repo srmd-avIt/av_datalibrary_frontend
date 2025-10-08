@@ -75,7 +75,11 @@ const fetchPadhramanis = async () => {
 };
 
 
-export function Dashboard({ onShowDetails }) {
+interface DashboardProps {
+  onShowDetails: (sidebarData: any) => void; // Replace 'any' with a more specific type if available
+}
+
+export function Dashboard({ onShowDetails }: DashboardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // --- Data Fetching for Cities ---
@@ -248,8 +252,8 @@ export function Dashboard({ onShowDetails }) {
     padding: "0.5rem",           // approximate size="icon"
     cursor: "pointer",
   }}
-  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.4)")}
-  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)")}
+  onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.4)")}
+  onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)")}
 >
             <ChevronLeft className="h-6 w-6" />
           </Button>
@@ -266,8 +270,8 @@ export function Dashboard({ onShowDetails }) {
     padding: "0.5rem",           // approximate size="icon"
     cursor: "pointer",
   }}
-  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.4)")}
-  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)")}
+  onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.4)")}
+  onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)")}
 >
             <ChevronRight className="h-6 w-6" />
           </Button>

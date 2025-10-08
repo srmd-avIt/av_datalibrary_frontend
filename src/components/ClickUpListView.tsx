@@ -290,7 +290,7 @@ export function ClickUpListView({
             <div className="flex items-center gap-4 pt-4">
               <div className="flex items-center gap-2">
                 {/* Role Filter */}
-                <Select value={filters.role || "all"} onValueChange={(value) => setFilters({...filters, role: value === "all" ? undefined : value})}>
+                <Select value={filters.role || "all"} onValueChange={(value: string) => setFilters({...filters, role: value === "all" ? undefined : value})}>
                   <SelectTrigger className="w-32 h-8">
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
@@ -303,7 +303,7 @@ export function ClickUpListView({
                 </Select>
 
                 {/* Status Filter */}
-                <Select value={filters.status || "all"} onValueChange={(value) => setFilters({...filters, status: value === "all" ? undefined : value})}>
+                <Select value={filters.status || "all"} onValueChange={(value: string) => setFilters({...filters, status: value === "all" ? undefined : value})}>
                   <SelectTrigger className="w-32 h-8">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -390,7 +390,7 @@ export function ClickUpListView({
                           <Checkbox
                             id={`column-${column.key}`}
                             checked={!hiddenColumns.includes(column.key)}
-                            onCheckedChange={(checked) => {
+                            onCheckedChange={(checked: boolean) => {
                               if (checked) {
                                 setHiddenColumns(hiddenColumns.filter(c => c !== column.key));
                               } else {

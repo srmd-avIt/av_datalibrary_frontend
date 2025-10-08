@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+/// <reference types="vite/client" />
+import React, { useState, useEffect, useMemo } from "react";
 import { Button as ShadcnButton } from "./ui/button";
 import { Input as ShadcnInput } from "./ui/input";
 import { Label } from "./ui/label";
@@ -9,9 +10,18 @@ import { Separator } from "./ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Badge } from "./ui/badge";
 import { Filter, Plus, X, RotateCcw, Save, Star } from "lucide-react";
+import { FilterConfig, FilterGroup, FilterRule } from "./types"; // Import shared types
 
 // (Styled components remain unchanged)
-const StyledButton = ({ baseStyle, hoverStyle, children, onClick, disabled, ...props }) => {
+interface StyledButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  baseStyle?: React.CSSProperties;
+  hoverStyle?: React.CSSProperties;
+  children: React.ReactNode;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  disabled?: boolean;
+}
+
+const StyledButton: React.FC<StyledButtonProps> = ({ baseStyle, hoverStyle, children, onClick, disabled, ...props }) => {
   const [isHovered, setIsHovered] = useState(false);
   const combinedStyle = { ...baseStyle, ...(isHovered && !disabled && hoverStyle) };
   return (
@@ -28,11 +38,16 @@ const StyledButton = ({ baseStyle, hoverStyle, children, onClick, disabled, ...p
   );
 };
 
-const StyledSelectItem = ({ children, value }) => {
+interface StyledSelectItemProps {
+  children: React.ReactNode;
+  value: string;
+}
+
+const StyledSelectItem: React.FC<StyledSelectItemProps> = ({ children, value }) => {
   const [isHovered, setIsHovered] = useState(false);
   const baseStyle = {
     cursor: "pointer",
-    position: "relative",
+    position: "relative" as React.CSSProperties["position"],
     display: "flex",
     alignItems: "center",
     borderRadius: "0.25rem",
@@ -80,28 +95,11 @@ const DYNAMIC_FIELD_CONFIG = {
   'TopicSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
   'NumberSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
   'FormateType': { endpoint: '/format-type/options', dataKey: 'Type' },
+} as const;
 
-};
+type DynamicFieldKey = keyof typeof DYNAMIC_FIELD_CONFIG;
 
 // (Interfaces and OPERATORS remain unchanged)
-interface FilterRule {
-  id: string;
-  field: string;
-  operator: string;
-  value: any;
-  logic?: "AND" | "OR";
-}
-interface FilterGroup {
-  id: string;
-  rules: FilterRule[];
-  logic: "AND" | "OR";
-}
-interface FilterConfig {
-  key: string;
-  label: string;
-  type: "text" | "select" | "number" | "date";
-  options?: { value: string; label: string }[];
-}
 const OPERATORS = {
   text: [
     { value: "contains", label: "Contains" },
@@ -115,7 +113,17 @@ const OPERATORS = {
   ],
 };
 
-export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveFilter }) {
+export function AdvancedFiltersClickUp({
+  filters,
+  onFiltersChange,
+  data,
+  onSaveFilter,
+}: {
+  filters: FilterConfig[];
+  onFiltersChange: (filterGroups: FilterGroup[]) => void;
+  data?: any;
+  onSaveFilter?: (filterName: string, filterGroups: FilterGroup[]) => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([
     { id: "group1", rules: [], logic: "AND" }
@@ -133,7 +141,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
     if (!isOpen) return;
 
     const fetchOptionsForField = async (field: string) => {
-      const config = DYNAMIC_FIELD_CONFIG[field];
+      const config = DYNAMIC_FIELD_CONFIG[field as DynamicFieldKey];
       // Don't fetch if no config exists, or if we are already loading, or if we already have the data.
       if (!config || loadingFields[field] || dynamicOptions[field]) {
         return;
@@ -152,7 +160,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
         const formattedOptions = jsonData.map((item: any) => ({
           value: item[config.dataKey],
           label: item[config.dataKey],
-        })).filter(option => option.value); // Filter out any items with null/empty values
+        })).filter((option: any) => option.value); // Filter out any items with null/empty values
 
         setDynamicOptions(prev => ({ ...prev, [field]: formattedOptions }));
       } catch (error) {
@@ -166,7 +174,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
     // Check all current rules and fetch data if needed
     filterGroups.forEach(group => {
       group.rules.forEach(rule => {
-        if (DYNAMIC_FIELD_CONFIG[rule.field]) {
+        if (DYNAMIC_FIELD_CONFIG[rule.field as DynamicFieldKey]) {
           fetchOptionsForField(rule.field);
         }
       });
@@ -192,12 +200,12 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       )
     );
   };
-  const removeFilterRule = (groupId, ruleId) => {
+  const removeFilterRule = (groupId: string, ruleId: string) => {
     setFilterGroups((groups) =>
       groups.map((group) => (group.id === groupId ? { ...group, rules: group.rules.filter((rule) => rule.id !== ruleId) } : group))
     );
   };
-  const updateFilterRule = (groupId, ruleId, updates) => {
+  const updateFilterRule = (groupId: string, ruleId: string, updates: Partial<FilterRule>) => {
     setFilterGroups((groups) =>
       groups.map((group) =>
         group.id === groupId
@@ -207,15 +215,15 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
     );
   };
   const addFilterGroup = () => {
-    const newGroup = { id: `group_${Date.now()}`, rules: [], logic: "OR" };
+    const newGroup: FilterGroup = { id: `group_${Date.now()}`, rules: [], logic: "OR" as "AND" | "OR" };
     setFilterGroups([...filterGroups, newGroup]);
   };
-  const removeFilterGroup = (groupId) => {
+  const removeFilterGroup = (groupId: string) => {
     if (filterGroups.length > 1) {
       setFilterGroups((groups) => groups.filter((group) => group.id !== groupId));
     }
   };
-  const updateGroupLogic = (groupId, logic) => {
+  const updateGroupLogic = (groupId: string, logic: "AND" | "OR") => {
     setFilterGroups((groups) => groups.map((group) => (group.id === groupId ? { ...group, logic } : group)));
   };
   const clearAllFilters = () => setFilterGroups([{ id: "group1", rules: [], logic: "AND" }]);
@@ -256,7 +264,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
         { value: 'Pravachan', label: 'Pravachan' }, { value: 'Prasangik Udbodhan', label: 'Prasangik Udbodhan' }, { value: 'SU', label: 'SU' }, { value: 'SU-GM', label: 'SU-GM' }, { value: 'SU-Revision', label: 'SU-Revision' }, { value: 'Satsang', label: 'Satsang' }, { value: 'Informal Satsang', label: 'Informal Satsang' }, { value: 'SRMD-Shibirs/Session/Training/Workshops', label: 'SRMD-Shibirs/Session/Training/Workshops' }, { value: 'Non-SRMD-Shibirs/Session/Training/Workshops', label: 'Non-SRMD-Shibirs/Session/Training/Workshops' }, { value: 'SU SRMD-Shibirs/Session/Training/Workshops', label: 'SU SRMD-Shibirs/Session/Training/Workshops' }, { value: 'Pratishtha', label: 'Pratishtha' }, { value: 'Padhramani', label: 'Padhramani' }, { value: 'Meditation', label: 'Meditation' }, { value: 'Drama/Skit', label: 'Drama/Skit' }, { value: 'Prathana', label: 'Prathana' }, { value: 'Bhakti', label: 'Bhakti' }, { value: '__EMPTY__', label: '(No Value)' }, { value: 'Celebrations', label: 'Celebrations' }, { value: 'Celebrations:Bhakti', label: 'Celebrations:Bhakti' }, { value: 'Celebrations:Drama/Skit', label: 'Celebrations:Drama/Skit' }, { value:'Heartfelt Experiences', label: 'Heartfelt Experiences' }, { value: 'Highlights', label: 'Highlights' }, { value: 'Highlights - Informal', label: 'Highlights - Informal' }, { value: 'Highlights - Mixed', label: 'Highlights - Mixed' }, { value: 'PEP - PostEvent Promo', label: 'PEP - PostEvent Promo' }, { value: 'Satsang Clips', label: 'Satsang Clips' }, { value: 'Other Clips', label: 'Other Clips' }, { value: 'Pujan', label: 'Pujan' }, { value: 'Promo', label: 'Promo' }, { value: 'None', label: 'None' }, { value: 'Documentary', label: 'Documentary' }, { value:'Other Edited Videos', label: 'Other Edited Videos' }, { value: 'Celebrations:Heartfelt Experiences', label: 'Celebrations:Heartfelt Experiences' }, { value: 'Product/Webseries', label: 'Product/Webseries' }, { value: 'Bhakti Drama/Skit', label: 'Bhakti Drama/Skit' },
       ];
       return (
-        <ShadcnSelect value={value || ""} onValueChange={(selectedValue) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
+        <ShadcnSelect value={value || ""} onValueChange={(selectedValue: string) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
           <SelectTrigger style={commonStyle}><SelectValue placeholder="Select a category" /></SelectTrigger>
           <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a", maxHeight: '250px', overflowY: 'auto' }}>
             {segmentCategoryOptions.map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
@@ -265,19 +273,20 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       );
     } 
     
-    // 2. Handle All Dynamic (API-driven) Dropdowns
-    if (DYNAMIC_FIELD_CONFIG[field]) {
-      if (loadingFields[field]) {
+    // --- MODIFIED: Removed duplicated 'if' statement ---
+    if ((field as DynamicFieldKey) in DYNAMIC_FIELD_CONFIG) {
+      const dynamicFieldKey = field as DynamicFieldKey;
+      if (loadingFields[dynamicFieldKey]) {
         return <ShadcnSelect><SelectTrigger style={commonStyle} disabled><SelectValue placeholder="Loading..." /></SelectTrigger></ShadcnSelect>;
       }
-      if (errorFields[field]) {
-        return <ShadcnSelect><SelectTrigger style={{...commonStyle, color: '#f87171'}} disabled><SelectValue placeholder={errorFields[field]} /></SelectTrigger></ShadcnSelect>;
+      if (errorFields[dynamicFieldKey]) {
+        return <ShadcnSelect><SelectTrigger style={{...commonStyle, color: '#f87171'}} disabled><SelectValue placeholder={errorFields[dynamicFieldKey]} /></SelectTrigger></ShadcnSelect>;
       }
       return (
-        <ShadcnSelect value={value || ""} onValueChange={(selectedValue) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
+        <ShadcnSelect value={value || ""} onValueChange={(selectedValue: string) => updateFilterRule(groupId, rule.id, { value: selectedValue })}>
           <SelectTrigger style={commonStyle}><SelectValue placeholder="Select an option" /></SelectTrigger>
           <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a", maxHeight: '250px', overflowY: 'auto' }}>
-            {(dynamicOptions[field] || []).map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
+            {(dynamicOptions[dynamicFieldKey] || []).map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
           </SelectContent>
         </ShadcnSelect>
         
@@ -345,7 +354,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
               <React.Fragment key={group.id}>
                 {groupIndex > 0 && (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "-0.5rem 0" }}>
-                    <ShadcnSelect value={group.logic} onValueChange={(value) => updateGroupLogic(group.id, value)}>
+                    <ShadcnSelect value={group.logic} onValueChange={(value: string) => updateGroupLogic(group.id, value as "AND" | "OR")}>
                       <SelectTrigger style={{ width: "5rem", height: "2rem", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: "0.375rem", fontSize: "0.875rem" }}><SelectValue /></SelectTrigger>
                       <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                         <StyledSelectItem value="AND">AND</StyledSelectItem>
@@ -361,13 +370,13 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                     {group.rules.map((rule, ruleIndex) => {
-                      const filterConfig = filters.find((f) => f.key === rule.field);
-                      const operators = filterConfig ? OPERATORS[filterConfig.type] || [] : [];
+                      const filterConfig = filters.find((f: FilterConfig) => f.key === rule.field) as FilterConfig | undefined;
+                      const operators = filterConfig ? OPERATORS[filterConfig.type as keyof typeof OPERATORS] || [] : [];
                       return (
                         <div key={rule.id} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                           {ruleIndex > 0 && (
                             <div style={{ display: "flex", alignItems: "center" }}>
-                              <ShadcnSelect value={rule.logic || "AND"} onValueChange={(value) => updateFilterRule(group.id, rule.id, { logic: value })}>
+                              <ShadcnSelect value={rule.logic || "AND"} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { logic: value as "AND" | "OR" })}>
                                 <SelectTrigger style={{ width: "4rem", height: "1.5rem", fontSize: "0.75rem", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#475569", borderRadius: "0.375rem" }}><SelectValue /></SelectTrigger>
                                 <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                                   <StyledSelectItem value="AND">AND</StyledSelectItem>
@@ -378,18 +387,18 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                           )}
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(12, minmax(0, 1fr))", gap: "0.5rem", alignItems: "flex-start" }}>
                             <div style={{ gridColumn: "span 3" }}>
-                              <ShadcnSelect value={rule.field} onValueChange={(value) => updateFilterRule(group.id, rule.id, { field: value, operator: "contains", value: "" })}>
+                              <ShadcnSelect value={rule.field} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { field: value, operator: "contains", value: "" })}>
                                 <SelectTrigger style={{ height: "2rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.375rem" }}><SelectValue placeholder="Field" /></SelectTrigger>
                                 <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
-                                  {filters.map((filter) => <StyledSelectItem key={filter.key} value={filter.key}>{filter.label}</StyledSelectItem>)}
+                                  {filters.map((filter: FilterConfig) => <StyledSelectItem key={filter.key} value={filter.key}>{filter.label}</StyledSelectItem>)}
                                 </SelectContent>
                               </ShadcnSelect>
                             </div>
                             <div style={{ gridColumn: "span 3" }}>
-                              <ShadcnSelect value={rule.operator} onValueChange={(value) => updateFilterRule(group.id, rule.id, { operator: value, value: "" })}>
+                              <ShadcnSelect value={rule.operator} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { operator: value, value: "" })}>
                                 <SelectTrigger style={{ height: "2rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.375rem" }}><SelectValue placeholder="Operator" /></SelectTrigger>
                                 <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
-                                  {operators.map((operator) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
+                                  {operators.map((operator: { value: string; label: string }) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
                                 </SelectContent>
                               </ShadcnSelect>
                             </div>
@@ -397,7 +406,7 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
                               {filterConfig && renderValueInput(group.id, rule, filterConfig)}
                             </div>
                             <div style={{ gridColumn: "span 1" }}>
-                              <StyledButton onClick={() => removeFilterRule(group.id, rule.id)} baseStyle={{ height: "2rem", width: "2rem", padding: 0, color: "#64748b", backgroundColor: "transparent" }} hoverStyle={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}><X style={{ width: "0.875rem", height: "0.875rem" }} /></StyledButton>
+                              <StyledButton onClick={() => removeFilterRule(group.id, rule.id)} disabled={false} baseStyle={{ height: "2rem", width: "2rem", padding: 0, color: "#64748b", backgroundColor: "transparent" }} hoverStyle={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}><X style={{ width: "0.875rem", height: "0.875rem" }} /></StyledButton>
                             </div>
                           </div>
                         </div>
@@ -420,7 +429,16 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
               </StyledButton>
               {onSaveFilter && getActiveFiltersCount() > 0 && (
                 <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                  <DialogTrigger asChild><StyledButton baseStyle={{ height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#0f172a", backgroundColor: "#ffffff", border: "1px solid #000000", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.25rem",}} hoverStyle={{ backgroundColor: "#f1f5f9" }}><Star style={{ width: "0.875rem", height: "0.875rem" }} /> Save</StyledButton></DialogTrigger>
+                  <DialogTrigger asChild>
+                    <StyledButton
+                      onClick={() => {}} 
+                      disabled={false}
+                      baseStyle={{ height: "2.25rem", padding: "0 1rem", fontSize: "0.875rem", color: "#0f172a", backgroundColor: "#ffffff", border: "1px solid #000000", borderRadius: "0.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.25rem",}}
+                      hoverStyle={{ backgroundColor: "#f1f5f9" }}
+                    >
+                      <Star style={{ width: "0.875rem", height: "0.875rem" }} /> Save
+                    </StyledButton>
+                  </DialogTrigger>
                   <DialogContent style={{ maxWidth: "28rem", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: "0.5rem" }}>
                     <DialogHeader><DialogTitle style={{ color: "#0f172a" }}>Save Filter</DialogTitle></DialogHeader>
                     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -443,4 +461,4 @@ export function AdvancedFiltersClickUp({ filters, onFiltersChange, data, onSaveF
       </PopoverContent>
     </Popover>
   );
-}
+  }

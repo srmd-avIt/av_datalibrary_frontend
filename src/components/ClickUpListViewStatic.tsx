@@ -16,19 +16,7 @@ import {
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs";
-
-// --- Interfaces ---
-interface ListItem {
-  id: string;
-  date?: string;
-  [key: string]: any;
-}
-interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
-interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number" | "checkbox"; options?: string[]; }
-interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; }
-interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
-interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
-interface SavedFilter { id: string; name: string; filterGroups: FilterGroup[]; createdAt: string; }
+import { Column, FilterConfig, FilterGroup, FilterRule, ListItem, SavedFilter, ViewConfig } from "./types";
 
 // --- Component ---
 export function ClickUpListViewStatic({ title, columns, data, searchKey = "name", filterConfigs = [], views = [], onRowSelect }: {
@@ -62,13 +50,17 @@ export function ClickUpListViewStatic({ title, columns, data, searchKey = "name"
   const activeGroupBy = groupBy !== "none" ? groupBy : currentView?.groupBy || "none";
 
   const finalFilterConfigs = useMemo(() => {
-    if (filterConfigs && filterConfigs.length > 0) return filterConfigs;
+    // Only allow types supported by AdvancedFiltersClickUp
+    const allowedTypes = ["number", "text", "select", "date"];
+    if (filterConfigs && filterConfigs.length > 0) {
+      return filterConfigs.filter(fc => allowedTypes.includes(fc.type));
+    }
     return columns
-      .filter(col => col.filterable !== false)
-      .map(col => ({
+      .filter(col => col.filterable !== false && (!('type' in col) || allowedTypes.includes((col as any).type)))
+      .map((col): FilterConfig => ({
         key: col.key,
         label: col.label,
-        type: "text" as "number" | "select" | "date" | "text" | "checkbox"
+        type: 'type' in col && allowedTypes.includes((col as any).type) ? ((col as any).type as "number" | "text" | "select" | "date") : "text"
       }));
   }, [columns, filterConfigs]);
 
@@ -233,7 +225,7 @@ export function ClickUpListViewStatic({ title, columns, data, searchKey = "name"
           <div className="flex items-center gap-4 pt-4">
             <div className="flex items-center gap-2">
               <AdvancedFiltersClickUp 
-                filters={finalFilterConfigs} 
+                filters={finalFilterConfigs.filter(fc => fc.type !== "checkbox")}
                 onFiltersChange={setAdvancedFilters} 
                 data={finalItems} 
                 onSaveFilter={handleSaveFilter}
@@ -302,11 +294,22 @@ export function ClickUpListViewStatic({ title, columns, data, searchKey = "name"
                 <DraggableResizableTable
                   data={finalItems as any}
                   columns={visibleColumns as any}
+                  sortedData={finalItems as any}
+                  frozenColumnKey={null}
+                  columnOrder={visibleColumns.map(col => col.key)}
+                  columnSizing={{}}
                   onRowSelect={(item) => onRowSelect?.(item as any)}
                   onSort={handleSort}
                   getSortIcon={getSortIcon}
                   groupedData={groupedData as any}
                   idKey="id"
+                  // --- MODIFIED: Add required editing props with dummy values ---
+                  editingCell={null}
+                  editValue={""}
+                  setEditValue={() => {}}
+                  setEditingCell={() => {}}
+                  handleUpdateCell={() => {}}
+                  handleCellDoubleClick={() => {}}
                 />
               )}
             </>

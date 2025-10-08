@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { useDrag, useDrop, DndProvider } from "react-dnd";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   Table,
@@ -8,24 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
-import { Input } from "./ui/input"; // Import the Input component
+import { Input } from "./ui/input";
 import { GripVertical, ChevronRight } from "lucide-react";
 import { cn, getColorForString } from "./ui/utils";
-
-interface ListItem {
-  id?: string;
-  [key: string]: any;
-}
-
-interface Column {
-  key: string;
-  label: string;
-  sortable?: boolean;
-  filterable?: boolean;
-  render?: (value: any, item: ListItem) => React.ReactNode;
-  width?: number;
-  editable?: boolean; // Add missing editable property
-}
+import { Column, ListItem } from "./types"; // Import shared types
 
 interface DraggableResizableTableProps {
   data: ListItem[];
@@ -87,10 +73,12 @@ function DraggableHeader({
 
   const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
     accept: ITEM_TYPE,
-    collect(monitor) {
-      return { handlerId: monitor.getHandlerId() };
+    collect(monitor: import("react-dnd").DropTargetMonitor) {
+      return {
+        handlerId: monitor.getHandlerId(),
+      };
     },
-    hover(item: DragItem, monitor) {
+    hover(item: DragItem, monitor: import("react-dnd").DropTargetMonitor) {
       if (!ref.current) return;
       const dragIndex = item.index;
       const hoverIndex = index;
@@ -109,7 +97,7 @@ function DraggableHeader({
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPE,
     item: () => ({ key: column.key, index }),
-    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    collect: (monitor: import("react-dnd").DragSourceMonitor) => ({ isDragging: monitor.isDragging() }),
   });
 
   const handleMouseDown = useCallback(
@@ -212,7 +200,7 @@ export function DraggableResizableTable({
   const [columns, setColumns] = useState(initialColumns);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   // --- NEW: Ref to manage the single-click timer ---
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const widths: Record<string, number> = {};
     initialColumns.forEach((col) => (widths[col.key] = 150));

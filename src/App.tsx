@@ -456,7 +456,7 @@ export default function App() {
     }
     
     // C) Fallback to the dashboard if no view matches
-    return <Dashboard />;
+    return <Dashboard onShowDetails={handlePushSidebar} />;
   };
 
   // --- Layout Calculation ---

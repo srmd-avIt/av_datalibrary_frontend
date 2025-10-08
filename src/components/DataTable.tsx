@@ -5,8 +5,9 @@ import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Badge } from "./ui/badge";
 import { Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
-import { AdvancedFilters } from "./AdvancedFilters";
+
 import { ExportData } from "./ExportData";
+// import { AdvancedFilters } from "./AdvancedFilters";
 // import { motion } from "motion/react";
 
 interface DataTableProps {
@@ -163,16 +164,7 @@ export function DataTable({
                 className="pl-10 bg-background/50 backdrop-blur-sm"
               />
             </div>
-            {filterConfigs.length > 0 && (
-              <AdvancedFilters
-                filters={filterConfigs}
-                onFiltersChange={(filters) => {
-                  setAppliedFilters(filters);
-                  setCurrentPage(1);
-                }}
-                data={data}
-              />
-            )}
+            {/* AdvancedFilters component is not available */}
           </div>
         </CardHeader>
         

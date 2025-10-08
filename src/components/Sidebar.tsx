@@ -37,7 +37,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
     { id: "aux", label: "Aux Files", icon: FileText },
     {
       id: "master-data",
-      label: "Dropdowns",
+      label: "Dropdowns ",
       icon: Layers,
       children: [
         { id: "audio", label: "Audio", icon: Music },

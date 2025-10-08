@@ -211,8 +211,11 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       filtered.sort((a, b) => {
         const aValue = sortConfig.key === 'lastActive' ? a.lastActiveDate.getTime() : a[sortConfig.key!];
         const bValue = sortConfig.key === 'lastActive' ? b.lastActiveDate.getTime() : b[sortConfig.key!];
-        if (aValue === undefined || aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (bValue === undefined || aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (aValue === undefined && bValue === undefined) return 0;
+        if (aValue === undefined) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (bValue === undefined) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
@@ -242,7 +245,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       return user && user.role !== 'Owner' && user.id !== loggedInUser?.id;
     });
     if (safeSelection.length !== selectedUsers.length) toast.info("Owners and your own account were excluded from the bulk action.");
-    if (safeSelection.length === 0) { toast.warn("No valid users selected for the action."); setSelectedUsers([]); setIsBulkActionOpen(false); return; }
+    if (safeSelection.length === 0) { toast.warning("No valid users selected for the action."); setSelectedUsers([]); setIsBulkActionOpen(false); return; }
     let message = "";
     setUsers(currentUsers => {
       let updatedUsers = [...currentUsers];
@@ -413,8 +416,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                                     </Badge>
                                   </DropdownMenuSubTrigger>
                                   <DropdownMenuSubContent
-                                    side="bottom" // Ensures submenus open downward
-                                    align="start" // Aligns submenus to the start of the trigger
                                     sideOffset={4} // Adds spacing between the trigger and the submenu
                                   >
                                     <DropdownMenuItem
