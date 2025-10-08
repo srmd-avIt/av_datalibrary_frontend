@@ -33,21 +33,19 @@ import {
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
-import { ListItem } from "./types";
+import { ListItem, Column } from "./types"; // Import both ListItem and Column
 import useLocalStorageState from "../hooks/useLocalStorageState"; 
+import { useAuth } from "../contexts/AuthContext"; // For permission checks
+import { useQueryClient } from "@tanstack/react-query"; // To invalidate cache
+import { toast } from "sonner"; // For notifications
 import'../styles/globals.css';
 
 // --- Vite env types for TypeScript ---
-// These interfaces are typically handled by a vite-env.d.ts file.
-// Removing them to avoid conflicts with the project's global types.
-
+/// <reference types="vite/client" />
 
 // --- Interfaces ---
-// ListItem is now imported from './types', so the local definition is removed.
+// ListItem and Column are now imported from './types', so local definitions are removed.
 
-
-// Column: Table column definition
-interface Column { key: string; label: string; sortable?: boolean; filterable?: boolean; render?: (value: any, item: ListItem) => React.ReactNode; }
 // FilterConfig: Used for advanced filtering UI
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number" | "checkbox"; options?: string[]; }
 // ViewConfig: Used for saved views (grouping, sorting, filters, etc.)
@@ -214,6 +212,8 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const localStorageKeyPrefix = `tableView-${title.replace(/\s/g, '-')}`;
 
   // --- State ---
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   // --- GLOBAL / SHARED STATE ---
   // This state is persisted to a "global" localStorage key for this table, making it visible to all users.
@@ -222,6 +222,10 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // --- TRANSIENT STATE (Session-specific) ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // --- NEW: State for inline editing ---
+  const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
+  const [editValue, setEditValue] = useState<any>('');
 
   // --- TRANSIENT STATE for Sort, Group, and Freeze ---
   const [sortBy, setSortBy] = useState("none");
@@ -238,6 +242,70 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [activeSavedFilterName, setActiveSavedFilterName] = useLocalStorageState<string | null>(`${localStorageKeyPrefix}-activeSavedFilterName`, null);
   const [viewColumnOrder, setViewColumnOrder] = useLocalStorageState<Record<string, string[]>>(`${localStorageKeyPrefix}-viewColumnOrder`, {});
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
+
+  // --- NEW: Permission Check Logic ---
+  const hasAccess = useMemo(() => {
+    return (resourceName: string, accessLevel: 'read' | 'write' = 'read'): boolean => {
+      if (!user) return false;
+      if (user.role === 'Admin' || user.role === 'Owner') return true;
+      const permission = user.permissions.find((p) => p.resource === resourceName);
+      if (!permission) return false;
+      return permission.actions.includes(accessLevel);
+    };
+  }, [user]);
+
+  // --- NEW: Handlers for Inline Editing ---
+  const handleCellDoubleClick = (rowIndex: number, column: Column, value: any) => {
+    // Check 1: Is the column definition marked as editable?
+    if (!column.editable) return;
+    // Check 2: Does the user have 'write' access for this resource?
+    if (!hasAccess(title, 'write')) {
+      toast.error(`You don't have permission to edit ${title}.`);
+      return;
+    }
+    setEditingCell({ rowIndex, columnKey: column.key });
+    setEditValue(value);
+  };
+
+  const handleUpdateCell = async () => {
+    if (!editingCell) return;
+
+    const { rowIndex, columnKey } = editingCell;
+    const item = finalItems[rowIndex];
+    const id = item[idKey];
+    const originalValue = item[columnKey];
+
+    // Exit edit mode immediately
+    setEditingCell(null);
+
+    // Don't save if the value hasn't changed
+    if (editValue === originalValue) {
+      return;
+    }
+
+    const savingToast = toast.loading(`Updating ${columnKey}...`);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [columnKey]: editValue }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to save changes.');
+      }
+
+      toast.success("Update saved successfully!", { id: savingToast });
+      // Refetch data to show the update
+      await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
+
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Failed to update cell:", error);
+    }
+  };
 
 
   const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
@@ -382,47 +450,11 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
   const allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
   
-  // --- RE-ENABLED: Client-side sorting logic ---
-  const sortedData = useMemo(() => {
-    const itemsToSort = [...allItems];
-    if (activeSortBy === "none") return itemsToSort;
+  // --- REMOVED: Client-side sorting logic has been removed. ---
+  // The component now relies entirely on the API for sorting.
+  const sortedData = allItems;
 
-    itemsToSort.sort((a, b) => {
-      const aVal = a[activeSortBy];
-      const bVal = b[activeSortBy];
-      const direction = activeSortDirection === 'asc' ? 1 : -1;
-
-      // Handle nulls and undefined values
-      if (aVal == null && bVal == null) return 0;
-      if (aVal == null) return -1 * direction;
-      if (bVal == null) return 1 * direction;
-
-      // Attempt to parse as numbers
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
-      if (!isNaN(aNum) && !isNaN(bNum) && String(aVal).length === String(aNum).length && String(bVal).length === String(bNum).length) {
-        if (aNum < bNum) return -1 * direction;
-        if (aNum > bNum) return 1 * direction;
-        return 0;
-      }
-
-      // Attempt to parse as dates
-      const aDate = new Date(aVal);
-      const bDate = new Date(bVal);
-      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
-        if (aDate < bDate) return -1 * direction;
-        if (aDate > bDate) return 1 * direction;
-        return 0;
-      }
-
-      // Fallback to case-insensitive string comparison
-      return String(aVal).localeCompare(String(bVal), undefined, { numeric: true, sensitivity: 'base' }) * direction;
-    });
-
-    return itemsToSort;
-  }, [allItems, activeSortBy, activeSortDirection]);
-
-  // --- MODIFIED: Client-side pagination now uses sortedData ---
+  // --- MODIFIED: Client-side pagination now uses the API-sorted data ---
   const finalItems = useMemo(() => {
     if (shouldFetchAllForGrouping) {
       const start = (currentPage - 1) * itemsPerPage;
@@ -749,7 +781,15 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                     groupedData={groupedData as any}
                     activeGroupBy={activeGroupBy}
                     idKey={idKey}
-                     // --- NEW: Pass freeze props to the table component ---
+                    // --- Pass editing props to the table ---
+                    editingCell={editingCell}
+                    editValue={editValue}
+                    setEditValue={setEditValue}
+                    handleUpdateCell={handleUpdateCell}
+                    handleCellDoubleClick={handleCellDoubleClick}
+                    setEditingCell={setEditingCell} // Pass the setter function
+                    sortedData={sortedData} // Pass the sorted data array
+                     // --- Pass freeze props to the table component ---
                     frozenColumnKey={frozenColumnKey}
                     columnOrder={columnOrder}
                     columnSizing={columnSizing}
