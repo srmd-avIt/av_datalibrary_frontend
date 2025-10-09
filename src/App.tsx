@@ -9,6 +9,9 @@ import { AIAssistant } from "./components/AIAssistant";
 import { UserManagement } from "./components/UserManagement";
 import { DetailsSidebar } from "./components/DetailsSidebar";
 import { DevelopmentBanner } from "./components/DevelopmentBanner";
+import { MobileNavigation } from "./components/MobileNavigation";
+import { ResponsiveLayout, useMobile } from "./components/ResponsiveLayout";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { getColorForString } from "./components/ui/utils";
 
 // ===================================================================================
@@ -410,6 +413,7 @@ export default function App() {
   const [sidebarStack, setSidebarStack] = useState<SidebarStackItem[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
+  const isMobile = useMobile();
 
   // --- Handlers ---
   const handleCloseSidebar = () => setSidebarStack([]);
@@ -469,6 +473,41 @@ export default function App() {
   // Note: AuthProvider and ProtectedRoute have been removed from here.
   // They should wrap this App component in your main index.tsx or main.tsx file.
   // ===================================================================================
+  if (isMobile) {
+    return (
+      <div className="dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <MobileNavigation activeView={activeView} onViewChange={setActiveView} />
+        <InstallPrompt />
+        <ResponsiveLayout>
+          <DevelopmentBanner />
+          <div key={activeView} className="mobile-padding">
+            {renderView()}
+          </div>
+          {/* Mobile Details Modal */}
+          {sidebarStack.length > 0 && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+              <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl max-h-[80vh] overflow-hidden animate-slide-up">
+                {sidebarStack.map((item, index) => (
+                  <DetailsSidebar
+                    key={index}
+                    isOpen={true}
+                    onClose={index === 0 ? handleCloseSidebar : handlePopSidebar}
+                    data={item.data}
+                    type={item.type}
+                    title={item.title}
+                    onPushSidebar={handlePushSidebar}
+                    zIndex={100 + index}
+                    positionOffset={0}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </ResponsiveLayout>
+      </div>
+    );
+  }
+
   return (
     <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
       {/* MAIN SIDEBAR */}

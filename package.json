@@ -58,7 +58,9 @@
             "sonner": "^2.0.7",
             "sweetalert2": "^11.23.0",
             "tailwind-merge": "*",
-            "vaul": "^1.1.2"
+            "vaul": "^1.1.2",
+            "vite-plugin-pwa": "^1.0.3",
+            "workbox-window": "^7.3.0"
       },
       "devDependencies": {
             "@testing-library/jest-dom": "^6.9.1",
