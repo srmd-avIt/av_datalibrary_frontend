@@ -22,7 +22,7 @@ import { Card, CardContent } from "./ui/card";
 import { 
   Crown, Shield, Eye, CircleDot, Mail, MoreHorizontal, Trash2, UserX,
   UserCheck, Search, ChevronDown, ChevronUp, ChevronsUpDown, Users, UserPlus,
-  AlertTriangle, Pencil, XCircle, Filter
+  AlertTriangle, Pencil, XCircle, Filter, FolderOpen, Building, MapPin, X
 } from "lucide-react";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -118,6 +118,17 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof User; direction: 'asc' | 'desc' } | null>({ key: 'name', direction: 'asc' });
   const [groupByField, setGroupByField] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const canManageUsers = useMemo(() => {
     if (!loggedInUser) return false;
@@ -348,6 +359,207 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
   const UserProfile = ({ user }: { user: User }) => (
     <div className="space-y-6"><div className="flex items-center gap-4"><Avatar style={{ width: "4rem", height: "4rem" }}><AvatarImage src={user.avatar}/><AvatarFallback style={{ background: "linear-gradient(to right, #3b82f6, #8b5cf6)", color: "#ffffff", fontSize: "1.125rem", fontWeight: 500 }}>{user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar><div><h3 className="text-xl font-semibold text-slate-100">{user.name}</h3><p className="text-slate-400">{user.title || "No title"}</p><div className="flex items-center gap-2 mt-1">{getRoleIcon(user.role)}<span className="text-sm text-slate-300">{user.role}</span></div></div></div></div>
   );
+
+  // Mobile User Card Component (separate from desktop)
+  const renderMobileUserCard = (user: User) => {
+    const isTargetOwner = user.role === 'Owner';
+    const isTargetSelf = loggedInUser?.id === user.id;
+    const disableAllActions = !canManageUsers || isTargetSelf || isTargetOwner;
+    const disableManageAccess = !canManageUsers || isTargetSelf || isTargetOwner;
+
+    return (
+      <Card key={user.id} className="mb-3 bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/50 transition-all">
+        <CardContent className="p-4">
+          {/* Header with avatar, name, and actions */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Checkbox 
+                checked={selectedUsers.includes(user.id)} 
+                onCheckedChange={(c) => setSelectedUsers(p => c ? [...p, user.id] : p.filter(id => id !== user.id))}
+                className="mt-1 h-3 w-3 scale-75"
+              />
+              <Avatar className="w-10 h-10 flex-shrink-0">
+                <AvatarImage src={user.avatar} />
+                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium">
+                  {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-slate-100 truncate">{user.name}</div>
+                <div className="text-xs text-slate-400 truncate">{user.email}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  {getRoleIcon(user.role)}
+                  <span className="text-xs text-slate-300">{user.role}</span>
+                  {getStatusIcon(user.status)}
+                  <span className={`text-xs ${
+                    user.status === "Active" ? "text-green-400" : 
+                    user.status === "Inactive" ? "text-gray-400" : 
+                    user.status === "Pending" ? "text-yellow-400" : "text-blue-400"
+                  }`}>
+                    {user.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Action menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Mail className="mr-2 h-4 w-4" />Send Message
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  disabled={disableAllActions}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (disableAllActions) return; 
+                    setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" } : u)); 
+                    toast.success(`User ${user.status === "Active" ? "deactivated" : "activated"}`);
+                  }}
+                >
+                  {user.status === "Active" ? (
+                    <UserX className="mr-2 h-4 w-4" />
+                  ) : (
+                    <UserCheck className="mr-2 h-4 w-4" />
+                  )}
+                  {user.status === "Active" ? "Deactivate" : "Activate"}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  disabled={disableAllActions}
+                  className="text-red-500 focus:text-red-500" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (disableAllActions) return; 
+                    handleDeleteConfirmation(user);
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Additional info grid */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            {user.department && (
+              <div>
+                <span className="text-slate-500">Department:</span>
+                <div className="text-slate-300 truncate">{user.department}</div>
+              </div>
+            )}
+            {user.location && (
+              <div>
+                <span className="text-slate-500">Location:</span>
+                <div className="text-slate-300 truncate">{user.location}</div>
+              </div>
+            )}
+            <div>
+              <span className="text-slate-500">Joined:</span>
+              <div className="text-slate-300">{user.joinedDate}</div>
+            </div>
+            <div>
+              <span className="text-slate-500">Last Active:</span>
+              <div className="text-slate-300">{user.lastActive}</div>
+            </div>
+          </div>
+
+          {/* Teams */}
+          {user.teams.length > 0 && (
+            <div className="mt-3">
+              <span className="text-xs text-slate-500 mb-1 block">Teams:</span>
+              <div className="flex flex-wrap gap-1">
+                {user.teams.slice(0, 3).map((team) => (
+                  <Badge key={team} variant="secondary" className="text-xs">
+                    {team}
+                  </Badge>
+                ))}
+                {user.teams.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{user.teams.length - 3}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Manage Access button */}
+          <div className="mt-3 pt-3 border-t border-slate-700/50">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-between text-xs"
+                  disabled={disableManageAccess}
+                >
+                  Manage Access
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-64" side="top" align="center">
+                <DropdownMenuLabel>Permissions for {user.name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="max-h-48 overflow-y-auto">
+                  {APP_RESOURCES.slice(0, 8).map((resource) => {
+                    const currentLevel = getAccessLevel(user, resource);
+                    return (
+                      <DropdownMenuSub key={resource}>
+                        <DropdownMenuSubTrigger className="text-xs">
+                          <span className="flex-1 truncate">{resource}</span>
+                          <Badge
+                            variant={
+                              currentLevel === "Edit Access"
+                                ? "default"
+                                : currentLevel === "View Only"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                            className="ml-2 text-xs"
+                          >
+                            {currentLevel === "Edit Access" ? "Edit" : 
+                             currentLevel === "View Only" ? "View" : "None"}
+                          </Badge>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              handlePermissionChange(user.id, resource, "No Access")
+                            }
+                          >
+                            <XCircle className="mr-2 h-3 w-3 text-red-500" /> No Access
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              handlePermissionChange(user.id, resource, "View Only")
+                            }
+                          >
+                            <Eye className="mr-2 h-3 w-3 text-blue-500" /> View Only
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              handlePermissionChange(user.id, resource, "Edit Access")
+                            }
+                          >
+                            <Pencil className="mr-2 h-3 w-3 text-green-500" /> Edit Access
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    );
+                  })}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
   
   const renderUserRow = (user: User) => {
     const isTargetOwner = user.role === 'Owner';
@@ -476,6 +688,263 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     );
   }
 
+  // Mobile View
+  if (isMobile) {
+    return (
+      <div className="p-4 space-y-4" style={{ background: 'radial-gradient(circle, rgba(15,23,42,1) 0%, rgba(3,7,18,1) 100%)', color: '#e2e8f0', minHeight: '100vh' }}>
+        {/* Mobile Header */}
+        <div className="space-y-3">
+          <div className="text-center">
+            <h1 className="text-xl font-semibold text-white">User Management</h1>
+            <p className="text-sm text-slate-400">Manage team members</p>
+          </div>
+          
+          {/* Mobile Add User Button */}
+          <div className="flex justify-center">
+            <Button 
+              onClick={() => setIsAddUserDialogOpen(true)} 
+              disabled={!canManageUsers}
+              className="w-full max-w-xs"
+              title={!canManageUsers ? "Only Admins/Owners can add users." : "Add a new user"}
+            >
+              <UserPlus className="h-4 w-4 mr-2" /> Add User
+            </Button>
+          </div>
+
+          {/* Mobile Bulk Actions */}
+          {canManageUsers && selectedUsers.length > 0 && (
+            <div className="flex justify-center">
+              <DropdownMenu open={isBulkActionOpen} onOpenChange={setIsBulkActionOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full max-w-xs">
+                    <Users className="h-4 w-4 mr-2" />
+                    {selectedUsers.length} selected
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onSelect={() => executeBulkAction("activate")}>
+                    <UserCheck className="mr-2 h-4 w-4"/>Activate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => executeBulkAction("deactivate")}>
+                    <UserX className="mr-2 h-4 w-4"/>Deactivate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => executeBulkAction("delete")} className="text-red-500 focus:text-red-500">
+                    <Trash2 className="mr-2 h-4 w-4"/>Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Stats Cards */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="bg-slate-800/30 border-slate-700/50">
+            <CardContent className="p-3 text-center">
+              <Users className="h-5 w-5 mx-auto mb-1" style={{ color: "#60a5fa" }} />
+              <p className="text-lg font-bold text-white">{users.length}</p>
+              <p className="text-xs text-slate-400">Total</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-800/30 border-slate-700/50">
+            <CardContent className="p-3 text-center">
+              <UserCheck className="h-5 w-5 mx-auto mb-1" style={{ color: "#34d399" }} />
+              <p className="text-lg font-bold text-white">{users.filter(u => u.status === "Active").length}</p>
+              <p className="text-xs text-slate-400">Active</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-800/30 border-slate-700/50">
+            <CardContent className="p-3 text-center">
+              <Mail className="h-5 w-5 mx-auto mb-1" style={{ color: "#facc15" }} />
+              <p className="text-lg font-bold text-white">{users.filter(u => u.status === "Invited" || u.status === "Pending").length}</p>
+              <p className="text-xs text-slate-400">Pending</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-800/30 border-slate-700/50">
+            <CardContent className="p-3 text-center">
+              <Shield className="h-5 w-5 mx-auto mb-1" style={{ color: "#a78bfa" }} />
+              <p className="text-lg font-bold text-white">{users.filter(u => u.role === "Admin" || u.role === "Owner").length}</p>
+              <p className="text-xs text-slate-400">Admins</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Mobile Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input 
+            placeholder="Search users..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-slate-800/50 border-slate-700/50 text-white placeholder-slate-400"
+          />
+        </div>
+
+        {/* Mobile Filter & Group Controls */}
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1">
+                <Filter className="h-4 w-4 mr-2" />
+                Filter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setSearchQuery("")}>
+                <Users className="mr-2 h-4 w-4" />All Users
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSearchQuery("Active")}>
+                <UserCheck className="mr-2 h-4 w-4 text-green-400" />Active Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSearchQuery("Inactive")}>
+                <UserX className="mr-2 h-4 w-4 text-gray-400" />Inactive Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSearchQuery("Pending")}>
+                <Mail className="mr-2 h-4 w-4 text-yellow-400" />Pending Only
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => setSearchQuery("Owner")}>
+                <Shield className="mr-2 h-4 w-4 text-red-400" />Owners
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSearchQuery("Admin")}>
+                <Shield className="mr-2 h-4 w-4 text-purple-400" />Admins
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSearchQuery("User")}>
+                <Users className="mr-2 h-4 w-4 text-blue-400" />Users
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setSearchQuery("Viewer")}>
+                <Eye className="mr-2 h-4 w-4 text-gray-400" />Viewers
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1">
+                <FolderOpen className="h-4 w-4 mr-2" />
+                {groupByField ? `${groupByField.charAt(0).toUpperCase() + groupByField.slice(1)}` : 'Group'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Group By</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value={groupByField || ''} onValueChange={(value) => setGroupByField(value === groupByField ? null : value)}>
+                <DropdownMenuRadioItem value="role">
+                  <Shield className="mr-2 h-4 w-4" />Role
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="status">
+                  <UserCheck className="mr-2 h-4 w-4" />Status
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="department">
+                  <Building className="mr-2 h-4 w-4" />Department
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="location">
+                  <MapPin className="mr-2 h-4 w-4" />Location
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              {groupByField && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setGroupByField(null)}>
+                    <X className="mr-2 h-4 w-4" />Clear Grouping
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Mobile User Cards */}
+        <div className="space-y-3 pb-20">
+          {sortedAndFilteredUsers.length > 0 ? (
+            groupedUsers ? (
+              Array.from(groupedUsers.entries()).map(([groupName, usersInGroup]) => (
+                <div key={`mobile-group-${groupName}`} className="space-y-3">
+                  {/* Mobile Group Header */}
+                  <div className="sticky top-0 bg-slate-900/90 backdrop-blur-sm p-3 rounded-lg border border-slate-700/50">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-slate-200 flex items-center gap-2">
+                        {groupByField === 'role' && <Shield className="h-4 w-4" />}
+                        {groupByField === 'status' && <UserCheck className="h-4 w-4" />}
+                        {groupByField === 'department' && <Building className="h-4 w-4" />}
+                        {groupByField === 'location' && <MapPin className="h-4 w-4" />}
+                        {groupName}
+                      </h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {usersInGroup.length}
+                      </Badge>
+                    </div>
+                  </div>
+                  {/* Users in this group */}
+                  <div className="space-y-3 pl-2">
+                    {usersInGroup.map(user => renderMobileUserCard(user))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              sortedAndFilteredUsers.map(user => renderMobileUserCard(user))
+            )
+          ) : (
+            <Card className="bg-slate-800/30 border-slate-700/50">
+              <CardContent className="p-6 text-center">
+                <Users className="h-12 w-12 text-slate-500 mx-auto mb-2" />
+                <p className="text-slate-400">No users found</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Mobile Dialogs */}
+        <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+          <DialogContent className="w-[95vw] max-w-sm border border-white/20 shadow-xl" style={{ backgroundColor: "rgba(30, 72, 110, 0.6)", backdropFilter: "blur(1px) saturate(100%)", WebkitBackdropFilter: "blur(10px) saturate(100%)", borderRadius: "1rem" }}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <UserPlus /> Add New User
+              </DialogTitle>
+            </DialogHeader>
+            <AddUserForm onAddUser={handleAddUser} />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+          <DialogContent className="w-[95vw] max-w-lg">
+            <DialogHeader>
+              <DialogTitle>User Profile</DialogTitle>
+            </DialogHeader>
+            {selectedUser && <UserProfile user={selectedUser} />}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="w-[95vw] max-w-sm backdrop-blur-md" style={{ backgroundColor: "rgba(0, 29, 57, 0.6)", borderRadius: "0.5rem" }}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white">
+                <AlertTriangle className="text-red-500" />Confirm Deletion
+              </DialogTitle>
+              <DialogDescription className="pt-2 text-white">
+                Are you sure you want to delete the user "{userToDelete?.name}"?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="text-black flex items-center gap-2">
+                <XCircle className="h-4 w-4" />Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteUser} className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />Confirm Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Desktop View
   return (
     <div className="p-6 space-y-6" style={{ background: 'radial-gradient(circle, rgba(15,23,42,1) 0%, rgba(3,7,18,1) 100%)', color: '#e2e8f0' }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
