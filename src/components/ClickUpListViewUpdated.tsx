@@ -23,6 +23,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { DraggableResizableTable } from "./DraggableResizableTable";
+import { MobileTable } from "./MobileTableView";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
@@ -162,10 +163,88 @@ async function fetchDataFromApi({
 }
 
 // --- SimplePagination ---
-// Pagination controls for navigating pages
+// Responsive pagination controls for navigating pages
 function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void; }) {
   const [jump, setJump] = useState<string>('');
-  const go = (page: number) => { const p = Math.max(1, Math.min(Math.max(1, totalPages), Math.floor(Number(page) || 1))); if (p !== currentPage) onPageChange(p); };
+  const [isMobile, setIsMobile] = useState(false);
+  
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const go = (page: number) => { 
+    const p = Math.max(1, Math.min(Math.max(1, totalPages), Math.floor(Number(page) || 1))); 
+    if (p !== currentPage) onPageChange(p); 
+  };
+
+  if (isMobile) {
+    // Mobile: Compact pagination with essential controls only
+    return (
+      <div className="flex flex-col gap-3 w-full">
+        {/* Page info */}
+        <div className="text-center text-sm text-muted-foreground">
+          Page <strong>{currentPage}</strong> of <strong>{Math.max(1, totalPages)}</strong>
+        </div>
+        
+        {/* Navigation controls */}
+        <div className="flex items-center justify-between gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => go(currentPage - 1)} 
+            disabled={currentPage <= 1}
+            className="flex-1 max-w-[100px]"
+          >
+            Previous
+          </Button>
+          
+          {/* Quick jump input */}
+          <div className="flex items-center gap-1 min-w-0">
+            <Input 
+              type="number" 
+              min={1} 
+              max={Math.max(1, totalPages)} 
+              placeholder="Page" 
+              value={jump} 
+              onChange={(e: any) => setJump(e.target.value)} 
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { 
+                if (e.key === 'Enter') { 
+                  go(Number(jump)); 
+                  setJump(''); 
+                } 
+              }} 
+              className="w-16 h-8 text-center text-xs"
+            />
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => { go(Number(jump)); setJump(''); }}
+              className="px-2 h-8 text-xs"
+            >
+              Go
+            </Button>
+          </div>
+          
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => go(currentPage + 1)} 
+            disabled={currentPage >= Math.max(1, totalPages)}
+            className="flex-1 max-w-[100px]"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: Full pagination controls
   return (
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
@@ -217,6 +296,20 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   // --- State ---
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // --- Mobile detection ---
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // --- GLOBAL / SHARED STATE ---
   // This state is persisted to a "global" localStorage key for this table, making it visible to all users.
@@ -636,7 +729,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
 
   // --- Render ---
   return (
-    <div className="p-6 space-y-4">
+    <div className={`${isMobile ? 'p-2 space-y-3' : 'p-6 space-y-4'}`}>
       {/* Title and description */}
       <div className="flex items-center justify-between">
         <div>
@@ -672,146 +765,216 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
       <Card className="border-0 shadow-sm bg-card">
         {/* Card header: tabs, export, filters, grouping, sorting, column hiding, search */}
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            {/* Tabs for table/timeline */}
-            <Tabs value="table">
-              <TabsList className="grid grid-cols-1 w-fit">
-                <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {/* Export button */}
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
-                {isExporting ? (<Loader2 className="w-4 h-4 animate-spin" />) : (<Download className="w-4 h-4" />)}
-                {isExporting ? 'Exporting...' : 'Export'}
-              </Button>
-            </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {/* Mobile: Title and table indicator */}
+            {isMobile ? (
+              <div className="flex items-center gap-3 w-full">
+                <div className="flex items-center gap-2 text-sm text-white">
+                  <TableIcon className="w-4 h-4 text-white" />
+                  <span className="text-white">Table View</span>
+                </div>
+                <div className="ml-auto">
+                  <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-slate-600 text-white hover:bg-slate-800" onClick={handleExport} disabled={isExporting}>
+                    {isExporting ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Download className="w-3 h-3" />)}
+                    {isExporting ? 'Export' : 'Export'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Desktop: Tabs for table/timeline */}
+                <Tabs value="table">
+                  <TabsList className="grid grid-cols-1 w-fit">
+                    <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {/* Desktop: Export button */}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
+                    {isExporting ? (<Loader2 className="w-4 h-4 animate-spin" />) : (<Download className="w-4 h-4" />)}
+                    {isExporting ? 'Exporting...' : 'Export'}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
-          {/* Filters, grouping, sorting, column hiding, search */}
-          <div className="flex items-center gap-4 pt-4">
-            <div className="flex items-center gap-2">
-              {/* Advanced filters */}
-              <AdvancedFiltersClickUp 
-                filters={finalFilterConfigs} 
-                onFiltersChange={setAdvancedFilters} 
-                data={finalItems} 
-                onSaveFilter={handleSaveFilter} 
-              />
+          {/* Mobile-first search */}
+          {isMobile && (
+            <div className="pt-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search..." 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                  className="pl-10 h-10 text-base"
+                />
+              </div>
+            </div>
+          )}
 
-                {/* --- NEW: Freeze Column Button & Popover --- */}
-              <div className="flex items-center gap-1">
+          {/* Mobile vs Desktop Controls */}
+          {isMobile ? (
+            /* Mobile: Simplified controls in collapsible sections */
+            <div className="pt-4 space-y-3">
+              {/* Mobile Quick Actions Row */}
+              <div className="flex flex-wrap items-center gap-2">
+                <AdvancedFiltersClickUp 
+                  filters={finalFilterConfigs} 
+                  onFiltersChange={setAdvancedFilters} 
+                  data={finalItems} 
+                  onSaveFilter={handleSaveFilter} 
+                />
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8">
-                      <Pin className="w-4 h-4" />
-                      {frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <EyeOff className="w-3 h-3" />
+                      Columns
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start">
+                  <PopoverContent className="w-72" align="end">
                     <div className="space-y-3">
-                      <div className="font-medium text-sm">Freeze up to column</div>
-                      <Select value={frozenColumnKey || 'none'} onValueChange={(value: string) => setFrozenColumnKey(value === 'none' ? null : value)}>
-                        <SelectTrigger className="h-8"><SelectValue placeholder="Select column to freeze" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No columns frozen</SelectItem>
-                          {visibleColumns.map((col) => (<SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {frozenColumnKey && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns">
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Grouping controls */} 
-              <div className="flex items-center gap-1">
-                <Popover>
-                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start">
-                    <div className="space-y-3">
-                      <div className="font-medium text-sm">Group by field</div>
-                      <Select
-                        value={groupBy}
-                        onValueChange={(v: string) => setGroupBy(v)}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select field" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No grouping</SelectItem>
-                          {getAvailableGroupByFields().map((field) => (
-                            <SelectItem key={field.value} value={field.value}>
-                              {field.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {groupBy !== "none" && (
-                        <>
-                          <div className="font-medium text-sm">Sort groups</div>
-                          <Select
-                            value={groupDirection}
-                            onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="asc">Ascending (A-Z)</SelectItem>
-                              <SelectItem value="desc">Descending (Z-A)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {groupBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping"><X className="w-4 h-4" /></Button>)}
-              </div>
-              {/* Sorting controls */}
-              <div className="flex items-center gap-1">
-                <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
-                {sortBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting"><X className="w-4 h-4" /></Button>)}
-              </div>
-              {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
-            </div>
-            {/* Search and column hiding */}
-            <div className="flex items-center gap-2 ml-auto">
-              <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
-              <Popover>
-                <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
-                <PopoverContent className="w-64" align="end">
-                  <div className="space-y-3">
-                    <div className="font-medium">Show/Hide Columns</div>
-                    {columns.map((column) => (
-                      <div key={column.key} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`column-${column.key}`} 
-                          checked={!hiddenColumns.includes(column.key)} 
-                          onCheckedChange={(checked: boolean) => { 
-                            if (checked) { 
-                              setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
-                            } else { 
-                              setHiddenColumns([...hiddenColumns, column.key]); 
-                            } 
-                          }} 
-                        />
-                        <label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label>
+                      <div className="font-medium text-sm">Show/Hide Columns</div>
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        {columns.map((column) => (
+                          <div key={column.key} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`column-${column.key}`} 
+                              checked={!hiddenColumns.includes(column.key)} 
+                              onCheckedChange={(checked: boolean) => { 
+                                if (checked) { 
+                                  setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
+                                } else { 
+                                  setHiddenColumns([...hiddenColumns, column.key]); 
+                                } 
+                              }} 
+                            />
+                            <label htmlFor={`column-${column.key}`} className="text-sm truncate">{column.label}</label>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Desktop: Full controls layout */
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Advanced filters */}
+                <AdvancedFiltersClickUp 
+                  filters={finalFilterConfigs} 
+                  onFiltersChange={setAdvancedFilters} 
+                  data={finalItems} 
+                  onSaveFilter={handleSaveFilter} 
+                />
+
+                {/* --- Freeze Column Button & Popover --- */}
+                <div className="flex items-center gap-1">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2 h-8">
+                        <Pin className="w-4 h-4" />
+                        {frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-3">
+                        <div className="font-medium text-sm">Freeze up to column</div>
+                        <Select value={frozenColumnKey || 'none'} onValueChange={(value: string) => setFrozenColumnKey(value === 'none' ? null : value)}>
+                          <SelectTrigger className="h-8"><SelectValue placeholder="Select column to freeze" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No columns frozen</SelectItem>
+                            {visibleColumns.map((col) => (<SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {frozenColumnKey && (
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Grouping controls */} 
+                <div className="flex items-center gap-1">
+                  <Popover>
+                    <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-3">
+                        <div className="font-medium text-sm">Group by field</div>
+                        <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v)}>
+                          <SelectTrigger className="h-8"><SelectValue placeholder="Select field" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No grouping</SelectItem>
+                            {getAvailableGroupByFields().map((field) => (
+                              <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {groupBy !== "none" && (
+                          <>
+                            <div className="font-medium text-sm">Sort groups</div>
+                            <Select value={groupDirection} onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}>
+                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="asc">Ascending (A-Z)</SelectItem>
+                                <SelectItem value="desc">Descending (Z-A)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {groupBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping"><X className="w-4 h-4" /></Button>)}
+                </div>
+                
+                {/* Sorting controls */}
+                <div className="flex items-center gap-1">
+                  <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
+                  {sortBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting"><X className="w-4 h-4" /></Button>)}
+                </div>
+                {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
+              </div>
+              
+              {/* Search and column hiding */}
+              <div className="flex items-center gap-2 ml-auto">
+                <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
+                <Popover>
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
+                  <PopoverContent className="w-64" align="end">
+                    <div className="space-y-3">
+                      <div className="font-medium">Show/Hide Columns</div>
+                      {columns.map((column) => (
+                        <div key={column.key} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`column-${column.key}`} 
+                            checked={!hiddenColumns.includes(column.key)} 
+                            onCheckedChange={(checked: boolean) => { 
+                              if (checked) { 
+                                setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
+                              } else { 
+                                setHiddenColumns([...hiddenColumns, column.key]); 
+                              } 
+                            }} 
+                          />
+                          <label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
         </CardHeader>
         {/* Card content: table or timeline */}
         <CardContent className="p-0">
-            <div className="overflow-x-auto relative custom-scrollbar" style={{ maxHeight: '60vh' }}>
+            <div className={`${isMobile ? 'overflow-y-auto mobile-scroll' : 'overflow-x-auto'} relative custom-scrollbar`} style={{ maxHeight: isMobile ? 'calc(100vh - 280px)' : '60vh' }}>
               {/* Initial loading state (blocks the whole view) */}
               {(isLoading || isGroupingDataLoading) && <div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>}
               
@@ -824,29 +987,43 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               {/* Data display */}
               {finalItems.length > 0 && (
                 <div className={`transition-opacity duration-300 ${isFetching && !isLoading && !isGroupingDataLoading ? 'opacity-50' : 'opacity-100'}`}>
-                  {/* Main table with drag, resize, grouping, sorting, selection */}
-                  <DraggableResizableTable
-                    data={activeGroupBy === 'none' ? finalItems : (groupedData as any)}
-                    columns={visibleColumns as any}
-                    onRowSelect={(item) => onRowSelect?.(item as any)}
-                    onSort={handleSort}
-                    getSortIcon={getSortIcon}
-                    groupedData={groupedData as any}
-                    activeGroupBy={activeGroupBy}
-                    idKey={idKey}
-                    // --- Pass editing props to the table ---
-                    editingCell={editingCell}
-                    editValue={editValue}
-                    setEditValue={setEditValue}
-                    handleUpdateCell={handleUpdateCell}
-                    handleCellDoubleClick={handleCellDoubleClick}
-                    setEditingCell={setEditingCell} // Pass the setter function
-                    sortedData={sortedData} // Pass the sorted data array
-                     // --- Pass freeze props to the table component ---
-                    frozenColumnKey={frozenColumnKey}
-                    columnOrder={columnOrder}
-                    columnSizing={columnSizing}
-                  />
+                  {/* Mobile view: Card-based layout */}
+                  {isMobile ? (
+                    <div className="p-2 pb-6">
+                      <MobileTable
+                        items={finalItems}
+                        columns={visibleColumns as any}
+                        onRowSelect={(item) => onRowSelect?.(item as any)}
+                        activeView={activeView}
+                        idKey={idKey}
+                        isLoading={isLoading || isGroupingDataLoading}
+                      />
+                    </div>
+                  ) : (
+                    /* Desktop view: Full table with drag, resize, grouping, sorting, selection */
+                    <DraggableResizableTable
+                      data={activeGroupBy === 'none' ? finalItems : (groupedData as any)}
+                      columns={visibleColumns as any}
+                      onRowSelect={(item) => onRowSelect?.(item as any)}
+                      onSort={handleSort}
+                      getSortIcon={getSortIcon}
+                      groupedData={groupedData as any}
+                      activeGroupBy={activeGroupBy}
+                      idKey={idKey}
+                      // --- Pass editing props to the table ---
+                      editingCell={editingCell}
+                      editValue={editValue}
+                      setEditValue={setEditValue}
+                      handleUpdateCell={handleUpdateCell}
+                      handleCellDoubleClick={handleCellDoubleClick}
+                      setEditingCell={setEditingCell} // Pass the setter function
+                      sortedData={sortedData} // Pass the sorted data array
+                       // --- Pass freeze props to the table component ---
+                      frozenColumnKey={frozenColumnKey}
+                      columnOrder={columnOrder}
+                      columnSizing={columnSizing}
+                    />
+                  )}
                 </div>
               )}
 
@@ -861,17 +1038,52 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         </CardContent>
         {/* Pagination and results count */}
         { !(isLoading || isGroupingDataLoading) && totalItems > 0 &&
-          <div className="flex items-center justify-between text-sm text-muted-foreground p-6 border-t">
-              <div><span>{totalItems} results</span></div>
-              {/* Show pagination unless grouping is active and there's only one page */}
-              {!(activeGroupBy !== 'none' && totalPages <= 1) && (
-                <div className="flex items-center gap-4">
-                    {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
-                        <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>
-                    )}
-                    <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))}/>
+          <div className={`border-t ${isMobile ? 'p-4 space-y-3' : 'p-6'}`}>
+            {/* Mobile Layout */}
+            {isMobile ? (
+              <div className="space-y-3">
+                {/* Results count and clear filters */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>{totalItems} results</span>
+                  {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => { 
+                        setAdvancedFilters([]); 
+                        setActiveView(views[0]?.id || ""); 
+                      }} 
+                      className="text-muted-foreground hover:text-foreground text-xs h-8"
+                    >
+                      Clear filters
+                    </Button>
+                  )}
                 </div>
-              )}
+                
+                {/* Pagination */}
+                {!(activeGroupBy !== 'none' && totalPages <= 1) && (
+                  <SimplePagination 
+                    currentPage={currentPage} 
+                    totalPages={totalPages} 
+                    onPageChange={(p) => setCurrentPage(Number(p))}
+                  />
+                )}
+              </div>
+            ) : (
+              /* Desktop Layout */
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div><span>{totalItems} results</span></div>
+                {/* Show pagination unless grouping is active and there's only one page */}
+                {!(activeGroupBy !== 'none' && totalPages <= 1) && (
+                  <div className="flex items-center gap-4">
+                      {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
+                          <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>
+                      )}
+                      <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))}/>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         }
       </Card>

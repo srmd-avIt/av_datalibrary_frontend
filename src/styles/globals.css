@@ -245,38 +245,59 @@ html {
   scrollbar-color: var(--muted) color-mix(in srgb, var(--muted) 20%, transparent);
 }
 
-/* Mobile-first improvements */
+/* Mobile-specific styles */
 @media (max-width: 768px) {
-  /* Touch-friendly button sizes */
-  button, .btn {
+  /* Ensure proper touch targets */
+  button, [role="button"] {
     min-height: 44px;
     min-width: 44px;
   }
-
-  /* Improved spacing for mobile */
-  .mobile-padding {
-    padding: 1rem;
-  }
-
-  /* Responsive text sizes */
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.25rem; }
-  h3 { font-size: 1.125rem; }
-
-  /* Better mobile table scrolling */
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Hide scrollbars on mobile for cleaner look */
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  
+  /* Prevent text selection on tap */
+  .mobile-nav-item {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
   
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
+  /* Optimize scrolling performance */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent zoom on input focus */
+  input[type="text"], 
+  input[type="search"], 
+  input[type="email"],
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Better mobile card interactions */
+  .mobile-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  .mobile-card:active {
+    transform: scale(0.98);
+  }
+  
+  /* Safe area support for devices with notches */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+  
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top, 1rem);
+  }
+  
+  /* Prevent overscroll bounce */
+  body {
+    overscroll-behavior: none;
   }
 }
 

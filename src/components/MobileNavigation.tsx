@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Home, Database, Bot, Users, Settings } from 'lucide-react';
+import { Menu, X, Home, Database, Bot, Users, Map, Calendar, FileText, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, User } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface MobileNavigationProps {
@@ -13,11 +13,40 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const navigationItems = [
+  // Main navigation items (most commonly used)
+  const mainNavigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'clickup', label: 'Data View', icon: Database },
+    { id: 'events', label: 'Events', icon: Map },
+    { id: 'medialog', label: 'Media Log', icon: Database },
+    { id: 'digitalrecordings', label: 'Recordings', icon: Calendar },
+  ];
+
+  // All navigation items for the sidebar menu
+  const allNavigationItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'events', label: 'Events', icon: Map },
+    { id: 'digitalrecordings', label: 'Digital Recordings', icon: Calendar },
+    { id: 'medialog', label: 'Media Log', icon: Database },
+    { id: 'aux', label: 'Aux Files', icon: FileText },
     { id: 'ai-assistant', label: 'AI Assistant', icon: Bot },
-    { id: 'user-management', label: 'Users', icon: Users },
+    { id: 'user-management', label: 'User Management', icon: User },
+    // Master Data items
+    { id: 'audio', label: 'Audio', icon: Music },
+    { id: 'bhajanType', label: 'Bhajan Type', icon: Music },
+    { id: 'digitalMasterCategory', label: 'Digital Master Category', icon: Database },
+    { id: 'distributionLabel', label: 'Distribution Label', icon: Tag },
+    { id: 'editingType', label: 'Editing Type', icon: Edit },
+    { id: 'eventCategory', label: 'Event Category', icon: Calendar },
+    { id: 'footageType', label: 'Footage Type', icon: Film },
+    { id: 'formatType', label: 'Format Type', icon: Layers },
+    { id: 'granths', label: 'Granths', icon: Book },
+    { id: 'language', label: 'Language', icon: Globe },
+    { id: 'newEventCategory', label: 'New Event Category', icon: Tag },
+    { id: 'newCities', label: 'New Cities', icon: MapPin },
+    { id: 'newCountries', label: 'New Countries', icon: Flag },
+    { id: 'newStates', label: 'New States', icon: Map },
+    { id: 'occasions', label: 'Occasions', icon: Gift },
+    { id: 'topicNumberSource', label: 'Topic Number Source', icon: Hash },
   ];
 
   const handleItemClick = (viewId: string) => {
@@ -25,78 +54,9 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
     setIsOpen(false);
   };
 
-  return (
-    <>
-      {/* Mobile Menu Button */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsOpen(!isOpen)}
-          className="bg-white/90 backdrop-blur-sm"
-        >
-          {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </Button>
-      </div>
+  // Find the current active view details
+  const currentActiveItem = [...mainNavigationItems, ...allNavigationItems].find(item => item.id === activeView);
+  const currentActiveLabel = currentActiveItem?.label || 'Dashboard';
 
-      {/* Mobile Menu Overlay */}
-      {isOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
-          <div className="fixed left-0 top-0 h-full w-64 bg-white shadow-xl">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6 mt-8">
-                Data Library
-              </h2>
-              <nav className="space-y-2">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemClick(item.id)}
-                      className={`
-                        w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
-                        ${activeView === item.id
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'text-gray-700 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Navigation for Mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg">
-        <div className="grid grid-cols-4 h-16">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onViewChange(item.id)}
-                className={`
-                  flex flex-col items-center justify-center space-y-1 transition-colors
-                  ${activeView === item.id
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.label.split(' ')[0]}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </>
-  );
+  return null; // No mobile footer - navigation handled by sidebar
 };

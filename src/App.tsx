@@ -12,6 +12,8 @@ import { DevelopmentBanner } from "./components/DevelopmentBanner";
 import { MobileNavigation } from "./components/MobileNavigation";
 import { ResponsiveLayout, useMobile } from "./components/ResponsiveLayout";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { Button } from "./components/ui/button";
+import { Menu, X } from "lucide-react";
 import { getColorForString } from "./components/ui/utils";
 
 // ===================================================================================
@@ -414,6 +416,9 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
   const isMobile = useMobile();
+  
+  // For mobile, we start with sidebar closed
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // --- Handlers ---
   const handleCloseSidebar = () => setSidebarStack([]);
@@ -476,17 +481,69 @@ export default function App() {
   if (isMobile) {
     return (
       <div className="dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <MobileNavigation activeView={activeView} onViewChange={setActiveView} />
+        {/* Mobile Header Bar */}
+        <div className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 px-4 py-3 flex items-center justify-between shadow-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="p-2 -ml-2 text-white hover:bg-slate-800"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-semibold text-white truncate">
+            {VIEW_CONFIGS[activeView]?.title || 'Dashboard'}
+          </h1>
+          <div className="w-10"></div> {/* Spacer for centered title */}
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)}>
+            <div 
+              className="fixed left-0 top-0 h-full w-80 max-w-[90vw] bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out" 
+              onClick={(e) => e.stopPropagation()}
+              style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}
+            >
+              {/* Mobile Sidebar Header */}
+              <div className="flex items-center justify-between p-4 border-b bg-slate-900 border-slate-700">
+                <h2 className="text-lg font-semibold text-white">Navigation</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="p-2 text-white hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Sidebar Content */}
+              <div className="h-full overflow-y-auto pb-20">
+                <Sidebar
+                  activeView={activeView}
+                  onViewChange={(view) => {
+                    setActiveView(view);
+                    setMobileSidebarOpen(false); // Close sidebar when item is selected
+                  }}
+                  collapsed={false}
+                  onToggleCollapse={() => setMobileSidebarOpen(false)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <InstallPrompt />
         <ResponsiveLayout>
           <DevelopmentBanner />
-          <div key={activeView} className="mobile-padding">
+          <div key={activeView} className="w-full">
             {renderView()}
           </div>
           {/* Mobile Details Modal */}
           {sidebarStack.length > 0 && (
             <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-              <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl max-h-[80vh] overflow-hidden animate-slide-up">
+              <div className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-xl max-h-[80vh] overflow-hidden animate-slide-up border-t border-slate-700">
                 {sidebarStack.map((item, index) => (
                   <DetailsSidebar
                     key={index}
@@ -504,6 +561,9 @@ export default function App() {
             </div>
           )}
         </ResponsiveLayout>
+
+        {/* Bottom Navigation for Mobile */}
+        <MobileNavigation activeView={activeView} onViewChange={setActiveView} />
       </div>
     );
   }
