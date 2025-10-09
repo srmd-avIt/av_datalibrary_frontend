@@ -825,6 +825,87 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                   data={finalItems} 
                   onSaveFilter={handleSaveFilter} 
                 />
+                
+                {/* Mobile Group By */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <Users className="w-3 h-3" />
+                      {groupBy !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3" align="start">
+                    <div className="space-y-3">
+                      <div className="font-medium text-sm">Group by field</div>
+                      <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v)}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No grouping</SelectItem>
+                          {getAvailableGroupByFields().map((field) => (
+                            <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {groupBy !== "none" && (
+                        <>
+                          <div className="font-medium text-sm">Sort groups</div>
+                          <Select value={groupDirection} onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="asc">Ascending (A-Z)</SelectItem>
+                              <SelectItem value="desc">Descending (Z-A)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Mobile Sort By */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <ArrowUpDown className="w-3 h-3" />
+                      {sortBy !== "none" ? `${getAvailableSortFields().find(f => f.value === sortBy)?.label}` : "Sort"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3" align="start">
+                    <div className="space-y-3">
+                      <div className="font-medium text-sm">Sort by field</div>
+                      <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No sorting</SelectItem>
+                          {getAvailableSortFields().map((field) => (
+                            <SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {sortBy !== "none" && (
+                        <>
+                          <div className="font-medium text-sm">Sort direction</div>
+                          <Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="asc">Ascending</SelectItem>
+                              <SelectItem value="desc">Descending</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
