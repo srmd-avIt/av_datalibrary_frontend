@@ -2,32 +2,31 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Input } from "./ui/input";
 import { GripVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { cn, getColorForString } from "./ui/utils";
-import { Column, ListItem } from "./types"; // Import shared types
+import { ListItem, Column } from "./types";
 
 interface DraggableResizableTableProps {
   data: ListItem[];
   columns: Column[];
-  sortedData: ListItem[]; // Add sortedData property
+  sortedData?: ListItem[];
   onRowSelect: (item: ListItem) => void;
   onSort: (columnKey: string) => void;
   getSortIcon: (columnKey: string) => React.ReactNode;
   groupedData: Record<string, ListItem[]>;
   activeGroupBy?: string;
   idKey?: string;
-   // --- NEW PROPS for column freezing ---
+  // Column freezing props
   frozenColumnKey: string | null;
   columnOrder: string[];
   columnSizing: Record<string, number>;
-  // --- Add editing props ---
-  editingCell: { rowIndex: number; columnKey: string } | null;
-  editValue: any;
-  setEditValue: (value: any) => void;
-  setEditingCell: (cell: { rowIndex: number; columnKey: string } | null) => void;
-  handleUpdateCell: () => void;
-  handleCellDoubleClick: (rowIndex: number, column: Column, value: any) => void;
+  // Editing props (optional for compatibility)
+  editingCell?: { rowIndex: number; columnKey: string } | null;
+  editValue?: any;
+  setEditValue?: (value: any) => void;
+  setEditingCell?: (cell: { rowIndex: number; columnKey: string } | null) => void;
+  handleUpdateCell?: () => void;
+  handleCellDoubleClick?: (rowIndex: number, column: any, value: any) => void;
 }
 
 const ITEM_TYPE = "COLUMN";
@@ -180,18 +179,18 @@ const headerStyle: React.CSSProperties = {
 export function DraggableResizableTable({
   data,
   columns: initialColumns,
-  sortedData, // Destructure the new prop
+  sortedData,
   onRowSelect,
   onSort,
   getSortIcon,
   groupedData,
   activeGroupBy,
   idKey = "id",
-  // --- DESTRUCTURE NEW PROPS from parent ---
+  // Column freezing props
   frozenColumnKey,
   columnOrder,
   columnSizing,
-  // --- Destructure editing props ---
+  // Editing props (optional)
   editingCell,
   editValue,
   setEditValue,
@@ -201,8 +200,6 @@ export function DraggableResizableTable({
 }: DraggableResizableTableProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  // --- NEW: Ref to manage the single-click timer ---
-  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const widths: Record<string, number> = {};
     initialColumns.forEach(col => {
@@ -235,8 +232,8 @@ export function DraggableResizableTable({
     if (freezeIndex === -1) {
       return { frozenColumns: [], leftOffsets: {} };
     }
-    // --- MODIFICATION: Freeze all columns up to and including the selected column (Excel-like behavior) ---
-    const frozenKeys = orderedVisibleKeys.slice(0, freezeIndex + 1);
+    // --- MODIFICATION: Only freeze the single selected column ---
+    const frozenKeys = [frozenColumnKey];
     
     const offsets: Record<string, number> = {};
     let cumulativeLeft = 0;
@@ -368,21 +365,11 @@ export function DraggableResizableTable({
                  {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
                  <TableRow
   key={item[idKey] || item.id}
-  className="hover:bg-muted/30 border-b border-border/50 transition-all duration-200 group"
-  // --- REMOVED: onClick is now handled by the cells ---
+  className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
+  onClick={() => onRowSelect(item)}
 >
-  {columns.map((column, columnIndex) => {
+  {columns.map((column) => {
     const isFrozen = frozenColumns.includes(column.key);
-    
-    // Find the absolute index for editing state management
-    const absoluteIndex = (activeGroupBy === 'none' ? 
-      data.findIndex(d => d[idKey] === item[idKey]) : 
-      sortedData.findIndex(d => d[idKey] === item[idKey]));
-    
-    // --- NEW: Check if the current cell is being edited ---
-    const isEditing = editingCell?.rowIndex === absoluteIndex && editingCell?.columnKey === column.key;
-    const cellValue = item[column.key];
-
 // Body cell inline style
 const cellStyle: React.CSSProperties = {
   width: `${columnWidths[column.key] || 150}px`,
@@ -402,51 +389,14 @@ const cellStyle: React.CSSProperties = {
         style={cellStyle}
         className={cn(
           "px-6 py-4 text-sm text-foreground/90 transition-colors",
-          isFrozen && "sticky z-10 bg-card/95 backdrop-blur-sm",
-          isFrozen && column.key === lastFrozenColumnKey && "border-r-2 border-primary/40",
-          "cursor-pointer" // All cells are clickable
+          isFrozen && "bg-black" // force bg for frozen
         )}
-        // --- MODIFIED: onClick now has a delay ---
-        onClick={() => {
-          // Clear any pending double-click timer
-          if (clickTimeoutRef.current) {
-            clearTimeout(clickTimeoutRef.current);
-          }
-          // Set a timer to handle the single click
-          clickTimeoutRef.current = setTimeout(() => {
-            onRowSelect(item);
-          }, 250); // 250ms delay
-        }}
-        // --- MODIFIED: onDoubleClick clears the single-click timer ---
-        onDoubleClick={(e) => {
-          // Clear the pending single-click action
-          if (clickTimeoutRef.current) {
-            clearTimeout(clickTimeoutRef.current);
-          }
-          e.stopPropagation();
-          handleCellDoubleClick(absoluteIndex, column, cellValue);
-        }}
       >
-        {isEditing ? (
-          <Input
-            type="text"
-            value={editValue ?? ''}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleUpdateCell}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleUpdateCell();
-              if (e.key === 'Escape') setEditingCell(null);
-            }}
-            autoFocus
-            className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        ) : (
-          <div className="truncate">
-            {column.render
-              ? column.render(cellValue, item)
-              : String(cellValue ?? "")}
-          </div>
-        )}
+        <div className="truncate">
+          {column.render
+            ? column.render(item[column.key], item)
+            : String(item[column.key] ?? "")}
+        </div>
       </TableCell>
     );
   })}

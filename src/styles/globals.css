@@ -299,6 +299,49 @@ html {
   body {
     overscroll-behavior: none;
   }
+  
+  /* Mobile table wrapper with vertical scrolling */
+  .mobile-table-wrapper {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Apply visible scrollbar to mobile table wrapper */
+  .mobile-table-wrapper::-webkit-scrollbar {
+    width: 12px;
+  }
+  
+  .mobile-table-wrapper::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 6px;
+    margin: 2px;
+    border: 1px solid #cbd5e0;
+  }
+  
+  .mobile-table-wrapper::-webkit-scrollbar-thumb {
+    background: #64748b;
+    border-radius: 6px;
+    border: 2px solid #e2e8f0;
+    min-height: 20px;
+  }
+  
+  .mobile-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+  
+  /* Firefox scrollbar for wrapper */
+  .mobile-table-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: #64748b #e2e8f0;
+  }
+}
+
+/* Desktop table container - no height restriction */
+@media (min-width: 768px) {
+  .mobile-table-container {
+    height: auto;
+    overflow-y: visible;
+  }
 }
 
 /* Touch gesture improvements */

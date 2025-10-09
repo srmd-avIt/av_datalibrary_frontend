@@ -9,14 +9,14 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import "./index.css";
 import "./styles/globals.css";
 
-// Register PWA Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      console.log('Service worker registration failed');
-    });
-  });
-}
+// Register PWA Service Worker - Temporarily disabled
+// if ('serviceWorker' in navigator) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker.register('/sw.js').catch(() => {
+//       console.log('Service worker registration failed');
+//     });
+//   });
+// }
 
 const queryClient = new QueryClient();
 const rootElement = document.getElementById("root");

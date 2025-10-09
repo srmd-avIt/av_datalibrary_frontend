@@ -30,7 +30,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Search, Download, ArrowUpDown, ArrowUp, ArrowDown, Users, Table as TableIcon,
-  Settings2, EyeOff, X, Funnel, Loader2,Pin
+  Settings2, EyeOff, X, Funnel, Loader2, Pin, Grid
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
@@ -329,6 +329,9 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
   const [groupBy, setGroupBy] = useState("none");
   const [groupDirection, setGroupDirection] = useState<"asc" | "desc">("asc");
   const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
+  
+  // --- Mobile view state ---
+  const [mobileViewMode, setMobileViewMode] = useState<'table' | 'cards'>('table');
 
   // --- USER-SPECIFIC STATE (persisted for the current user/browser) ---
    const [searchTerm, setSearchTerm] = useState("");
@@ -769,9 +772,30 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
             {/* Mobile: Title and table indicator */}
             {isMobile ? (
               <div className="flex items-center gap-3 w-full">
-                <div className="flex items-center gap-2 text-sm text-white">
-                  <TableIcon className="w-4 h-4 text-white" />
-                  <span className="text-white">Table View</span>
+                {/* Mobile View Toggle */}
+                <div className="flex bg-white rounded-md border border-gray-200 p-1">
+                  <button
+                    onClick={() => setMobileViewMode('table')}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      mobileViewMode === 'table'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    <TableIcon className="w-3 h-3" />
+                    Table
+                  </button>
+                  <button
+                    onClick={() => setMobileViewMode('cards')}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      mobileViewMode === 'cards'
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                  >
+                    <Grid className="w-3 h-3" />
+                    Cards
+                  </button>
                 </div>
                 <div className="ml-auto">
                   <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-slate-600 text-white hover:bg-slate-800" onClick={handleExport} disabled={isExporting}>
@@ -815,56 +839,48 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
 
           {/* Mobile vs Desktop Controls */}
           {isMobile ? (
-            /* Mobile: Simplified controls in collapsible sections */
+            /* Mobile: Comprehensive controls in compact layout */
             <div className="pt-4 space-y-3">
-              {/* Mobile Quick Actions Row */}
+              {/* Mobile Controls Row 1: Freeze, Filter, Sort */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* Mobile Freeze Column Controls */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <Pin className="w-3 h-3" />
+                      {frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3" align="start">
+                    <div className="space-y-3">
+                      <div className="font-medium text-sm">Freeze up to column</div>
+                      <Select value={frozenColumnKey || 'none'} onValueChange={(value: string) => setFrozenColumnKey(value === 'none' ? null : value)}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select column to freeze" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No columns frozen</SelectItem>
+                          {visibleColumns.map((col) => (
+                            <SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {frozenColumnKey && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+
+                {/* Mobile Advanced Filters */}
                 <AdvancedFiltersClickUp 
                   filters={finalFilterConfigs} 
                   onFiltersChange={setAdvancedFilters} 
                   data={finalItems} 
                   onSaveFilter={handleSaveFilter} 
                 />
-                
-                {/* Mobile Group By */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <Users className="w-3 h-3" />
-                      {groupBy !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start">
-                    <div className="space-y-3">
-                      <div className="font-medium text-sm">Group by field</div>
-                      <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v)}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select field" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No grouping</SelectItem>
-                          {getAvailableGroupByFields().map((field) => (
-                            <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {groupBy !== "none" && (
-                        <>
-                          <div className="font-medium text-sm">Sort groups</div>
-                          <Select value={groupDirection} onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}>
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="asc">Ascending (A-Z)</SelectItem>
-                              <SelectItem value="desc">Descending (Z-A)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
 
                 {/* Mobile Sort By */}
                 <Popover>
@@ -905,7 +921,61 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                     </div>
                   </PopoverContent>
                 </Popover>
-                
+                {sortBy !== "none" && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Mobile Controls Row 2: Group, Columns */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Mobile Group By */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <Users className="w-3 h-3" />
+                      {groupBy !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3" align="start">
+                    <div className="space-y-3">
+                      <div className="font-medium text-sm">Group by field</div>
+                      <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v)}>
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No grouping</SelectItem>
+                          {getAvailableGroupByFields().map((field) => (
+                            <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {groupBy !== "none" && (
+                        <>
+                          <div className="font-medium text-sm">Sort groups</div>
+                          <Select value={groupDirection} onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}>
+                            <SelectTrigger className="h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="asc">Ascending (A-Z)</SelectItem>
+                              <SelectItem value="desc">Descending (Z-A)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {groupBy !== "none" && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping">
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+
+                {/* Mobile Column Visibility */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
@@ -913,14 +983,14 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                       Columns
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-72" align="end">
+                  <PopoverContent className="w-72" align="start">
                     <div className="space-y-3">
                       <div className="font-medium text-sm">Show/Hide Columns</div>
                       <div className="max-h-64 overflow-y-auto space-y-2">
                         {columns.map((column) => (
                           <div key={column.key} className="flex items-center space-x-2">
                             <Checkbox 
-                              id={`column-${column.key}`} 
+                              id={`mobile-column-${column.key}`} 
                               checked={!hiddenColumns.includes(column.key)} 
                               onCheckedChange={(checked: boolean) => { 
                                 if (checked) { 
@@ -930,7 +1000,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                                 } 
                               }} 
                             />
-                            <label htmlFor={`column-${column.key}`} className="text-sm truncate">{column.label}</label>
+                            <label htmlFor={`mobile-column-${column.key}`} className="text-sm truncate">{column.label}</label>
                           </div>
                         ))}
                       </div>
@@ -1068,16 +1138,44 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
               {/* Data display */}
               {finalItems.length > 0 && (
                 <div className={`transition-opacity duration-300 ${isFetching && !isLoading && !isGroupingDataLoading ? 'opacity-50' : 'opacity-100'}`}>
-                  {/* Mobile view: Card-based layout */}
+                  {/* Mobile view: Full table functionality with mobile responsiveness */}
                   {isMobile ? (
                     <div className="p-2 pb-6">
                       <MobileTable
                         items={finalItems}
                         columns={visibleColumns as any}
                         onRowSelect={(item) => onRowSelect?.(item as any)}
+                        onSort={handleSort}
+                        getSortIcon={getSortIcon}
+                        groupedData={groupedData as any}
+                        activeGroupBy={activeGroupBy}
                         activeView={activeView}
                         idKey={idKey}
                         isLoading={isLoading || isGroupingDataLoading}
+                        frozenColumnKey={frozenColumnKey}
+                        columnOrder={columnOrder}
+                        columnSizing={columnSizing}
+                        editingCell={editingCell}
+                        editValue={editValue}
+                        setEditValue={setEditValue}
+                        setEditingCell={setEditingCell}
+                        handleUpdateCell={handleUpdateCell}
+                        handleCellDoubleClick={handleCellDoubleClick}
+                        // Pass all the state management props
+                        sortBy={sortBy}
+                        sortDirection={sortDirection}
+                        setSortBy={setSortBy}
+                        setSortDirection={setSortDirection}
+                        groupBy={groupBy}
+                        groupDirection={groupDirection}
+                        setGroupBy={setGroupBy}
+                        setGroupDirection={setGroupDirection}
+                        setFrozenColumnKey={setFrozenColumnKey}
+                        hiddenColumns={hiddenColumns}
+                        setHiddenColumns={setHiddenColumns}
+                        sortedData={sortedData}
+                        viewMode={mobileViewMode}
+                        setViewMode={setMobileViewMode}
                       />
                     </div>
                   ) : (
