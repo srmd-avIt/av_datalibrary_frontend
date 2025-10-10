@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Input } from "./ui/input";
 import { GripVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { cn, getColorForString } from "./ui/utils";
 import { ListItem, Column } from "./types";
@@ -20,13 +21,13 @@ interface DraggableResizableTableProps {
   frozenColumnKey: string | null;
   columnOrder: string[];
   columnSizing: Record<string, number>;
-  // Editing props (optional for compatibility)
+  // Editing props
   editingCell?: { rowIndex: number; columnKey: string } | null;
   editValue?: any;
   setEditValue?: (value: any) => void;
   setEditingCell?: (cell: { rowIndex: number; columnKey: string } | null) => void;
   handleUpdateCell?: () => void;
-  handleCellDoubleClick?: (rowIndex: number, column: any, value: any) => void;
+  handleCellDoubleClick?: (rowIndex: number, column: Column, value: any) => void;
 }
 
 const ITEM_TYPE = "COLUMN";
@@ -45,7 +46,6 @@ interface DraggableHeaderProps {
   getSortIcon: (columnKey: string) => React.ReactNode;
   width: number;
   onResize: (columnKey: string, width: number) => void;
-  // --- NEW PROPS for applying sticky styles ---
   isFrozen: boolean;
   isLastFrozen: boolean;
   leftOffset: number;
@@ -59,8 +59,9 @@ function DraggableHeader({
   getSortIcon,
   width,
   onResize,
-// --- DESTRUCTURE NEW PROPS ---
-  isFrozen, isLastFrozen, leftOffset,
+  isFrozen,
+  isLastFrozen,
+  leftOffset,
 }: DraggableHeaderProps) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -74,20 +75,15 @@ function DraggableHeader({
     },
     hover(item: DragItem, monitor) {
       if (!ref.current) return;
-
       const dragIndex = item.index;
       const hoverIndex = index;
-
       if (dragIndex === hoverIndex) return;
-
       const hoverBoundingRect = ref.current.getBoundingClientRect();
       const hoverMiddleX = (hoverBoundingRect.right - hoverBoundingRect.left) / 2;
       const clientOffset = monitor.getClientOffset();
       const hoverClientX = (clientOffset?.x ?? 0) - hoverBoundingRect.left;
-
       if (dragIndex < hoverIndex && hoverClientX < hoverMiddleX) return;
       if (dragIndex > hoverIndex && hoverClientX > hoverMiddleX) return;
-
       moveColumn(dragIndex, hoverIndex);
       item.index = hoverIndex;
     },
@@ -95,102 +91,97 @@ function DraggableHeader({
 
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPE,
-    item: () => {
-      return { key: column.key, index };
-    },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
+    item: () => ({ key: column.key, index }),
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    const startX = e.clientX;
-    const startWidth = width;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsResizing(true);
+      const startX = e.clientX;
+      const startWidth = width;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(80, startWidth + (e.clientX - startX));
-      onResize(column.key, newWidth);
-    };
+      const handleMouseMove = (e: MouseEvent) => {
+        const newWidth = Math.max(80, startWidth + (e.clientX - startX));
+        onResize(column.key, newWidth);
+      };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
+      const handleMouseUp = () => {
+        setIsResizing(false);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  }, [column.key, onResize, width]);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [column.key, onResize, width]
+  );
 
-  // Connect drag and drop
   drag(drop(ref));
 
-// --- NEW: Dynamic style object for freezing ---
-const headerStyle: React.CSSProperties = {
-  opacity: isDragging ? 0.4 : 1,
-  width: `${width}px`,
-  minWidth: `${width}px`,
-  position: isFrozen ? "sticky" : undefined,
-  left: isFrozen ? leftOffset : undefined,
-  zIndex: isFrozen ? 30 : undefined,
-  background: isFrozen ? "#000" : undefined, // Changed to black for frozen columns
-  borderRight: isFrozen && isLastFrozen ? "2px solid hsl(var(--border))" : undefined,
-  boxShadow: isFrozen && isLastFrozen ? "2px 0 0 hsl(var(--border))" : undefined,
-};
-
-
+  const headerStyle: React.CSSProperties = {
+    opacity: isDragging ? 0.4 : 1,
+    width: `${width}px`,
+    minWidth: `${width}px`,
+    position: "sticky",
+    top: 0,
+    zIndex: isFrozen ? 40 : 35,
+    left: isFrozen ? leftOffset : undefined,
+    // --- MODIFIED: Use black background when frozen ---
+    background: isFrozen ? "#000" : "oklch(0.145 0 0)",
+    borderRight: isFrozen && isLastFrozen ? "2px solid hsl(var(--border))" : undefined,
+  };
 
   return (
-  <th
+    <th
       ref={ref}
-      style={headerStyle} // Apply the combined style object
-      className={cn( "relative group hover:bg-muted/40 bg-muted/20 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors", column.sortable && "cursor-pointer hover:text-foreground", isResizing && "select-none", "first:pl-8 last:pr-8" )}
+      style={headerStyle}
+      className={cn(
+        "group relative hover:bg-muted/40 font-medium text-muted-foreground border-r border-border/30 h-12 px-6 py-4 align-middle whitespace-nowrap tracking-wide uppercase text-xs border-b border-border/50 transition-colors",
+        column.sortable && "cursor-pointer hover:text-foreground",
+        isResizing && "select-none",
+        "first:pl-8 last:pr-8"
+      )}
       data-handler-id={handlerId}
     >
-      {/* The main flex container for the header content */}
       <div className="flex items-center justify-between gap-3">
-        {/* Drag handle remains on the left */}
         <GripVertical className="w-3 h-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-grab hover:text-foreground" />
-        
-        {/* This container now centers the text and sort icon */}
-        <div 
+        <div
           className="flex items-center justify-center gap-2 flex-1 transition-colors"
           onClick={() => column.sortable && onSort(column.key)}
         >
           <span className="truncate font-medium">{column.label}</span>
           {column.sortable && getSortIcon(column.key)}
         </div>
-
-        {/* Add a placeholder to balance the flex layout, keeping the text centered */}
         <div className="w-3 h-3"></div>
       </div>
-      
-      {/* ENHANCED TABLE STYLING: Responsive resize handles made more subtle and responsive with better hover states */}
       <div
-        className="absolute right-0 top-0 bottom-0 w-1 bg-transparent hover:bg-primary/40 cursor-col-resize z-20 transition-all duration-200 hover:w-1.5"
         onMouseDown={handleMouseDown}
-      />
+        className="absolute top-0 right-0 h-full w-4 cursor-col-resize z-50"
+      >
+        <div className="w-0.5 h-full bg-primary opacity-0 group-hover:opacity-100 group-hover:scale-y-125 transition-all duration-200 mx-auto" />
+      </div>
     </th>
   );
 }
 
+
 export function DraggableResizableTable({
   data,
   columns: initialColumns,
-  sortedData,
+  sortedData = [],
   onRowSelect,
   onSort,
   getSortIcon,
   groupedData,
   activeGroupBy,
   idKey = "id",
-  // Column freezing props
   frozenColumnKey,
   columnOrder,
   columnSizing,
-  // Editing props (optional)
   editingCell,
   editValue,
   setEditValue,
@@ -203,25 +194,23 @@ export function DraggableResizableTable({
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const widths: Record<string, number> = {};
     initialColumns.forEach(col => {
-      widths[col.key] = 150; // Default width
+      widths[col.key] = 150;
     });
     return widths;
   });
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // --- FIX: Sync internal state when visible columns change from parent ---
   useEffect(() => {
     setColumns(initialColumns);
     setColumnWidths(prevWidths => {
       const newWidths: Record<string, number> = {};
       initialColumns.forEach(col => {
-        // Keep existing width if column was already visible, otherwise set default
         newWidths[col.key] = prevWidths[col.key] || 150;
       });
       return newWidths;
     });
   }, [initialColumns]);
 
-   // --- CORE FREEZING LOGIC ---
   const { frozenColumns, leftOffsets } = useMemo(() => {
     if (!frozenColumnKey) {
       return { frozenColumns: [], leftOffsets: {} };
@@ -232,7 +221,6 @@ export function DraggableResizableTable({
     if (freezeIndex === -1) {
       return { frozenColumns: [], leftOffsets: {} };
     }
-    // --- MODIFICATION: Only freeze the single selected column ---
     const frozenKeys = [frozenColumnKey];
     
     const offsets: Record<string, number> = {};
@@ -277,16 +265,12 @@ export function DraggableResizableTable({
     }));
   }, []);
 
-  // REMOVED the wrapping <div> with `overflow-x-auto`.
-  // The parent component now controls the scrolling container.
   return (
     <DndProvider backend={HTML5Backend}>
       <Table className="min-w-full table-fixed border-separate" style={{ borderSpacing: 0 }}>
-        {/* Only show the main header if no grouping is active */}
         {(!activeGroupBy || activeGroupBy === "none") && (
           <TableHeader>
-            {/* The TableRow is now the sticky element, ensuring the entire header freezes */}
-            <TableRow className="sticky top-0 z-30 bg-card">
+            <TableRow>
               {columns.map((column, index) => {
                 const isFrozen = frozenColumns.includes(column.key);
                 return (
@@ -311,14 +295,11 @@ export function DraggableResizableTable({
         <TableBody>
           {Object.entries(groupedData).map(([groupName, items]) => {
             const bgColor = getColorForString(groupName);
-            // Simple check to determine text color for contrast.
-            // Add more dark pastel colors to this array if needed.
             const isDarkBg = ["#F7D379"].includes(bgColor);
             const textColor = isDarkBg ? "hsl(222.2 47.4% 11.2%)" : "hsl(222.2 84% 4.9%)";
 
             return (
               <React.Fragment key={groupName}>
-                {/* ENHANCED TABLE STYLING: Group headers are now opaque for better freezing behavior */}
                 {activeGroupBy && activeGroupBy !== "none" && (
                   <TableRow className="sticky top-0 z-20 bg-card hover:brightness-95 transition-all cursor-pointer" onClick={() => toggleGroup(groupName)}>
                     <TableCell
@@ -338,9 +319,8 @@ export function DraggableResizableTable({
                     </TableCell>
                   </TableRow>
                 )}
-                {/* Show headers within each group if grouping is active and the group is expanded */}
                 {activeGroupBy && activeGroupBy !== "none" && expandedGroups.has(groupName) && (
-                  <TableRow className="sticky top-[53px] z-20 bg-card">
+                   <TableRow>
                     {columns.map((column, index) => {
                       const isFrozen = frozenColumns.includes(column.key);
                       return (
@@ -361,48 +341,80 @@ export function DraggableResizableTable({
                     })}
                   </TableRow>
                 )}
-                {/* ENHANCED TABLE STYLING: Smooth interactions with enhanced hover states and better transitions */}
-                 {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => (
-                 <TableRow
-  key={item[idKey] || item.id}
-  className="hover:bg-muted/30 cursor-pointer border-b border-border/50 transition-all duration-200 group"
-  onClick={() => onRowSelect(item)}
->
-  {columns.map((column) => {
-    const isFrozen = frozenColumns.includes(column.key);
-// Body cell inline style
-const cellStyle: React.CSSProperties = {
-  width: `${columnWidths[column.key] || 150}px`,
-  minWidth: `${columnWidths[column.key] || 150}px`,
-  maxWidth: `${columnWidths[column.key] || 150}px`,
-  position: isFrozen ? "sticky" : undefined,
-  left: isFrozen ? leftOffsets[column.key] : undefined,
-  zIndex: isFrozen ? 20 : undefined,
-  background: isFrozen ? "#000" : undefined, // Changed to black for frozen columns
-  borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined,
-  boxShadow: isFrozen && column.key === lastFrozenColumnKey ? "2px 0 0 hsl(var(--border))" : undefined,
-};
+                 {(!activeGroupBy || activeGroupBy === "none" || expandedGroups.has(groupName)) && items.map((item) => {
+                  const absoluteIndex = sortedData.findIndex(d => d[idKey as keyof ListItem] === item[idKey as keyof ListItem]);
 
-    return (
-      <TableCell
-        key={column.key}
-        style={cellStyle}
-        className={cn(
-          "px-6 py-4 text-sm text-foreground/90 transition-colors",
-          isFrozen && "bg-black" // force bg for frozen
-        )}
-      >
-        <div className="truncate">
-          {column.render
-            ? column.render(item[column.key], item)
-            : String(item[column.key] ?? "")}
-        </div>
-      </TableCell>
-    );
-  })}
-</TableRow>
+                  return (
+                    <TableRow
+                      key={item[idKey] || item.id}
+                      className="border-b border-border/50 transition-all duration-200 group"
+                    >
+                      {columns.map((column) => {
+                        const isFrozen = frozenColumns.includes(column.key);
+                        const cellValue = item[column.key];
+                        const isEditing = editingCell?.rowIndex === absoluteIndex && editingCell?.columnKey === column.key;
 
-                ))}
+                        const cellStyle: React.CSSProperties = {
+                          width: `${columnWidths[column.key] || 150}px`,
+                          minWidth: `${columnWidths[column.key] || 150}px`,
+                          maxWidth: `${columnWidths[column.key] || 150}px`,
+                          position: isFrozen ? "sticky" : undefined,
+                          left: isFrozen ? leftOffsets[column.key] : undefined,
+                          zIndex: isFrozen ? 20 : undefined,
+                          // --- MODIFIED: Use black background when frozen ---
+                          background: isFrozen ? "#000" : undefined,
+                          borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined,
+                        };
+
+                        return (
+                          <TableCell
+                            key={column.key}
+                            style={cellStyle}
+                            className={cn(
+                              "px-6 py-4 text-sm text-foreground/90 transition-colors group-hover:bg-muted/30",
+                              isFrozen && "group-hover:bg-black/80", // Adjust hover for frozen cells
+                              "cursor-pointer"
+                            )}
+                            onClick={() => {
+                              if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+                              clickTimeoutRef.current = setTimeout(() => {
+                                onRowSelect(item);
+                              }, 250);
+                            }}
+                            onDoubleClick={(e) => {
+                              if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+                              e.stopPropagation();
+                              if (handleCellDoubleClick && column.editable) {
+                                handleCellDoubleClick(absoluteIndex, column, cellValue);
+                              }
+                            }}
+                          >
+                            {isEditing && handleUpdateCell && setEditValue && setEditingCell ? (
+                                <Input
+                                  type="text"
+                                  value={editValue ?? ''}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleUpdateCell}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleUpdateCell();
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                              ) : (
+                                <div className="truncate">
+                                  {column.render
+                                    ? column.render(cellValue, item)
+                                    : String(cellValue ?? "")}
+                                </div>
+                              )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )
+                })}
               </React.Fragment>
             );
           })}

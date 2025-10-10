@@ -88,12 +88,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true, editable: true }, 
     { key: "ContentFrom", label: "ContentFrom", sortable: true, editable: true }, 
     { key: "ContentTo", label: "ContentTo", sortable: true, editable: true }, 
-    { key: "TimeOfDay", label: "TimeOfDay", sortable: true, editable: true }, 
+    { key: "TimeOfDay", label: "TimeOfDay", sortable: true,render: categoryTagRenderer, editable: true }, 
     { key: "fkOccasion", label: "fkOccasion", sortable: true, render: categoryTagRenderer, editable: true }, 
-    { key: "EditingStatus", label: "EditingStatus", sortable: true, editable: true }, 
+    { key: "EditingStatus", label: "EditingStatus", sortable: true,render: categoryTagRenderer, editable: true }, 
     { key: "FootageType", label: "FootageType", sortable: true, render: categoryTagRenderer, editable: true }, 
     { key: "VideoDistribution", label: "VideoDistribution", sortable: true, editable: true }, 
-    { key: "Detail", label: "Detail", sortable: true, editable: true }, 
+    { key: "Detail", label: "Detail", sortable: true,render: categoryTagRenderer, editable: true }, 
     { key: "SubDetail", label: "SubDetail", sortable: true, editable: true }, 
     { key: "CounterFrom", label: "CounterFrom", sortable: true, editable: true }, 
     { key: "CounterTo", label: "CounterTo", sortable: true, editable: true }, 
@@ -101,7 +101,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     { key: "TotalDuration", label: "TotalDuration", sortable: true, editable: true }, 
     { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true }, 
     { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true, editable: true }, 
-    { key: "fkOrganization", label: "fkOrganization", sortable: true, editable: true }, 
+    { key: "fkOrganization", label: "fkOrganization", sortable: true,render: categoryTagRenderer, editable: true }, 
     { key: "Designation", label: "Designation", sortable: true, editable: true }, 
     { key: "fkCountry", label: "fkCountry", sortable: true, render: categoryTagRenderer, editable: true }, 
     { key: "fkState", label: "fkState", sortable: true, render: categoryTagRenderer, editable: true }, 
@@ -143,7 +143,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true }, 
     { key: "Synopsis", label: "Synopsis", sortable: true, editable: true }, 
     { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true }, 
-    { key: "Keywords", label: "Keywords", sortable: true, editable: true }, 
+    { key: "Keywords", label: "Keywords", sortable: true,render: categoryTagRenderer, editable: true }, 
     { key: "Grading", label: "Grading", sortable: true, editable: true }, 
     { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true }, 
     { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true }, 
@@ -161,7 +161,7 @@ const VIEW_CONFIGS: Record<string, any> = {
   { key: "RecordingCode", label: "RecordingCode", sortable: true, editable: true },
   { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
   { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "fkMediaName", label: "fkMediaName", sortable: true, editable: true },
+  { key: "fkMediaName", label: "fkMediaName", sortable: true,render: categoryTagRenderer, editable: true },
   { key: "BitRate", label: "BitRate", sortable: true, editable: true },
   { key: "AudioBitrate", label: "AudioBitrate", sortable: true, editable: true },
   { key: "Filesize", label: "Filesize", sortable: true, editable: true },
@@ -171,7 +171,7 @@ const VIEW_CONFIGS: Record<string, any> = {
   { key: "CounterError", label: "CounterError", sortable: true, editable: true },
   { key: "ReasonError", label: "ReasonError", sortable: true, editable: true },
   { key: "QcRemarksCheckedOn", label: "QcRemarksCheckedOn", sortable: true, editable: true },
-  { key: "PreservationStatus", label: "PreservationStatus", sortable: true, editable: true },
+  { key: "PreservationStatus", label: "PreservationStatus", sortable: true,render: categoryTagRenderer, editable: true },
   { key: "QCSevak", label: "QCSevak", sortable: true, editable: true },
   { key: "MasterProductTitle", label: "MasterProductTitle", sortable: true, editable: true },
   { key: "QcStatus", label: "QcStatus", sortable: true, editable: true },
@@ -180,14 +180,14 @@ const VIEW_CONFIGS: Record<string, any> = {
   { key: "SubmittedDate", label: "SubmittedDate", sortable: true, editable: true },
   { key: "PresStatGuidDt", label: "PresStatGuidDt", sortable: true, editable: true },
   { key: "InfoOnCassette", label: "InfoOnCassette", sortable: true, editable: true },
-  { key: "Masterquality", label: "Masterquality", sortable: true, editable: true },
+  { key: "Masterquality", label: "Masterquality", sortable: true,render: categoryTagRenderer, editable: true },
   { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
   { key: "FilesizeInBytes", label: "FilesizeInBytes", sortable: true, editable: true },
   { key: "AssociatedDR", label: "AssociatedDR", sortable: true, editable: true },
-  { key: "Dimension", label: "Dimension", sortable: true, editable: true },
-  { key: "ProductionBucket", label: "ProductionBucket", sortable: true, editable: true },
+  { key: "Dimension", label: "Dimension", sortable: true,render: categoryTagRenderer, editable: true },
+  { key: "ProductionBucket", label: "ProductionBucket", sortable: true,render: categoryTagRenderer, editable: true },
   { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
-  { key: "Teams", label: "Teams", sortable: true, editable: true },
+  { key: "Teams", label: "Teams", sortable: true,render: categoryTagRenderer, editable: true },
 ],
 
   },
@@ -199,7 +199,7 @@ const VIEW_CONFIGS: Record<string, any> = {
      columns : [
     { key: "new_auxid", label: "New aux id", sortable: true, editable: true },
     { key: "AuxCode", label: "AuxCode", sortable: true, editable: true },
-    { key: "AuxFileType", label: "AuxFileType", sortable: true, editable: true },
+    { key: "AuxFileType", label: "AuxFileType", sortable: true,render: categoryTagRenderer, editable: true },
     { key: "AuxLanguage", label: "AuxLanguage", sortable: true, editable: true },
     { key: "fkMLID", label: "fkMLID", sortable: true, editable: true },
     { key: "AuxTopic", label: "AuxTopic", sortable: true, editable: true },
@@ -277,6 +277,19 @@ const VIEW_CONFIGS: Record<string, any> = {
   { key: "AudioVideo", label: "AudioVideo", sortable: true, editable: true },
     ],
   },
+  
+  editingstatus: {
+    title: "Editing Status",
+    apiEndpoint: "/editing-status",
+    idKey: "EdID",
+    detailsType: "editingStatus",
+    columns: [
+      { key: "EdID", label: "EdID", sortable: true, editable: true },
+      { key: "EdType", label: "EdType", sortable: true, editable: true },
+      { key: "AudioVideo", label: "AudioVideo", sortable: true, editable: true },
+    ],
+  },
+
   eventCategory: {
     title: "Event Category",
     apiEndpoint: "/event-category",
@@ -377,6 +390,30 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
     ],
   },
+
+  masterquality: {
+    title: "Master Quality",
+    apiEndpoint: "/master-quality",
+    idKey: "MQID",
+    detailsType: "masterquality",
+    columns: [
+      { key: "MQID", label: "MQID", sortable: true, editable: true },
+      { key: "MQName", label: "MQName", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+    ],
+  },
+
+  organization: {
+    title: "Organizations",
+    apiEndpoint: "/organizations",
+    idKey: "OrganizationID",
+    detailsType: "organization",
+    columns: [
+      { key: "OrganizationID", label: "Organization ID", sortable: true, editable: true },
+      { key: "Organization", label: "Organization", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+    ],
+  },
   occasions: {
     title: "Occasions",
     apiEndpoint: "/occasions",
@@ -399,6 +436,8 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "TNName", label: "TNName", sortable: true, editable: true }
     ],
   },
+
+
 };
 
 type SidebarStackItem = {
@@ -425,13 +464,9 @@ export default function App() {
   const handlePopSidebar = () => setSidebarStack((prev) => prev.slice(0, -1));
 
   const handleRowSelect = (row: any, type: string) => {
-    const titleMap: { [key: string]: string } = {
-      event: "Event Details",
-      medialog: "Media Log Details",
-      digitalrecording: "Recording Details",
-      aux: "Aux File Details",
-    };
-    setSidebarStack([{ type, data: row, title: titleMap[type] || "Details" }]);
+    const config = Object.values(VIEW_CONFIGS).find(v => v.detailsType === type);
+    const title = config ? `${config.title} Details` : "Details";
+    setSidebarStack([{ type, data: row, title }]);
   };
 
   const handlePushSidebar = (item: SidebarStackItem) => {

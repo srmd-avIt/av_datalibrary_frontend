@@ -94,7 +94,13 @@ const DYNAMIC_FIELD_CONFIG = {
   'fkOccasion': { endpoint: '/occasion/options', dataKey: 'Occasion' },
   'TopicSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
   'NumberSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
-  'FormateType': { endpoint: '/format-type/options', dataKey: 'Type' },
+  'fkMediaName': { endpoint: '/format-type/options', dataKey: 'Type' },
+  'EditingStatus': { endpoint: '/editing-status/options', dataKey: 'EdType' },
+  'Masterquality': { endpoint: '/master-quality/options', dataKey: 'MQName' },
+  'fkOrganization': { endpoint: '/organizations/options', dataKey: 'Organization' },
+
+
+
 } as const;
 
 type DynamicFieldKey = keyof typeof DYNAMIC_FIELD_CONFIG;

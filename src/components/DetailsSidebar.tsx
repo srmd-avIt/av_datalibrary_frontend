@@ -19,6 +19,7 @@ import {
   Globe,
   Edit,
   Save,
+  Users,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -1447,6 +1448,132 @@ export function DetailsSidebar({
     </div>
   );
 }
+
+
+ case "editingStatus": {
+  const [isEditingEdType, setIsEditingEdType] = useState(false);
+  const [edType, setEdType] = useState(data.EdType || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveEdType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Editing Status...");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/editingstatus/${encodeURIComponent(data.EdID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ EdType: edType }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Editing Status");
+      }
+
+      data.EdType = edType;
+
+      toast.success("Editing Status updated successfully!", { id: savingToast });
+      setIsEditingEdType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Editing Status:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingEdType(false);
+    setEdType(data.EdType || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-blue-600")}
+        <h3 className="text-xl font-bold">{data.EdType || "Editing Type"}</h3>
+        <p className="text-muted-foreground">EdID: {data.EdID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Editing Status Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable EdType Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Editing Type</span>
+
+            {isEditingEdType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={edType}
+                  onChange={(e) => setEdType(e.target.value)}
+                  placeholder="Enter Editing Type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveEdType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {edType ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {edType}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {/* ✅ PERMISSION CHECK: Only show Edit button if user has 'write' access */}
+                {hasAccess("Editing Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingEdType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Audio/Video</span>
+            <span className="font-medium">{data.AudioVideo || "N/A"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified</span>
+            <span className="font-medium">{data.LastModifiedTimestamp || "N/A"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
    case "eventCategory": {
   const [isEditingEventCategory, setIsEditingEventCategory] = useState(false);
   const [eventCategory, setEventCategory] = useState(data.EventCategory || "");
@@ -1566,6 +1693,9 @@ export function DetailsSidebar({
     </div>
   );
 }
+
+
+
 
      case "footageType": {
   const [isEditingFootageType, setIsEditingFootageType] = useState(false);
@@ -2045,6 +2175,129 @@ export function DetailsSidebar({
   );
 }
 
+
+
+case "masterquality": {
+  const [isEditingMQName, setIsEditingMQName] = useState(false);
+  const [mqName, setMQName] = useState(data.MQName || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveMQName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Master Quality...");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/master-quality/${encodeURIComponent(data.MQID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ MQName: mqName }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Master Quality");
+      }
+
+      data.MQName = mqName;
+
+      toast.success("Master Quality updated successfully!", { id: savingToast });
+      setIsEditingMQName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Master Quality:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingMQName(false);
+    setMQName(data.MQName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
+        <h3 className="text-xl font-bold">{data.MQName || "Master Quality"}</h3>
+        <p className="text-muted-foreground">MQID: {data.MQID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Master Quality Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable MQName Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Quality Name</span>
+
+            {isEditingMQName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={mqName}
+                  onChange={(e) => setMQName(e.target.value)}
+                  placeholder="Enter Quality Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveMQName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {mqName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {mqName}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Master Quality", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingMQName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified</span>
+            <span className="font-medium">{data.LastModifiedTimestamp || "N/A"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+
        case "newEventCategory": {
   const [isEditingNewEventCategoryName, setIsEditingNewEventCategoryName] = useState(false);
   const [newEventCategoryName, setNewEventCategoryName] = useState(data.NewEventCategoryName || "");
@@ -2510,6 +2763,126 @@ export function DetailsSidebar({
                     variant="outline"
                     className="h-8 w-8"
                     onClick={() => setIsEditingState(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified</span>
+            <span className="font-medium">{data.LastModifiedTimestamp || "N/A"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+case "organization": {
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
+  const [organization, setOrganization] = useState(data.Organization || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveOrganization = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Organization...");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/organizations/${encodeURIComponent(data.OrganizationID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ Organization: organization }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Organization");
+      }
+
+      data.Organization = organization;
+
+      toast.success("Organization updated successfully!", { id: savingToast });
+      setIsEditingOrg(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Organization:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingOrg(false);
+    setOrganization(data.Organization || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Users className="w-8 h-8 text-white" />, "from-sky-500 to-indigo-500")}
+        <h3 className="text-xl font-bold">{data.Organization || "Organization"}</h3>
+        <p className="text-muted-foreground">ID: {data.OrganizationID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Organization Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable Organization Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Organization Name</span>
+
+            {isEditingOrg ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  placeholder="Enter Organization Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveOrganization}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {organization ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {organization}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Organizations", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingOrg(true)}
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
