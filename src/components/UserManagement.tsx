@@ -41,7 +41,6 @@ const APP_RESOURCES = [
   "Media Log",
   "Digital Recordings",
   "Aux Files",
-  "AI Assistant",
   "User Management",
   "Audio",
   "Bhajan Type",
@@ -58,7 +57,6 @@ const APP_RESOURCES = [
   "New Countries",
   "New States",
   "Occasions",
-  
   "Topic Number Source"
 ];
 

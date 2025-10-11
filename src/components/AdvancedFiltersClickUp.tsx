@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Badge } from "./ui/badge";
-import { Filter, Plus, X, RotateCcw, Save, Star } from "lucide-react";
+import { Filter, Plus, X, RotateCcw, Save, Star, Check, ChevronsUpDown } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { FilterConfig, FilterGroup, FilterRule } from "./types"; // Import shared types
 
 // (Styled components remain unchanged)
@@ -37,6 +38,74 @@ const StyledButton: React.FC<StyledButtonProps> = ({ baseStyle, hoverStyle, chil
     </ShadcnButton>
   );
 };
+
+// --- NEW: MultiSelect Component for AuxFileType ---
+interface MultiSelectProps {
+  options: { value: string; label: string }[];
+  value: string; // Expects a comma-separated string
+  onChange: (value: string) => void; // Returns a comma-separated string
+  placeholder?: string;
+  style?: React.CSSProperties;
+}
+
+const MultiSelect: React.FC<MultiSelectProps> = ({ options, value, onChange, placeholder = "Select...", style }) => {
+  const [open, setOpen] = useState(false);
+  const selectedValues = useMemo(() => new Set(value ? value.split(',') : []), [value]);
+
+  const handleSelect = (currentValue: string) => {
+    const newSelectedValues = new Set(selectedValues);
+    if (newSelectedValues.has(currentValue)) {
+      newSelectedValues.delete(currentValue);
+    } else {
+      newSelectedValues.add(currentValue);
+    }
+    onChange(Array.from(newSelectedValues).join(','));
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <ShadcnButton
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+          style={style}
+        >
+          <span className="truncate">
+            {selectedValues.size > 0
+              ? `${selectedValues.size} selected`
+              : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </ShadcnButton>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+        <Command>
+          <CommandInput placeholder="Search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.value}
+                  onSelect={handleSelect}
+                >
+                  <Check
+                    className={`mr-2 h-4 w-4 ${selectedValues.has(option.value) ? "opacity-100" : "opacity-0"}`}
+                  />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 
 interface StyledSelectItemProps {
   children: React.ReactNode;
@@ -80,24 +149,33 @@ const StyledSelectItem: React.FC<StyledSelectItemProps> = ({ children, value }) 
 const DYNAMIC_FIELD_CONFIG = {
   'NewEventCategory': { endpoint: '/new-event-category/options', dataKey: 'NewEventCategoryName' },
   'Audio': { endpoint: '/audio/options', dataKey: 'AudioList' },
-  'BhajanType': { endpoint: '/bhajan-type/options', dataKey: 'BhajanName' },
-  'EditingType': { endpoint: '/editing-type/options', dataKey: 'EdType' },
-  'fkCountry': { endpoint: '/countries/options', dataKey: 'Country' },
-  'fkState': { endpoint: '/states/options', dataKey: 'State' },
-  'fkCity': { endpoint: '/cities/options', dataKey: 'City' },
-  'fkDigitalMasterCategory': { endpoint: '/digital-master-category/options', dataKey: 'DMCategory_name' },
-  'fkGranth': { endpoint: '/granths/options', dataKey: 'Name' },
-  'Language': { endpoint: '/language/options', dataKey: 'TitleLanguage' },
-  'fkDistributionLabel': { endpoint: '/distribution-label/options', dataKey: 'LabelName' },
+  'BhajanType': { endpoint: '/bhajan-type/options', dataKey: 'BhajanType' },
+  'EditingType': { endpoint: '/editing-type/options', dataKey: 'EditingType' },
+  'fkCountry': { endpoint: '/countries/options', dataKey: 'fkCountry' },
+  'fkState': { endpoint: '/states/options', dataKey: 'fkState' },
+  'fkCity': { endpoint: '/cities/options', dataKey: 'fkCity' },
+  'fkDigitalMasterCategory': { endpoint: '/digital-master-category/options', dataKey: 'fkDigitalMasterCategory' },
+  'fkGranth': { endpoint: '/granths/options', dataKey: 'fkGranth' },
+  'Language': { endpoint: '/language/options', dataKey: 'Language' },
+  'fkDistributionLabel': { endpoint: '/distribution-label/options', dataKey: 'fkDistributionLabel' },
   'fkEventCategory': { endpoint: '/event-category/options', dataKey: 'EventCategory' },
-  'FootageType': { endpoint: '/footage-type/options', dataKey: 'FootageTypeList' },
-  'fkOccasion': { endpoint: '/occasion/options', dataKey: 'Occasion' },
+  'FootageType': { endpoint: '/footage-type/options', dataKey: 'FootageType' },
+  'fkOccasion': { endpoint: '/occasion/options', dataKey: 'fkOccasion' },
   'TopicSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
   'NumberSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
-  'fkMediaName': { endpoint: '/format-type/options', dataKey: 'Type' },
-  'EditingStatus': { endpoint: '/editing-status/options', dataKey: 'EdType' },
-  'Masterquality': { endpoint: '/master-quality/options', dataKey: 'MQName' },
-  'fkOrganization': { endpoint: '/organizations/options', dataKey: 'Organization' },
+  'fkMediaName': { endpoint: '/format-type/options', dataKey: 'fkMediaName' },
+  'EditingStatus': { endpoint: '/editing-status/options', dataKey: 'EditingStatus' },
+  'Masterquality': { endpoint: '/master-quality/options', dataKey: 'Masterquality' },
+  'fkOrganization': { endpoint: '/organizations/options', dataKey: 'fkOrganization' },
+  'TimeOfDay': { endpoint: '/time-of-day/options', dataKey: 'TimeOfDay' },
+  'AuxFileType': { endpoint: '/aux-file-type/options', dataKey: 'AuxFileType' },
+  'Keywords': { endpoint: '/keywords/options', dataKey: 'Keywords' },
+  'Dimension': { endpoint: '/dimension/options', dataKey: 'Dimension' },
+  'ProductionBucket': { endpoint: '/production-bucket/options', dataKey: 'ProductionBucket' },
+  'PreservationStatus': { endpoint: '/preservation-status/options', dataKey: 'PreservationStatus' },
+  'Teams': { endpoint: '/teams/options', dataKey: 'Teams' },
+  'TopicGivenBy': { endpoint: '/topic-given-by/options', dataKey: 'TopicGivenBy' },
+  'Segment Category': { endpoint: '/segment-category/options', dataKey: 'Segment Category' },
 
 
 
@@ -177,10 +255,21 @@ export function AdvancedFiltersClickUp({
         }
         const jsonData = await response.json();
         
-        const formattedOptions = jsonData.map((item: any) => ({
-          value: item[config.dataKey],
-          label: item[config.dataKey],
-        })).filter((option: any) => option.value); // Filter out any items with null/empty values
+        // MODIFICATION: Split comma-separated values for all fields
+        const allValues = jsonData.flatMap((item: any) => {
+          const itemValue = item[config.dataKey];
+          if (typeof itemValue === 'string' && itemValue.includes(',')) {
+            return itemValue.split(',').map((v: string) => v.trim()).filter(Boolean);
+          }
+          return itemValue;
+        });
+
+        const uniqueValues = [...new Set(allValues)].filter(Boolean).sort();
+
+        const formattedOptions = (uniqueValues as string[]).map((val) => ({
+          value: val,
+          label: val,
+        }));
 
         setDynamicOptions(prev => ({ ...prev, [field]: formattedOptions }));
       } catch (error) {
@@ -247,10 +336,72 @@ export function AdvancedFiltersClickUp({
     setFilterGroups((groups) => groups.map((group) => (group.id === groupId ? { ...group, logic } : group)));
   };
   const clearAllFilters = () => setFilterGroups([{ id: "group1", rules: [], logic: "AND" }]);
+  
+  // Define which fields are multi-select
+  const multiSelectFields = ['NewEventCategory',
+  'Audio',
+  'BhajanType',
+  'EditingType',
+  'fkCountry',
+  'fkState',
+  'fkCity',
+  'fkDigitalMasterCategory',
+  'fkGranth',
+  'Language',
+  'fkDistributionLabel',
+  'fkEventCategory',
+  'FootageType',
+  'fkOccasion',
+  'TopicSource',
+  'NumberSource',
+  'fkMediaName',
+  'EditingStatus',
+  'Masterquality',
+  'fkOrganization',
+  'TimeOfDay',
+  'AuxFileType',
+  'Keywords',
+  'Dimension',
+  'ProductionBucket',
+  'PreservationStatus',
+  'Teams',
+  'TopicGivenBy',
+  'Segment Category'
+];
+
   const applyFilters = () => {
-    onFiltersChange(filterGroups);
+    const finalFilterGroups: FilterGroup[] = [];
+
+    filterGroups.forEach(group => {
+      const multiSelectRules = group.rules.filter(rule => multiSelectFields.includes(rule.field) && rule.value);
+      const standardRules = group.rules.filter(rule => !multiSelectFields.includes(rule.field));
+
+      if (standardRules.length > 0) {
+        finalFilterGroups.push({ ...group, rules: standardRules });
+      }
+
+      multiSelectRules.forEach(rule => {
+        const values = rule.value.split(',');
+        if (values.length > 0) {
+          finalFilterGroups.push({
+            id: `group_${rule.id}`,
+            logic: 'OR',
+            rules: values.map((val, index) => ({
+              id: `rule_${rule.id}_${index}`,
+              field: rule.field,
+              operator: rule.operator || 'contains',
+              value: val,
+              logic: 'OR'
+            }))
+          });
+        }
+      });
+    });
+
+    onFiltersChange(finalFilterGroups);
     setIsOpen(false);
   };
+
   const handleSaveFilter = () => {
     if (filterName.trim() && onSaveFilter && getActiveFiltersCount() > 0) {
       onSaveFilter(filterName.trim(), filterGroups);
@@ -271,13 +422,33 @@ export function AdvancedFiltersClickUp({
     }
 
     const commonStyle = {
-        height: isMobile ? "1.75rem" : "2rem",
-        backgroundColor: "#ffffff",
-        border: "1px solid #cbd5e1",
-        color: "#0f172a",
-        borderRadius: "0.375rem",
-        fontSize: isMobile ? "0.75rem" : "0.875rem",
+      height: isMobile ? "1.75rem" : "2rem",
+      backgroundColor: "#ffffff",
+      border: "1px solid #cbd5e1",
+      color: "#0f172a",
+      borderRadius: "0.375rem",
+      fontSize: isMobile ? "0.75rem" : "0.875rem",
     };
+
+    // --- Make all dropdowns multi-select ---
+    if (multiSelectFields.includes(field)) {
+      const dynamicFieldKey = field as DynamicFieldKey;
+      if (loadingFields[dynamicFieldKey]) {
+        return <ShadcnSelect><SelectTrigger style={commonStyle} disabled><SelectValue placeholder="Loading..." /></SelectTrigger></ShadcnSelect>;
+      }
+      if (errorFields[dynamicFieldKey]) {
+        return <ShadcnSelect><SelectTrigger style={{...commonStyle, color: '#f87171'}} disabled><SelectValue placeholder={errorFields[dynamicFieldKey]} /></SelectTrigger></ShadcnSelect>;
+      }
+      return (
+        <MultiSelect
+          options={dynamicOptions[dynamicFieldKey] || []}
+          value={value || ""}
+          onChange={(selectedValue: string) => updateFilterRule(groupId, rule.id, { value: selectedValue, operator: rule.operator || 'contains' })}
+          placeholder={`Select ${filterConfig.label.toLowerCase()}...`}
+          style={commonStyle}
+        />
+      );
+    }
 
     // 1. Handle Hard-coded Static Dropdowns
     if (field === 'Segment Category') {
@@ -294,6 +465,26 @@ export function AdvancedFiltersClickUp({
       );
     } 
     
+    // --- MODIFICATION: Handle multi-select fields ---
+    if (['AuxFileType', 'Keywords'].includes(field)) {
+      const dynamicFieldKey = field as DynamicFieldKey;
+      if (loadingFields[dynamicFieldKey]) {
+        return <ShadcnSelect><SelectTrigger style={commonStyle} disabled><SelectValue placeholder="Loading..." /></SelectTrigger></ShadcnSelect>;
+      }
+      if (errorFields[dynamicFieldKey]) {
+        return <ShadcnSelect><SelectTrigger style={{...commonStyle, color: '#f87171'}} disabled><SelectValue placeholder={errorFields[dynamicFieldKey]} /></SelectTrigger></ShadcnSelect>;
+      }
+      return (
+        <MultiSelect
+          options={dynamicOptions[dynamicFieldKey] || []}
+          value={value || ""}
+          onChange={(selectedValue: string) => updateFilterRule(groupId, rule.id, { value: selectedValue, operator: 'contains' })}
+          placeholder={`Select ${field === 'Keywords' ? 'keywords' : 'file types'}...`}
+          style={commonStyle}
+        />
+      );
+    }
+
     // --- MODIFIED: Removed duplicated 'if' statement ---
     if ((field as DynamicFieldKey) in DYNAMIC_FIELD_CONFIG) {
       const dynamicFieldKey = field as DynamicFieldKey;
@@ -312,8 +503,6 @@ export function AdvancedFiltersClickUp({
         </ShadcnSelect>
         
       );
-
-
     }
     
     // 3. Fallback to a standard text input

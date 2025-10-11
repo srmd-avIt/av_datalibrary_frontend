@@ -965,6 +965,126 @@ export function DetailsSidebar({
     </div>
   );
 }
+
+
+case "auxfiletype": {
+  const [isEditingAuxFileType, setIsEditingAuxFileType] = useState(false);
+  const [auxFileType, setAuxFileType] = useState(data.AuxFileType || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveAuxFileType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Aux File Type...");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/aux-file-type/${encodeURIComponent(data.AuxTypeID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ AuxFileType: auxFileType }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Aux File Type");
+      }
+
+      data.AuxFileType = auxFileType;
+
+      toast.success("Aux File Type updated successfully!", { id: savingToast });
+      setIsEditingAuxFileType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Aux File Type:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingAuxFileType(false);
+    setAuxFileType(data.AuxFileType || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.AuxFileType || "Aux File Type"}</h3>
+        <p className="text-muted-foreground">ID: {data.AuxTypeID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Aux File Type Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable AuxFileType Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">File Type Name</span>
+
+            {isEditingAuxFileType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={auxFileType}
+                  onChange={(e) => setAuxFileType(e.target.value)}
+                  placeholder="Enter file type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveAuxFileType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {auxFileType ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {auxFileType}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Aux File Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingAuxFileType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified</span>
+            <span className="font-medium">{data.LastModifiedTimestamp || "N/A"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
       case "bhajanType": {
   const [isEditingBhajanName, setIsEditingBhajanName] = useState(false);
   const [bhajanName, setBhajanName] = useState(data.BhajanName || "");
@@ -2826,7 +2946,7 @@ case "organization": {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        {renderIcon(<Users className="w-8 h-8 text-white" />, "from-sky-500 to-indigo-500")}
+        {renderIcon(<Users className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
         <h3 className="text-xl font-bold">{data.Organization || "Organization"}</h3>
         <p className="text-muted-foreground">ID: {data.OrganizationID}</p>
       </div>
@@ -3138,8 +3258,355 @@ case "topicNumberSource": {
   );
 }
 
+case "timeOfDay": {
+  const [isEditingTimeList, setIsEditingTimeList] = useState(false);
+  const [timeList, setTimeList] = useState(data.TimeList || "");
+  const [isSaving, setIsSaving] = useState(false);
 
+  const handleSaveTimeList = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Time of Day...");
 
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/time-of-day/${encodeURIComponent(data.TimeID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ TimeList: timeList }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Time of Day");
+      }
+
+      data.TimeList = timeList;
+
+      toast.success("Time of Day updated successfully!", { id: savingToast });
+      setIsEditingTimeList(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Time of Day:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingTimeList(false);
+    setTimeList(data.TimeList || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.TimeList || "Time of Day"}</h3>
+        <p className="text-muted-foreground">Time ID: {data.TimeID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Time of Day Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable TimeList Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Time List</span>
+
+            {isEditingTimeList ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={timeList}
+                  onChange={(e) => setTimeList(e.target.value)}
+                  placeholder="Enter Time List..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveTimeList}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {timeList ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {timeList}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Time of Day", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTimeList(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ...inside renderContent() switch...
+
+case "topicgivenby": {
+  const [isEditingTGBName, setIsEditingTGBName] = useState(false);
+  const [tgbName, setTGBName] = useState(data.TGB_Name || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveTGBName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Topic Given By...");
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/topic-given-by/${encodeURIComponent(data.TGBID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ TGB_Name: tgbName }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Topic Given By");
+      }
+      data.TGB_Name = tgbName;
+      toast.success("Topic Given By updated successfully!", { id: savingToast });
+      setIsEditingTGBName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Topic Given By:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingTGBName(false);
+    setTGBName(data.TGB_Name || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Users className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.TGB_Name || "Topic Given By"}</h3>
+        <p className="text-muted-foreground">TGBID: {data.TGBID}</p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Topic Given By Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable TGB_Name Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Name</span>
+            {isEditingTGBName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={tgbName}
+                  onChange={(e) => setTGBName(e.target.value)}
+                  placeholder="Enter Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveTGBName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {tgbName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {tgbName}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Topic Given By", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTGBName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified By</span>
+            <span className="font-medium">{data.LastModifiedBy || "N/A"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified</span>
+            <span className="font-medium">{data.LastModifiedTs || "N/A"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ...inside renderContent() switch...
+
+case "segmentcategory": {
+  const [isEditingSegCatName, setIsEditingSegCatName] = React.useState(false);
+  const [segCatName, setSegCatName] = React.useState(data.SegCatName || "");
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleSaveSegCatName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Segment Category...");
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/segment-category/${encodeURIComponent(data.SegCatID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ SegCatName: segCatName }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Segment Category");
+      }
+      data.SegCatName = segCatName;
+      toast.success("Segment Category updated successfully!", { id: savingToast });
+      setIsEditingSegCatName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Segment Category:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingSegCatName(false);
+    setSegCatName(data.SegCatName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.SegCatName || "Segment Category"}</h3>
+        <p className="text-muted-foreground">SegCatID: {data.SegCatID}</p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Segment Category Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {/* Editable SegCatName Field */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Name</span>
+            {isEditingSegCatName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={segCatName}
+                  onChange={(e) => setSegCatName(e.target.value)}
+                  placeholder="Enter Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveSegCatName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {segCatName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {segCatName}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Segment Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingSegCatName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified By</span>
+            <span className="font-medium">{data.LastModifiedBy || "N/A"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Modified</span>
+            <span className="font-medium">{data.LastModifiedTs || "N/A"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
       default:
         return (
           <div className="text-center p-4">

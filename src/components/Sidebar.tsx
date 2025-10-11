@@ -1,6 +1,6 @@
 // src/components/Sidebar.js
 
-import { Home, Database, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown } from "lucide-react";
+import { Home, Database, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, ListFilter, Scissors, ListTree, FolderKanban } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
@@ -12,7 +12,7 @@ interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
   collapsed: boolean;
-  onToggleCollapse: () => void;
+  onToggleCollapse: () => void; 
 }
 
 // Define types for menu items, including children for nesting
@@ -33,7 +33,17 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "events", label: "Events", icon: Map },
     { id: "digitalrecordings", label: "Digital Recordings", icon: Calendar },
-    { id: "medialog", label: "Media Log", icon: Users },
+     {
+      id: "medialog-parent",
+      label: "Media Log",
+      icon: FolderKanban,
+      children: [
+        { id: "medialog_all", label: "All", icon: List },
+        { id: "medialog_all_except_satsang", label: "All Except Satsang", icon: ListFilter },
+        { id: "medialog_satsang_extracted_clips", label: "Satsang Extracted Clips", icon: Scissors },
+        { id: "medialog_satsang_category", label: "Satsang Category", icon: ListTree },
+      ],
+    },
     { id: "aux", label: "Aux Files", icon: FileText },
     {
       id: "master-data",
@@ -43,9 +53,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
         { id: "audio", label: "Audio", icon: Music },
         { id: "auxfiletype", label: "Aux File Type", icon: FileText },
         { id: "bhajanType", label: "Bhajan Type", icon: Music },
-        { id: "detail", label: "Detail", icon: FileText },
         { id: "digitalMasterCategory", label: "Digital Master Category", icon: Database },
-        { id: "dimension", label: "Dimension", icon: Layers },
         { id: "distributionLabel", label: "Distribution Label", icon: Tag },
         { id: "editingstatus", label: "Editing Status", icon: Edit },
         { id: "editingType", label: "Editing Type", icon: Edit },
@@ -62,12 +70,11 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
         { id: "newStates", label: "New States", icon: Map },
         { id: "occasions", label: "Occasions", icon: Gift },
         { id: "organization", label: "Organization", icon: Users },
-        { id: "preservationstatus", label: "Preservation Status", icon: Database },
-        { id: "productionbucket", label: "Production Bucket", icon: Layers },
-        { id: "teams", label: "Teams", icon: Users },
-        { id: "timeofday", label: "Time Of Day", icon: Calendar },
+        { id: "timeOfDay", label: "Time Of Day", icon: Calendar },
         { id: "topicNumberSource", label: "Topic Number Source", icon: Hash },
-        
+        { id: "topicgivenby", label: "TopicGivenBy", icon: Tag },
+        { id: "segmentcategory", label: "Segment Category", icon: List },
+
       ],
     },
     { id: "user-management", label: "User Management", icon: User }
