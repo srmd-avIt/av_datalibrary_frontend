@@ -456,10 +456,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/aux-file-type",
     idKey: "AuxTypeID",
     detailsType: "auxfiletype",
+     isDropdown: true,
     columns: [
       { key: "AuxTypeID", label: "AuxTypeID", sortable: true, editable: true },
       { key: "AuxFileType", label: "AuxFileType", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   audio: {
@@ -467,11 +469,13 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/audio",
     idKey: "AID",
     detailsType: "audio",
+    isDropdown: true,
     columns: [
      { key: "AID", label: "Audio ID", sortable: true, editable: true },
   { key: "AudioList", label: "AudioList", sortable: true, editable: true },
   { key: "Distribution", label: "Distribution", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true }, 
+  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true }, 
+  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
      
     ],
   },
@@ -480,10 +484,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/bhajan-type",
     idKey: "BTID",
     detailsType: "bhajanType",
+    isDropdown: true,
     columns: [
       { key: "BTID", label: "BTID", sortable: true, editable: true },
   { key: "BhajanName", label: "BhajanName", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   digitalMasterCategory: {
@@ -491,10 +497,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/digital-master-category",
     idKey: "DMCID",
     detailsType: "digitalMasterCategory",
+    isDropdown: true,
     columns: [
      { key: "DMCID", label: "DMCID", sortable: true, editable: true },
   { key: "DMCategory_name", label: "DMCategory_name", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   distributionLabel: {
@@ -502,10 +510,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/distribution-label",
     idKey: "LabelID",
     detailsType: "distributionLabel",
+    isDropdown: true,
     columns: [
    { key: "LabelID", label: "Label ID", sortable: true, editable: true },
   { key: "LabelName", label: "Label Name", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   editingType: {
@@ -513,10 +523,13 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/editing-type",
     idKey: "EdID",
     detailsType: "editingType",
+    isDropdown: true,
     columns: [
      { key: "EdID", label: "EdID", sortable: true, editable: true },
   { key: "EdType", label: "EdType", sortable: true, editable: true },
   { key: "AudioVideo", label: "AudioVideo", sortable: true, editable: true },
+  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   
@@ -525,10 +538,13 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/editing-status",
     idKey: "EdID",
     detailsType: "editingStatus",
+    isDropdown: true,
     columns: [
       { key: "EdID", label: "EdID", sortable: true, editable: true },
       { key: "EdType", label: "EdType", sortable: true, editable: true },
       { key: "AudioVideo", label: "AudioVideo", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
 
@@ -537,10 +553,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/event-category",
     idKey: "EventCategoryID",
     detailsType: "eventCategory",
+    isDropdown: true,
     columns: [
       { key: "EventCategoryID", label: "EventCategoryID", sortable: true, editable: true },
       { key: "EventCategory", label: "EventCategory", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   footageType: {
@@ -548,10 +566,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/footage-type",
     idKey: "FootageID",
     detailsType: "footageType",
+    isDropdown: true,
     columns: [
       { key: "FootageID", label: "Footage ID", sortable: true, editable: true },
       { key: "FootageTypeList", label: "FootageTypeList", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   formatType: {
@@ -559,11 +579,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/format-type",
     idKey: "FTID",
     detailsType: "formatType",
+    isDropdown: true,
     columns: [
       { key: "FTID", label: "FTID", sortable: true, editable: true },
       { key: "Type", label: "Type", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true},
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
     ],
   },
   granths: {
@@ -571,9 +592,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/granths",
     idKey: "ID",
     detailsType: "granths",
+    isDropdown: true,
     columns: [
       { key: "ID", label: "ID", sortable: true, editable: true },
-      { key: "Name", label: "Name", sortable: true, editable: true }
+      { key: "Name", label: "Name", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   language: {
@@ -581,10 +605,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/language",
     idKey: "STID",
     detailsType: "language",
+    isDropdown: true,
     columns: [
       { key: "STID", label: "STID", sortable: true, editable: true },
       { key: "TitleLanguage", label: "TitleLanguage", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true},
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
     ],
   },
   newEventCategory: {
@@ -592,10 +618,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/new-event-category",
     idKey: "SrNo",
     detailsType: "newEventCategory",
+    isDropdown: true,
     columns: [
       { key: "SrNo", label: "SrNo", sortable: true, editable: true },
       { key: "NewEventCategoryName", label: "NewEventCategoryName", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
       { key: "MARK_DISCARD", label: "MARK_DISCARD", sortable: true, editable: true },
     ],
   },
@@ -604,10 +632,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/new-cities",
     idKey: "CityID",
     detailsType: "newCities",
+    isDropdown: true,
     columns: [
       { key: "CityID", label: "City ID", sortable: true, editable: true },
       { key: "City", label: "City", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true }
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   newCountries: {
@@ -615,10 +645,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/new-countries",
     idKey: "CountryID",
     detailsType: "newCountries",
+    isDropdown: true,
     columns: [
       { key: "CountryID", label: "Country ID", sortable: true, editable: true },
       { key: "Country", label: "Country", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   newStates: {
@@ -626,10 +658,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/new-states",
     idKey: "StateID",
     detailsType: "newStates",
+    isDropdown: true,
     columns: [
       { key: "StateID", label: "State ID", sortable: true, editable: true },
       { key: "State", label: "State", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true},
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
     ],
   },
 
@@ -638,10 +672,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/master-quality",
     idKey: "MQID",
     detailsType: "masterquality",
+    isDropdown: true,
     columns: [
       { key: "MQID", label: "MQID", sortable: true, editable: true },
       { key: "MQName", label: "MQName", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true},
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
     ],
   },
 
@@ -650,10 +686,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/organizations",
     idKey: "OrganizationID",
     detailsType: "organization",
+    isDropdown: true,
     columns: [
       { key: "OrganizationID", label: "Organization ID", sortable: true, editable: true },
       { key: "Organization", label: "Organization", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   occasions: {
@@ -661,10 +699,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/occasions",
     idKey: "OccasionID",
     detailsType: "occasions",
+    isDropdown: true,
     columns: [
       { key: "OccasionID", label: "Occasion ID", sortable: true, editable: true },
       { key: "Occasion", label: "Occasion", sortable: true, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   
@@ -673,9 +713,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/topic-number-source",
     idKey: "TNID",
     detailsType: "topicNumberSource",
+    isDropdown: true,
     columns: [
       { key: "TNID", label: "TNID", sortable: true, editable: true },
-      { key: "TNName", label: "TNName", sortable: true, editable: true }
+      { key: "TNName", label: "TNName", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
 
@@ -684,9 +727,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/time-of-day",
     idKey: "TimeID",
     detailsType: "timeOfDay",
+    isDropdown: true,
     columns: [
       { key: "TimeID", label: "Time ID", sortable: true, editable: true },
-      { key: "TimeList", label: "Time List", sortable: true, editable: true }
+      { key: "TimeList", label: "Time List", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
 
@@ -695,11 +741,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/topic-given-by",
     idKey: "TGBID",
     detailsType: "topicgivenby",
+    isDropdown: true,
     columns: [
       { key: "TGBID", label: "TGBID", sortable: true, editable: true },
       { key: "TGB_Name", label: "TGB_Name", sortable: true, editable: true },
-      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
-      { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
+      { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true },
 
     ],
   },
@@ -709,11 +756,12 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/segment-category", 
     idKey: "SegCatID",
     detailsType: "segmentcategory",
+    isDropdown: true,
     columns: [
       { key: "SegCatID", label: "SegCatID", sortable: true, editable: true },
       { key: "SegCatName", label: "SegCatName", sortable: true, editable: true },
-      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
-      { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true  },
+      { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true },
 
     ],
   },
@@ -772,8 +820,9 @@ export default function App() {
           idKey={config.idKey}
           onRowSelect={(row) => handleRowSelect(row, config.detailsType)}
           columns={config.columns}
-          views={config.views} // This will be undefined for views that don't have it, which is fine
-          filterConfigs={[]} // You can add this to your config object too
+          views={config.views}
+          filterConfigs={[]}
+          showAddButton={!!config.isDropdown} // <-- Pass this prop
         />
       );
     }

@@ -35,6 +35,7 @@ import {
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
 import { Column, ListItem } from "./types"; // Import ListItem from ./types
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 
 // --- REMOVED: Local Column definition is no longer needed ---
 
@@ -267,14 +268,17 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
 
 // --- Main Component ---
 // This is the main list/table view component with filtering, sorting, grouping, column hiding, pagination, and timeline view
-export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConfigs = [], views = [], onRowSelect, idKey }: {
+export function ClickUpListViewUpdated({
+  title, columns, apiEndpoint, filterConfigs = [], views = [], onRowSelect, idKey, showAddButton = false
+}: {
   title: string;
   columns: Column[];
   apiEndpoint: string;
   filterConfigs?: FilterConfig[];
   views?: ViewConfig[];
-  onRowSelect?: (item: ListItem) => void; 
+  onRowSelect?: (item: ListItem) => void;
   idKey: string;
+  showAddButton?: boolean; // <-- Add this prop
 }) {
   // --- State Management Strategy ---
   // The component uses a combination of "global" and "user-specific" state to meet the requirements.
@@ -802,6 +806,12 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   const getSortIcon = (columnKey: string) => { if (activeSortBy !== columnKey) return <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50" />; return activeSortDirection === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />; };
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
+  // --- Add button handler ---
+  const handleAddClick = () => {
+    // TODO: Implement add logic or open a modal for adding a new item
+    toast.info("Add button clicked!");
+  };
+
   // --- TanStack Table column definitions ---
   const colDefs: ColumnDef<any>[] = useMemo(
     () =>
@@ -860,6 +870,314 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
       </th>
     );
   }
+
+  // --- State for adding new entries ---
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState<Record<string, any>>({});
+
+  // Filter columns for form (exclude LastModifiedBy, LastModifiedTimestamp, idKey, and keys containing 'id')
+  const formColumns = columns.filter(
+    col =>
+      col.key !== "LastModifiedBy" &&
+      col.key !== "LastModifiedTimestamp" &&
+      col.key !== "LastModifiedTs" &&
+      col.key !== idKey &&
+      !/id$/i.test(col.key) // Exclude keys ending with 'id' (case-insensitive)
+  );
+
+
+  // Handle input change
+  const handleAddFormChange = (key, value) => {
+    setAddForm(f => ({ ...f, [key]: value }));
+  };
+
+  // Handle submit
+  const handleAddSubmit = async () => {
+    if (!hasAccess(title, 'write')) {
+      toast.error("You don't have permission to add entries.");
+      setAddOpen(false);
+      return;
+    }
+    try {
+      let response;
+      // Get user email if available
+      const userEmail = user?.email || "";
+
+      // Segment Category
+      if (apiEndpoint === "/segment-category") {
+        response = await fetch(`${API_BASE_URL}/segment-category`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            SegCatName: addForm.SegCatName || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Topic Given By
+      else if (apiEndpoint === "/topic-given-by") {
+        response = await fetch(`${API_BASE_URL}/topic-given-by`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            TGB_Name: addForm.TGB_Name || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Aux File Type
+      else if (apiEndpoint === "/aux-file-type") {
+        response = await fetch(`${API_BASE_URL}/aux-file-type`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            AuxFileType: addForm.AuxFileType || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Audio
+      else if (apiEndpoint === "/audio") {
+        response = await fetch(`${API_BASE_URL}/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            AudioList: addForm.AudioList || "",
+            Distribution: addForm.Distribution || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Bhajan Type
+      else if (apiEndpoint === "/bhajan-type") {
+        response = await fetch(`${API_BASE_URL}/bhajan-type`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            BhajanName: addForm.BhajanName || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Digital Master Category
+      else if (apiEndpoint === "/digital-master-category") {
+        response = await fetch(`${API_BASE_URL}/digital-master-category`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            DMCategory_name: addForm.DMCategory_name || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Distribution Label
+      else if (apiEndpoint === "/distribution-label") {
+        response = await fetch(`${API_BASE_URL}/distribution-label`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            LabelName: addForm.LabelName || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Editing Type
+      else if (apiEndpoint === "/editing-type") {
+        response = await fetch(`${API_BASE_URL}/editing-type`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            EdType: addForm.EdType || "",
+            AudioVideo: addForm.AudioVideo || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Editing Status
+      else if (apiEndpoint === "/editing-status") {
+        response = await fetch(`${API_BASE_URL}/editing-status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            EdType: addForm.EdType || "",
+            AudioVideo: addForm.AudioVideo || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Event Category
+      else if (apiEndpoint === "/event-category") {
+        response = await fetch(`${API_BASE_URL}/event-category`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            EventCategory: addForm.EventCategory || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Footage Type
+      else if (apiEndpoint === "/footage-type") {
+        response = await fetch(`${API_BASE_URL}/footage-type`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            FootageTypeList: addForm.FootageTypeList || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Format Type
+      else if (apiEndpoint === "/format-type") {
+        response = await fetch(`${API_BASE_URL}/format-type`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Type: addForm.Type || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Granths
+      else if (apiEndpoint === "/granths") {
+        response = await fetch(`${API_BASE_URL}/granths`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Name: addForm.Name || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Language
+      else if (apiEndpoint === "/language") {
+        response = await fetch(`${API_BASE_URL}/language`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            TitleLanguage: addForm.TitleLanguage || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // New Event Category
+      else if (apiEndpoint === "/new-event-category") {
+        response = await fetch(`${API_BASE_URL}/new-event-category`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            NewEventCategoryName: addForm.NewEventCategoryName || "",
+            MARK_DISCARD: addForm.MARK_DISCARD || "0",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // New Cities
+      else if (apiEndpoint === "/new-cities") {
+        response = await fetch(`${API_BASE_URL}/new-cities`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            City: addForm.City || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // New Countries
+      else if (apiEndpoint === "/new-countries") {
+        response = await fetch(`${API_BASE_URL}/new-countries`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Country: addForm.Country || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // New States
+      else if (apiEndpoint === "/new-states") {
+        response = await fetch(`${API_BASE_URL}/new-states`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            State: addForm.State || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Master Quality
+      else if (apiEndpoint === "/master-quality") {
+        response = await fetch(`${API_BASE_URL}/master-quality`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            MQName: addForm.MQName || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Organizations
+      else if (apiEndpoint === "/organizations") {
+        response = await fetch(`${API_BASE_URL}/organizations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Organization: addForm.Organization || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Occasions
+      else if (apiEndpoint === "/occasions") {
+        response = await fetch(`${API_BASE_URL}/occasions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Occasion: addForm.Occasion || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Topic Number Source
+      else if (apiEndpoint === "/topic-number-source") {
+        response = await fetch(`${API_BASE_URL}/topic-number-source`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            TNName: addForm.TNName || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Time of Day
+      else if (apiEndpoint === "/time-of-day") {
+        response = await fetch(`${API_BASE_URL}/time-of-day`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            TimeList: addForm.TimeList || "",
+            LastModifiedBy: userEmail
+          }),
+        });
+      }
+      // Default: fallback to generic
+      else {
+        response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...addForm, LastModifiedBy: userEmail }),
+        });
+      }
+
+      if (!response.ok) throw new Error("Failed to add entry");
+      toast.success("Entry added!");
+      setAddOpen(false);
+      setAddForm({});
+      await queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
+    } catch (e) {
+      toast.error("Failed to add entry");
+    }
+  };
 
   // --- Render ---
   return (
@@ -929,11 +1247,16 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                     Cards
                   </button>
                 </div>
-                <div className="ml-auto">
+                <div className="ml-auto flex gap-2">
                   <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-slate-600 text-white hover:bg-slate-800" onClick={handleExport} disabled={isExporting}>
                     {isExporting ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Download className="w-3 h-3" />)}
                     {isExporting ? 'Export' : 'Export'}
                   </Button>
+                  {showAddButton && hasAccess(title, 'write') && (
+                    <Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>
+                      + Add
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -950,6 +1273,11 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                     {isExporting ? (<Loader2 className="w-4 h-4 animate-spin" />) : (<Download className="w-4 h-4" />)}
                     {isExporting ? 'Exporting...' : 'Export'}
                   </Button>
+                  {showAddButton && hasAccess(title, 'write') && (
+                    <Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>
+                      + Add
+                    </Button>
+                  )}
                 </div>
               </>
             )}
@@ -1291,8 +1619,6 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                         editValue={editValue}
                         setEditValue={setEditValue}
                         setEditingCell={setEditingCell}
-                        handleUpdateCell={handleUpdateCell}
-                        handleCellDoubleClick={handleCellDoubleClick}
                         // Pass all the state management props
                         sortBy={sortBy}
                         sortDirection={sortDirection}
@@ -1308,6 +1634,8 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                         sortedData={sortedData}
                         viewMode={mobileViewMode}
                         setViewMode={setMobileViewMode}
+                        handleUpdateCell={handleUpdateCell}
+                        handleCellDoubleClick={handleCellDoubleClick}
                       />
                     </div>
                   ) : (
@@ -1359,6 +1687,7 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                   <span>{totalItems} results</span>
                   {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
                     <Button 
+                      
                       variant="ghost" 
                       size="sm" 
                       onClick={() => { 
@@ -1399,6 +1728,53 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
           </div>
         }
       </Card>
+
+      {/* Add Entry Modal */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New {title}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              handleAddSubmit();
+            }}
+            className="space-y-6"
+          >
+            {formColumns.map(col => (
+              <div key={col.key}>
+                <label className="block text-sm font-medium mb-2">{col.label}</label>
+                <Input
+                  value={addForm[col.key] || ""}
+                  onChange={e => handleAddFormChange(col.key, e.target.value)}
+                  required
+                />
+              </div>
+            ))}
+            <DialogFooter>
+             <Button
+  type="button"
+  variant="outline"
+  onClick={() => setAddOpen(false)}
+  style={{ width: "120px" }} // 👈 fixed width
+>
+  Cancel
+</Button>
+
+              <Button 
+  type="submit" 
+  variant="default" 
+  style={{ width: "120px" }}
+  disabled={!hasAccess(title, 'write')}
+>
+  Add
+</Button>
+
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
