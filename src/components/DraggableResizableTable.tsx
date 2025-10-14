@@ -28,6 +28,7 @@ interface DraggableResizableTableProps {
   setEditingCell?: (cell: { rowIndex: number; columnKey: string } | null) => void;
   handleUpdateCell?: () => void;
   handleCellDoubleClick?: (rowIndex: number, column: Column, value: any) => void;
+  handleCellEdit?: (rowIndex: number, column: Column, newValue: any) => void;
 }
 
 const ITEM_TYPE = "COLUMN";
@@ -188,6 +189,7 @@ export function DraggableResizableTable({
   setEditingCell,
   handleUpdateCell,
   handleCellDoubleClick,
+  handleCellEdit,
 }: DraggableResizableTableProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -198,6 +200,7 @@ export function DraggableResizableTable({
     });
     return widths;
   });
+  const [tableData, setTableData] = useState<ListItem[]>(data);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -390,19 +393,19 @@ export function DraggableResizableTable({
                             }}
                           >
                             {isEditing && handleUpdateCell && setEditValue && setEditingCell ? (
-                                <Input
-                                  type="text"
-                                  value={editValue ?? ''}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onBlur={handleUpdateCell}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleUpdateCell();
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
-                                  autoFocus
-                                  className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                              ) : (
+                              <Input
+                                type="text"
+                                value={editValue ?? ''}
+                                onChange={(e) => setEditValue && setEditValue(e.target.value)}
+                                onBlur={() => handleCellEdit && handleCellEdit(absoluteIndex, column, editValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleCellEdit && handleCellEdit(absoluteIndex, column, editValue);
+                                  if (e.key === 'Enter') setEditingCell && setEditingCell(null);
+                                }}
+                                autoFocus
+                                className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              />
+                            ) : (
                                 <div className="truncate">
                                   {column.render
                                     ? column.render(cellValue, item)

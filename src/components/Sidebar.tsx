@@ -26,7 +26,8 @@ type MenuItem = {
 export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse }: SidebarProps) {
   const { user, logout } = useAuth();
   const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
-  
+  const [isMediaLogOpen, setIsMediaLogOpen] = useState(false); // <-- Add this line
+
   // This is the MASTER list of all possible views in the app.
   // The 'label' MUST match the resource name in your UserManagement component's APP_RESOURCES array.
   const allMenuItems: MenuItem[] = [
@@ -61,7 +62,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
         { id: "footageType", label: "Footage Type", icon: Film },
         { id: "formatType", label: "Format Type", icon: Layers },
         { id: "granths", label: "Granths", icon: Book },
-        { id: "keywords", label: "Keywords", icon: Tag },
+        
         { id: "language", label: "Language", icon: Globe },
         { id: "masterquality", label: "Master Quality", icon: Layers },
         { id: "newEventCategory", label: "New Event Category", icon: Tag },
@@ -93,14 +94,25 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
     // A resource is considered "allowed" if it exists in the permissions array (meaning it's not "No Access")
     const allowedResources = new Set(user.permissions.map(p => p.resource));
 
-    return allMenuItems.filter(item => {
-        // Always show the Dashboard to logged-in users
-        if (item.label === 'Dashboard') {
-            return true;
-        }
-        // For all other items, check if its label exists in the user's allowed resources
-        return allowedResources.has(item.label);
-    });
+   const visibleMenuItems = allMenuItems
+  .map(item => {
+    if (item.label === 'Dashboard') {
+      // Always show Dashboard
+      return item;
+    }
+    if (item.children) {
+      const visibleChildren = item.children.filter(child => allowedResources.has(child.label));
+      if (visibleChildren.length > 0) {
+        return { ...item, children: visibleChildren };
+      }
+      return null;
+    }
+    if (allowedResources.has(item.label)) return item;
+    return null;
+  })
+  .filter(Boolean);
+
+return visibleMenuItems;
   }, [user]); // This will re-calculate only when the user object changes (e.g., on login/logout)
 
   return (
@@ -195,11 +207,13 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
         <div className="space-y-1">
           {/* We now map over the dynamically filtered `visibleMenuItems` */}
           {visibleMenuItems.map((item) => {
+            if (!item) return null; // Type guard for non-null item
             const Icon = item.icon;
             const isParentActive = item.children?.some(child => child.id === activeView);
-            const isActive = activeView === item.id || (isParentActive && !isMasterDataOpen);
+            const isActive = activeView === item.id || isParentActive;
 
-            if (item.children) {
+            // --- Separate logic for medialog-parent and master-data ---
+            if (item.id === "medialog-parent") {
               return (
                 <div key={item.id}>
                   <Button
@@ -208,18 +222,18 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
                     className={`w-full ${
                       collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"
                     } rounded-xl transition-all duration-200 ${
-                      isActive || (isParentActive && isMasterDataOpen)
+                      isActive || isMediaLogOpen
                         ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg"
                         : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"
                     }`}
-                    onClick={() => setIsMasterDataOpen(!isMasterDataOpen)}
+                    onClick={() => setIsMediaLogOpen(!isMediaLogOpen)}
                     title={collapsed ? item.label : undefined}
                   >
                     <Icon className="w-4 h-4" />
                     {!collapsed && (
                       <>
                         <span className="font-medium">{item.label}</span>
-                        {isMasterDataOpen ? (
+                        {isMediaLogOpen ? (
                           <ChevronDown className="ml-auto w-4 h-4" />
                         ) : (
                           <ChevronRight className="ml-auto w-4 h-4" />
@@ -227,9 +241,9 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
                       </>
                     )}
                   </Button>
-                  {!collapsed && isMasterDataOpen && (
+                  {!collapsed && isMediaLogOpen && (
                     <div className="pl-4 pt-1 space-y-1">
-                      {item.children.map(child => {
+                      {item.children?.map(child => {
                         const ChildIcon = child.icon;
                         const isChildActive = activeView === child.id;
                         return (
@@ -256,6 +270,64 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
               );
             }
 
+            if (item.id === "master-data") {
+              return (
+                <div key={item.id}>
+                  <Button
+                    variant="ghost"
+                    size={collapsed ? "sm" : "default"}
+                    className={`w-full ${
+                      collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"
+                    } rounded-xl transition-all duration-200 ${
+                      isActive || isMasterDataOpen
+                        ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"
+                    }`}
+                    onClick={() => setIsMasterDataOpen(!isMasterDataOpen)}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {!collapsed && (
+                      <>
+                        <span className="font-medium">{item.label}</span>
+                        {isMasterDataOpen ? (
+                          <ChevronDown className="ml-auto w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="ml-auto w-4 h-4" />
+                        )}
+                      </>
+                    )}
+                  </Button>
+                  {!collapsed && isMasterDataOpen && (
+                    <div className="pl-4 pt-1 space-y-1">
+                      {item.children?.map(child => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = activeView === child.id;
+                        return (
+                          <Button
+                            key={child.id}
+                            variant="ghost"
+                            size="default"
+                            className={`w-full justify-start gap-3 h-11 rounded-xl transition-all duration-200 ${
+                              isChildActive
+                                ? "bg-slate-700/50 text-white"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                            }`}
+                            onClick={() => onViewChange(child.id)}
+                          >
+                            <ChildIcon className="w-4 h-4" />
+                            <span className="font-medium">{child.label}</span>
+                            {isChildActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // ...rest of your existing logic for non-parent items...
             return (
               <Button
                 key={item.id}

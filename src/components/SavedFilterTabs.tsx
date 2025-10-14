@@ -8,6 +8,7 @@ interface SavedFilter {
   name: string;
   filterGroups: any[];
   createdAt: string;
+  createdBy?: string; // <-- Add this field if not already present
 }
 
 interface SavedFilterTabsProps {
@@ -15,13 +16,15 @@ interface SavedFilterTabsProps {
   activeFilterName: string | null;
   onSelectFilter: (name: string | null) => void;
   onDeleteFilter: (name: string) => void;
+  currentUser: { email: string; role: string }; // <-- Add this prop
 }
 
 export function SavedFilterTabs({ 
   savedFilters, 
   activeFilterName, 
   onSelectFilter, 
-  onDeleteFilter 
+  onDeleteFilter,
+  currentUser // <-- Add this prop
 }: SavedFilterTabsProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [filterToDelete, setFilterToDelete] = useState<SavedFilter | null>(null);
@@ -92,75 +95,89 @@ export function SavedFilterTabs({
 
         
         {/* Saved Filter Tabs */}
-        {savedFilters.map((filter) => (
-          <div 
-            key={filter.id} 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              backgroundColor: 'rgba(59, 130, 246, 0.1)', 
-              border: '1px solid rgba(59, 130, 246, 0.2)', 
-              borderRadius: '0.375rem' 
-            }}
-          >
-            <button
-              onClick={() => onSelectFilter(filter.name)}
-              style={{
-                ...baseButtonStyle,
-                padding: '0.5rem',
-                borderTopRightRadius: 0,
-                borderBottomRightRadius: 0,
-                borderRight: 'none',
-                backgroundColor: activeFilterName === filter.name ? '#2563eb' : 'transparent',
-                color: activeFilterName === filter.name ? '#ffffff' : '#bfdbfe',
-              }}
-              onMouseEnter={(e) => {
-                if (activeFilterName !== filter.name) {
-                  e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeFilterName !== filter.name) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
+        {savedFilters.map((filter) => {
+          console.log(
+            "createdBy:", filter.createdBy,
+            "currentUser.email:", currentUser.email,
+            "role:", currentUser.role
+          );
+          const canDelete =
+            (filter.createdBy &&
+              currentUser.email &&
+              filter.createdBy.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+            ) ||
+            currentUser.role?.toLowerCase() === "admin";
+
+
+          return (
+            <div 
+              key={filter.id} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                backgroundColor: 'rgba(59, 130, 246, 0.1)', 
+                border: '1px solid rgba(59, 130, 246, 0.2)', 
+                borderRadius: '0.375rem' 
               }}
             >
-              <Filter style={{ width: '0.75rem', height: '0.75rem', marginRight: '0.375rem', fill: 'currentColor' }} />
-              {filter.name}
-              <Badge
-                variant="secondary"
-                style={{ marginLeft: '0.375rem', fontSize: '0.75rem', backgroundColor: '#4b5569', color: '#e5e7eb' }}
+              <button
+                onClick={() => onSelectFilter(filter.name)}
+                style={{
+                  ...baseButtonStyle,
+                  padding: '0.5rem',
+                  borderTopRightRadius: 0,
+                  borderBottomRightRadius: 0,
+                  borderRight: 'none',
+                  backgroundColor: activeFilterName === filter.name ? '#2563eb' : 'transparent',
+                  color: activeFilterName === filter.name ? '#ffffff' : '#bfdbfe',
+                }}
+                onMouseEnter={(e) => {
+                  if (activeFilterName !== filter.name) {
+                    e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeFilterName !== filter.name) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
-                {filter.filterGroups.reduce((count, group) => count + group.rules.length, 0)}
-              </Badge>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteClick(filter);
-              }}
-              style={{
-                ...baseButtonStyle,
-                width: '1.5rem',
-                padding: 0,
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                color: '#f87171',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-                e.currentTarget.style.color = '#fca5a5';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#f87171';
-              }}
-              title="Delete saved filter"
-            >
-              <X style={{ width: '0.75rem', height: '0.75rem' }} />
-            </button>
-          </div>
-        ))}
+                <Filter style={{ width: '0.75rem', height: '0.75rem', marginRight: '0.375rem', fill: 'currentColor' }} />
+                {filter.name}
+                <Badge
+                  variant="secondary"
+                  style={{ marginLeft: '0.375rem', fontSize: '0.75rem', backgroundColor: '#4b5569', color: '#e5e7eb' }}
+                >
+                  {filter.filterGroups.reduce((count, group) => count + group.rules.length, 0)}
+                </Badge>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClick(filter);
+                }}
+                style={{
+                  ...baseButtonStyle,
+                  width: '1.5rem',
+                  padding: 0,
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  color: '#f87171',
+                  opacity: canDelete ? 1 : 0.4,
+                  cursor: canDelete ? 'pointer' : 'not-allowed'
+                }}
+                disabled={!canDelete}
+                title={
+                  canDelete
+                    ? "Delete saved filter"
+                    : "Only the creator or an admin can delete this filter"
+                }
+              >
+                <X style={{ width: '0.75rem', height: '0.75rem' }} />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* Delete Confirmation Dialog */}

@@ -64,6 +64,7 @@ interface SavedFilter {
   name: string;
   filterGroups: FilterGroup[];
   createdAt: string;
+  createdBy: string;
 }
 
 // --- API Response Type ---
@@ -406,24 +407,154 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
     }
   };
 
+const handleCellEdit = async (rowIndex: number, column: Column, newValue: any) => {
+  // Get the updated row
+  const updatedRow = { ...finalItems[rowIndex], [column.key]: newValue };
+
+  // Set LastModifiedBy to current user's email
+  if (user?.email) {
+    updatedRow.LastModifiedBy = user.email;
+  }
+
+  // Remove audit fields (backend sets them)
+  delete updatedRow.LastModifiedTimestamp;
+
+  // Exit edit mode immediately
+  setEditingCell(null);
+
+  // Don't save if the value hasn't changed
+  if (finalItems[rowIndex][column.key] === newValue) {
+    return;
+  }
+
+  const savingToast = toast.loading(`Updating ${column.label}...`);
+
+  // Determine endpoint and row id key
+  let endpoint = "";
+let rowId = "";
+
+if (effectiveApiEndpoint.includes("digitalrecording")) {
+  endpoint = "/digitalrecording";
+  rowId = updatedRow.RecordingCode;
+} else if (effectiveApiEndpoint.includes("auxfiles")) {
+  endpoint = "/auxfiles";
+  rowId = updatedRow.AuxCode; // <-- FIXED HERE
+} else if (effectiveApiEndpoint.includes("newmedialog")) {
+  endpoint = "/newmedialog";
+  rowId = updatedRow.MLUniqueID;
+} else if (effectiveApiEndpoint.includes("events")) {
+  endpoint = "/events";
+  rowId = updatedRow.EventID;
+} else if (effectiveApiEndpoint.includes("audio")) {
+  endpoint = "/audio";
+  rowId = updatedRow.AID;
+} else if (effectiveApiEndpoint.includes("bhajantype")) {
+  endpoint = "/bhajantype";
+  rowId = updatedRow.BTID;
+}else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
+  endpoint = "/digitalmastercategory";
+  rowId = updatedRow.DMCID;
+} else if (effectiveApiEndpoint.includes("distributionlabel")) {
+  endpoint = "/distributionlabel";
+  rowId = updatedRow.LabelID;
+}else if (effectiveApiEndpoint.includes("editingtype")) {
+  endpoint = "/editingtype";
+  rowId = updatedRow.EdID;
+} else if (effectiveApiEndpoint.includes("editingstatus")) {
+  endpoint = "/editingstatus";
+  rowId = updatedRow.EdID;
+} else if (effectiveApiEndpoint.includes("eventcategory")) {
+  endpoint = "/eventcategory";
+  rowId = updatedRow.EventCategoryID;
+} else if (effectiveApiEndpoint.includes("footagetype")) {
+  endpoint = "/footagetype";
+  rowId = updatedRow.FootageID;
+} else if (effectiveApiEndpoint.includes("formattype")) {
+  endpoint = "/formattype";
+  rowId = updatedRow.FTID;
+} else if (effectiveApiEndpoint.includes("granths")) {
+  endpoint = "/granths";
+  rowId = updatedRow.ID;
+} else if (effectiveApiEndpoint.includes("language")) {
+  endpoint = "/language";
+  rowId = updatedRow.STID;
+} else if (effectiveApiEndpoint.includes("master-quality")) {
+  endpoint = "/master-quality";
+  rowId = updatedRow.MQID;
+} else if (effectiveApiEndpoint.includes("organizations")) {
+  endpoint = "/organizations";
+  rowId = updatedRow.OrganizationID;
+} else if (effectiveApiEndpoint.includes("neweventcategory")) {
+  endpoint = "/neweventcategory";
+  rowId = updatedRow.CategoryID; // This should match your data key for SrNo/CategoryID
+} else if (effectiveApiEndpoint.includes("newcities")) {
+  endpoint = "/newcities";
+  rowId = updatedRow.CityID;
+} else if (effectiveApiEndpoint.includes("newcountries")) {
+  endpoint = "/newcountries";
+  rowId = updatedRow.CountryID;
+} else if (effectiveApiEndpoint.includes("newstates")) {
+  endpoint = "/newstates";
+  rowId = updatedRow.StateID;
+} else if (effectiveApiEndpoint.includes("occasions")) {
+  endpoint = "/occasions";
+  rowId = updatedRow.OccasionID;
+} else if (effectiveApiEndpoint.includes("topicnumbersource")) {
+  endpoint = "/topicnumbersource";
+  rowId = updatedRow.TNID;
+} else if (effectiveApiEndpoint.includes("time-of-day")) {
+  endpoint = "/time-of-day";
+  rowId = updatedRow.TimeID;
+}  else if (effectiveApiEndpoint.includes("aux-file-type")) {
+  endpoint = "/aux-file-type";
+  rowId = updatedRow.AuxTypeID;
+} else if (effectiveApiEndpoint.includes("topic-given-by")) {
+  endpoint = "/topic-given-by";
+  rowId = updatedRow.TGBID;
+} else {
+  endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`;
+  rowId = updatedRow[idKey];
+}
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}/${rowId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedRow),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to save changes.');
+    }
+
+    toast.success("Update saved successfully!", { id: savingToast });
+    // Refetch data to show the update
+    await queryClient.invalidateQueries({ queryKey: [endpoint] });
+
+  } catch (error: any) {
+    toast.error(`Error: ${error.message}`, { id: savingToast });
+    console.error("Failed to update cell:", error);
+  }
+};
 
   const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
-    const newSavedFilter: SavedFilter = { 
-      id: `filter_${Date.now()}`,
-      name, 
-      filterGroups,
-      createdAt: new Date().toISOString()
-    };
-    setSavedFilters(prev => {
-      const existing = prev.find(f => f.name === name);
-      if (existing) {
-        return prev.map(f => f.name === name ? { ...newSavedFilter, id: existing.id } : f);
-      }
-      return [...prev, newSavedFilter];
-    });
-    setActiveSavedFilterName(name);
-    setAdvancedFilters(filterGroups);
+  const newSavedFilter: SavedFilter = { 
+    id: `filter_${Date.now()}`,
+    name, 
+    filterGroups,
+    createdAt: new Date().toISOString(),
+    createdBy: user?.email || "", // <-- Add this line!
   };
+  setSavedFilters(prev => {
+    const existing = prev.find(f => f.name === name);
+    if (existing) {
+      return prev.map(f => f.name === name ? { ...newSavedFilter, id: existing.id } : f);
+    }
+    return [...prev, newSavedFilter];
+  });
+  setActiveSavedFilterName(name);
+  setAdvancedFilters(filterGroups);
+};
 
   const handleDeleteFilter = (name: string) => {
     setSavedFilters(prev => prev.filter(f => f.name !== name));
@@ -763,6 +894,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
         activeFilterName={activeSavedFilterName}
         onSelectFilter={handleSelectFilter}
         onDeleteFilter={handleDeleteFilter}
+        currentUser={user ? { email: user.email, role: user.role } : { email: '', role: '' }}
       />
       {/* Main card container */}
       <Card className="border-0 shadow-sm bg-card">
@@ -1189,6 +1321,7 @@ export function ClickUpListViewUpdated({ title, columns, apiEndpoint, filterConf
                       groupedData={groupedData as any}
                       activeGroupBy={activeGroupBy}
                       idKey={idKey}
+                       handleCellEdit={handleCellEdit} // <-- use this i
                       // --- Pass editing props to the table ---
                       editingCell={editingCell}
                       editValue={editValue}

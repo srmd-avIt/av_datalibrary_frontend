@@ -206,12 +206,7 @@ export function ClickUpListViewStatic({ title, columns, data, searchKey = "name"
       </div>
 
       {/* Saved Filter Tabs */}
-      <SavedFilterTabs
-        savedFilters={savedFilters}
-        activeFilterName={activeSavedFilter}
-        onSelectFilter={handleSavedFilterSelect}
-        onDeleteFilter={handleSavedFilterDelete}
-      />
+   
 
       <Card className="border-0 shadow-sm bg-card">
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">

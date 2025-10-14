@@ -147,7 +147,7 @@ const StyledSelectItem: React.FC<StyledSelectItemProps> = ({ children, value }) 
 // endpoint: The API endpoint to fetch data from.
 // dataKey: The name of the property in the returned JSON objects to use for the dropdown label/value.
 const DYNAMIC_FIELD_CONFIG = {
-  'NewEventCategory': { endpoint: '/new-event-category/options', dataKey: 'NewEventCategoryName' },
+  'NewEventCategory': { endpoint: '/new-event-category/options', dataKey: 'NewEventCategory' },
   'Audio': { endpoint: '/audio/options', dataKey: 'AudioList' },
   'BhajanType': { endpoint: '/bhajan-type/options', dataKey: 'BhajanType' },
   'EditingType': { endpoint: '/editing-type/options', dataKey: 'EditingType' },
@@ -158,11 +158,12 @@ const DYNAMIC_FIELD_CONFIG = {
   'fkGranth': { endpoint: '/granths/options', dataKey: 'fkGranth' },
   'Language': { endpoint: '/language/options', dataKey: 'Language' },
   'fkDistributionLabel': { endpoint: '/distribution-label/options', dataKey: 'fkDistributionLabel' },
-  'fkEventCategory': { endpoint: '/event-category/options', dataKey: 'EventCategory' },
+  'fkEventCategory': { endpoint: '/event-category/options', dataKey: 'fkEventCategory' },
+  
   'FootageType': { endpoint: '/footage-type/options', dataKey: 'FootageType' },
   'fkOccasion': { endpoint: '/occasion/options', dataKey: 'fkOccasion' },
-  'TopicSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
-  'NumberSource': { endpoint: '/topic-source/options', dataKey: 'TNName' },
+  'TopicSource': { endpoint: '/topic-source/options', dataKey: 'TopicSource' },
+  'NumberSource': { endpoint: '/number-source/options', dataKey: 'NumberSource' },
   'fkMediaName': { endpoint: '/format-type/options', dataKey: 'fkMediaName' },
   'EditingStatus': { endpoint: '/editing-status/options', dataKey: 'EditingStatus' },
   'Masterquality': { endpoint: '/master-quality/options', dataKey: 'Masterquality' },
@@ -176,7 +177,7 @@ const DYNAMIC_FIELD_CONFIG = {
   'Teams': { endpoint: '/teams/options', dataKey: 'Teams' },
   'TopicGivenBy': { endpoint: '/topic-given-by/options', dataKey: 'TopicGivenBy' },
   'Segment Category': { endpoint: '/segment-category/options', dataKey: 'Segment Category' },
-
+  'IsAudioRecorded': { endpoint: '/is-audio-recorded/options', dataKey: 'IsAudioRecorded' },
 
 
 } as const;
@@ -335,7 +336,10 @@ export function AdvancedFiltersClickUp({
   const updateGroupLogic = (groupId: string, logic: "AND" | "OR") => {
     setFilterGroups((groups) => groups.map((group) => (group.id === groupId ? { ...group, logic } : group)));
   };
-  const clearAllFilters = () => setFilterGroups([{ id: "group1", rules: [], logic: "AND" }]);
+  const clearAllFilters = () => {
+    setFilterGroups([{ id: "group1", rules: [], logic: "AND" }]);
+    onFiltersChange([{ id: "group1", rules: [], logic: "AND" }]); // <-- This line ensures data is reset
+  };
   
   // Define which fields are multi-select
   const multiSelectFields = ['NewEventCategory',
