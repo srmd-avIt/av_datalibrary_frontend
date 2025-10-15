@@ -646,52 +646,57 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   }, [columns, filterConfigs]);
 
   // --- Query for PAGINATED data (when not grouping) ---
-  const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
-    queryKey: [
-      effectiveApiEndpoint,
-      currentPage,
+const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
+  queryKey: [
+    effectiveApiEndpoint,
+    currentPage,
+    searchTerm,
+    JSON.stringify(activeViewFilters),
+    JSON.stringify(advancedFilters),
+    activeSortBy,
+    activeSortDirection,
+  ],
+  queryFn: () =>
+    fetchDataFromApi({
+      apiEndpoint: effectiveApiEndpoint,
+      page: currentPage,
+      limit: itemsPerPage,
       searchTerm,
-      JSON.stringify(activeViewFilters),
-      JSON.stringify(advancedFilters),
-      activeSortBy,
-      activeSortDirection,
-    ],
-    queryFn: () =>
-      fetchDataFromApi({
-        apiEndpoint: effectiveApiEndpoint,
-        page: currentPage,
-        limit: itemsPerPage,
-        searchTerm,
-        filters: activeViewFilters,
-        advancedFilters,
-        sortBy: activeSortBy,
-        sortDirection: activeSortDirection,
-      }),
-    // Only run this query if grouping is NOT active.
-    // The API will handle pagination and sorting.
-    enabled: !shouldFetchAllForGrouping,
-    staleTime: 5000, // Data will be considered fresh for 5 seconds
-  });
+      filters: activeViewFilters,
+      advancedFilters,
+      sortBy: activeSortBy,
+      sortDirection: activeSortDirection,
+    }),
+  enabled: !shouldFetchAllForGrouping,
+  staleTime: 60 * 1000, // 1 minute
+  placeholderData: previous => previous, // <-- This keeps previous data while fetching
+});
 
-  // --- NEW: Query for ALL data (when grouping IS active) ---
-  // This query fetches the entire dataset, pre-sorted by the API.
-  const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
-    queryKey: [effectiveApiEndpoint, 'all-for-grouping', searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeSortBy, activeSortDirection],
-    queryFn: () =>
-      fetchDataFromApi({
-        apiEndpoint: effectiveApiEndpoint,
-        page: 1,
-        limit: 1000000, // Fetch a very large number of items to get all data
-        searchTerm,
-        filters: activeViewFilters,
-        advancedFilters,
-        sortBy: activeSortBy,
-        sortDirection: activeSortDirection,
-      }),
-    // CRITICAL: Only run this query when grouping is enabled.
-    enabled: shouldFetchAllForGrouping,
-    staleTime: 60000, // Cache all-data requests for 1 minute
-  });
+const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
+  queryKey: [
+    effectiveApiEndpoint,
+    'all-for-grouping',
+    searchTerm,
+    JSON.stringify(activeViewFilters),
+    JSON.stringify(advancedFilters),
+    activeSortBy,
+    activeSortDirection,
+  ],
+  queryFn: () =>
+    fetchDataFromApi({
+      apiEndpoint: effectiveApiEndpoint,
+      page: 1,
+      limit: 1000000,
+      searchTerm,
+      filters: activeViewFilters,
+      advancedFilters,
+      sortBy: activeSortBy,
+      sortDirection: activeSortDirection,
+    }),
+  enabled: shouldFetchAllForGrouping,
+  staleTime: 60 * 1000,
+  placeholderData: previous => previous,
+});
 
   // --- Data and pagination ---
   // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
@@ -1635,7 +1640,9 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                         viewMode={mobileViewMode}
                         setViewMode={setMobileViewMode}
                         handleUpdateCell={handleUpdateCell}
-                        handleCellDoubleClick={handleCellDoubleClick}
+                          handleCellDoubleClick={handleCellDoubleClick}
+                         isMobile={isMobile}
+                           handleCellEdit={handleCellEdit}
                       />
                     </div>
                   ) : (
@@ -1662,6 +1669,7 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                       frozenColumnKey={frozenColumnKey}
                       columnOrder={columnOrder}
                       columnSizing={columnSizing}
+                      // <-- add this prop
                     />
                   )}
                 </div>
@@ -1752,26 +1760,52 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
                 />
               </div>
             ))}
-            <DialogFooter>
-             <Button
-  type="button"
-  variant="outline"
-  onClick={() => setAddOpen(false)}
-  style={{ width: "120px" }} // 👈 fixed width
->
-  Cancel
-</Button>
+           <DialogFooter>
+  {isMobile ? (
+    // Mobile: Stack buttons vertically, full width, larger touch targets
+    <div className="flex flex-col gap-2 w-full">
 
-              <Button 
-  type="submit" 
-  variant="default" 
-  style={{ width: "120px" }}
-  disabled={!hasAccess(title, 'write')}
->
-  Add
-</Button>
-
-            </DialogFooter>
+       <Button
+        type="submit"
+        variant="default"
+        className="w-full h-12 text-base"
+        disabled={!hasAccess(title, 'write')}
+      >
+        Add
+      </Button>
+      
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setAddOpen(false)}
+        className="w-full h-12 text-base"
+      >
+        Cancel
+      </Button>
+     
+    </div>
+  ) : (
+    // Desktop: Side by side, fixed width
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setAddOpen(false)}
+        style={{ width: "120px" }}
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        variant="default"
+        style={{ width: "120px" }}
+        disabled={!hasAccess(title, 'write')}
+      >
+        Add
+      </Button>
+    </>
+  )}
+</DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

@@ -11,6 +11,7 @@ export interface Column {
   sortable?: boolean;
   filterable?: boolean;
   editable?: boolean;
+  isDate?: boolean;
   render?: (value: any, item: ListItem) => React.ReactNode;
 }
 

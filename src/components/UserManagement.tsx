@@ -55,7 +55,6 @@ const APP_RESOURCES = [
   "Footage Type",
   "Format Type",
   "Granths",
-  "Keywords",
   "Language",
   "Master Quality",
   "New Event Category",
@@ -171,6 +170,47 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     toast.promise(apiCall, { loading: `Saving permissions...`, success: 'Permissions saved.', error: 'Failed to save permissions.' });
   };
 
+  // Handler for all bulk permission changes (Set All, Remove All, etc.)
+  const handleBulkPermissionChange = (userId: string, level: "View Only" | "Edit Access" | "No Access") => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!canManageUsers || loggedInUser?.id === userId || targetUser?.role === 'Owner') {
+      toast.error("You do not have permission to perform this action.");
+      return;
+    }
+
+    let updatedPermissions: UserPermission[] = [];
+    let successMessage = "";
+
+    if (level === "View Only") {
+        updatedPermissions = APP_RESOURCES.map(resource => ({ resource, actions: ['read'] }));
+        successMessage = "All permissions set to 'View Only'.";
+    } else if (level === "Edit Access") {
+        updatedPermissions = APP_RESOURCES.map(resource => ({ resource, actions: ['read', 'write'] }));
+        successMessage = "All permissions set to 'Edit Access'.";
+    } else { // "No Access"
+        updatedPermissions = [];
+        successMessage = "All permissions removed.";
+    }
+
+    // Optimistically update the UI
+    setUsers(currentUsers => currentUsers.map(user => {
+        if (user.id !== userId) return user;
+        return { ...user, permissions: updatedPermissions };
+    }));
+
+    const apiCall = fetch(`${import.meta.env.VITE_API_URL}/users/${userId}/permissions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ permissions: updatedPermissions })
+    });
+
+    toast.promise(apiCall, {
+        loading: 'Saving all permissions...',
+        success: successMessage,
+        error: 'Failed to save all permissions.'
+    });
+  };
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -180,7 +220,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
 
         const processedUsers: User[] = data.map((user: any) => {
           const lastActiveDate = new Date(user.lastActive);
-          // ✅ MODIFIED: Use the new getRelativeTime function for display
           return {
             ...user,
             lastActive: getRelativeTime(lastActiveDate),
@@ -369,7 +408,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     <div className="space-y-6"><div className="flex items-center gap-4"><Avatar style={{ width: "4rem", height: "4rem" }}><AvatarImage src={user.avatar}/><AvatarFallback style={{ background: "linear-gradient(to right, #3b82f6, #8b5cf6)", color: "#ffffff", fontSize: "1.125rem", fontWeight: 500 }}>{user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar><div><h3 className="text-xl font-semibold text-slate-100">{user.name}</h3><p className="text-slate-400">{user.title || "No title"}</p><div className="flex items-center gap-2 mt-1">{getRoleIcon(user.role)}<span className="text-sm text-slate-300">{user.role}</span></div></div></div></div>
   );
 
-  // Mobile User Card Component (separate from desktop)
   const renderMobileUserCard = (user: User) => {
     const isTargetOwner = user.role === 'Owner';
     const isTargetSelf = loggedInUser?.id === user.id;
@@ -379,7 +417,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     return (
       <Card key={user.id} className="mb-3 bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/50 transition-all">
         <CardContent className="p-4">
-          {/* Header with avatar, name, and actions */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <Checkbox 
@@ -411,7 +448,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
               </div>
             </div>
             
-            {/* Action menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -454,7 +490,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
             </DropdownMenu>
           </div>
 
-          {/* Additional info grid */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             {user.department && (
               <div>
@@ -478,7 +513,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
             </div>
           </div>
 
-          {/* Teams */}
           {user.teams.length > 0 && (
             <div className="mt-3">
               <span className="text-xs text-slate-500 mb-1 block">Teams:</span>
@@ -497,7 +531,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
             </div>
           )}
 
-          {/* Manage Access button */}
           <div className="mt-3 pt-3 border-t border-slate-700/50">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -514,8 +547,63 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
               <DropdownMenuContent className="w-64" side="top" align="center">
                 <DropdownMenuLabel>Permissions for {user.name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {/* Select All (View Only) with right-side dropdown */}
+                <div className="flex items-center justify-between px-2 py-1">
+                  <div className="flex items-center">
+                    {/* Helper for all view access */}
+                    {(() => {
+                      const hasAllViewAccess = APP_RESOURCES.every(resourceName =>
+                        user.permissions.some(p => p.resource === resourceName && p.actions.includes('read'))
+                      );
+                      return (
+                        <Checkbox
+                          checked={hasAllViewAccess}
+                          onCheckedChange={() => handleBulkPermissionChange(user.id, "View Only")}
+                          className="mr-2"
+                          disabled={disableManageAccess}
+                        />
+                      );
+                    })()}
+                    <span className="text-sm">Select All (View Only)</span>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-2 py-1 h-6"
+                        disabled={disableManageAccess}
+                        title="Set all permissions"
+                      >
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" sideOffset={4}>
+                      <DropdownMenuItem
+                        onSelect={() => handleBulkPermissionChange(user.id, "View Only")}
+                        disabled={disableManageAccess}
+                      >
+                        <Eye className="mr-2 h-4 w-4 text-blue-500" /> Set All to View Only
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => handleBulkPermissionChange(user.id, "Edit Access")}
+                        disabled={disableManageAccess}
+                      >
+                        <Pencil className="mr-2 h-4 w-4 text-green-500" /> Set All to Edit Access
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => handleBulkPermissionChange(user.id, "No Access")}
+                        disabled={disableManageAccess}
+                      >
+                        <XCircle className="mr-2 h-4 w-4 text-red-500" /> Remove All (No Access)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <DropdownMenuSeparator />
+                {/* Show ALL resources, not just 8 */}
                 <div className="max-h-48 overflow-y-auto">
-                  {APP_RESOURCES.slice(0, 8).map((resource) => {
+                  {APP_RESOURCES.map((resource) => {
                     const currentLevel = getAccessLevel(user, resource);
                     return (
                       <DropdownMenuSub key={resource}>
@@ -584,6 +672,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                 case "email": return <span>{user.email}</span>;
                 case "role": return <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>{getRoleIcon(user.role)}<span>{user.role}</span></div>;
                 case "status": return <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>{getStatusIcon(user.status)}<span style={{ color: user.status === "Active" ? "#4ade80" : user.status === "Inactive" ? "#9ca3af" : user.status === "Pending" ? "#facc15" : "#60a5fa" }}>{user.status}</span></div>;
+                
                 case "viewAccess":
                     const disableManageAccess = !canManageUsers || isTargetSelf || isTargetOwner;
                     const tooltipMessage = isTargetOwner
@@ -593,6 +682,10 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                       : !canManageUsers
                       ? "Only Admins/Owners can manage access."
                       : `Manage access for ${user.name}`;
+                    
+                    const hasAllViewAccess = APP_RESOURCES.every(resourceName =>
+                        user.permissions.some(p => p.resource === resourceName && p.actions.includes('read'))
+                    );
 
                     return (
                       <div>
@@ -608,20 +701,79 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                               Manage Access <ChevronDown className="h-4 w-4 opacity-50" />
                             </Button>
                           </DropdownMenuTrigger>
+
                           <DropdownMenuContent
                             className="w-64"
-                            side="bottom" // Ensures the dropdown opens downward
-                            align="start" // Aligns the dropdown to the start of the button
-                            sideOffset={4} // Adds spacing between the button and the dropdown
-                            avoidCollisions={false} // Prevents automatic flipping
+                            side="bottom"
+                            align="start"
+                            sideOffset={4}
+                            avoidCollisions={false}
                           >
                             <DropdownMenuLabel>Permissions for {user.name}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
+
+                            <div className="flex items-center justify-between px-2 py-1">
+                              <div className="flex items-center">
+                                <Checkbox
+                                  checked={hasAllViewAccess}
+                                  onCheckedChange={(checked) => {
+                                        handleBulkPermissionChange(user.id, "View Only");
+                                      }}
+                                      className="mr-2"
+                                      disabled={disableManageAccess}
+                                    />
+                                <span className="text-sm">Select All (View Only)</span>
+                              </div>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="px-2 py-1 h-6"
+                                    disabled={disableManageAccess}
+                                    title="Set all permissions"
+                                  >
+                                    <ChevronDown className="h-3 w-3 opacity-50" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent side="right" align="start" sideOffset={4}>
+                                  <DropdownMenuItem
+                                    onSelect={() => handleBulkPermissionChange(user.id, "View Only")}
+                                    disabled={disableManageAccess}
+                                  >
+                                    <Eye className="mr-2 h-4 w-4 text-blue-500" /> Set All to View Only
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onSelect={() => handleBulkPermissionChange(user.id, "Edit Access")}
+                                    disabled={disableManageAccess}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4 text-green-500" /> Set All to Edit Access
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onSelect={() => handleBulkPermissionChange(user.id, "No Access")}
+                                    disabled={disableManageAccess}
+                                  >
+                                    <XCircle className="mr-2 h-4 w-4 text-red-500" /> Remove All (No Access)
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+
+                            <DropdownMenuSeparator />
+
                             {APP_RESOURCES.map((resource) => {
                               const currentLevel = getAccessLevel(user, resource);
                               return (
                                 <DropdownMenuSub key={resource}>
                                   <DropdownMenuSubTrigger>
+                                    {/* ✅ MODIFIED: This checkbox is now a non-interactive visual indicator */}
+                                    <Checkbox
+                                      checked={currentLevel !== "No Access"}
+                                      disabled // This prevents clicking and makes it a read-only indicator
+                                      className="mr-2"
+                                    />
                                     <span className="flex-1">{resource}</span>
                                     <Badge
                                       variant={
@@ -636,30 +788,15 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                                       {currentLevel}
                                     </Badge>
                                   </DropdownMenuSubTrigger>
-                                  <DropdownMenuSubContent
-                                    sideOffset={4} // Adds spacing between the trigger and the submenu
-                                  >
-                                    <DropdownMenuItem
-                                      onSelect={() =>
-                                        handlePermissionChange(user.id, resource, "No Access")
-                                      }
-                                    >
+                                  <DropdownMenuSubContent sideOffset={4}>
+                                    <DropdownMenuItem onSelect={() => handlePermissionChange(user.id, resource, "No Access")}>
                                       <XCircle className="mr-2 h-4 w-4 text-red-500" /> No Access
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={() =>
-                                        handlePermissionChange(user.id, resource, "View Only")
-                                      }
-                                    >
+                                    <DropdownMenuItem onSelect={() => handlePermissionChange(user.id, resource, "View Only")}>
                                       <Eye className="mr-2 h-4 w-4 text-blue-500" /> View Only
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={() =>
-                                        handlePermissionChange(user.id, resource, "Edit Access")
-                                      }
-                                    >
-                                      <Pencil className="mr-2 h-4 w-4 text-green-500" /> Edit
-                                      Access
+                                    <DropdownMenuItem onSelect={() => handlePermissionChange(user.id, resource, "Edit Access")}>
+                                      <Pencil className="mr-2 h-4 w-4 text-green-500" /> Edit Access
                                     </DropdownMenuItem>
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
@@ -669,6 +806,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                         </DropdownMenu>
                       </div>
                     );
+
                 case "department": return <span>{user.department || "—"}</span>;
                 case "location": return <span>{user.location || "—"}</span>;
                 case "joinedDate": return <span>{user.joinedDate}</span>;
@@ -697,18 +835,15 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     );
   }
 
-  // Mobile View
   if (isMobile) {
     return (
       <div className="p-4 space-y-4" style={{ background: 'radial-gradient(circle, rgba(15,23,42,1) 0%, rgba(3,7,18,1) 100%)', color: '#e2e8f0', minHeight: '100vh' }}>
-        {/* Mobile Header */}
         <div className="space-y-3">
           <div className="text-center">
             <h1 className="text-xl font-semibold text-white">User Management</h1>
             <p className="text-sm text-slate-400">Manage team members</p>
           </div>
           
-          {/* Mobile Add User Button */}
           <div className="flex justify-center">
             <Button 
               onClick={() => setIsAddUserDialogOpen(true)} 
@@ -720,7 +855,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
             </Button>
           </div>
 
-          {/* Mobile Bulk Actions */}
           {canManageUsers && selectedUsers.length > 0 && (
             <div className="flex justify-center">
               <DropdownMenu open={isBulkActionOpen} onOpenChange={setIsBulkActionOpen}>
@@ -748,7 +882,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
           )}
         </div>
 
-        {/* Mobile Stats Cards */}
         <div className="grid grid-cols-2 gap-3">
           <Card className="bg-slate-800/30 border-slate-700/50">
             <CardContent className="p-3 text-center">
@@ -780,7 +913,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
           </Card>
         </div>
 
-        {/* Mobile Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input 
@@ -791,7 +923,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
           />
         </div>
 
-        {/* Mobile Filter & Group Controls */}
         <div className="flex gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -868,13 +999,11 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
           </DropdownMenu>
         </div>
 
-        {/* Mobile User Cards */}
         <div className="space-y-3 pb-20">
           {sortedAndFilteredUsers.length > 0 ? (
             groupedUsers ? (
               Array.from(groupedUsers.entries()).map(([groupName, usersInGroup]) => (
                 <div key={`mobile-group-${groupName}`} className="space-y-3">
-                  {/* Mobile Group Header */}
                   <div className="sticky top-0 bg-slate-900/90 backdrop-blur-sm p-3 rounded-lg border border-slate-700/50">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium text-slate-200 flex items-center gap-2">
@@ -889,7 +1018,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                       </Badge>
                     </div>
                   </div>
-                  {/* Users in this group */}
                   <div className="space-y-3 pl-2">
                     {usersInGroup.map(user => renderMobileUserCard(user))}
                   </div>
@@ -908,7 +1036,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
           )}
         </div>
 
-        {/* Mobile Dialogs */}
         <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
           <DialogContent className="w-[95vw] max-w-sm border border-white/20 shadow-xl" style={{ backgroundColor: "rgba(30, 72, 110, 0.6)", backdropFilter: "blur(1px) saturate(100%)", WebkitBackdropFilter: "blur(10px) saturate(100%)", borderRadius: "1rem" }}>
             <DialogHeader>
@@ -953,7 +1080,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     );
   }
 
-  // Desktop View
   return (
     <div className="p-6 space-y-6" style={{ background: 'radial-gradient(circle, rgba(15,23,42,1) 0%, rgba(3,7,18,1) 100%)', color: '#e2e8f0' }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -990,7 +1116,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       <div style={{ borderRadius: '0.5rem', border: '1px solid rgba(51, 65, 85, 0.5)', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: '1600px', fontSize: '0.875rem', textAlign: 'left', color: '#d1d5db' }}>
-            <thead style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', backgroundColor: 'rgba(30, 41, 59, 0.5)' }}>
+            <thead style={{ fontSize: '0.75rem', color: '#9ca3b8', textTransform: 'uppercase', backgroundColor: 'rgba(30, 41, 59, 0.5)' }}>
               <tr>{columns.map((col) => (<th key={col.key} scope="col" style={{ padding: '0.75rem 1rem' }}>{col.sortable ? (<div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => requestSort(col.key as keyof User)}>{col.label} {getSortIcon(col.key)}</div>) : ( col.key === 'select' ? <Checkbox checked={selectedUsers.length > 0 && sortedAndFilteredUsers.length > 0 && selectedUsers.length === sortedAndFilteredUsers.length} onCheckedChange={handleSelectAll} /> : col.label )}</th>))}</tr>
             </thead>
             <tbody>
@@ -1021,7 +1147,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
   );
 }
 
-// ✅ ADDED: Helper function for relative time formatting
 const getRelativeTime = (date: Date): string => {
   if (!date || isNaN(date.getTime())) return 'Never';
   const now = new Date();
@@ -1032,8 +1157,8 @@ const getRelativeTime = (date: Date): string => {
   const hours = Math.round(minutes / 60);
   const days = Math.round(hours / 24);
   const weeks = Math.round(days / 7);
-  const months = Math.round(days / 30.44); // Average month length
-  const years = Math.round(days / 365.25); // Account for leap years
+  const months = Math.round(days / 30.44);
+  const years = Math.round(days / 365.25);
 
   if (seconds < 10) return "just now";
   if (seconds < 60) return `${seconds}s ago`;

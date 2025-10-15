@@ -29,6 +29,7 @@ interface DraggableResizableTableProps {
   handleUpdateCell?: () => void;
   handleCellDoubleClick?: (rowIndex: number, column: Column, value: any) => void;
   handleCellEdit?: (rowIndex: number, column: Column, newValue: any) => void;
+  isMobile?: boolean;
 }
 
 const ITEM_TYPE = "COLUMN";
@@ -190,6 +191,7 @@ export function DraggableResizableTable({
   handleUpdateCell,
   handleCellDoubleClick,
   handleCellEdit,
+  isMobile,
 }: DraggableResizableTableProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -393,25 +395,59 @@ export function DraggableResizableTable({
                             }}
                           >
                             {isEditing && handleUpdateCell && setEditValue && setEditingCell ? (
-                              <Input
-                                type="text"
-                                value={editValue ?? ''}
-                                onChange={(e) => setEditValue && setEditValue(e.target.value)}
-                                onBlur={() => handleCellEdit && handleCellEdit(absoluteIndex, column, editValue)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleCellEdit && handleCellEdit(absoluteIndex, column, editValue);
-                                  if (e.key === 'Enter') setEditingCell && setEditingCell(null);
-                                }}
-                                autoFocus
-                                className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                              />
-                            ) : (
-                                <div className="truncate">
-                                  {column.render
-                                    ? column.render(cellValue, item)
-                                    : String(cellValue ?? "")}
+                              isMobile ? (
+                                // Mobile: Full-width input and Save/Cancel buttons
+                                <div className="flex flex-col gap-2 w-full">
+                               <Input
+  type="text"
+  value={editValue ?? ''}
+  onChange={(e) => setEditValue && setEditValue(e.target.value)}
+  autoFocus
+  className="w-full h-12 text-base"
+  onKeyDown={(e) => {
+    if (e.key === 'Enter') handleCellEdit && handleCellEdit(absoluteIndex, column, editValue);
+    if (e.key === 'Escape') setEditingCell && setEditingCell(null);
+  }}
+/>
+<div className="flex gap-2">
+  <button
+    type="button"
+    className="w-full h-12 text-base border rounded bg-white"
+    onClick={() => setEditingCell && setEditingCell(null)}
+  >
+    Cancel
+  </button>
+  <button
+    type="button"
+    className="w-full h-12 text-base border rounded bg-blue-600 text-white"
+    onClick={() => handleCellEdit && handleCellEdit(absoluteIndex, column, editValue)}
+  >
+    Save
+  </button>
+</div>
                                 </div>
-                              )}
+                              ) : (
+                                // Desktop: Inline input, save on blur or Enter
+                                <Input
+                                  type="text"
+                                  value={editValue ?? ''}
+                                  onChange={(e) => setEditValue && setEditValue(e.target.value)}
+                                  onBlur={() => handleCellEdit && handleCellEdit(absoluteIndex, column, editValue)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCellEdit && handleCellEdit(absoluteIndex, column, editValue);
+                                    if (e.key === 'Escape') setEditingCell && setEditingCell(null);
+                                  }}
+                                  autoFocus
+                                  className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                              )
+                            ) : (
+                              <div className="truncate">
+                                {column.render
+                                  ? column.render(cellValue, item)
+                                  : String(cellValue ?? "")}
+                              </div>
+                            )}
                           </TableCell>
                         );
                       })}

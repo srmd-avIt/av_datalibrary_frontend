@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Eye } from 'lucide-react';
 import { DraggableResizableTable } from './DraggableResizableTable';
 import { ListItem, Column } from "./types"; // Assuming types are in this file
+import { Input } from './ui/input';
 
 // --- MobileTableCard (No changes here) ---
 interface MobileTableCardProps {
@@ -82,24 +83,19 @@ interface MobileTableViewProps {
   onRowSelect?: (item: ListItem) => void;
   idKey: string;
   sortedData?: ListItem[];
-  // Grouping props
   groupedData: Record<string, ListItem[]>;
   activeGroupBy?: string;
-  // Editing props
   editingCell?: { rowIndex: number; columnKey: string } | null;
   editValue?: any;
   setEditValue?: (value: any) => void;
   setEditingCell?: (cell: { rowIndex: number; columnKey: string } | null) => void;
   handleUpdateCell?: () => void;
   handleCellDoubleClick?: (rowIndex: number, column: Column, value: any) => void;
-  // Freeze props
   frozenColumnKey: string | null;
   columnOrder: string[];
   columnSizing: Record<string, number>;
-  // Sorting props
   onSort: (columnKey: string) => void;
   getSortIcon: (columnKey: string) => React.ReactNode;
-  // Additional props for mobile controls
   activeView?: string;
   isLoading?: boolean;
   sortBy?: string;
@@ -115,6 +111,8 @@ interface MobileTableViewProps {
   setHiddenColumns?: (value: string[]) => void;
   viewMode?: 'table' | 'cards';
   setViewMode?: (value: 'table' | 'cards') => void;
+  isMobile?: boolean;
+  handleCellEdit?: (rowIndex: number, column: Column, newValue: any) => void; // <-- Add this line
 }
 
 export const MobileTableView: React.FC<MobileTableViewProps> = ({
@@ -137,6 +135,7 @@ export const MobileTableView: React.FC<MobileTableViewProps> = ({
   handleUpdateCell,
   handleCellDoubleClick,
   sortedData,
+  handleCellEdit,
 }) => {
   if (isLoading) {
     return (<div className="space-y-2">{[...Array(5)].map((_, i) => (<div key={i} className="animate-pulse"><div className="h-10 bg-gray-200 rounded"></div></div>))}</div>);
@@ -166,6 +165,7 @@ export const MobileTableView: React.FC<MobileTableViewProps> = ({
       setEditingCell={setEditingCell}
       handleUpdateCell={handleUpdateCell}
       handleCellDoubleClick={handleCellDoubleClick}
+      handleCellEdit={handleCellEdit} // <-- add this line
     />
   );
 };
@@ -206,6 +206,8 @@ interface MobileTableProps {
   setFrozenColumnKey?: (value: string | null) => void;
   hiddenColumns?: string[];
   setHiddenColumns?: (value: string[]) => void;
+  isMobile?: boolean;
+  handleCellEdit?: (rowIndex: number, column: Column, newValue: any) => void; // <-- Add this line
 }
 
 export const MobileTable: React.FC<MobileTableProps> = ({
@@ -230,6 +232,7 @@ export const MobileTable: React.FC<MobileTableProps> = ({
   sortedData,
   viewMode: propViewMode = 'table',
   setViewMode: propSetViewMode,
+  handleCellEdit, // <-- add this line
 }) => {
   const [localViewMode, setLocalViewMode] = React.useState<'table' | 'cards'>('table');
   const viewMode = propSetViewMode ? propViewMode : localViewMode;
@@ -246,7 +249,6 @@ export const MobileTable: React.FC<MobileTableProps> = ({
   return (
     <div className="space-y-3">
       {viewMode === 'table' ? (
-        // --- FIX 2: CHANGE overflowX from 'hidden' to 'auto' on the main scrolling container ---
         <div className="mobile-table-wrapper custom-scrollbar" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto', overflowX: 'auto' }}>
           <MobileTableView
             items={items}
@@ -268,6 +270,7 @@ export const MobileTable: React.FC<MobileTableProps> = ({
             handleUpdateCell={handleUpdateCell}
             handleCellDoubleClick={handleCellDoubleClick}
             sortedData={sortedData}
+            handleCellEdit={handleCellEdit} // <-- add this line
           />
         </div>
       ) : (
