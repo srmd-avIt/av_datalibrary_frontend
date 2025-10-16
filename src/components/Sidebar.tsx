@@ -378,7 +378,7 @@ return visibleMenuItems;
       {!collapsed && (
         <div className="p-4 border-t border-slate-700/50">
           <div className="text-xs text-slate-500 text-center">
-            © 2024 Data Library v2.1.0
+            © 2025 Data Library v2.1.0
           </div>
         </div>
       )}

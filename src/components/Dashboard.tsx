@@ -35,6 +35,17 @@ const gurudevImages = [
 ];
 
 // --- API Base URL from .env ---
+// TypeScript declaration for Vite env variables
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_API_URL: string;
+    // add more env variables here if needed
+  }
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // --- API Fetching Functions ---
