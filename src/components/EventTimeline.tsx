@@ -54,7 +54,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
   title = "Event Timeline",
 }) => {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
-  const [groupBy, setGroupBy] = useState<"FromDate" | "ToDate" | "none">("FromDate");
+  const [groupBy, setGroupBy] = useState<"FromDate" | "ToDate" | "none">("none");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -291,22 +291,46 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     value={startDate ? format(startDate, "yyyy-MM-dd") : ""}
     onChange={(e) => setStartDate(e.target.value ? new Date(e.target.value) : null)}
     style={{
-      backgroundColor: "#0f172a",       // bg-slate-900
-      border: "1px solid #475569",      // border-slate-600
-      color: "white",                    // text color
-      borderRadius: 6,                   // rounded-md
+      backgroundColor: "#0f172a",
+      border: "1px solid #475569",
+      color: "white",
+      borderRadius: 6,
       width: "100%",
-      padding: isMobile ? "6px 12px" : "8px 12px", // px-3 py-1.5 / px-3 py-2
-      fontSize: isMobile ? 14 : 16,      // text-sm / text-base
+      padding: isMobile ? "6px 12px" : "8px 12px",
+      fontSize: isMobile ? 14 : 16,
       appearance: "none",
       WebkitAppearance: "none",
       MozAppearance: "textfield",
+      // ensure the typed/selected date text is visible on iOS/Android
+      WebkitTextFillColor: "white",
     }}
   />
   <style>{`
+    /* make date value visible on WebKit (iOS / Android) */
+    input[type="date"],
+    #startDate {
+      color: #fff;
+      -webkit-text-fill-color: #fff;
+    }
+    input[type="date"]::-webkit-datetime-edit,
+    input[type="date"]::-webkit-datetime-edit-field,
+    input[type="date"]::-webkit-datetime-edit-month-field,
+    input[type="date"]::-webkit-datetime-edit-day-field,
+    input[type="date"]::-webkit-datetime-edit-year-field {
+      color: #fff;
+      -webkit-text-fill-color: #fff;
+    }
+
+    /* style the calendar icon so it's visible on dark backgrounds */
     input[type="date"]::-webkit-calendar-picker-indicator {
-      filter: invert(1) grayscale(100%);
+      filter: invert(1) grayscale(100%) brightness(150%);
       cursor: pointer;
+      opacity: 0.95;
+    }
+
+    /* Firefox */
+    input[type="date"]::-moz-focus-inner {
+      color: #fff;
     }
   `}</style>
 </div>
@@ -324,8 +348,8 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
 
        {/* --- The rest of the component remains the same --- */}
       {loading && ( <div className="flex flex-col items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-white" /><span className="mt-3 text-white">Loading events...</span></div> )}
-      {error && ( <div className="bg-red-900/50 border border-red-700 text-red-300 rounded-lg p-4"><p className="font-semibold">Error loading events</p><pre className="text-xs mt-2">{error}</pre></div> )}
-      {!loading && !error && !hasResults && ( <div className="text-center py-16"><p className="text-slate-400 text-lg">No events found for the selected criteria.</p></div> )}
+      {error && ( <div className="bg-red-900/50 border border-red-700 text-red-300 rounded-lg p-4"><p className="font-semibold text-white">Error loading events</p><pre className="text-xs mt-2 text-white">{error}</pre></div> )}
+      {!loading && !error && !hasResults && ( <div className="text-center py-16"><p className="text-slate-400 text-lg text-white">No events found for the selected criteria.</p></div> )}
 
       {!loading && !error && hasResults && (
         <>
