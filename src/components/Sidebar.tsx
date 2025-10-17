@@ -33,6 +33,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse 
   const allMenuItems: MenuItem[] = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "events", label: "Events", icon: Map },
+    { id: "eventtimeline", label: "Event Timeline", icon: Calendar }, // <-- Replaced Timeline with Calendar
     { id: "digitalrecordings", label: "Digital Recordings", icon: Calendar },
      {
       id: "medialog-parent",

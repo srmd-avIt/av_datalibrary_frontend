@@ -15,7 +15,8 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { Button } from "./components/ui/button";
 import { Menu, X } from "lucide-react";
 import { getColorForString } from "./components/ui/utils";
-import { time } from "motion/react";
+// --- NEW --- Import the EventTimeline component
+import { EventTimeline } from "./components/EventTimeline";
 
 // ===================================================================================
 // --- 1. VIEW CONFIGURATIONS & HELPERS ---
@@ -60,31 +61,32 @@ const VIEW_CONFIGS: Record<string, any> = {
     detailsType: "event",
     columns: [
        { key: "EventID", label: "Event ID", sortable: true, editable: true }, 
-    { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
-    { key: "Yr", label: "Year", sortable: true, editable: true }, 
-    { key: "SubmittedDate", label: "Submitted Date", sortable: true, editable: true }, 
-    { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
-    { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
-    { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
-    { key: "fkEventCategory", label: "Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
-    { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
-    { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true }, 
-    { key: "EventMonth", label: "Event Month", sortable: true, editable: true }, 
-    { key: "CommonID", label: "Common ID", sortable: true, editable: true }, 
-    { key: "IsSubEvent1", label: "Is Sub Event1", sortable: true, editable: true }, 
-    { key: "IsAudioRecorded", label: "Is Audio Record", sortable: true, editable: true }, 
-    { key: "PravachanCount", label: "Pravachan Count", sortable: true, editable: true }, 
-    { key: "UdgoshCount", label: "Udgosh Count", sortable: true, editable: true }, 
-    { key: "PaglaCount", label: "Pagla Count", sortable: true, editable: true }, 
-    { key: "PratishthaCount", label: "Pratishtha Count", sortable: true, editable: true }, 
-    { key: "SummaryRemarks", label: "Summary Remarks", sortable: true, editable: true }, 
-    { key: "Pra-SU-duration", label: "Pra-SU-duration", sortable: true, editable: true }, 
-    { key: "LastModifiedBy", label: "Last Modified By", sortable: true, editable: true }, 
-    { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true, editable: true }, 
-    { key: "NewEventFrom", label: "New Event From", sortable: true, editable: true }, 
-    { key: "NewEventTo", label: "New Event To", sortable: true, editable: true },
+       { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
+       { key: "Yr", label: "Year", sortable: true, editable: true }, 
+       { key: "SubmittedDate", label: "Submitted Date", sortable: true, editable: true }, 
+       { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
+       { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
+       { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
+       { key: "fkEventCategory", label: "Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
+       { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
+       { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true }, 
+       { key: "EventMonth", label: "Event Month", sortable: true, editable: true }, 
+       { key: "CommonID", label: "Common ID", sortable: true, editable: true }, 
+       { key: "IsSubEvent1", label: "Is Sub Event1", sortable: true, editable: true }, 
+       { key: "IsAudioRecorded", label: "Is Audio Record", sortable: true, editable: true }, 
+       { key: "PravachanCount", label: "Pravachan Count", sortable: true, editable: true }, 
+       { key: "UdgoshCount", label: "Udgosh Count", sortable: true, editable: true }, 
+       { key: "PaglaCount", label: "Pagla Count", sortable: true, editable: true }, 
+       { key: "PratishthaCount", label: "Pratishtha Count", sortable: true, editable: true }, 
+       { key: "SummaryRemarks", label: "Summary Remarks", sortable: true, editable: true }, 
+       { key: "Pra-SU-duration", label: "Pra-SU-duration", sortable: true, editable: true }, 
+       { key: "LastModifiedBy", label: "Last Modified By", sortable: true, editable: true }, 
+       { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true, editable: true }, 
+       { key: "NewEventFrom", label: "New Event From", sortable: true, editable: true }, 
+       { key: "NewEventTo", label: "New Event To", sortable: true, editable: true },
     ],
   },
+  // ... other configs for medialog, digitalrecordings, aux, etc.
   medialog_all: {
     title: "Media Log: All",
     apiEndpoint: "/newmedialog",
@@ -387,40 +389,39 @@ const VIEW_CONFIGS: Record<string, any> = {
     idKey: "RecordingCode",
     detailsType: "digitalrecording",
     columns : [
-  { key: "fkEventCode", label: "fkEventCode", sortable: true, editable: true },
-  { key: "RecordingName", label: "RecordingName", sortable: true, editable: true },
-  { key: "RecordingCode", label: "RecordingCode", sortable: true, editable: true },
-  { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
-  { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "fkMediaName", label: "fkMediaName", sortable: true,render: categoryTagRenderer, editable: true },
-  { key: "BitRate", label: "BitRate", sortable: true, editable: true },
-  { key: "AudioBitrate", label: "AudioBitrate", sortable: true, editable: true },
-  { key: "Filesize", label: "Filesize", sortable: true, editable: true },
-  { key: "Duration", label: "Duration", sortable: true, editable: true },
-  { key: "AudioTotalDuration", label: "AudioTotalDuration", sortable: true, editable: true },
-  { key: "RecordingRemarks", label: "RecordingRemarks", sortable: true, editable: true },
-  { key: "CounterError", label: "CounterError", sortable: true, editable: true },
-  { key: "ReasonError", label: "ReasonError", sortable: true, editable: true },
-  { key: "QcRemarksCheckedOn", label: "QcRemarksCheckedOn", sortable: true, editable: true },
-  { key: "PreservationStatus", label: "PreservationStatus", sortable: true,render: categoryTagRenderer, editable: true },
-  { key: "QCSevak", label: "QCSevak", sortable: true, editable: true },
-  { key: "MasterProductTitle", label: "MasterProductTitle", sortable: true, editable: true },
-  { key: "QcStatus", label: "QcStatus", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-  { key: "fkDistributionLabel", label: "fkDistributionLabel", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "SubmittedDate", label: "SubmittedDate", sortable: true, editable: true },
-  { key: "PresStatGuidDt", label: "PresStatGuidDt", sortable: true, editable: true },
-  { key: "InfoOnCassette", label: "InfoOnCassette", sortable: true, editable: true },
-  { key: "Masterquality", label: "Masterquality", sortable: true,render: categoryTagRenderer, editable: true },
-  { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
-  { key: "FilesizeInBytes", label: "FilesizeInBytes", sortable: true, editable: true },
-  { key: "AssociatedDR", label: "AssociatedDR", sortable: true, editable: true },
-  { key: "Dimension", label: "Dimension", sortable: true,render: categoryTagRenderer, editable: true },
-  { key: "ProductionBucket", label: "ProductionBucket", sortable: true,render: categoryTagRenderer, editable: true },
-  { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
-  { key: "Teams", label: "Teams", sortable: true,render: categoryTagRenderer, editable: true },
-],
-
+      { key: "fkEventCode", label: "fkEventCode", sortable: true, editable: true },
+      { key: "RecordingName", label: "RecordingName", sortable: true, editable: true },
+      { key: "RecordingCode", label: "RecordingCode", sortable: true, editable: true },
+      { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
+      { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkMediaName", label: "fkMediaName", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "BitRate", label: "BitRate", sortable: true, editable: true },
+      { key: "AudioBitrate", label: "AudioBitrate", sortable: true, editable: true },
+      { key: "Filesize", label: "Filesize", sortable: true, editable: true },
+      { key: "Duration", label: "Duration", sortable: true, editable: true },
+      { key: "AudioTotalDuration", label: "AudioTotalDuration", sortable: true, editable: true },
+      { key: "RecordingRemarks", label: "RecordingRemarks", sortable: true, editable: true },
+      { key: "CounterError", label: "CounterError", sortable: true, editable: true },
+      { key: "ReasonError", label: "ReasonError", sortable: true, editable: true },
+      { key: "QcRemarksCheckedOn", label: "QcRemarksCheckedOn", sortable: true, editable: true },
+      { key: "PreservationStatus", label: "PreservationStatus", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "QCSevak", label: "QCSevak", sortable: true, editable: true },
+      { key: "MasterProductTitle", label: "MasterProductTitle", sortable: true, editable: true },
+      { key: "QcStatus", label: "QcStatus", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "fkDistributionLabel", label: "fkDistributionLabel", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SubmittedDate", label: "SubmittedDate", sortable: true, editable: true },
+      { key: "PresStatGuidDt", label: "PresStatGuidDt", sortable: true, editable: true },
+      { key: "InfoOnCassette", label: "InfoOnCassette", sortable: true, editable: true },
+      { key: "Masterquality", label: "Masterquality", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+      { key: "FilesizeInBytes", label: "FilesizeInBytes", sortable: true, editable: true },
+      { key: "AssociatedDR", label: "AssociatedDR", sortable: true, editable: true },
+      { key: "Dimension", label: "Dimension", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "ProductionBucket", label: "ProductionBucket", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+      { key: "Teams", label: "Teams", sortable: true,render: categoryTagRenderer, editable: true },
+    ],
   },
   aux: {
     title: "Aux File",
@@ -428,35 +429,31 @@ const VIEW_CONFIGS: Record<string, any> = {
     idKey: "new_auxid",
     detailsType: "aux",
      columns : [
-    { key: "new_auxid", label: "New aux id", sortable: true, editable: true },
-    { key: "AuxCode", label: "AuxCode", sortable: true, editable: true },
-    { key: "AuxFileType", label: "AuxFileType", sortable: true,render: categoryTagRenderer, editable: true },
-    { key: "AuxLanguage", label: "AuxLanguage", sortable: true, editable: true },
-    { key: "fkMLID", label: "fkMLID", sortable: true, editable: true },
-    { key: "AuxTopic", label: "AuxTopic", sortable: true, editable: true },
-    { key: "NotesRemarks", label: "NotesRemarks", sortable: true, editable: true },
-    { key: "GoogleDriveLink", label: "GoogleDriveLink", sortable: true, editable: true },
-    { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
-    { key: "FilesizeBytes", label: "FilesizeBytes", sortable: true, editable: true },
-    { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-    { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
-    { key: "ProjFileCode", label: "ProjFileCode", sortable: true, editable: true },
-    { key: "ProjFileSize", label: "ProjFileSize", sortable: true, editable: true },
-    { key: "ProjFileName", label: "ProjFileName", sortable: true, editable: true },
-    { key: "SRTLink", label: "SRTLink", sortable: true, editable: true },
-    { key: "CreatedOn", label: "CreatedOn", sortable: true, editable: true },
-    { key: "CreatedBy", label: "CreatedBy", sortable: true, editable: true },
-    { key: "ModifiedOn", label: "ModifiedOn", sortable: true, editable: true },
-    { key: "ModifiedBy", label: "ModifiedBy", sortable: true, editable: true },
-],
-
+        { key: "new_auxid", label: "New aux id", sortable: true, editable: true },
+        { key: "AuxCode", label: "AuxCode", sortable: true, editable: true },
+        { key: "AuxFileType", label: "AuxFileType", sortable: true,render: categoryTagRenderer, editable: true },
+        { key: "AuxLanguage", label: "AuxLanguage", sortable: true, editable: true },
+        { key: "fkMLID", label: "fkMLID", sortable: true, editable: true },
+        { key: "AuxTopic", label: "AuxTopic", sortable: true, editable: true },
+        { key: "NotesRemarks", label: "NotesRemarks", sortable: true, editable: true },
+        { key: "GoogleDriveLink", label: "GoogleDriveLink", sortable: true, editable: true },
+        { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
+        { key: "FilesizeBytes", label: "FilesizeBytes", sortable: true, editable: true },
+        { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+        { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+        { key: "ProjFileCode", label: "ProjFileCode", sortable: true, editable: true },
+        { key: "ProjFileSize", label: "ProjFileSize", sortable: true, editable: true },
+        { key: "ProjFileName", label: "ProjFileName", sortable: true, editable: true },
+        { key: "SRTLink", label: "SRTLink", sortable: true, editable: true },
+        { key: "CreatedOn", label: "CreatedOn", sortable: true, editable: true },
+        { key: "CreatedBy", label: "CreatedBy", sortable: true, editable: true },
+        { key: "ModifiedOn", label: "ModifiedOn", sortable: true, editable: true },
+        { key: "ModifiedBy", label: "ModifiedBy", sortable: true, editable: true },
+    ],
   },
+  // All dropdown configs
   auxfiletype: {
-    title: "Aux File Type",
-    apiEndpoint: "/aux-file-type",
-    idKey: "AuxTypeID",
-    detailsType: "auxfiletype",
-     isDropdown: true,
+    title: "Aux File Type", apiEndpoint: "/aux-file-type", idKey: "AuxTypeID", detailsType: "auxfiletype", isDropdown: true,
     columns: [
       { key: "AuxTypeID", label: "AuxTypeID", sortable: true, editable: true },
       { key: "AuxFileType", label: "AuxFileType", sortable: true, editable: true },
@@ -465,80 +462,44 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   audio: {
-    title: "Audio",
-    apiEndpoint: "/audio",
-    idKey: "AID",
-    detailsType: "audio",
-    isDropdown: true,
+    title: "Audio", apiEndpoint: "/audio", idKey: "AID", detailsType: "audio", isDropdown: true,
     columns: [
-     { key: "AID", label: "Audio ID", sortable: true, editable: true },
-  { key: "AudioList", label: "AudioList", sortable: true, editable: true },
-  { key: "Distribution", label: "Distribution", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true }, 
-  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
-     
+      { key: "AID", label: "Audio ID", sortable: true, editable: true },
+      { key: "AudioList", label: "AudioList", sortable: true, editable: true },
+      { key: "Distribution", label: "Distribution", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true }, 
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   bhajanType: {
-    title: "Bhajan Type",
-    apiEndpoint: "/bhajan-type",
-    idKey: "BTID",
-    detailsType: "bhajanType",
-    isDropdown: true,
+    title: "Bhajan Type", apiEndpoint: "/bhajan-type", idKey: "BTID", detailsType: "bhajanType", isDropdown: true,
     columns: [
       { key: "BTID", label: "BTID", sortable: true, editable: true },
-  { key: "BhajanName", label: "BhajanName", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
-  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
+      { key: "BhajanName", label: "BhajanName", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   digitalMasterCategory: {
-    title: "Digital Master Category",
-    apiEndpoint: "/digital-master-category",
-    idKey: "DMCID",
-    detailsType: "digitalMasterCategory",
-    isDropdown: true,
+    title: "Digital Master Category", apiEndpoint: "/digital-master-category", idKey: "DMCID", detailsType: "digitalMasterCategory", isDropdown: true,
     columns: [
-     { key: "DMCID", label: "DMCID", sortable: true, editable: true },
-  { key: "DMCategory_name", label: "DMCategory_name", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
-  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
+      { key: "DMCID", label: "DMCID", sortable: true, editable: true },
+      { key: "DMCategory_name", label: "DMCategory_name", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   distributionLabel: {
-    title: "Distribution Label",
-    apiEndpoint: "/distribution-label",
-    idKey: "LabelID",
-    detailsType: "distributionLabel",
-    isDropdown: true,
+    title: "Distribution Label", apiEndpoint: "/distribution-label", idKey: "LabelID", detailsType: "distributionLabel", isDropdown: true,
     columns: [
-   { key: "LabelID", label: "Label ID", sortable: true, editable: true },
-  { key: "LabelName", label: "Label Name", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
-  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
+      { key: "LabelID", label: "Label ID", sortable: true, editable: true },
+      { key: "LabelName", label: "Label Name", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
   editingType: {
-    title: "Editing Type",
-    apiEndpoint: "/editing-type",
-    idKey: "EdID",
-    detailsType: "editingType",
-    isDropdown: true,
-    columns: [
-     { key: "EdID", label: "EdID", sortable: true, editable: true },
-  { key: "EdType", label: "EdType", sortable: true, editable: true },
-  { key: "AudioVideo", label: "AudioVideo", sortable: true, editable: true },
-  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
-  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
-    ],
-  },
-  
-  editingstatus: {
-    title: "Editing Status",
-    apiEndpoint: "/editing-status",
-    idKey: "EdID",
-    detailsType: "editingStatus",
-    isDropdown: true,
+    title: "Editing Type", apiEndpoint: "/editing-type", idKey: "EdID", detailsType: "editingType", isDropdown: true,
     columns: [
       { key: "EdID", label: "EdID", sortable: true, editable: true },
       { key: "EdType", label: "EdType", sortable: true, editable: true },
@@ -547,13 +508,18 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
-
+  editingstatus: {
+    title: "Editing Status", apiEndpoint: "/editing-status", idKey: "EdID", detailsType: "editingStatus", isDropdown: true,
+    columns: [
+      { key: "EdID", label: "EdID", sortable: true, editable: true },
+      { key: "EdType", label: "EdType", sortable: true, editable: true },
+      { key: "AudioVideo", label: "AudioVideo", sortable: true, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
+    ],
+  },
   eventCategory: {
-    title: "Event Category",
-    apiEndpoint: "/event-category",
-    idKey: "EventCategoryID",
-    detailsType: "eventCategory",
-    isDropdown: true,
+    title: "Event Category", apiEndpoint: "/event-category", idKey: "EventCategoryID", detailsType: "eventCategory", isDropdown: true,
     columns: [
       { key: "EventCategoryID", label: "EventCategoryID", sortable: true, editable: true },
       { key: "EventCategory", label: "EventCategory", sortable: true, editable: true },
@@ -562,11 +528,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   footageType: {
-    title: "Footage Type",
-    apiEndpoint: "/footage-type",
-    idKey: "FootageID",
-    detailsType: "footageType",
-    isDropdown: true,
+    title: "Footage Type", apiEndpoint: "/footage-type", idKey: "FootageID", detailsType: "footageType", isDropdown: true,
     columns: [
       { key: "FootageID", label: "Footage ID", sortable: true, editable: true },
       { key: "FootageTypeList", label: "FootageTypeList", sortable: true, editable: true },
@@ -575,11 +537,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   formatType: {
-    title: "Format Type",
-    apiEndpoint: "/format-type",
-    idKey: "FTID",
-    detailsType: "formatType",
-    isDropdown: true,
+    title: "Format Type", apiEndpoint: "/format-type", idKey: "FTID", detailsType: "formatType", isDropdown: true,
     columns: [
       { key: "FTID", label: "FTID", sortable: true, editable: true },
       { key: "Type", label: "Type", sortable: true, editable: true },
@@ -588,11 +546,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   granths: {
-    title: "Granths",
-    apiEndpoint: "/granths",
-    idKey: "ID",
-    detailsType: "granths",
-    isDropdown: true,
+    title: "Granths", apiEndpoint: "/granths", idKey: "ID", detailsType: "granths", isDropdown: true,
     columns: [
       { key: "ID", label: "ID", sortable: true, editable: true },
       { key: "Name", label: "Name", sortable: true, editable: true },
@@ -601,11 +555,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   language: {
-    title: "Language",
-    apiEndpoint: "/language",
-    idKey: "STID",
-    detailsType: "language",
-    isDropdown: true,
+    title: "Language", apiEndpoint: "/language", idKey: "STID", detailsType: "language", isDropdown: true,
     columns: [
       { key: "STID", label: "STID", sortable: true, editable: true },
       { key: "TitleLanguage", label: "TitleLanguage", sortable: true, editable: true },
@@ -614,11 +564,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   newEventCategory: {
-    title: "New Event Category",
-    apiEndpoint: "/new-event-category",
-    idKey: "SrNo",
-    detailsType: "newEventCategory",
-    isDropdown: true,
+    title: "New Event Category", apiEndpoint: "/new-event-category", idKey: "SrNo", detailsType: "newEventCategory", isDropdown: true,
     columns: [
       { key: "SrNo", label: "SrNo", sortable: true, editable: true },
       { key: "NewEventCategoryName", label: "NewEventCategoryName", sortable: true, editable: true },
@@ -628,11 +574,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   newCities: {
-    title: "New Cities",
-    apiEndpoint: "/new-cities",
-    idKey: "CityID",
-    detailsType: "newCities",
-    isDropdown: true,
+    title: "New Cities", apiEndpoint: "/new-cities", idKey: "CityID", detailsType: "newCities", isDropdown: true,
     columns: [
       { key: "CityID", label: "City ID", sortable: true, editable: true },
       { key: "City", label: "City", sortable: true, editable: true },
@@ -641,11 +583,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   newCountries: {
-    title: "New Countries",
-    apiEndpoint: "/new-countries",
-    idKey: "CountryID",
-    detailsType: "newCountries",
-    isDropdown: true,
+    title: "New Countries", apiEndpoint: "/new-countries", idKey: "CountryID", detailsType: "newCountries", isDropdown: true,
     columns: [
       { key: "CountryID", label: "Country ID", sortable: true, editable: true },
       { key: "Country", label: "Country", sortable: true, editable: true },
@@ -654,11 +592,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   newStates: {
-    title: "New States",
-    apiEndpoint: "/new-states",
-    idKey: "StateID",
-    detailsType: "newStates",
-    isDropdown: true,
+    title: "New States", apiEndpoint: "/new-states", idKey: "StateID", detailsType: "newStates", isDropdown: true,
     columns: [
       { key: "StateID", label: "State ID", sortable: true, editable: true },
       { key: "State", label: "State", sortable: true, editable: true },
@@ -666,13 +600,8 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
     ],
   },
-
   masterquality: {
-    title: "Master Quality",
-    apiEndpoint: "/master-quality",
-    idKey: "MQID",
-    detailsType: "masterquality",
-    isDropdown: true,
+    title: "Master Quality", apiEndpoint: "/master-quality", idKey: "MQID", detailsType: "masterquality", isDropdown: true,
     columns: [
       { key: "MQID", label: "MQID", sortable: true, editable: true },
       { key: "MQName", label: "MQName", sortable: true, editable: true },
@@ -680,13 +609,8 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
     ],
   },
-
   organization: {
-    title: "Organizations",
-    apiEndpoint: "/organizations",
-    idKey: "OrganizationID",
-    detailsType: "organization",
-    isDropdown: true,
+    title: "Organizations", apiEndpoint: "/organizations", idKey: "OrganizationID", detailsType: "organization", isDropdown: true,
     columns: [
       { key: "OrganizationID", label: "Organization ID", sortable: true, editable: true },
       { key: "Organization", label: "Organization", sortable: true, editable: true },
@@ -695,11 +619,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   occasions: {
-    title: "Occasions",
-    apiEndpoint: "/occasions",
-    idKey: "OccasionID",
-    detailsType: "occasions",
-    isDropdown: true,
+    title: "Occasions", apiEndpoint: "/occasions", idKey: "OccasionID", detailsType: "occasions", isDropdown: true,
     columns: [
       { key: "OccasionID", label: "Occasion ID", sortable: true, editable: true },
       { key: "Occasion", label: "Occasion", sortable: true, editable: true },
@@ -707,13 +627,8 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
-  
   topicNumberSource: {
-    title: "Topic Number Source",
-    apiEndpoint: "/topic-number-source",
-    idKey: "TNID",
-    detailsType: "topicNumberSource",
-    isDropdown: true,
+    title: "Topic Number Source", apiEndpoint: "/topic-number-source", idKey: "TNID", detailsType: "topicNumberSource", isDropdown: true,
     columns: [
       { key: "TNID", label: "TNID", sortable: true, editable: true },
       { key: "TNName", label: "TNName", sortable: true, editable: true },
@@ -721,13 +636,8 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
-
   timeOfDay: {
-    title: "Time of Day",
-    apiEndpoint: "/time-of-day",
-    idKey: "TimeID",
-    detailsType: "timeOfDay",
-    isDropdown: true,
+    title: "Time of Day", apiEndpoint: "/time-of-day", idKey: "TimeID", detailsType: "timeOfDay", isDropdown: true,
     columns: [
       { key: "TimeID", label: "Time ID", sortable: true, editable: true },
       { key: "TimeList", label: "Time List", sortable: true, editable: true },
@@ -735,34 +645,56 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
     ],
   },
-
   topicgivenby: {
-    title: "Topic Given By",
-    apiEndpoint: "/topic-given-by",
-    idKey: "TGBID",
-    detailsType: "topicgivenby",
-    isDropdown: true,
+    title: "Topic Given By", apiEndpoint: "/topic-given-by", idKey: "TGBID", detailsType: "topicgivenby", isDropdown: true,
     columns: [
       { key: "TGBID", label: "TGBID", sortable: true, editable: true },
       { key: "TGB_Name", label: "TGB_Name", sortable: true, editable: true },
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true},
       { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true },
-
     ],
   },
-
   segmentcategory: {
-    title: "Segment Category",
-    apiEndpoint: "/segment-category", 
-    idKey: "SegCatID",
-    detailsType: "segmentcategory",
-    isDropdown: true,
+    title: "Segment Category", apiEndpoint: "/segment-category", idKey: "SegCatID", detailsType: "segmentcategory", isDropdown: true,
     columns: [
       { key: "SegCatID", label: "SegCatID", sortable: true, editable: true },
       { key: "SegCatName", label: "SegCatName", sortable: true, editable: true },
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true  },
       { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true },
-
+    ],
+  },
+  // --- NEW --- Add the configuration for the Event Timeline view
+  eventtimeline: {
+    title: "Event Timeline",
+    apiEndpoint: "/events",
+    idKey: "EventID",
+    detailsType: "event",
+    isTimeline: true, // This special flag tells our render function to use the new component
+    columns: [
+       { key: "EventID", label: "Event ID", sortable: true, editable: true }, 
+       { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
+       { key: "Yr", label: "Year", sortable: true, editable: true }, 
+       { key: "SubmittedDate", label: "Submitted Date", sortable: true, editable: true }, 
+       { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
+       { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
+       { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
+       { key: "fkEventCategory", label: "Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
+       { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
+       { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true }, 
+       { key: "EventMonth", label: "Event Month", sortable: true, editable: true }, 
+       { key: "CommonID", label: "Common ID", sortable: true, editable: true }, 
+       { key: "IsSubEvent1", label: "Is Sub Event1", sortable: true, editable: true }, 
+       { key: "IsAudioRecorded", label: "Is Audio Record", sortable: true, editable: true }, 
+       { key: "PravachanCount", label: "Pravachan Count", sortable: true, editable: true }, 
+       { key: "UdgoshCount", label: "Udgosh Count", sortable: true, editable: true }, 
+       { key: "PaglaCount", label: "Pagla Count", sortable: true, editable: true }, 
+       { key: "PratishthaCount", label: "Pratishtha Count", sortable: true, editable: true }, 
+       { key: "SummaryRemarks", label: "Summary Remarks", sortable: true, editable: true }, 
+       { key: "Pra-SU-duration", label: "Pra-SU-duration", sortable: true, editable: true }, 
+       { key: "LastModifiedBy", label: "Last Modified By", sortable: true, editable: true }, 
+       { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true, editable: true }, 
+       { key: "NewEventFrom", label: "New Event From", sortable: true, editable: true }, 
+       { key: "NewEventTo", label: "New Event To", sortable: true, editable: true },
     ],
   },
 };
@@ -802,35 +734,41 @@ export default function App() {
 
   // --- 3. DYNAMIC VIEW RENDERER ---
   // This function now reads from the config object to render the correct view.
-  const renderView = () => {
-    // A) Handle non-list views (which don't use the config object)
-    switch (activeView) {
-      case "dashboard": return <Dashboard onShowDetails={handlePushSidebar} />;
-      case "ai-assistant": return <AIAssistant />;
-      case "user-management": return <UserManagement />;
+ const renderView = () => {
+  // A) Handle non-list views (which don't use the config object)
+  switch (activeView) {
+    case "dashboard": return <Dashboard onShowDetails={handlePushSidebar} />;
+    case "ai-assistant": return <AIAssistant />;
+    case "user-management": return <UserManagement />;
+  }
+
+  // B) Handle all list views dynamically using the config object
+  const config = VIEW_CONFIGS[activeView];
+  if (config) {
+    // Check for the timeline flag
+    if (config.isTimeline) {
+      // --- MODIFIED: Pass the config properties as props to the component ---
+      return <EventTimeline apiEndpoint={config.apiEndpoint} title={config.title} />;
     }
 
-    // B) Handle all list views dynamically using the config object
-    const config = VIEW_CONFIGS[activeView];
-    if (config) {
-      return (
-        <ClickUpListViewUpdated
-          title={config.title}
-          apiEndpoint={config.apiEndpoint}
-          idKey={config.idKey}
-          onRowSelect={(row) => handleRowSelect(row, config.detailsType)}
-          columns={config.columns}
-          views={config.views}
-          filterConfigs={[]}
-          showAddButton={!!config.isDropdown} // <-- Pass this prop
-        />
-      );
-    }
-    
-    // C) Fallback to the dashboard if no view matches
-    return <Dashboard onShowDetails={handlePushSidebar} />;
-  };
-
+    // Render the standard table view for all other configs
+    return (
+      <ClickUpListViewUpdated
+        title={config.title}
+        apiEndpoint={config.apiEndpoint}
+        idKey={config.idKey}
+        onRowSelect={(row) => handleRowSelect(row, config.detailsType)}
+        columns={config.columns}
+        views={config.views}
+        filterConfigs={[]}
+        showAddButton={!!config.isDropdown}
+      />
+    );
+  }
+  
+  // C) Fallback to the dashboard if no view matches
+  return <Dashboard onShowDetails={handlePushSidebar} />;
+};
   // --- Layout Calculation ---
   const sidebarWidth = 384;
   const cascadeOffset = 24;
@@ -838,8 +776,6 @@ export default function App() {
 
   // ===================================================================================
   // --- 4. JSX LAYOUT ---
-  // Note: AuthProvider and ProtectedRoute have been removed from here.
-  // They should wrap this App component in your main index.tsx or main.tsx file.
   // ===================================================================================
   if (isMobile) {
     return (
