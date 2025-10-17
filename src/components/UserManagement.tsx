@@ -31,6 +31,21 @@ import {
 } from "./ui/dropdown-menu";
 import { toast } from "sonner";
 
+/**
+ * Fix: Provide an ambient declaration for Vite's import.meta.env so TypeScript recognizes import.meta.env.VITE_API_URL.
+ * If you already have a vite-env.d.ts or similar global declaration in your project, you can remove this duplicate.
+ */
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_API_URL: string;
+    // add other VITE_... variables here as needed
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+}
+
 // ===================================================================================
 // --- 1. CONFIGURATION & TYPES (Unchanged) ---
 // ===================================================================================
@@ -38,6 +53,7 @@ import { toast } from "sonner";
 const APP_RESOURCES = [
   "Dashboard",
   "Events",
+  "Event Timeline",
   "Digital Recordings",
   "All",
   "All Except Satsang",
