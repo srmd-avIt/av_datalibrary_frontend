@@ -150,11 +150,17 @@ export function Sidebar({
         />
         {/* Sidebar Drawer */}
         <div
-          className={`fixed top-0 left-0 h-full w-72 flex flex-col backdrop-blur-xl bg-gradient-to-b from-slate-900/95 via-slate-800/90 to-slate-900/95 border-r border-slate-700/50 shadow-2xl transition-transform duration-300 ease-in-out z-50 ${isOpen ? 'transform translate-x-0' : 'transform -translate-x-full'}`}
+          className={`fixed top-0 left-0 h-full w-72 flex flex-col bg-gradient-to-b from-slate-900/95 via-slate-800/90 to-slate-900/95 border-r border-slate-700/50 shadow-2xl transition-transform duration-300 ease-in-out z-50 ${isOpen ? 'transform translate-x-0' : 'transform -translate-x-full'}`}
         >
-          {/* Mobile Header (same as un-collapsed desktop) */}
+          {/* Mobile Header */}
           <div className="p-6 border-b border-slate-700/50 relative">
-            <Button variant="ghost" size="sm" className="absolute top-4 right-4 w-8 h-8 rounded-full p-0" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full p-0"
+              onClick={onClose}
+              aria-label="Close sidebar"
+            >
               <X className="w-4 h-4 text-slate-300" />
             </Button>
             <div className="flex items-center gap-3 mb-4">

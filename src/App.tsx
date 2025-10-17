@@ -826,7 +826,8 @@ export default function App() {
                     setMobileSidebarOpen(false); // Close sidebar when item is selected
                   }}
                   collapsed={false}
-                  onToggleCollapse={() => setMobileSidebarOpen(false)}
+                  isOpen={mobileSidebarOpen}
+                  onClose={() => setMobileSidebarOpen(false)}
                 />
               </div>
             </div>
