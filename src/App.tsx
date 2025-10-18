@@ -747,8 +747,23 @@ export default function App() {
   if (config) {
     // Check for the timeline flag
     if (config.isTimeline) {
-      // --- MODIFIED: Pass the config properties as props to the component ---
-      return <EventTimeline apiEndpoint={config.apiEndpoint} title={config.title} />;
+      // --- ✅ THIS IS THE FIX ---
+      // Instead of passing `handlePushSidebar` directly, create a new function.
+      // This new function takes the `event` object from the child component,
+      // wraps it in the correct `SidebarStackItem` format, and then calls `handlePushSidebar`.
+      return (
+        <EventTimeline
+          apiEndpoint={config.apiEndpoint}
+          title={config.title}
+          onShowDetails={(eventData) =>
+            handlePushSidebar({
+              type: config.detailsType, // e.g., "event"
+              data: eventData,
+              title: "Event Details",
+            })
+          }
+        />
+      );
     }
 
     // Render the standard table view for all other configs
