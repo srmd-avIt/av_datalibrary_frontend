@@ -619,10 +619,8 @@ export function DetailsSidebar({
                     <FieldRow label="Content From" value={data.ContentFrom} />
                     <FieldRow label="Content To" value={data.ContentTo} />
                     <FieldRow label="Time Of Day" value={data.TimeOfDay} />
-                    <FieldRow
-                      label="Content Detail"
-                      value={`${data.Detail || ""}${data.SubDetail ? " - " + data.SubDetail : ""}`}
-                    />
+                   <FieldRow label=" Detail" value={data.Detail} />
+                   <FieldRow label=" Sub Detail" value={data.SubDetail} />
                     <FieldRow label="Occasion" value={data.fkOccasion} />
                     <FieldRow label="Duration" value={data.TotalDuration} />
                   </CardContent>

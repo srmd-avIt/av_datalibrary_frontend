@@ -316,10 +316,25 @@ export function AdvancedFiltersClickUp({
     );
   };
   const updateFilterRule = (groupId: string, ruleId: string, updates: Partial<FilterRule>) => {
+    // Normalize operator-only updates so is_empty / is_not_empty carry a sentinel value.
+    // This is needed because the UI hides the value input for those operators.
+    const normalized = { ...updates } as Partial<FilterRule>;
+    if (updates.operator) {
+      if (updates.operator === "is_empty") {
+        // use __EMPTY__ sentinel (matches existing codebase convention)
+        normalized.value = "__EMPTY__";
+      } else if (updates.operator === "is_not_empty") {
+        normalized.value = "__NOT_EMPTY__";
+      } else {
+        // clear value when operator changes to one that expects a value, unless a value was explicitly provided
+        if (!("value" in normalized)) normalized.value = "";
+      }
+    }
+
     setFilterGroups((groups) =>
       groups.map((group) =>
         group.id === groupId
-          ? { ...group, rules: group.rules.map((rule) => (rule.id === ruleId ? { ...rule, ...updates } : rule)) }
+          ? { ...group, rules: group.rules.map((rule) => (rule.id === ruleId ? { ...rule, ...normalized } : rule)) }
           : group
       )
     );
@@ -390,7 +405,7 @@ export function AdvancedFiltersClickUp({
           finalFilterGroups.push({
             id: `group_${rule.id}`,
             logic: 'OR',
-            rules: values.map((val, index) => ({
+            rules: values.map((val: string, index: number) => ({
               id: `rule_${rule.id}_${index}`,
               field: rule.field,
               operator: rule.operator || 'contains',
