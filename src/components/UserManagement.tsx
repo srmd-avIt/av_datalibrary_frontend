@@ -372,7 +372,11 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       setUsers((prevUsers) => [processedUser, ...prevUsers]);
       setIsAddUserDialogOpen(false);
       toast.success(`User "${createdUser.name}" added successfully.`);
-    } catch (error) { console.error("Error adding user:", error); toast.error(error.message || "An unexpected error occurred."); }
+    } catch (error) { 
+      console.error("Error adding user:", error); 
+      const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+      toast.error(message); 
+    }
   };
 
   const handleDeleteConfirmation = (user: User) => {
@@ -392,7 +396,11 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       setUsers((prev) => prev.filter((u) => u.id !== id));
       setIsDeleteDialogOpen(false); setUserToDelete(null);
       toast.success(`User "${name}" was deleted successfully.`);
-    } catch (error) { console.error("Error deleting user:", error); toast.error(error.message || "An unexpected error occurred."); }
+    } catch (error) { 
+      console.error("Error deleting user:", error); 
+      const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+      toast.error(message); 
+    }
   };
   
   const AddUserForm = ({ onAddUser }: { onAddUser: (data: any) => void }) => {

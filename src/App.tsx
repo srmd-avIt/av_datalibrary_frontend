@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
@@ -18,6 +16,8 @@ import { getColorForString } from "./components/ui/utils";
 // --- NEW --- Import the EventTimeline component
 import { EventTimeline } from "./components/EventTimeline";
 
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
+
 // ===================================================================================
 // --- 1. VIEW CONFIGURATIONS & HELPERS ---
 // All column definitions and view-specific settings are centralized here.
@@ -25,7 +25,7 @@ import { EventTimeline } from "./components/EventTimeline";
 // ===================================================================================
 
 const categoryTagRenderer = (value: string | null | undefined) => {
-    if (!value) return <span className="text-slate-500">N/A</span>;
+    if (!value) return <span className="text-slate-500"></span>;
 
     const getTextColorForBg = (hex: string): string => {
         if (!hex || hex.length < 7) return "#0f172a";
@@ -60,26 +60,16 @@ const VIEW_CONFIGS: Record<string, any> = {
     idKey: "EventID",
     detailsType: "event",
     columns: [
-       { key: "EventID", label: "Event ID", sortable: true, editable: true }, 
-       { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
+      
+       
        { key: "Yr", label: "Year", sortable: true, editable: true }, 
-       { key: "SubmittedDate", label: "Submitted Date", sortable: true, editable: true }, 
+        { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true },
+
        { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
        { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
        { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
-       { key: "fkEventCategory", label: "Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
-       { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
-       { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true }, 
-       { key: "EventMonth", label: "Event Month", sortable: true, editable: true }, 
-       { key: "CommonID", label: "Common ID", sortable: true, editable: true }, 
-       { key: "IsSubEvent1", label: "Is Sub Event1", sortable: true, editable: true }, 
-       { key: "IsAudioRecorded", label: "Is Audio Record", sortable: true, editable: true }, 
-       { key: "PravachanCount", label: "Pravachan Count", sortable: true, editable: true }, 
-       { key: "UdgoshCount", label: "Udgosh Count", sortable: true, editable: true }, 
-       { key: "PaglaCount", label: "Pagla Count", sortable: true, editable: true }, 
-       { key: "PratishthaCount", label: "Pratishtha Count", sortable: true, editable: true }, 
-       { key: "SummaryRemarks", label: "Summary Remarks", sortable: true, editable: true }, 
-       { key: "Pra-SU-duration", label: "Pra-SU-duration", sortable: true, editable: true }, 
+        { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
+       { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true },
        { key: "LastModifiedBy", label: "Last Modified By", sortable: true, editable: true }, 
        { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true, editable: true }, 
        { key: "NewEventFrom", label: "New Event From", sortable: true, editable: true }, 
@@ -88,42 +78,69 @@ const VIEW_CONFIGS: Record<string, any> = {
   },
   // ... other configs for medialog, digitalrecordings, aux, etc.
   medialog_all: {
-    title: "Media Log: All",
+    title: "Media Log: ML formal & Informal",
     apiEndpoint: "/newmedialog",
     idKey: "MLUniqueID",
     detailsType: "medialog",
     columns: [
+       { key: "Yr", label: "Year", sortable: true, editable: true },
+      {
+        key: "EventDisplay",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+
+      // Core ML columns requested
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+          editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || "";
+          const s = row.SubDetail || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+
+      { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Counters / durations / language / speaker / org / designation
+      { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
+      { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
+      { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Designation", label: "Designation", sortable: true, editable: true },
+
+      // 4 location fields
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Venue", label: "Venue", sortable: true, editable: true },
+
+      // DR specific and then rest of existing ML fields
+      { key: "Recordingname", label: "Recording Name", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // keep existing/other ML fields (preserve original keys)
       { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
       { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true, editable: true },
-      { key: "ContentFrom", label: "ContentFrom", sortable: true, editable: true },
-      { key: "ContentTo", label: "ContentTo", sortable: true, editable: true },
-      { key: "TimeOfDay", label: "TimeOfDay", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "fkOccasion", label: "fkOccasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingStatus", label: "EditingStatus", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "FootageType", label: "FootageType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "VideoDistribution", label: "VideoDistribution", sortable: true, editable: true },
-      { key: "Detail", label: "Detail", sortable: true, editable: true },
-      { key: "SubDetail", label: "SubDetail", sortable: true, editable: true },
-      { key: "CounterFrom", label: "CounterFrom", sortable: true, editable: true },
-      { key: "CounterTo", label: "CounterTo", sortable: true, editable: true },
-      { key: "SubDuration", label: "SubDuration", sortable: true, editable: true },
-      { key: "TotalDuration", label: "TotalDuration", sortable: true, editable: true },
-      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true, editable: true },
-      { key: "fkOrganization", label: "fkOrganization", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "Designation", label: "Designation", sortable: true, editable: true },
-      { key: "fkCountry", label: "fkCountry", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkState", label: "fkState", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkCity", label: "fkCity", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Venue", label: "Venue", sortable: true, editable: true },
-      { key: "fkGranth", label: "fkGranth", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Number", label: "Number", sortable: true, editable: true },
-      { key: "Topic", label: "Topic", sortable: true, editable: true },
-      { key: "SeriesName", label: "SeriesName", sortable: true, editable: true },
-      { key: "SatsangStart", label: "SatsangStart", sortable: true, editable: true },
-      { key: "SatsangEnd", label: "SatsangEnd", sortable: true, editable: true },
+     
       { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
       { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
@@ -154,85 +171,175 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
       { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
       { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
-      { key: "Keywords", label: "Keywords", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Grading", label: "Grading", sortable: true, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true , render: categoryTagRenderer},
-      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true , render: categoryTagRenderer},
+      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
     ],
   },
+
+medialog_formal: {
+    title: "Media Log: Formal View",
+    apiEndpoint: "/newmedialog/formal", // adjust endpoint if backend differs
+    idKey: "MLUniqueID",
+    detailsType: "medialog",
+    columns: [
+      { key: "Yr", label: "Year", sortable: true, editable: true },
+      {
+        key: "EventDisplay",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+
+      // Core ML columns requested
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || "";
+          const s = row.SubDetail || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+
+      { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Counters / durations / language / speaker / org / designation
+      { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
+      { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
+      { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Designation", label: "Designation", sortable: true, editable: true },
+
+      // 4 location fields
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Venue", label: "Venue", sortable: true, editable: true },
+
+      // DR specific and then rest of existing ML fields
+      { key: "Recordingname", label: "Recording Name", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // keep existing/other ML fields (preserve original keys)
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
+      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
+      
+      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
+      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
+      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
+      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
+      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
+      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
+      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
+      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
+      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
+      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
+      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
+      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
+      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
+      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Grading", label: "Grading", sortable: true, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+    ],
+  },
+
   medialog_all_except_satsang: {
     title: "Media Log: All Except Satsang",
     apiEndpoint: "/newmedialog/all-except-satsang",
     idKey: "MLUniqueID",
     detailsType: "medialog",
     columns: [
-      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
-      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
-      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true, editable: true },
-      { key: "ContentFrom", label: "ContentFrom", sortable: true, editable: true },
-      { key: "ContentTo", label: "ContentTo", sortable: true, editable: true },
-      { key: "TimeOfDay", label: "TimeOfDay", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "fkOccasion", label: "fkOccasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingStatus", label: "EditingStatus", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "FootageType", label: "FootageType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "VideoDistribution", label: "VideoDistribution", sortable: true, editable: true },
-      { key: "Detail", label: "Detail", sortable: true, editable: true },
-      { key: "SubDetail", label: "SubDetail", sortable: true, editable: true },
-      { key: "CounterFrom", label: "CounterFrom", sortable: true, editable: true },
-      { key: "CounterTo", label: "CounterTo", sortable: true, editable: true },
-      { key: "SubDuration", label: "SubDuration", sortable: true, editable: true },
-      { key: "TotalDuration", label: "TotalDuration", sortable: true, editable: true },
+      { key: "Yr", label: "Year", sortable: true, editable: true },
+      {
+        key: "EventDisplay",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+
+      // Core ML columns requested
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+         editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || "";
+          const s = row.SubDetail || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+
+      { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Counters / durations / language / speaker / org / designation
+      { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
+      { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true, editable: true },
-      { key: "fkOrganization", label: "fkOrganization", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
+      { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Designation", label: "Designation", sortable: true, editable: true },
-      { key: "fkCountry", label: "fkCountry", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkState", label: "fkState", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkCity", label: "fkCity", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // 4 location fields
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-      { key: "fkGranth", label: "fkGranth", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Number", label: "Number", sortable: true, editable: true },
-      { key: "Topic", label: "Topic", sortable: true, editable: true },
-      { key: "SeriesName", label: "SeriesName", sortable: true, editable: true },
-      { key: "SatsangStart", label: "SatsangStart", sortable: true, editable: true },
-      { key: "SatsangEnd", label: "SatsangEnd", sortable: true, editable: true },
-      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
-      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
-      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
-      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
-      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
-      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
-      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
-      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
-      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
-      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
-      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
-      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
-      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
-      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
-      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
-      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
-      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
-      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
-      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
-      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
-      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
+
       { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
-      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
-      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
-      { key: "Keywords", label: "Keywords", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "Grading", label: "Grading", sortable: true, editable: true },
-      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
-      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true }
+
+  
     ],
   },
   medialog_satsang_extracted_clips: {
@@ -241,72 +348,49 @@ const VIEW_CONFIGS: Record<string, any> = {
     idKey: "MLUniqueID",
     detailsType: "medialog",
     columns: [
-      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
-      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
-      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true, editable: true },
-      { key: "ContentFrom", label: "ContentFrom", sortable: true, editable: true },
-      { key: "ContentTo", label: "ContentTo", sortable: true, editable: true },
-      { key: "TimeOfDay", label: "TimeOfDay", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "fkOccasion", label: "fkOccasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingStatus", label: "EditingStatus", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "FootageType", label: "FootageType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "VideoDistribution", label: "VideoDistribution", sortable: true, editable: true },
-      { key: "Detail", label: "Detail", sortable: true, editable: true },
-      { key: "SubDetail", label: "SubDetail", sortable: true, editable: true },
-      { key: "CounterFrom", label: "CounterFrom", sortable: true, editable: true },
-      { key: "CounterTo", label: "CounterTo", sortable: true, editable: true },
-      { key: "SubDuration", label: "SubDuration", sortable: true, editable: true },
-      { key: "TotalDuration", label: "TotalDuration", sortable: true, editable: true },
+     { key: "Yr", label: "Year", sortable: true, editable: true },
+     
+      // Requested primary columns
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+         editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || row.DetailMain || "";
+          const s = row.SubDetail || row.DetailSub || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SubDuration", label: "Duration", sortable: true, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true, editable: true },
-      { key: "fkOrganization", label: "fkOrganization", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "Designation", label: "Designation", sortable: true, editable: true },
-      { key: "fkCountry", label: "fkCountry", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkState", label: "fkState", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkCity", label: "fkCity", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Venue", label: "Venue", sortable: true, editable: true },
-      { key: "fkGranth", label: "fkGranth", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Number", label: "Number", sortable: true, editable: true },
-      { key: "Topic", label: "Topic", sortable: true, editable: true },
-      { key: "SeriesName", label: "SeriesName", sortable: true, editable: true },
-      { key: "SatsangStart", label: "SatsangStart", sortable: true, editable: true },
-      { key: "SatsangEnd", label: "SatsangEnd", sortable: true, editable: true },
-      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
-      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
-      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
-      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
-      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
-      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
-      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
-      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
-      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
-      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
-      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
-      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
-      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
-      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
-      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
-      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
-      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
-      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
-      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
-      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
-      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+
+      // Subtitle fields
+      { key: "HasSubtitle", label: "Has Subtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "Subtitle Language", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Text/meta
       { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
-      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
-      { key: "Keywords", label: "Keywords", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "Grading", label: "Grading", sortable: true, editable: true },
-      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
-      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+
+      // Satsang start / end words
+      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
+      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
+
+      // Audio codes / master quality / DR filename
+      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
+     
+
+      // Location: City (requested)
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Keep identifiers / minimal extras
+      
+     
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true }
     ],
   },
   medialog_satsang_category: {
@@ -315,114 +399,129 @@ const VIEW_CONFIGS: Record<string, any> = {
     idKey: "MLUniqueID",
     detailsType: "medialog",
     columns: [
-      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
-      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
-      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      { key: "fkDigitalRecordingCode", label: "fkDigitalRecordingCode", sortable: true, editable: true },
-      { key: "ContentFrom", label: "ContentFrom", sortable: true, editable: true },
-      { key: "ContentTo", label: "ContentTo", sortable: true, editable: true },
-      { key: "TimeOfDay", label: "TimeOfDay", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "fkOccasion", label: "fkOccasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingStatus", label: "EditingStatus", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "FootageType", label: "FootageType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "VideoDistribution", label: "VideoDistribution", sortable: true, editable: true },
-      { key: "Detail", label: "Detail", sortable: true, editable: true },
-      { key: "SubDetail", label: "SubDetail", sortable: true, editable: true },
-      { key: "CounterFrom", label: "CounterFrom", sortable: true, editable: true },
-      { key: "CounterTo", label: "CounterTo", sortable: true, editable: true },
-      { key: "SubDuration", label: "SubDuration", sortable: true, editable: true },
-      { key: "TotalDuration", label: "TotalDuration", sortable: true, editable: true },
+      { key: "Yr", label: "Year", sortable: true, editable: true },
+      {
+        key: "EventDisplay",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventRefName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+
+      // Content timing + details
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+         editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || row.DetailMain || "";
+          const s = row.SubDetail || row.DetailSub || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+
+      // Topic / Number / Granth / language / durations / categories
+      { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "NumberSource", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SpeakerSinger", label: "SpeakerSinger", sortable: true, editable: true },
-      { key: "fkOrganization", label: "fkOrganization", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Speaker / organization / designation
+      { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
+      { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Designation", label: "Designation", sortable: true, editable: true },
-      { key: "fkCountry", label: "fkCountry", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkState", label: "fkState", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkCity", label: "fkCity", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Location fields (4)
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-      { key: "fkGranth", label: "fkGranth", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Number", label: "Number", sortable: true, editable: true },
-      { key: "Topic", label: "Topic", sortable: true, editable: true },
-      { key: "SeriesName", label: "SeriesName", sortable: true, editable: true },
-      { key: "SatsangStart", label: "SatsangStart", sortable: true, editable: true },
-      { key: "SatsangEnd", label: "SatsangEnd", sortable: true, editable: true },
-      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
-      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
-      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
-      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
-      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
-      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
-      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
-      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
-      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
-      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
+
+      // Additional textual/meta fields
       { key: "Guidance", label: "Guidance", sortable: true, editable: true },
-      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
-      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
-      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
-      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
-      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
-      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
-      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
-      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
-      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
-      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
       { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
-      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
-      { key: "Keywords", label: "Keywords", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "Grading", label: "Grading", sortable: true, editable: true },
-      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
-      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Satsang specific start/end words (use your actual field names if different)
+      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
+      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
+
+      // Audio codes / master quality / distribution
+      { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
+
+      // DR filename and other ML identifiers
+      { key: "Recordingname", label: "DR Filename", sortable: true, editable: true },
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+
+    
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true }
     ],
   },
+  // ...existing code...
   digitalrecordings: {
     title: "Digital Recordings",
     apiEndpoint: "/digitalrecording",
     idKey: "RecordingCode",
     detailsType: "digitalrecording",
+    groupBy: "Yr", // <-- MODIFIED: Added default grouping configuration
     columns : [
+      // <-- ADDED: show event-related columns in digitalrecordings
+      { key: "Yr", label: "Year", sortable: true, editable: true },
+      { key: "EventName", label: "Event Name", sortable: true, editable: true },
+      { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
+
       { key: "fkEventCode", label: "fkEventCode", sortable: true, editable: true },
       { key: "RecordingName", label: "RecordingName", sortable: true, editable: true },
       { key: "RecordingCode", label: "RecordingCode", sortable: true, editable: true },
+       { key: "Duration", label: "Duration", sortable: true, editable: true },
+        { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+        { key: "BitRate", label: "BitRate", sortable: true, editable: true },
+        { key: "Dimension", label: "Dimension", sortable: true,render: categoryTagRenderer, editable: true },
+         { key: "Masterquality", label: "Masterquality", sortable: true,render: categoryTagRenderer, editable: true },
+          { key: "fkMediaName", label: "fkMediaName", sortable: true,render: categoryTagRenderer, editable: true },
+          { key: "Filesize", label: "Filesize", sortable: true, editable: true },
+           { key: "FilesizeInBytes", label: "FilesizeInBytes", sortable: true, editable: true },
       { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
-      { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkMediaName", label: "fkMediaName", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "BitRate", label: "BitRate", sortable: true, editable: true },
-      { key: "AudioBitrate", label: "AudioBitrate", sortable: true, editable: true },
-      { key: "Filesize", label: "Filesize", sortable: true, editable: true },
-      { key: "Duration", label: "Duration", sortable: true, editable: true },
-      { key: "AudioTotalDuration", label: "AudioTotalDuration", sortable: true, editable: true },
       { key: "RecordingRemarks", label: "RecordingRemarks", sortable: true, editable: true },
       { key: "CounterError", label: "CounterError", sortable: true, editable: true },
       { key: "ReasonError", label: "ReasonError", sortable: true, editable: true },
+      { key: "MasterProductTitle", label: "MasterProductTitle", sortable: true, editable: true },
+      { key: "fkDistributionLabel", label: "fkDistributionLabel", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "ProductionBucket", label: "ProductionBucket", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "AudioBitrate", label: "AudioBitrate", sortable: true, editable: true },
+      { key: "AudioTotalDuration", label: "AudioTotalDuration", sortable: true, editable: true },
       { key: "QcRemarksCheckedOn", label: "QcRemarksCheckedOn", sortable: true, editable: true },
       { key: "PreservationStatus", label: "PreservationStatus", sortable: true,render: categoryTagRenderer, editable: true },
       { key: "QCSevak", label: "QCSevak", sortable: true, editable: true },
-      { key: "MasterProductTitle", label: "MasterProductTitle", sortable: true, editable: true },
       { key: "QcStatus", label: "QcStatus", sortable: true, editable: true },
       { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
-      { key: "fkDistributionLabel", label: "fkDistributionLabel", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubmittedDate", label: "SubmittedDate", sortable: true, editable: true },
       { key: "PresStatGuidDt", label: "PresStatGuidDt", sortable: true, editable: true },
       { key: "InfoOnCassette", label: "InfoOnCassette", sortable: true, editable: true },
-      { key: "Masterquality", label: "Masterquality", sortable: true,render: categoryTagRenderer, editable: true },
       { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
-      { key: "FilesizeInBytes", label: "FilesizeInBytes", sortable: true, editable: true },
       { key: "AssociatedDR", label: "AssociatedDR", sortable: true, editable: true },
-      { key: "Dimension", label: "Dimension", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "ProductionBucket", label: "ProductionBucket", sortable: true,render: categoryTagRenderer, editable: true },
-      { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
-      { key: "Teams", label: "Teams", sortable: true,render: categoryTagRenderer, editable: true },
+      { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
+// ...existing code...
   aux: {
     title: "Aux File",
     apiEndpoint: "/auxfiles",
@@ -734,6 +833,26 @@ export default function App() {
 
   // --- 3. DYNAMIC VIEW RENDERER ---
   // This function now reads from the config object to render the correct view.
+ // --- Helper: Build a lookup for events by code (for digitalrecordings grouping) ---
+  const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
+
+  React.useEffect(() => {
+    // Only fetch if digitalrecordings view is used
+    if (activeView === "digitalrecordings") {
+      fetch(`${API_BASE_URL}/events`)
+        .then((res) => res.json())
+        .then((data) => {
+          // Build a lookup by EventCode
+          const lookup: Record<string, any> = {};
+          (Array.isArray(data) ? data : []).forEach((ev) => {
+            if (ev.EventCode) lookup[ev.EventCode] = ev;
+          });
+          setEventsLookup(lookup);
+        })
+        .catch(() => setEventsLookup({}));
+    }
+  }, [activeView]);
+
  const renderView = () => {
   // A) Handle non-list views (which don't use the config object)
   switch (activeView) {
@@ -767,6 +886,23 @@ export default function App() {
     }
 
     // Render the standard table view for all other configs
+    // --- MODIFIED: Cleaned up prop passing to be data-driven ---
+    const extraProps = activeView === "digitalrecordings"
+      ? {
+          groupEnabled: true,
+          rowTransformer: (row: any) => {
+            const ev = eventsLookup[row.fkEventCode || row.EventCode || row.RecordingEventCode] || null;
+            const Yr = row.Yr || (row.SubmittedDate ? new Date(row.SubmittedDate).getFullYear() : ev && (ev.Yr || (ev.FromDate ? new Date(ev.FromDate).getFullYear() : undefined)));
+            return {
+              ...row,
+              Yr,
+              EventName: row.EventName || ev?.EventName || "",
+              fkEventCategory: row.fkEventCategory || ev?.fkEventCategory || "",
+            };
+          },
+        }
+      : {};
+
     return (
       <ClickUpListViewUpdated
         title={config.title}
@@ -777,6 +913,8 @@ export default function App() {
         views={config.views}
         filterConfigs={[]}
         showAddButton={!!config.isDropdown}
+        initialGroupBy={config.groupBy} // <-- Pass the default group from the config
+        {...extraProps}
       />
     );
   }

@@ -447,7 +447,7 @@ const mostRecentPastEventDate = useMemo(() => {
             isMobile ? (
               <div className="space-y-4">
                 {pagedDates.map((dateKey) => {
-                  const eventsForDate = groupedEvents[dateKey] || [];
+                  const eventsForDate = (groupedEvents as GroupedEvents)[dateKey] || [];
                   const open = openDateKey === dateKey;
                   return (
                     <div key={dateKey} className="bg-slate-800/40 border border-slate-700 rounded-lg overflow-hidden">
@@ -461,7 +461,7 @@ const mostRecentPastEventDate = useMemo(() => {
                         </div>
                         <div className="text-slate-300 text-xl">{open ? "▾" : "›"}</div>
                       </button>
-                      {open && <div className="p-4 space-y-4 border-t border-slate-700">{eventsForDate.map((ev) => <EventCard key={ev.EventID} event={ev} isMobile onShowDetails={onShowDetails} />)}</div>}
+                      {open && <div className="p-4 space-y-4 border-t border-slate-700">{eventsForDate.map((ev: Event) => <EventCard key={ev.EventID} event={ev} isMobile onShowDetails={onShowDetails} />)}</div>}
                     </div>
                   );
                 })}
@@ -474,7 +474,7 @@ const mostRecentPastEventDate = useMemo(() => {
                     <div className="absolute left-0 top-1.5 w-6 h-6 bg-slate-700 rounded-full border-4 border-slate-900 flex items-center justify-center"><div className="w-2 h-2 bg-blue-500 rounded-full" /></div>
                     <h2 className="text-xl font-semibold text-white mb-4 -mt-1">{formatDateForDisplay(dateKey)}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {(groupedEvents[dateKey] || []).map((ev) => <EventCard key={ev.EventID} event={ev} onShowDetails={onShowDetails} />)}
+                      {((groupedEvents as GroupedEvents)[dateKey] || []).map((ev) => <EventCard key={ev.EventID} event={ev} onShowDetails={onShowDetails} />)}
                     </div>
                   </div>
                 ))}

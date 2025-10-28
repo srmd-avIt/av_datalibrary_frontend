@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from 'date-fns';
@@ -269,7 +270,18 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
 // --- Main Component ---
 // This is the main list/table view component with filtering, sorting, grouping, column hiding, pagination, and timeline view
 export function ClickUpListViewUpdated({
-  title, columns, apiEndpoint, filterConfigs = [], views = [], onRowSelect, idKey, showAddButton = false
+  title,
+  columns,
+  apiEndpoint,
+  filterConfigs = [],
+  views = [],
+  onRowSelect,
+  idKey,
+  showAddButton = false,
+  // optional props passed from App.tsx
+  rowTransformer,
+  initialGroupBy,
+  groupEnabled,
 }: {
   title: string;
   columns: Column[];
@@ -278,7 +290,10 @@ export function ClickUpListViewUpdated({
   views?: ViewConfig[];
   onRowSelect?: (item: ListItem) => void;
   idKey: string;
-  showAddButton?: boolean; // <-- Add this prop
+  showAddButton?: boolean;
+  rowTransformer?: (row: any) => any;
+  initialGroupBy?: string | null;
+  groupEnabled?: boolean;
 }) {
   // --- State Management Strategy ---
   // The component uses a combination of "global" and "user-specific" state to meet the requirements.
@@ -331,7 +346,8 @@ export function ClickUpListViewUpdated({
   // --- TRANSIENT STATE for Sort, Group, and Freeze ---
   const [sortBy, setSortBy] = useState("none");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [groupBy, setGroupBy] = useState("none");
+  // --- MODIFIED: Initialize groupBy state with the initialGroupBy prop ---
+  const [groupBy, setGroupBy] = useState(initialGroupBy || "none");
   const [groupDirection, setGroupDirection] = useState<"asc" | "desc">("asc");
   const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
   
@@ -700,11 +716,25 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
   // --- Data and pagination ---
   // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
-  const allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
+  let allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
   
+  // Apply optional rowTransformer (provided by App.tsx for digitalrecordings)
+  const transformedItems = React.useMemo(() => {
+    if (!rowTransformer || typeof rowTransformer !== "function") return allItems;
+    try {
+      return (allItems || []).map((r: any) => rowTransformer(r));
+    } catch (e) {
+      console.error("rowTransformer error:", e);
+      return allItems;
+    }
+  }, [allItems, rowTransformer]);
+  
+  // Use transformed items as rows for sorting/grouping/pagination
+  let rows = transformedItems;
+
   // --- REMOVED: Client-side sorting logic has been removed. ---
   // The component now relies entirely on the API for sorting.
-  const sortedData = allItems;
+  const sortedData = rows;
 
   // --- MODIFIED: Client-side pagination now uses the API-sorted data ---
   const finalItems = useMemo(() => {
@@ -892,7 +922,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
 
   // Handle input change
-  const handleAddFormChange = (key, value) => {
+  const handleAddFormChange = (key: string, value: any) => {
     setAddForm(f => ({ ...f, [key]: value }));
   };
 
