@@ -66,3 +66,34 @@ export const getColorForString = (
   const index = hash % PALETTE.length;
   return PALETTE[index];
 };
+
+// --- NEW: helpers to produce glassmorphism styles from a base hex color ---
+const hexToRgb = (hex: string) => {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return { r, g, b };
+};
+
+const rgba = (hex: string, alpha: number) => {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const getReadableTextColor = (hex: string) => {
+  const { r, g, b } = hexToRgb(hex);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? "#0b1724" : "#f8fafc";
+};
+
+/**
+ * getGlassForString - returns background, border and text colors for a glass tag
+ */
+export const getGlassForString = (value: string | null | undefined) => {
+  const base = getColorForString(value);
+  const background = rgba(base, 0.16); // soft translucent fill
+  const border = rgba(base, 0.32); // visible translucent border
+  const text = getReadableTextColor(base);
+  return { base, background, border, text };
+};
