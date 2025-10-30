@@ -82,6 +82,9 @@ const VIEW_CONFIGS: Record<string, any> = {
     apiEndpoint: "/newmedialog",
     idKey: "MLUniqueID",
     detailsType: "medialog",
+     // Default multi-column sort when this view opens (backend should support comma-separated keys)
+ sortBy: "EventCode,FootageSrNo,LogSerialNo",
+   sortDirection: "asc",
     columns: [
        { key: "Yr", label: "Year", sortable: true, editable: true },
       {
@@ -115,7 +118,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
 
       // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
@@ -132,11 +135,52 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
 
+      // keep existing/other ML fields (preserve original keys)
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
+      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
+      
+      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
+      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
+      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
+      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
+      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
+      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
+      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
+      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
+      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
+      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
+      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
+      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
+      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
+      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Grading", label: "Grading", sortable: true, editable: true },
+      
+      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+
       // DR specific and then rest of existing ML fields
-      { key: "Recordingname", label: "Recording Name", sortable: true, editable: true },
+      { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
 
-      // keep existing/other ML fields (preserve original keys)
+     
      
     ],
   },
@@ -179,7 +223,7 @@ medialog_formal: {
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
 
       // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
@@ -196,12 +240,53 @@ medialog_formal: {
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
 
+      // keep existing/other ML fields (preserve original keys)
+
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
+      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
+      
+      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
+      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
+      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
+      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
+      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
+      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
+      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
+      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
+      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
+      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
+      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
+      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
+      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
+      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Grading", label: "Grading", sortable: true, editable: true },
+      
+      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+
       // DR specific and then rest of existing ML fields
-      { key: "Recordingname", label: "Recording Name", sortable: true, editable: true },
+      { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
 
-      // keep existing/other ML fields (preserve original keys)
-     
+
     ],
   },
 
@@ -244,7 +329,7 @@ medialog_formal: {
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
 
       // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
@@ -287,7 +372,7 @@ medialog_formal: {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubDuration", label: "Duration", sortable: true, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
@@ -324,7 +409,7 @@ medialog_formal: {
     columns: [
       { key: "Yr", label: "Year", sortable: true, editable: true },
       {
-        key: "EventDisplay",
+        key: "EventName - EventCode",
         label: "Event Name - EventCode",
         sortable: true,
         editable: true,
@@ -357,7 +442,7 @@ medialog_formal: {
       { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
-      { key: "SegmentCategory", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
 

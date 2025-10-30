@@ -4,7 +4,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Input } from "./ui/input";
 import { GripVertical, ChevronRight, ChevronDown } from "lucide-react";
-import { cn, getColorForString } from "./ui/utils";
+import { cn, getColorForString, getGlassForString } from "./ui/utils";
 import { ListItem, Column } from "./types";
 
 interface DraggableResizableTableProps {
@@ -301,7 +301,7 @@ export function DraggableResizableTable({
           {Object.entries(groupedData).map(([groupName, items]) => {
             const bgColor = getColorForString(groupName);
             const isDarkBg = ["#F7D379"].includes(bgColor);
-            const textColor = isDarkBg ? "hsl(222.2 47.4% 11.2%)" : "hsl(222.2 84% 4.9%)";
+            const textColor = isDarkBg ? "hsl(222.2 47.4% 11.2%)" : "hsla(223, 20%, 93%, 1.00)";
 
             return (
               <React.Fragment key={groupName}>
@@ -313,12 +313,23 @@ export function DraggableResizableTable({
                     >
                       <div className="flex items-center gap-2">
                         {expandedGroups.has(groupName) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        <span
-                          className="px-2.5 py-0.5 rounded-md text-sm"
-                          style={{ backgroundColor: bgColor, color: textColor }}
-                        >
-                          {groupName}
-                        </span>
+                        {(() => {
+                          const glass = getGlassForString(groupName);
+                          return (
+                            <span
+                              className="px-3 py-1 rounded-md text-sm font-semibold border backdrop-blur-sm shadow-sm"
+                              style={{
+                                backgroundColor: glass.background,
+                                borderColor: glass.border,
+                                color: "#ffffff", // force white text
+                                WebkitBackdropFilter: "blur(6px)",
+                                backdropFilter: "blur(6px)",
+                              }}
+                            >
+                              {groupName || "Ungrouped"}
+                            </span>
+                          );
+                        })()}
                         <span className="text-muted-foreground">({items.length})</span>
                       </div>
                     </TableCell>
