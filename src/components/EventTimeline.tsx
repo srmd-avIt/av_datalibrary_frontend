@@ -22,20 +22,50 @@ const isSameDay = (date1: Date | null, date2: Date | null): boolean => {
 
 const parseFlexibleDate = (dateInput: string | number | null | undefined): Date | null => {
   if (!dateInput && dateInput !== 0) return null;
-  const asDate = new Date(dateInput as any);
-  if (!isNaN(asDate.getTime())) return asDate;
+
+  // Handle Excel serial numbers first
   if (typeof dateInput === "number" || /^\d{5}$/.test(String(dateInput))) {
     const excelEpoch = new Date((Number(dateInput) - 25569) * 86400 * 1000);
     if (!isNaN(excelEpoch.getTime())) return excelEpoch;
   }
-  const parts = String(dateInput).match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
-  if (parts) {
-    const year = parseInt(parts[3], 10) < 100 ? 2000 + parseInt(parts[3], 10) : parseInt(parts[3], 10);
-    const month = parseInt(parts[2], 10) - 1;
-    const day = parseInt(parts[1], 10);
-    const constructed = new Date(year, month, day);
-    if (!isNaN(constructed.getTime())) return constructed;
+
+  if (typeof dateInput === 'string') {
+    const trimmedInput = dateInput.trim();
+
+    // Priority 1: Handle dd/mm/yyyy format. This is the specified format for the data.
+    // The regex [./-]+ handles single or multiple separators like / or //
+    const dmyParts = trimmedInput.match(/^(\d{1,2})[./-]+(\d{1,2})[./-]+(\d{2,4})$/);
+    if (dmyParts) {
+      const day = parseInt(dmyParts[1], 10);
+      const month = parseInt(dmyParts[2], 10) - 1; // JS months are 0-indexed
+      let year = parseInt(dmyParts[3], 10);
+      if (year < 100) year += 2000;
+
+      if (month >= 0 && month < 12 && day > 0 && day <= 31) {
+        const d = new Date(year, month, day);
+        if (d.getFullYear() === year && d.getMonth() === month && d.getDate() === day) {
+          return d;
+        }
+      }
+    }
+
+    // Priority 2: Handle unambiguous ISO 8601 format (YYYY-MM-DD), which comes from the date picker.
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmedInput)) {
+        const d = new Date(trimmedInput);
+        if (!isNaN(d.getTime())) {
+            return d;
+        }
+    }
+    
+    // Do not proceed with a generic new Date(string) for other formats to avoid ambiguity.
+    return null;
   }
+
+  // Handle if dateInput is already a Date object
+  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+    return dateInput;
+  }
+
   return null;
 };
 
@@ -121,62 +151,46 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     setSearchMode('anniversary'); // Reset to default mode
   };
 
-  // --- MODIFIED: Button handler now sets the mode to 'specific' ---
-  const handleSetDate = (date: Date) => {
-    setSearchMode('specific');
-    setStartDate(date);
-    setEndDate(null);
-  };
-  
-  const handleFindPreviousEventDate = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let mostRecentPastDate: Date | null = null;
-
-    for (const event of allEvents) {
-      const eventToDate = parseFlexibleDate(event.ToDate);
-
-      if (eventToDate && eventToDate < today) {
-        if (!mostRecentPastDate || eventToDate > mostRecentPastDate) {
-          mostRecentPastDate = eventToDate;
-        }
-      }
-    }
-    
-    if (mostRecentPastDate) {
-      handleSetDate(mostRecentPastDate); // This now correctly sets the mode
-    }
-  };
-
   const effectivePageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
 
   const { pagedDates, groupedEvents, pagedEvents, totalPages, totalEvents } = useMemo(() => {
     if (!allEvents.length) return { pagedDates: [], groupedEvents: {}, pagedEvents: [], totalPages: 0, totalEvents: 0 };
 
-    // --- FINAL CORRECTED FILTER LOGIC ---
     const filtered = allEvents.filter((ev) => {
       const evStart = parseFlexibleDate(ev.FromDate);
-      const evEnd = parseFlexibleDate(ev.ToDate);
-      if (!startDate && !endDate) return true;
       
-      if (startDate && !endDate) {
-        if (!evStart) return false;
-        
-        // Check the search mode to apply the correct filter logic
-        if (searchMode === 'specific') {
-          // Exact date match (Year, Month, Day) - used by buttons
-          return isSameDay(evStart, startDate);
-        } else {
-          // Anniversary match (Month, Day only) - used by date picker
-          return evStart.getMonth() === startDate.getMonth() && evStart.getDate() === startDate.getDate();
-        }
+      // If no date filter is applied, show all events
+      if (!startDate) {
+        return true;
       }
 
-      if (!evStart || !evEnd) return false;
-      const afterStart = startDate ? evEnd >= startDate : true;
-      const beforeEnd = endDate ? evStart <= endDate : true;
-      return afterStart && beforeEnd;
+      // If an event doesn't have a valid start date, it can't be filtered by date.
+      if (!evStart) {
+        return false;
+      }
+
+      // Anniversary search: checks for matching month and day, ignoring the year.
+      // This is triggered by the date picker.
+      if (searchMode === 'anniversary') {
+        return evStart.getMonth() === startDate.getMonth() && evStart.getDate() === startDate.getDate();
+      }
+
+      // Specific date search: checks if the selected date falls within the event's range.
+      // This is triggered by the 'Previous', 'Today', 'Next' buttons.
+      const evEnd = parseFlexibleDate(ev.ToDate);
+      const effectiveEvEnd = evEnd || evStart; // Treat events without an end date as single-day events.
+
+      // Normalize all dates to midnight to ensure time of day doesn't affect the comparison.
+      const filterDate = new Date(startDate);
+      filterDate.setHours(0, 0, 0, 0);
+
+      const eventStartDate = new Date(evStart);
+      eventStartDate.setHours(0, 0, 0, 0);
+
+      const eventEndDate = new Date(effectiveEvEnd);
+      eventEndDate.setHours(0, 0, 0, 0);
+
+      return eventStartDate <= filterDate && filterDate <= eventEndDate;
     });
 
     if (groupBy === "none") {
@@ -205,7 +219,7 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     const pd = parseFlexibleDate(d);
     if (!pd) return "Invalid Date";
     try {
-      return format(pd, "MMMM d, yyyy");
+      return format(pd, "dd/MM/yyyy");
     } catch {
       return pd.toDateString();
     }
@@ -214,29 +228,6 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
   const hasResults = groupBy === "none" ? pagedEvents.length > 0 : pagedDates.length > 0;
   const toggleDateAccordion = (dateKey: string) => setOpenDateKey((p) => (p === dateKey ? null : dateKey));
   const groupByOptions = { none: "No Group", FromDate: "From Date" };
-
-  const today = new Date();
-  const tomorrow = addDays(today, 1);
-  
-  const baseButtonClass = "px-3 py-2 text-sm rounded-md transition-colors";
-  const activeButtonClass = "bg-blue-600 hover:bg-blue-500 text-white font-semibold";
-  const inactiveButtonClass = "bg-slate-700 hover:bg-slate-600 text-slate-300";
-// Inside your EventTimeline component, after allEvents is defined
-const mostRecentPastEventDate = useMemo(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // normalize to midnight
-  let mostRecent: Date | null = null;
-
-  for (const ev of allEvents) {
-    const evTo = parseFlexibleDate(ev.ToDate);
-    if (evTo && evTo < today) {
-      if (!mostRecent || evTo > mostRecent) mostRecent = evTo;
-    }
-  }
-
-  return mostRecent;
-}, [allEvents]);
-
 
   return (
     <div className="p-4 md:p-6 text-slate-200 min-h-screen">
@@ -248,144 +239,39 @@ const mostRecentPastEventDate = useMemo(() => {
             </div>
         </div>
         
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-  {/* Previous Button */}
- <button
-  onClick={handleFindPreviousEventDate}
-  style={{
-    padding: "8px 12px",
-    fontSize: "14px",
-    borderRadius: "6px",
-    fontWeight: 500,
-    border: "none",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-    backgroundColor: isSameDay(startDate, mostRecentPastEventDate)
-      ? "#2563eb" // active: blue
-      : "#334155", // default: dark
-    color: "#fff",
-  }}
- 
-  onMouseLeave={(e) => {
-    e.currentTarget.style.backgroundColor = isSameDay(startDate, mostRecentPastEventDate)
-      ? "#2563eb"
-      : "#334155";
-  }}
->
-  Previous
-</button>
-
-
-  {/* Today Button */}
-  <button
-    onClick={() => handleSetDate(today)}
-    style={{
-      padding: "8px 12px",
-      fontSize: "14px",
-      borderRadius: "6px",
-      fontWeight: 600,
-      border: "none",
-      cursor: "pointer",
-      transition: "all 0.2s ease",
-      backgroundColor: isSameDay(startDate, today) ? "#2563eb" : "#334155",
-      color: "#fff",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor = isSameDay(startDate, today)
-        ? "#3b82f6"
-        : "#475569";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor = isSameDay(startDate, today)
-        ? "#2563eb"
-        : "#334155";
-    }}
-  >
-    Today
-  </button>
-
-  {/* Next Button */}
-  <button
-    onClick={() => handleSetDate(tomorrow)}
-    style={{
-      padding: "8px 12px",
-      fontSize: "14px",
-      borderRadius: "6px",
-      fontWeight: 500,
-      border: "none",
-      cursor: "pointer",
-      transition: "all 0.2s ease",
-      backgroundColor: isSameDay(startDate, tomorrow) ? "#2563eb" : "#334155",
-      color: "#fff",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor = isSameDay(startDate, tomorrow)
-        ? "#3b82f6"
-        : "#475569";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor = isSameDay(startDate, tomorrow)
-        ? "#2563eb"
-        : "#334155";
-    }}
-  >
-    Next
-  </button>
-</div>
-
-      </div>
-
-      <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4 md:gap-6">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <label htmlFor="groupBySelect" className="text-sm font-medium text-slate-400">Group by:</label>
+        <div className="flex flex-wrap items-center justify-start md:justify-end gap-2 md:gap-3">
+          {/* Group By */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="groupBySelect" className="text-xs font-medium text-slate-400">Group:</label>
             <Select.Root value={groupBy} onValueChange={(value) => setGroupBy(value as any)}>
-              {/* Select Trigger and Content... (no changes here) */}
                <Select.Trigger
                 id="groupBySelect"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                  backgroundColor: "#0f172a", border: "1px solid #475569", borderRadius: 6,
-                  color: "white", width: "100%", flex: 1, minWidth: isMobile ? undefined : 150,
-                  padding: isMobile ? "6px 12px" : "8px 12px", fontSize: isMobile ? 14 : 16,
-                  transition: "all 0.2s", outline: "none", boxShadow: "0 0 0 2px transparent",
-                }}
-                onFocus={(e) => (e.currentTarget.style.boxShadow = "0 0 0 2px #3b82f6")}
-                onBlur={(e) => (e.currentTarget.style.boxShadow = "0 0 0 0 transparent")}
+                className="flex items-center justify-between gap-2 bg-slate-800 border border-slate-700 rounded-md text-white w-full min-w-[180px] px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <Select.Value placeholder="Select grouping..." />
-                <Select.Icon style={{ color: "#94a3b8" }}><ChevronDown size={16} /></Select.Icon>
+                <Select.Icon className="text-slate-400"><ChevronDown size={16} /></Select.Icon>
               </Select.Trigger>
               <Select.Portal>
                 <Select.Content
                   position="popper" sideOffset={5}
-                  style={{
-                    zIndex: 50, backgroundColor: "#1e293b", border: "1px solid #374151",
-                    borderRadius: 6, boxShadow: "0 4px 6px rgba(0,0,0,0.1)", padding: 4,
-                    width: "var(--radix-select-trigger-width)",
-                  }}
+                  className="z-50 border border-slate-700 rounded-md shadow-lg p-1 w-[var(--radix-select-trigger-width)]"
+                  style={{ backgroundColor: '#0f172a' }}
                 >
-                  <Select.ScrollUpButton style={{display: "flex", alignItems: "center", justifyContent: "center", padding: 4, cursor: "default"}} >
+                  <Select.ScrollUpButton className="flex items-center justify-center p-1 cursor-default" >
                     <ChevronUp size={16} />
                   </Select.ScrollUpButton>
                   <Select.Viewport>
                     {Object.entries(groupByOptions).map(([value, label]) => (
                       <Select.Item
                         key={value} value={value}
-                        style={{
-                          display: "flex", alignItems: "center", justifyContent: "space-between",
-                          fontSize: 14, borderRadius: 3, padding: "6px 12px", color: "#e5e7eb",
-                          position: "relative", userSelect: "none", cursor: "pointer",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#2563eb"; e.currentTarget.style.color = "white"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#e5e7eb"; }}
+                        className="text-sm rounded-[3px] pl-3 pr-8 py-1.5 text-white relative select-none cursor-pointer hover:bg-blue-600 focus:bg-blue-600 focus:outline-none"
                       >
                         <Select.ItemText>{label}</Select.ItemText>
-                        <Select.ItemIndicator><Check size={16} /></Select.ItemIndicator>
+                        <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2"><Check size={16} /></Select.ItemIndicator>
                       </Select.Item>
                     ))}
                   </Select.Viewport>
-                  <Select.ScrollDownButton style={{display: "flex", alignItems: "center", justifyContent: "center", padding: 4, cursor: "default"}}>
+                  <Select.ScrollDownButton className="flex items-center justify-center p-1 cursor-default">
                     <ChevronDown size={16} />
                   </Select.ScrollDownButton>
                 </Select.Content>
@@ -393,50 +279,39 @@ const mostRecentPastEventDate = useMemo(() => {
             </Select.Root>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <label htmlFor="startDate" className="text-sm font-medium text-slate-400">Date:</label>
-            <div style={{ position: "relative", width: "100%", flex: 1, maxWidth: "auto" }}>
-              {/* --- MODIFIED: Date picker onChange now sets mode to 'anniversary' --- */}
+          {/* Date Picker */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="startDate" className="text-xs font-medium text-slate-400">Date:</label>
+            <div className="relative">
               <input type="date" id="startDate" value={startDate ? format(startDate, "yyyy-MM-dd") : ""} 
                 onChange={(e) => {
                   setSearchMode('anniversary');
                   const newDate = e.target.value ? new Date(e.target.value) : null;
-                  // Handle timezone offset for date picker
                   if (newDate) newDate.setMinutes(newDate.getMinutes() + newDate.getTimezoneOffset());
                   setStartDate(newDate);
                   setEndDate(null);
                 }}
-                style={{
-                  backgroundColor: "#0f172a", border: "1px solid #475569", color: "white", borderRadius: 6,
-                  width: "100%", padding: isMobile ? "6px 12px" : "8px 12px", fontSize: isMobile ? 14 : 16,
-                  appearance: "none", WebkitAppearance: "none", MozAppearance: "textfield", WebkitTextFillColor: "white",
-                }}
+                className="bg-slate-800 border border-slate-700 text-white rounded-md w-full px-2.5 py-1.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <style>{`
-                input[type="date"], #startDate { color: #fff; -webkit-text-fill-color: #fff; }
-                input[type="date"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit-field,
-                input[type="date"]::-webkit-datetime-edit-month-field, input[type="date"]::-webkit-datetime-edit-day-field,
-                input[type="date"]::-webkit-datetime-edit-year-field { color: #fff; -webkit-text-fill-color: #fff; }
-                input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) grayscale(100%) brightness(150%); cursor: pointer; opacity: 0.95; }
-                input[type="date"]::-moz-focus-inner { color: #fff; }
+                input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8) grayscale(1) brightness(1.2); cursor: pointer; }
               `}</style>
             </div>
           </div>
-
-          {(startDate || endDate) && (
-            <button onClick={handleResetDates} className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-md text-slate-300">
-              <X size={16} /> Reset
-            </button>
-          )}
-        </div>
-        <div className="w-full mt-4">
-          <p className="text-xs text-slate-500">
-            <strong>Tip:</strong> Use the date picker to find events on that day/month across all years.
-          </p>
         </div>
       </div>
 
-      {/* The rest of the component JSX is unchanged... */}
+      {startDate && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-6 gap-2">
+            <p className="text-sm text-slate-300">
+                Showing events for: <span className="font-semibold text-white">{formatDateForDisplay(startDate)}</span>
+            </p>
+            <button onClick={handleResetDates} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-md text-slate-300 transition-colors self-start sm:self-center">
+                <X size={14} /> Clear Filter
+            </button>
+        </div>
+      )}
+
       {loading && ( <div className="flex flex-col items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-white" /><span className="mt-3 text-white">Loading events...</span></div> )}
       {error && ( <div className="bg-red-900/50 border border-red-700 text-red-300 rounded-lg p-4"><p className="font-semibold text-white">Error loading events</p><pre className="text-xs mt-2 text-white">{error}</pre></div> )}
       {!loading && !error && !hasResults && ( <div className="text-center py-16"><p className="text-slate-400 text-lg text-white">No events found for the selected criteria.</p></div> )}
@@ -453,13 +328,13 @@ const mostRecentPastEventDate = useMemo(() => {
                     <div key={dateKey} className="bg-slate-800/40 border border-slate-700 rounded-lg overflow-hidden">
                       <button
                         onClick={() => toggleDateAccordion(dateKey)}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", textAlign: "left", padding: "12px 16px" }}
+                        className="w-full flex items-center justify-between text-left p-4"
                       >
                         <div>
                           <h2 className="text-lg font-semibold text-white">{formatDateForDisplay(dateKey)}</h2>
                           <p className="text-xs text-slate-400">{eventsForDate.length} event(s)</p>
                         </div>
-                        <div className="text-slate-300 text-xl">{open ? "▾" : "›"}</div>
+                        <ChevronDown size={20} className={`text-slate-300 transition-transform ${open ? 'rotate-180' : ''}`} />
                       </button>
                       {open && <div className="p-4 space-y-4 border-t border-slate-700">{eventsForDate.map((ev: Event) => <EventCard key={ev.EventID} event={ev} isMobile onShowDetails={onShowDetails} />)}</div>}
                     </div>
@@ -499,25 +374,49 @@ const mostRecentPastEventDate = useMemo(() => {
   );
 };
 
+const formatDateForCard = (d: string | number | undefined) => {
+  if (!d) return "N/A";
+  const pd = parseFlexibleDate(d);
+  if (!pd) return String(d);
+  try {
+    return format(pd, "dd/MM/yyyy");
+  } catch {
+    return String(d);
+  }
+};
+
 const EventCard: React.FC<{ event: Event; isMobile?: boolean; onShowDetails: (event: Event) => void; }> = ({ event, isMobile = false, onShowDetails }) => {
   const from = event.FromDate || event.newEventFrom || "";
   const to = event.ToDate || event.newEventTo || "";
+
+  const categoryColors: Record<string, string> = {
+    "Pravachan": "bg-sky-900/50 border-sky-500/50 hover:border-sky-400/80",
+    "Shibir": "bg-emerald-900/50 border-emerald-500/50 hover:border-emerald-400/80",
+    "Swadhyay": "bg-purple-900/50 border-purple-500/50 hover:border-purple-400/80",
+    "Other": "bg-amber-900/50 border-amber-500/50 hover:border-amber-400/80",
+    "Default": "bg-slate-800/50 border-slate-700/60 hover:border-slate-500/80",
+  };
+
+  const category = event.fkEventCategory || "Default";
+  const colorClass = categoryColors[category] || categoryColors["Default"];
+
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 shadow-lg hover:border-blue-500 transition-all relative">
+    <div className={`backdrop-blur-lg rounded-lg p-4 shadow-lg hover:shadow-2xl transition-all relative ${colorClass} ring-1 ring-white/10`}>
       <button
         onClick={() => onShowDetails(event)}
-        className="absolute top-2 right-2 p-1 text-slate-400 hover:text-white transition-colors"
+        className="absolute top-3 right-3 p-1 text-slate-400 hover:text-white transition-colors"
         title="Show details"
       >
         <Eye size={18} />
       </button>
 
       <h3 className="font-bold text-base text-white truncate pr-8" title={event.EventName}>{event.EventName || "Untitled"}</h3>
-      <p className="text-xs text-slate-500 mb-2">{event.EventCode || ""}</p>
-      <div className="text-sm text-slate-300 space-y-1 mt-3">
-        <p><span className="font-semibold text-slate-400">Category:</span> {event.fkEventCategory || "N/A"}</p>
-        <p><span className="font-semibold text-slate-400">From:</span> {event.FromDate || "N/A"}</p>
-        <p><span className="font-semibold text-slate-400">To:</span> {event.ToDate || "N/A"}</p>
+      <p className="text-sm text-slate-400 mb-3">{event.EventCode || ""}</p>
+      
+      <div className="text-sm text-slate-300 space-y-1.5 mt-3 border-t border-white/10 pt-3">
+        <p><span className="font-semibold text-slate-400 w-16 inline-block">Category:</span> {event.fkEventCategory || "N/A"}</p>
+        <p><span className="font-semibold text-slate-400 w-16 inline-block">From:</span> {formatDateForCard(event.FromDate)}</p>
+        <p><span className="font-semibold text-slate-400 w-16 inline-block">To:</span> {formatDateForCard(event.ToDate)}</p>
       </div>
     </div>
   );
@@ -528,7 +427,7 @@ const formatDisplaySafe = (val: string | number | undefined) => {
   const pd = parseFlexibleDate(val as any);
   if (!pd) return String(val);
   try {
-    return format(pd, "MMMM d, yyyy");
+    return format(pd, "dd/MM/yyyy");
   } catch {
     return String(val);
   }
