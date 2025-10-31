@@ -64,16 +64,12 @@ const VIEW_CONFIGS: Record<string, any> = {
        
        { key: "Yr", label: "Year", sortable: true, editable: true }, 
         { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true },
-
        { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
        { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
        { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
         { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
        { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true },
-       { key: "LastModifiedBy", label: "Last Modified By", sortable: true, editable: true }, 
-       { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true, editable: true }, 
-       { key: "NewEventFrom", label: "New Event From", sortable: true, editable: true }, 
-       { key: "NewEventTo", label: "New Event To", sortable: true, editable: true },
+
     ],
   },
   // ... other configs for medialog, digitalrecordings, aux, etc.
