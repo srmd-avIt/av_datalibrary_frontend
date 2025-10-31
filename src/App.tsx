@@ -917,6 +917,8 @@ export default function App() {
         filterConfigs={[]}
         showAddButton={!!config.isDropdown}
         initialGroupBy={config.groupBy} // <-- Pass the default group from the config
+        initialSortBy={config.sortBy}
+        initialSortDirection={config.sortDirection}
         {...extraProps}
       />
     );

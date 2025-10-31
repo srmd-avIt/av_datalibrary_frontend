@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from 'date-fns';
@@ -31,7 +30,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Search, Download, ArrowUpDown, ArrowUp, ArrowDown, Users, Table as TableIcon,
-  Settings2, EyeOff, X, Funnel, Loader2, Pin, Grid
+  Settings2, EyeOff, X, Funnel, Loader2, Pin, Grid, Plus, Trash2
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
@@ -55,7 +54,15 @@ import'../styles/globals.css';
 // FilterConfig: Used for advanced filtering UI
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number"; options?: { value: string; label: string; }[]; }
 // ViewConfig: Used for saved views (grouping, sorting, filters, etc.)
-interface ViewConfig { id: string; name: string; filters?: Record<string, any>; groupBy?: string; sortBy?: string; sortDirection?: "asc" | "desc"; apiEndpoint?: string; }
+interface ViewConfig {
+  id: string;
+  name: string;
+  filters?: Record<string, any>;
+  groupBy?: string;
+  sortBy?: string; // Can be comma-separated
+  sortDirection?: string; // Can be comma-separated
+  apiEndpoint?: string;
+}
 // FilterGroup and FilterRule: Used for advanced filter logic
 interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
 interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
@@ -67,6 +74,12 @@ interface SavedFilter {
   filterGroups: FilterGroup[];
   createdAt: string;
   createdBy: string;
+}
+
+// --- NEW: Interface for a single sort field configuration ---
+interface SortField {
+  key: string;
+  direction: "asc" | "desc";
 }
 
 // --- API Response Type ---
@@ -281,6 +294,8 @@ export function ClickUpListViewUpdated({
   // optional props passed from App.tsx
   rowTransformer,
   initialGroupBy,
+  initialSortBy, // <-- ADD THIS
+  initialSortDirection, // <-- ADD THIS
   groupEnabled,
 }: {
   title: string;
@@ -293,6 +308,8 @@ export function ClickUpListViewUpdated({
   showAddButton?: boolean;
   rowTransformer?: (row: any) => any;
   initialGroupBy?: string | null;
+  initialSortBy?: string; // <-- ADD THIS
+  initialSortDirection?: "asc" | "desc"; // <-- ADD THIS
   groupEnabled?: boolean;
 }) {
   // --- State Management Strategy ---
@@ -343,12 +360,20 @@ export function ClickUpListViewUpdated({
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
   const [editValue, setEditValue] = useState<any>('');
 
-  // --- TRANSIENT STATE for Sort, Group, and Freeze ---
-  const [sortBy, setSortBy] = useState("none");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  // --- MODIFIED: Initialize groupBy state with the initialGroupBy prop ---
-  const [groupBy, setGroupBy] = useState(initialGroupBy || "none");
-  const [groupDirection, setGroupDirection] = useState<"asc" | "desc">("asc");
+  // --- MODIFIED: State for multiple sort fields ---
+  const [sortByFields, setSortByFields] = useState<SortField[]>(() => {
+    if (!initialSortBy) return [];
+    const keys = initialSortBy.split(',');
+    const directions = (initialSortDirection || '').split(',');
+    return keys.map((key, i) => ({
+      key,
+      direction: directions[i] === 'desc' ? 'desc' : 'asc',
+    }));
+  });
+
+  // --- MODIFIED: State for multiple grouping fields ---
+  const [groupByFields, setGroupByFields] = useState<(string | null)[]>(initialGroupBy ? [initialGroupBy] : []);
+  const [groupDirections, setGroupDirections] = useState<Record<string, "asc" | "desc">>({});
   const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
   
   // --- Mobile view state ---
@@ -627,14 +652,16 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
   const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
 
-  // Determine active sort/group fields
-  const activeSortBy = sortBy !== "none" ? sortBy : currentView?.sortBy || "none";
-  const activeSortDirection = sortDirection || currentView?.sortDirection || "asc";
-  const activeGroupBy = groupBy !== "none" ? groupBy : currentView?.groupBy || "none";
+  // --- MODIFIED: Determine active sort fields from state ---
+  const activeSortBy = sortByFields.map(f => f.key).join(',');
+  const activeSortDirection = sortByFields.map(f => f.direction).join(',');
+
+  // --- MODIFIED: Check if any grouping is active ---
+  const isGroupingActive = groupByFields.some(field => field && field !== "none");
 
   // --- NEW: Determine if we need to fetch all data ---
   // Fetch all data if grouping is active. Sorting is now handled by the API.
-  const shouldFetchAllForGrouping = activeGroupBy !== "none";
+  const shouldFetchAllForGrouping = isGroupingActive;
 
   // Build filter configs for advanced filter UI
   const finalFilterConfigs = useMemo(() => {
@@ -669,8 +696,8 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
     searchTerm,
     JSON.stringify(activeViewFilters),
     JSON.stringify(advancedFilters),
-    activeSortBy,
-    activeSortDirection,
+    activeSortBy, // <-- Pass the combined string
+    activeSortDirection, // <-- Pass the combined string
   ],
   queryFn: () =>
     fetchDataFromApi({
@@ -680,8 +707,8 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
       searchTerm,
       filters: activeViewFilters,
       advancedFilters,
-      sortBy: activeSortBy,
-      sortDirection: activeSortDirection,
+      sortBy: activeSortBy, // <-- Pass the combined string
+      sortDirection: activeSortDirection as "asc" | "desc", // <-- Pass the combined string
     }),
   enabled: !shouldFetchAllForGrouping,
   staleTime: 60 * 1000, // 1 minute
@@ -695,8 +722,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     searchTerm,
     JSON.stringify(activeViewFilters),
     JSON.stringify(advancedFilters),
-    activeSortBy,
-    activeSortDirection,
+    activeSortBy, // <-- Pass the combined string
+    activeSortDirection, // <-- Pass the combined string
   ],
   queryFn: () =>
     fetchDataFromApi({
@@ -706,8 +733,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       searchTerm,
       filters: activeViewFilters,
       advancedFilters,
-      sortBy: activeSortBy,
-      sortDirection: activeSortDirection,
+      sortBy: activeSortBy, // <-- Pass the combined string
+      sortDirection: activeSortDirection as "asc" | "desc", // <-- Pass the combined string
     }),
   enabled: shouldFetchAllForGrouping,
   staleTime: 60 * 1000,
@@ -757,32 +784,42 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
   // --- Grouping logic ---
   // This logic now correctly operates on `sortedData` and `finalItems`.
-  const groupedData: Record<string, ListItem[]> = useMemo(() => {
-    if (activeGroupBy === "none") {
-      // When not grouping, return a single group with the current page's items
+  const groupedData: Record<string, any> = useMemo(() => {
+    const activeGroupBy = groupByFields.filter((f): f is string => f !== null && f !== "none");
+    if (activeGroupBy.length === 0) {
       return { "": finalItems };
     }
-    
-    // When grouping, reduce the entire 'sortedData' dataset into groups.
-    const groups = sortedData.reduce((acc, item) => {
-      const groupValue = item[activeGroupBy] ?? "Ungrouped";
-      if (!acc[groupValue]) acc[groupValue] = [];
-      acc[groupValue].push(item);
-      return acc;
-    }, {} as Record<string, ListItem[]>);
 
-    // --- Sort group keys ---
-    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
-      const direction = groupDirection === "asc" ? 1 : -1;
-      if (a < b) return -1 * direction;
-      if (a > b) return 1 * direction;
-      return 0;
-    });
+    const recursiveGroup = (items: ListItem[], fields: string[], level: number): Record<string, any> => {
+      if (fields.length === 0) {
+        return items;
+      }
+      const [currentField, ...restFields] = fields;
+      const groupDirection = groupDirections[currentField] || "asc";
 
-    const sortedGroups: Record<string, ListItem[]> = {};
-    sortedGroupKeys.forEach(key => { sortedGroups[key] = groups[key]; });
-    return sortedGroups;
-  }, [sortedData, finalItems, activeGroupBy, groupDirection]);
+      const groups = items.reduce((acc, item) => {
+        const groupValue = item[currentField] ?? "Ungrouped";
+        if (!acc[groupValue]) acc[groupValue] = [];
+        acc[groupValue].push(item);
+        return acc;
+      }, {} as Record<string, ListItem[]>);
+
+      const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+        const direction = groupDirection === "asc" ? 1 : -1;
+        if (a < b) return -1 * direction;
+        if (a > b) return 1 * direction;
+        return 0;
+      });
+
+      const result: Record<string, any> = {};
+      for (const key of sortedGroupKeys) {
+        result[key] = recursiveGroup(groups[key], restFields, level + 1);
+      }
+      return result;
+    };
+
+    return recursiveGroup(sortedData, activeGroupBy, 0);
+  }, [sortedData, finalItems, groupByFields, groupDirections]);
 
   // --- Export logic ---
   // Exports filtered and sorted data as CSV
@@ -797,9 +834,9 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       if (advancedFilters && advancedFilters.length > 0 && advancedFilters.some(g => g.rules.length > 0)) {
         params.append('advanced_filters', JSON.stringify(advancedFilters));
       }
-      if (sortBy && sortBy !== 'none') {
-        params.append('sortBy', sortBy);
-        params.append('sortDirection', sortDirection || 'asc');
+      if (activeSortBy && activeSortBy !== 'none') {
+        params.append('sortBy', activeSortBy);
+        params.append('sortDirection', activeSortDirection || 'asc');
       }
       const exportUrl = new URL(API_BASE_URL);
       const cleanApiEndpoint = apiEndpoint.endsWith('/') ? apiEndpoint.slice(0, -1) : apiEndpoint;
@@ -837,8 +874,29 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
   // --- Utility functions for grouping/sorting UI ---
   const getAvailableGroupByFields = () => { return columns.filter(col => col.filterable !== false).map(col => ({ value: col.key, label: col.label })); };
   const getAvailableSortFields = () => { return columns.filter(col => col.sortable).map(col => ({ value: col.key, label: col.label })); };
-  const handleSort = (columnKey: string) => { if (sortBy === columnKey) { setSortDirection(prev => prev === "asc" ? "desc" : "asc"); } else { setSortBy(columnKey); setSortDirection("asc"); } };
-  const getSortIcon = (columnKey: string) => { if (activeSortBy !== columnKey) return <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50" />; return activeSortDirection === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />; };
+  
+  // --- NEW: Handler for single-column sort via table header click ---
+  const handleHeaderSort = (columnKey: string) => {
+    setSortByFields(prevFields => {
+      // Find if the column is already being sorted
+      const existingField = prevFields.find(f => f.key === columnKey);
+
+      // If it's already the primary sort field, just toggle its direction
+      if (existingField && prevFields.length === 1 && prevFields[0].key === columnKey) {
+        return [{ ...existingField, direction: existingField.direction === 'asc' ? 'desc' : 'asc' }];
+      }
+      
+      // Otherwise, make this column the single sort field
+      return [{ key: columnKey, direction: 'asc' }];
+    });
+  };
+
+  const getSortIcon = (columnKey: string) => {
+    const sortField = sortByFields.find(f => f.key === columnKey);
+    if (!sortField) return <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50" />;
+    return sortField.direction === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />;
+  };
+
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
   // --- Add button handler ---
@@ -1382,13 +1440,19 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
                       <ArrowUpDown className="w-3 h-3" />
-                      {sortBy !== "none" ? `${getAvailableSortFields().find(f => f.value === sortBy)?.label}` : "Sort"}
+                      {sortByFields.length > 0 ? `${getAvailableSortFields().find(f => f.value === sortByFields[0].key)?.label}` : "Sort"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-64 p-3" align="start">
                     <div className="space-y-3">
                       <div className="font-medium text-sm">Sort by field</div>
-                      <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}>
+                      <Select value={sortByFields[0]?.key || 'none'} onValueChange={(v: string) => {
+                        if (v === 'none') {
+                          setSortByFields([]);
+                        } else {
+                          setSortByFields([{ key: v, direction: 'asc' }]);
+                        }
+                      }}>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select field" />
                         </SelectTrigger>
@@ -1399,10 +1463,14 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                           ))}
                         </SelectContent>
                       </Select>
-                      {sortBy !== "none" && (
+                      {sortByFields.length > 0 && (
                         <>
                           <div className="font-medium text-sm">Sort direction</div>
-                          <Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}>
+                          <Select value={sortByFields[0].direction} onValueChange={(value: "asc" | "desc") => {
+                            const newFields = [...sortByFields];
+                            newFields[0].direction = value;
+                            setSortByFields(newFields);
+                          }}>
                             <SelectTrigger className="h-8">
                               <SelectValue />
                             </SelectTrigger>
@@ -1416,8 +1484,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                     </div>
                   </PopoverContent>
                 </Popover>
-                {sortBy !== "none" && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting">
+                {sortByFields.length > 0 && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortByFields([])} title="Clear sorting">
                     <X className="w-4 h-4" />
                   </Button>
                 )}
@@ -1430,13 +1498,16 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
                       <Users className="w-3 h-3" />
-                      {groupBy !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}
+                      {groupByFields[0] !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupByFields[0])?.label}` : "Group"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-64 p-3" align="start">
                     <div className="space-y-3">
                       <div className="font-medium text-sm">Group by field</div>
-                      <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v)}>
+                      <Select value={groupByFields[0] || 'none'} onValueChange={(v: string) => {
+                        setGroupByFields(v === 'none' ? [] : [v]);
+                        setGroupDirections(prev => ({ ...prev, [v]: "asc" }));
+                      }}>
                         <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select field" />
                         </SelectTrigger>
@@ -1447,10 +1518,10 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                           ))}
                         </SelectContent>
                       </Select>
-                      {groupBy !== "none" && (
+                      {(groupByFields[0] && groupByFields[0] !== "none") && (
                         <>
                           <div className="font-medium text-sm">Sort groups</div>
-                          <Select value={groupDirection} onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}>
+                          <Select value={groupDirections[groupByFields[0] ?? ""] ?? "asc"} onValueChange={(value: "asc" | "desc") => setGroupDirections(prev => ({...prev, [groupByFields[0] ?? ""]: value}))}>
                             <SelectTrigger className="h-8">
                               <SelectValue />
                             </SelectTrigger>
@@ -1464,8 +1535,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                     </div>
                   </PopoverContent>
                 </Popover>
-                {groupBy !== "none" && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping">
+                {groupByFields[0] !== "none" && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear grouping">
                     <X className="w-4 h-4" />
                   </Button>
                 )}
@@ -1545,46 +1616,101 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   )}
                 </div>
 
-                {/* Grouping controls */} 
+                {/* --- MODIFIED: Grouping controls for multiple fields --- */}
                 <div className="flex items-center gap-1">
                   <Popover>
-                    <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />{groupBy !== "none" ? `Group: ${getAvailableGroupByFields().find(f => f.value === groupBy)?.label}` : "Group"}</Button></PopoverTrigger>
-                    <PopoverContent className="w-64 p-3" align="start">
+                    <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />Group</Button></PopoverTrigger>
+                    <PopoverContent className="w-80 p-3" align="start">
                       <div className="space-y-3">
-                        <div className="font-medium text-sm">Group by field</div>
-                        <Select value={groupBy} onValueChange={(v: string) => setGroupBy(v)}>
-                          <SelectTrigger className="h-8"><SelectValue placeholder="Select field" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No grouping</SelectItem>
-                            {getAvailableGroupByFields().map((field) => (
-                              <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {groupBy !== "none" && (
-                          <>
-                            <div className="font-medium text-sm">Sort groups</div>
-                            <Select value={groupDirection} onValueChange={(value: "asc" | "desc") => setGroupDirection(value)}>
-                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <div className="font-medium text-sm">Group by fields</div>
+                        {groupByFields.map((field, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Select value={field || 'none'} onValueChange={(v: string) => {
+                              const newFields = [...groupByFields];
+                              newFields[index] = v === 'none' ? null : v;
+                              setGroupByFields(newFields.filter(f => f !== null));
+                            }}>
+                              <SelectTrigger className="h-8 flex-1">
+                                <SelectValue placeholder="Select field" />
+                              </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="asc">Ascending (A-Z)</SelectItem>
-                                <SelectItem value="desc">Descending (Z-A)</SelectItem>
+                                <SelectItem value="none">-- No Grouping --</SelectItem>
+                                {getAvailableGroupByFields().map((f) => (
+                                  <SelectItem key={f.value} value={f.value} disabled={groupByFields.includes(f.value)}>{f.label}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
-                          </>
-                        )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              const newFields = [...groupByFields];
+                              newFields.splice(index, 1);
+                              setGroupByFields(newFields);
+                            }}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setGroupByFields([...groupByFields, null])}>
+                          <Plus className="w-4 h-4" /> Add grouping level
+                        </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
-                  {groupBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupBy("none")} title="Clear grouping"><X className="w-4 h-4" /></Button>)}
+                  {isGroupingActive && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear all groupings"><X className="w-4 h-4" /></Button>)}
                 </div>
                 
-                {/* Sorting controls */}
+                {/* --- MODIFIED: Sorting controls for multiple fields --- */}
                 <div className="flex items-center gap-1">
-                  <Select value={sortBy} onValueChange={(v: string) => setSortBy(v)}><SelectTrigger className="w-36 h-8"><SelectValue placeholder="Sort by" /></SelectTrigger><SelectContent><SelectItem value="none">No sorting</SelectItem>{getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>))}</SelectContent></Select>
-                  {sortBy !== "none" && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortBy("none")} title="Clear sorting"><X className="w-4 h-4" /></Button>)}
+                  <Popover>
+                    <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><ArrowUpDown className="w-4 h-4" />Sort</Button></PopoverTrigger>
+                    <PopoverContent className="w-80 p-3" align="start">
+                      <div className="space-y-3">
+                        <div className="font-medium text-sm">Sort by fields</div>
+                        {sortByFields.map((field, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Select value={field.key} onValueChange={(v: string) => {
+                              const newFields = [...sortByFields];
+                              newFields[index].key = v;
+                              setSortByFields(newFields);
+                            }}>
+                              <SelectTrigger className="h-8 flex-1">
+                                <SelectValue placeholder="Select field" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getAvailableSortFields().map((f) => (
+                                  <SelectItem key={f.value} value={f.value} disabled={sortByFields.some(sf => sf.key === f.value)}>{f.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select value={field.direction} onValueChange={(v: "asc" | "desc") => {
+                              const newFields = [...sortByFields];
+                              newFields[index].direction = v;
+                              setSortByFields(newFields);
+                            }}>
+                              <SelectTrigger className="h-8 w-28">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="asc">Ascending</SelectItem>
+                                <SelectItem value="desc">Descending</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              const newFields = [...sortByFields];
+                              newFields.splice(index, 1);
+                              setSortByFields(newFields);
+                            }}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSortByFields([...sortByFields, { key: '', direction: 'asc' }])}>
+                          <Plus className="w-4 h-4" /> Add sorting level
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {sortByFields.length > 0 && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortByFields([])} title="Clear all sorting"><X className="w-4 h-4" /></Button>)}
                 </div>
-                {sortBy !== "none" && (<Select value={sortDirection} onValueChange={(value: string) => setSortDirection(value as "asc" | "desc")}><SelectTrigger className="w-32 h-8"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent></Select>)}
               </div>
               
               {/* Search and column hiding */}
@@ -1602,6 +1728,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                             checked={!hiddenColumns.includes(column.key)} 
                             onCheckedChange={(checked: boolean) => { 
                               if (checked) { 
+ 
                                 setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
                               } else { 
                                 setHiddenColumns([...hiddenColumns, column.key]); 
@@ -1640,10 +1767,10 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                         items={finalItems}
                         columns={visibleColumns as any}
                         onRowSelect={(item) => onRowSelect?.(item as any)}
-                        onSort={handleSort}
+                        onSort={handleHeaderSort} // onSort is now handled by the popover
                         getSortIcon={getSortIcon}
                         groupedData={groupedData as any}
-                        activeGroupBy={activeGroupBy}
+                        activeGroupBy={groupByFields.join(',')}
                         activeView={activeView}
                         idKey={idKey}
                         isLoading={isLoading || isGroupingDataLoading}
@@ -1655,14 +1782,14 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                         setEditValue={setEditValue}
                         setEditingCell={setEditingCell}
                         // Pass all the state management props
-                        sortBy={sortBy}
-                        sortDirection={sortDirection}
-                        setSortBy={setSortBy}
-                        setSortDirection={setSortDirection}
-                        groupBy={groupBy}
-                        groupDirection={groupDirection}
-                        setGroupBy={setGroupBy}
-                        setGroupDirection={setGroupDirection}
+                        sortBy={activeSortBy}
+                        sortDirection={activeSortDirection as "asc" | "desc"}
+                        setSortBy={(v) => setSortByFields(v === 'none' ? [] : [{key: v, direction: 'asc'}])}
+                        setSortDirection={(v) => setSortByFields(prev => prev.length > 0 ? [{...prev[0], direction: v as 'asc' | 'desc'}] : [])}
+                        groupBy={groupByFields[0] || 'none'}
+                        groupDirection={groupDirections[groupByFields[0] || ''] || 'asc'}
+                        setGroupBy={(field) => setGroupByFields(field === 'none' ? [] : [field])}
+                        setGroupDirection={(dir) => setGroupDirections(prev => ({...prev, [groupByFields[0] || '']: dir}))}
                         setFrozenColumnKey={setFrozenColumnKey}
                         hiddenColumns={hiddenColumns}
                         setHiddenColumns={setHiddenColumns}
@@ -1678,13 +1805,13 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   ) : (
                     /* Desktop view: Full table with drag, resize, grouping, sorting, selection */
                     <DraggableResizableTable
-                      data={activeGroupBy === 'none' ? finalItems : (groupedData as any)}
+                      data={finalItems}
                       columns={visibleColumns as any}
                       onRowSelect={(item) => onRowSelect?.(item as any)}
-                      onSort={handleSort}
+                      onSort={handleHeaderSort} // onSort is now handled by the popover
                       getSortIcon={getSortIcon}
                       groupedData={groupedData as any}
-                      activeGroupBy={activeGroupBy}
+                      groupByFields={groupByFields.filter(f => f).map(f => ({ key: f!, direction: groupDirections[f!] || 'asc' }))}
                       idKey={idKey}
                        handleCellEdit={handleCellEdit} // <-- use this i
                       // --- Pass editing props to the table ---
@@ -1699,6 +1826,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                       frozenColumnKey={frozenColumnKey}
                       columnOrder={columnOrder}
                       columnSizing={columnSizing}
+                      setViewColumnOrder={(newOrder) => setViewColumnOrder(prev => ({ ...prev, [activeView]: newOrder }))} // <-- ADD THIS
                       // <-- add this prop
                     />
                   )}
@@ -1740,7 +1868,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                 </div>
                 
                 {/* Pagination */}
-                {!(activeGroupBy !== 'none' && totalPages <= 1) && (
+                {!(isGroupingActive && totalPages <= 1) && (
                   <SimplePagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
@@ -1753,7 +1881,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div><span>{totalItems} results</span></div>
                 {/* Show pagination unless grouping is active and there's only one page */}
-                {!(activeGroupBy !== 'none' && totalPages <= 1) && (
+                {!(isGroupingActive && totalPages <= 1) && (
                   <div className="flex items-center gap-4">
                       {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
                           <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>
