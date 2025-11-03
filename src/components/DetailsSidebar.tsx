@@ -1801,6 +1801,71 @@ export function DetailsSidebar({
         </div>
       );
     }
+
+       case "highlight":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              {renderIcon(<FileAudio className="w-8 h-8 text-white" />, "from-purple-500 to-red-600")}
+              <h3 className="text-xl font-bold">
+                {data.RecordingName || "Edited Highlight"}
+              </h3>
+              
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg px-2">Highlight Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-4">
+                <div className="flex justify-between items-start gap-3">
+  <span className="text-sm text-muted-foreground whitespace-nowrap">
+    EventName-Code
+  </span>
+
+  <div className="flex-1 text-right break-words overflow-hidden text-ellipsis">
+    {data.EventCode && hasAccess("Events", 'read') ? (
+      <DrilldownButton
+        id={data.EventCode}
+        apiEndpoint="/events"
+        targetType="event"
+        titlePrefix="Event"
+        onPushSidebar={onPushSidebar}
+      >
+        <span className="break-words whitespace-normal">
+          {data.EventName
+            ? `${data.EventName} (${data.EventCode})`
+            : data.EventCode}
+        </span>
+      </DrilldownButton>
+    ) : (
+      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm justify-end break-words whitespace-normal">
+        {data.EventCode ? (
+          <>
+            <Lock className="w-3 h-3" /> {data.EventCode}
+          </>
+        ) : (
+          "N/A"
+        )}
+      </span>
+    )}
+  </div>
+</div>
+
+                <FieldRow label="Recording Name" value={data.RecordingName} />
+                <FieldRow label="Recording Code" value={data.RecordingCode} />
+                <FieldRow label="Duration" value={data.Duration}>
+                  <Badge variant="secondary">{data.Duration}</Badge>
+                </FieldRow>
+                <FieldRow label="Teams" value={data.Teams} />
+                <Separator />
+                <FieldRow label="From Date" value={data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined} />
+                <FieldRow label="To Date" value={data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined} />
+                <FieldRow label="Year" value={data.Yr} />
+              </CardContent>
+            </Card>
+          </div>
+        );
+
     case "footageType": {
       const [isEditingFootageType, setIsEditingFootageType] = useState(false);
       const [footageType, setFootageType] = useState(data.FootageTypeList || "");

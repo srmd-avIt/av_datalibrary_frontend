@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { ClickUpListViewUpdated } from "./components/ClickUpListViewUpdated";
@@ -15,6 +15,13 @@ import { Menu, X } from "lucide-react";
 import { getColorForString } from "./components/ui/utils";
 // --- NEW --- Import the EventTimeline component
 import { EventTimeline } from "./components/EventTimeline";
+import { SatsangDashboard } from "./components/SatsangDashboard";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
+import { ManageColumnsDialog } from "./components/ManageColumnsDialog";
+import { useAuth } from "./contexts/AuthContext";
+import { AlertTriangle } from "lucide-react";
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
@@ -71,6 +78,9 @@ const VIEW_CONFIGS: Record<string, any> = {
        { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true },
 
     ],
+  },
+  satsang_dashboard: {
+    title: "Satsang Dashboard",
   },
   // ... other configs for medialog, digitalrecordings, aux, etc.
   medialog_all: {
@@ -433,8 +443,8 @@ medialog_formal: {
       },
 
       // Topic / Number / Granth / language / durations / categories
-      { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "NumberSource", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
@@ -795,6 +805,38 @@ medialog_formal: {
        { key: "NewEventTo", label: "New Event To", sortable: true, editable: true },
     ],
   },
+
+
+    edited_highlights: {
+    title: "List of Edited Highlights",
+    apiEndpoint: "/edited-highlights",
+    idKey: "RecordingCode",
+    detailsType: "highlight",
+    columns: [
+     { key: "Yr", label: "Event Year", sortable: true, editable: true },
+
+     {
+        key: "EventDisplay",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: false,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || "";
+          const ec = row.EventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+     
+      { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
+      { key: "Duration", label: "Duration", sortable: true, editable: true },
+      { key: "RecordingCode", label: "Recording Code", sortable: true, editable: true },
+       { key: "FromDate", label: "Event From Date", sortable: true, editable: true },
+      { key: "ToDate", label: "Event To Date", sortable: true, editable: true },
+      { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
+     
+     
+    ],
+  },
 };
 
 type SidebarStackItem = {
@@ -811,10 +853,23 @@ export default function App() {
   const [sidebarStack, setSidebarStack] = useState<SidebarStackItem[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("dashboard");
+  const [initialFilters, setInitialFilters] = useState<Record<string, any> | undefined>(undefined);
   const isMobile = useMobile();
-  
-  // For mobile, we start with sidebar closed
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const { user } = useAuth();
+  
+  // --- State for Column Management Page ---
+  const [selectedViewsForMgmt, setSelectedViewsForMgmt] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [changesSummary, setChangesSummary] = useState<string[]>([]);
+  const [isColumnMgmtDialogOpen, setIsColumnMgmtDialogOpen] = useState(false);
+
+  // For mobile, we start with sidebar closed
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarCollapsed(true);
+    }
+  }, [isMobile]);
 
   // --- Handlers ---
   const handleCloseSidebar = () => setSidebarStack([]);
@@ -829,6 +884,37 @@ export default function App() {
   const handlePushSidebar = (item: SidebarStackItem) => {
     setSidebarStack((prev) => [...prev, item]);
   };
+
+  // --- Logic for Column Management Page ---
+  const getStorageKey = (viewId: string) => `global-column-order-${viewId.replace(/\s/g, "")}`;
+
+  const manageableViews = useMemo(() => {
+    return Object.entries(VIEW_CONFIGS)
+      .filter(([, config]) => config.apiEndpoint && config.columns)
+      .map(([id, config]) => ({ id, title: config.title, columns: config.columns }));
+  }, []);
+
+  const handleColumnMgmtSave = (newVisibleKeys: string[]) => {
+    if (selectedViewsForMgmt.length === 0) return;
+    const viewId = selectedViewsForMgmt[currentIndex];
+    const storageKey = getStorageKey(viewId);
+    localStorage.setItem(storageKey, JSON.stringify(newVisibleKeys));
+    // The onSave in the dialog will handle the summary message
+  };
+
+  const getVisibleColumnKeysForMgmt = (viewId: string) => {
+    const config = VIEW_CONFIGS[viewId];
+    if (!config) return [];
+    const storageKey = getStorageKey(viewId);
+    const savedState = localStorage.getItem(storageKey);
+    if (savedState) {
+      try {
+        return JSON.parse(savedState);
+      } catch (e) { console.error("Failed to parse column order", e); }
+    }
+    return config.columns.map((c: any) => c.key);
+  };
+
 
   // --- 3. DYNAMIC VIEW RENDERER ---
   // This function now reads from the config object to render the correct view.
@@ -858,6 +944,153 @@ export default function App() {
     case "dashboard": return <Dashboard onShowDetails={handlePushSidebar} />;
     case "ai-assistant": return <AIAssistant />;
     case "user-management": return <UserManagement />;
+   case "column-management":
+    // --- PERMISSION CHECK ---
+    if (user?.role !== 'Admin' && user?.role !== 'Owner') {
+      return (
+        <div className="p-4 md:p-6 flex flex-col items-center justify-center text-center h-full">
+            <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
+            <h1 className="text-2xl font-bold text-white">Permission Denied</h1>
+            <p className="text-slate-400 mt-2">You do not have permission to access the Column Management page.</p>
+        </div>
+      );
+    }
+  return (
+    <div className="p-4 md:p-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
+        Column Management
+      </h1>
+
+      <Card
+        className="max-w-3xl mx-auto"
+        style={{
+          marginTop: "30px",
+          marginBottom: "30px",
+          padding: "24px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+        }}
+      >
+        <CardHeader style={{ marginBottom: "16px" }}>
+          <CardTitle
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 600,
+              marginBottom: "4px",
+            }}
+          >
+            Manage View Columns
+          </CardTitle>
+          <CardDescription
+            style={{
+              fontSize: "0.95rem",
+              color: "#666",
+            }}
+          >
+            Select one or more views to manage their columns globally.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6" style={{ paddingTop: "8px" }}>
+          {/* Multi-Select List */}
+          <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "8px", padding: "10px" }}>
+            {manageableViews.map((view) => (
+              <label
+                key={view.id}
+                className="flex items-center gap-3 py-1 cursor-pointer hover:bg-gray-50 rounded-md px-2"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedViewsForMgmt.includes(view.id)}
+                  onChange={(e) => {
+                    if (e.target.checked)
+                      setSelectedViewsForMgmt([...selectedViewsForMgmt, view.id]);
+                    else
+                      setSelectedViewsForMgmt(
+                        selectedViewsForMgmt.filter((id: string) => id !== view.id)
+                      );
+                  }}
+                />
+                <span>{view.title}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Manage button */}
+          <Button
+            onClick={() => {
+              if (selectedViewsForMgmt.length > 0) {
+                setCurrentIndex(0);
+                setIsColumnMgmtDialogOpen(true);
+              }
+            }}
+            disabled={selectedViewsForMgmt.length === 0}
+            className="w-full"
+            style={{
+              marginTop: "12px",
+              padding: "10px 0",
+              fontSize: "1rem",
+              fontWeight: 500,
+              borderRadius: "8px",
+            }}
+          >
+            Manage Columns for Selected Views
+          </Button>
+
+          {/* Summary Section */}
+          {changesSummary.length > 0 && (
+            <div className="mt-6 p-3 border rounded-md bg-gray-50">
+              <h3 className="font-semibold mb-2 text-gray-800">Summary of Changes</h3>
+              <ul className="text-sm text-gray-700 space-y-1">
+                {changesSummary.map((item: string, idx: number) => (
+                  <li key={idx}>✅ {item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog to manage one view at a time */}
+      {selectedViewsForMgmt.length > 0 && selectedViewsForMgmt[currentIndex] && (
+        <ManageColumnsDialog
+          isOpen={isColumnMgmtDialogOpen}
+          onClose={() => {
+            setIsColumnMgmtDialogOpen(false);
+            // move to next view if available
+            if (currentIndex + 1 < selectedViewsForMgmt.length) {
+              setCurrentIndex(currentIndex + 1);
+              setIsColumnMgmtDialogOpen(true);
+            } else {
+              // Reset after the last one is done
+              setCurrentIndex(0);
+              setSelectedViewsForMgmt([]);
+            }
+          }}
+          allColumns={manageableViews.find(v => v.id === selectedViewsForMgmt[currentIndex])?.columns}
+          visibleColumnKeys={getVisibleColumnKeysForMgmt(selectedViewsForMgmt[currentIndex])}
+          onSave={(changes) => {
+            // First, save the actual changes
+            handleColumnMgmtSave(changes);
+            // Then, update the summary state
+            setChangesSummary((prev: string[]) => [
+              ...prev,
+              `View "${manageableViews.find(v => v.id === selectedViewsForMgmt[currentIndex])?.title}" was updated.`,
+            ]);
+          }}
+        />
+      )}
+    </div>
+  );
+
+    case "satsang_dashboard": return (
+        <div className="p-4 md:p-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">
+            {VIEW_CONFIGS.satsang_dashboard.title}
+          </h1>
+          <SatsangDashboard />
+        </div>
+      );
   }
 
   // B) Handle all list views dynamically using the config object
@@ -915,6 +1148,8 @@ export default function App() {
         initialGroupBy={config.groupBy} // <-- Pass the default group from the config
         initialSortBy={config.sortBy}
         initialSortDirection={config.sortDirection}
+        initialFilters={initialFilters}
+        onViewChange={() => setInitialFilters(undefined)} // Clear filters when view changes
         {...extraProps}
       />
     );

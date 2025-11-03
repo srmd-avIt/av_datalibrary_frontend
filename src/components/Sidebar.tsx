@@ -1,12 +1,33 @@
 // src/components/Sidebar.js
-
-import { Home, Database, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, ListFilter, Scissors, ListTree, FolderKanban, X } from "lucide-react";
+import React, { useState, useMemo, ElementType, useEffect } from "react";
+import { Home, Database, LayoutDashboard, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, ListFilter, Scissors, ListTree, FolderKanban, X, Columns } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
+// Local fallback hook to determine mobile layout (replaces ../hooks/useMobile)
+const useMobile = (): boolean => {
+  const [isMobile, setIsMobile] = useState<boolean>(() => (typeof window !== "undefined" ? window.innerWidth <= 768 : false));
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    // initialize
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  return isMobile;
+};
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
-import { useMemo, useState, useEffect } from "react"; // <-- Import useEffect
-import'../styles/globals.css';
+
+// --- NEW: Define the MenuItem type ---
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: ElementType;
+  children?: MenuItem[];
+  requiredRoles?: string[];
+}
 
 // --- MODIFIED: Props are now optional to support both mobile and desktop modes ---
 interface SidebarProps {
@@ -22,48 +43,14 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-// Define types for menu items, including children for nesting
-type MenuItem = {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  children?: Omit<MenuItem, 'children'>[];
-};
-
-export function Sidebar({ 
-  activeView, 
-  onViewChange, 
-  collapsed = false, // Default values to prevent errors
-  onToggleCollapse = () => {}, 
-  isOpen = false,
-  onClose = () => {} 
-}: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse, isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
-  const [isMasterDataOpen, setIsMasterDataOpen] = useState(false);
-  const [isMediaLogOpen, setIsMediaLogOpen] = useState(false);
+  const isMobile = useMobile();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
-  // --- NEW: Internal state to detect mobile view ---
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth <= 768); // Standard mobile breakpoint
-    };
-    
-    // Check on initial render
-    checkScreenSize();
-    
-    // Add event listener for screen resize
-    window.addEventListener('resize', checkScreenSize);
-    
-    // Cleanup listener on component unmount
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-
-  // --- All the menu item definitions and permission logic remains exactly the same ---
   const allMenuItems: MenuItem[] = [
     { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "satsang_dashboard", label: "Satsang Dashboard", icon: LayoutDashboard },
     { id: "events", label: "Events", icon: Map },
     { id: "eventtimeline", label: "Event Timeline", icon: Calendar },
     { id: "digitalrecordings", label: "Digital Recordings", icon: Calendar },
@@ -73,6 +60,7 @@ export function Sidebar({
       icon: FolderKanban,
       children: [
         { id: "medialog_all", label: "ML formal & Informal", icon: List },
+         
         { id: "medialog_formal", label: "ML Formal", icon: Folder },
         { id: "medialog_all_except_satsang", label: "All Except Satsang", icon: ListFilter },
         { id: "medialog_satsang_extracted_clips", label: "Satsang Extracted Clips", icon: Scissors },
@@ -112,30 +100,40 @@ export function Sidebar({
 
       ],
     },
-    { id: "user-management", label: "User Management", icon: User }
+    { id:"edited_highlights", label:"List of Edited Highlights", icon: Bot},
+    { id: "column-management", label: "Column Management", icon: Columns, requiredRoles: ['Admin', 'Owner'] },
+    { id: "user-management", label: "User Management", icon: User, requiredRoles: ['Admin', 'Owner'] }
   ];
 
   const visibleMenuItems = useMemo(() => {
-    if (!user) return [];
-    if (user.role === 'Owner' || user.role === 'Admin') return allMenuItems;
-    const allowedResources = new Set(user.permissions.map(p => p.resource));
-    const result = allMenuItems.map(item => {
-      if (item.label === 'Dashboard') return item;
-      if (item.children) {
-        const visibleChildren = item.children.filter(child => allowedResources.has(child.label));
-        if (visibleChildren.length > 0) return { ...item, children: visibleChildren };
-        return null;
-      }
-      if (allowedResources.has(item.label)) return item;
-      return null;
-    }).filter(Boolean);
-    return result;
+    const filterItems = (items: MenuItem[]): MenuItem[] => {
+      return items
+        .filter(item => {
+          if (!item.requiredRoles) return true;
+          return user && item.requiredRoles.includes(user.role);
+        })
+        .map(item => ({
+          ...item,
+          children: item.children ? filterItems(item.children) : undefined,
+        }));
+    };
+    return filterItems(allMenuItems);
   }, [user]);
 
-  // Helper for mobile navigation to close the drawer after a click
-  const handleNavigate = (view: string) => {
-    onViewChange(view);
-    onClose();
+  const handleMenuClick = (id: string) => {
+    onViewChange(id);
+    if (collapsed) {
+      onClose?.();
+    }
+  };
+
+  const handleNavigate = (id: string) => {
+    onViewChange(id);
+    onClose?.();
+  };
+
+  const toggleMenu = (id: string) => {
+    setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   // --- RENDER LOGIC: Conditionally render mobile or desktop view ---
@@ -188,12 +186,11 @@ export function Sidebar({
                 const isParentActive = item.children?.some(child => child.id === activeView);
                 const isActive = activeView === item.id || isParentActive;
 
-                if (item.id === "medialog-parent" || item.id === "master-data") {
-                  const isOpenState = item.id === "medialog-parent" ? isMediaLogOpen : isMasterDataOpen;
-                  const setIsOpen = item.id === "medialog-parent" ? setIsMediaLogOpen : setIsMasterDataOpen;
+                if (item.children && item.children.length > 0) {
+                  const isOpenState = openMenus[item.id] || false;
                   return (
                     <div key={item.id}>
-                      <Button variant="ghost" size="default" className={`w-full justify-start gap-3 h-11 rounded-xl ${isActive || isOpenState ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30" : "text-slate-300 hover:text-white hover:bg-slate-800/50"}`} onClick={() => setIsOpen(!isOpenState)}>
+                      <Button variant="ghost" size="default" className={`w-full justify-start gap-3 h-11 rounded-xl ${isActive || isOpenState ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30" : "text-slate-300 hover:text-white hover:bg-slate-800/50"}`} onClick={() => toggleMenu(item.id)}>
                         <Icon className="w-4 h-4" />
                         <span className="font-medium">{item.label}</span>
                         {isOpenState ? <ChevronDown className="ml-auto w-4 h-4" /> : <ChevronRight className="ml-auto w-4 h-4" />}
@@ -230,7 +227,7 @@ export function Sidebar({
             <Separator className="my-6 bg-slate-700/50" />
 
             <div className="space-y-1">
-              <Button variant="ghost" size="default" className="w-full justify-start gap-3 h-11 rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => { logout(); onClose(); }}>
+              <Button variant="ghost" size="default" className="w-full justify-start gap-3 h-11 rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => { logout(); onClose?.(); }}>
                 <LogOut className="w-4 h-4" />
                 <span className="font-medium">Logout</span>
               </Button>
@@ -288,12 +285,11 @@ export function Sidebar({
             const isParentActive = item.children?.some(child => child.id === activeView);
             const isActive = activeView === item.id || isParentActive;
 
-            if (item.id === "medialog-parent" || item.id === "master-data") {
-              const isOpenState = item.id === "medialog-parent" ? isMediaLogOpen : isMasterDataOpen;
-              const setIsOpen = item.id === "medialog-parent" ? setIsMediaLogOpen : setIsMasterDataOpen;
+            if (item.children && item.children.length > 0) {
+              const isOpenState = openMenus[item.id] || false;
               return (
                 <div key={item.id}>
-                  <Button variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive || isOpenState ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`} onClick={() => setIsOpen(!isOpenState)} title={collapsed ? item.label : undefined}>
+                  <Button variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive || isOpenState ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`} onClick={() => toggleMenu(item.id)} title={collapsed ? item.label : undefined}>
                     <Icon className="w-4 h-4" />
                     {!collapsed && (<><span className="font-medium">{item.label}</span>{isOpenState ? <ChevronDown className="ml-auto w-4 h-4" /> : <ChevronRight className="ml-auto w-4 h-4" />}</>)}
                   </Button>
@@ -303,7 +299,7 @@ export function Sidebar({
                         const ChildIcon = child.icon;
                         const isChildActive = activeView === child.id;
                         return (
-                          <Button key={child.id} variant="ghost" size="default" className={`w-full justify-start gap-3 h-11 rounded-xl transition-all duration-200 ${isChildActive ? "bg-slate-700/50 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/50"}`} onClick={() => onViewChange(child.id)}>
+                          <Button key={child.id} variant="ghost" size="default" className={`w-full justify-start gap-3 h-11 rounded-xl transition-all duration-200 ${isChildActive ? "bg-slate-700/50 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/50"}`} onClick={() => handleMenuClick(child.id)}>
                             <ChildIcon className="w-4 h-4" />
                             <span className="font-medium">{child.label}</span>
                             {isChildActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
@@ -316,7 +312,7 @@ export function Sidebar({
               );
             }
             return (
-              <Button key={item.id} variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`} onClick={() => onViewChange(item.id)} title={collapsed ? item.label : undefined}>
+              <Button key={item.id} variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`} onClick={() => handleMenuClick(item.id)} title={collapsed ? item.label : undefined}>
                 <Icon className="w-4 h-4" />
                 {!collapsed && (
                   <>

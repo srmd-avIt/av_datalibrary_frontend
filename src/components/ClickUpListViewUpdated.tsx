@@ -36,6 +36,7 @@ import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
 import { Column, ListItem } from "./types"; // Import ListItem from ./types
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
+import { ManageColumnsDialog } from "./ManageColumnsDialog"; // add import if not present
 
 // --- REMOVED: Local Column definition is no longer needed ---
 
@@ -297,6 +298,8 @@ export function ClickUpListViewUpdated({
   initialSortBy, // <-- ADD THIS
   initialSortDirection, // <-- ADD THIS
   groupEnabled,
+  initialFilters,
+  onViewChange,
 }: {
   title: string;
   columns: Column[];
@@ -311,6 +314,8 @@ export function ClickUpListViewUpdated({
   initialSortBy?: string; // <-- ADD THIS
   initialSortDirection?: "asc" | "desc"; // <-- ADD THIS
   groupEnabled?: boolean;
+  initialFilters?: Record<string, any>;
+  onViewChange?: () => void;
 }) {
   // --- State Management Strategy ---
   // The component uses a combination of "global" and "user-specific" state to meet the requirements.
@@ -355,6 +360,7 @@ export function ClickUpListViewUpdated({
   // --- TRANSIENT STATE (Session-specific) ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
   
   // --- NEW: State for inline editing ---
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
@@ -383,10 +389,75 @@ export function ClickUpListViewUpdated({
    const [searchTerm, setSearchTerm] = useState("");
   const [advancedFilters, setAdvancedFilters] = useState<FilterGroup[]>([]);
   const [activeView, setActiveView] = useState(views[0]?.id || "");
-  const [hiddenColumns, setHiddenColumns] = useLocalStorageState<string[]>(`${localStorageKeyPrefix}-hiddenColumns`, []);
-  const [activeSavedFilterName, setActiveSavedFilterName] = useLocalStorageState<string | null>(`${localStorageKeyPrefix}-activeSavedFilterName`, null);
-  const [viewColumnOrder, setViewColumnOrder] = useLocalStorageState<Record<string, string[]>>(`${localStorageKeyPrefix}-viewColumnOrder`, {});
+
+  // Get current view config and filters
+  const currentView = useMemo(() => views.find(v => v.id === activeView), [views, activeView]);
+  const activeViewFilters = useMemo(() => currentView?.filters || {}, [currentView]);
+
+  // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
+  const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
+
+  // --- NEW: Simplified Column Management Logic ---
+  // This logic provides a persistent, user-specific view for regular users,
+  // while ensuring Admins always see the default, non-persistent view.
+
+  const isUserAdmin = user?.role === 'Admin' || user?.role === 'Owner';
+
+  // Define unique localStorage keys for the user's settings.
+  const userColumnOrderKey = `user-column-order-${localStorageKeyPrefix}-${user?.email || 'guest'}`;
+  const userHiddenColumnsKey = `user-hidden-columns-${localStorageKeyPrefix}-${user?.email || 'guest'}`;
+
+  // State for column order
+  const [adminColumnOrder, setAdminColumnOrder] = useState(() => columns.map(c => c.key));
+  const [userColumnOrder, setUserColumnOrder] = useLocalStorageState(userColumnOrderKey, () => columns.map(c => c.key));
+
+  // State for hidden columns
+  const [adminHiddenColumns, setAdminHiddenColumns] = useState<string[]>([]);
+  const [userHiddenColumns, setUserHiddenColumns] = useLocalStorageState<string[]>(userHiddenColumnsKey, []);
+
+  // Resolve possibly-lazy value from useLocalStorageState so columnOrder is always a string[]
+  const resolvedUserColumnOrder: string[] = React.useMemo(() => {
+    if (typeof userColumnOrder === "function") {
+      try {
+        // If a lazy initializer function was stored, call it to get the array
+        return (userColumnOrder as () => string[])();
+      } catch {
+        // Fallback to default if something unexpected is returned
+        return columns.map(c => c.key);
+      }
+    }
+    return userColumnOrder ?? columns.map(c => c.key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userColumnOrder, columns.map(c => c.key).join(",")]);
+
+  // Select the correct state and setters based on user role
+  const columnOrder: string[] = isUserAdmin ? adminColumnOrder : resolvedUserColumnOrder;
+  // raw setter can be one of two Dispatch types (from useLocalStorageState or useState)
+  const rawSetViewColumnOrder = isUserAdmin ? setAdminColumnOrder : setUserColumnOrder;
+  // Provide a stable, strongly-typed wrapper that always matches (newOrder: string[]) => void
+  const setViewColumnOrder = (newOrder: string[]) => {
+    // cast to any to call the underlying setter regardless of its exact SetStateAction type
+    (rawSetViewColumnOrder as any)(newOrder);
+  };
+  const hiddenColumns = isUserAdmin ? adminHiddenColumns : userHiddenColumns;
+  const setHiddenColumns = isUserAdmin ? setAdminHiddenColumns : setUserHiddenColumns;
+  
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
+
+  useEffect(() => {
+    if (initialFilters && Object.keys(initialFilters).length > 0) {
+      const rules = Object.entries(initialFilters).map(([field, value]) => ({
+        id: `rule_${field}_${Date.now()}`,
+        field,
+        operator: "contains", // Use 'contains' for flexible searching
+        value: String(value),
+      }));
+      setAdvancedFilters([{ id: `group_${Date.now()}`, rules, logic: "AND" }]);
+    } else if (initialFilters === undefined) {
+      // This allows clearing filters when the search is reset
+      setAdvancedFilters([]);
+    }
+  }, [initialFilters]);
 
   // --- NEW: Permission Check Logic ---
   const hasAccess = useMemo(() => {
@@ -623,34 +694,19 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
 
   // Reset column order and sizing when view or columns change
   useEffect(() => {
-    setViewColumnOrder((prev) => ({
-      ...prev,
-      [activeView]: columns.map((col) => col.key), // Always reset to current columns
-    }));
-    setViewColumnSizing((prev) => ({
-      ...prev,
-      [activeView]: {}, // Always reset sizing for new columns
-    }));
-     // --- NEW: Reset freeze when view or columns change to prevent invalid state ---
-    setFrozenColumnKey(null);
+    // This effect might not be needed anymore with the new logic,
+    // but we'll keep it to ensure views are reset correctly.
+    // The primary logic is now in the useMemo hook above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, columns.map(col => col.key).join(",")]);
 
   // Get current column order and sizing for the active view
-  const columnOrder = viewColumnOrder[activeView] || columns.map((col) => col.key);
   const columnSizing = viewColumnSizing[activeView] || {};
 
   const itemsPerPage = 50;
 
   // Set active view when views change
   useEffect(() => { setActiveView(views[0]?.id || ""); }, [views]);
-
-  // Get current view config and filters
-  const currentView = useMemo(() => views.find(v => v.id === activeView), [views, activeView]);
-  const activeViewFilters = useMemo(() => currentView?.filters || {}, [currentView]);
-
-  // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
-  const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
 
   // --- MODIFIED: Determine active sort fields from state ---
   const activeSortBy = sortByFields.map(f => f.key).join(',');
@@ -925,11 +981,10 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     data: finalItems || [],
     columns: colDefs,
     state: { columnOrder, columnSizing },
-    onColumnOrderChange: (newOrder) =>
-      setViewColumnOrder((prev) => ({
-        ...prev,
-        [activeView]: Array.isArray(newOrder) ? newOrder : [...(prev[activeView] || [])],
-      })),
+    onColumnOrderChange: (newOrder) => {
+      const newOrderArray = typeof newOrder === 'function' ? newOrder(columnOrder) : newOrder;
+      setViewColumnOrder(newOrderArray);
+    },
     onColumnSizingChange: (newSizing) =>
   setViewColumnSizing((prev) => ({
     ...prev,
@@ -1559,11 +1614,13 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                               id={`mobile-column-${column.key}`} 
                               checked={!hiddenColumns.includes(column.key)} 
                               onCheckedChange={(checked: boolean) => { 
-                                if (checked) { 
-                                  setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
-                                } else { 
-                                  setHiddenColumns([...hiddenColumns, column.key]); 
-                                } 
+                                setHiddenColumns(prevHidden => {
+                                  if (checked) { 
+                                    return prevHidden.filter(c => c !== column.key); 
+                                  } else { 
+                                    return [...prevHidden, column.key]; 
+                                  } 
+                                });
                               }} 
                             />
                             <label htmlFor={`mobile-column-${column.key}`} className="text-sm truncate">{column.label}</label>
@@ -1666,49 +1723,50 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                       <div className="space-y-3">
                         <div className="font-medium text-sm">Sort by fields</div>
                         {sortByFields.map((field, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <Select value={field.key} onValueChange={(v: string) => {
-                              const newFields = [...sortByFields];
-                              newFields[index].key = v;
-                              setSortByFields(newFields);
-                            }}>
-                              <SelectTrigger className="h-8 flex-1">
-                                <SelectValue placeholder="Select field" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getAvailableSortFields().map((f) => (
-                                  <SelectItem key={f.value} value={f.value} disabled={sortByFields.some(sf => sf.key === f.value)}>{f.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Select value={field.direction} onValueChange={(v: "asc" | "desc") => {
-                              const newFields = [...sortByFields];
-                              newFields[index].direction = v;
-                              setSortByFields(newFields);
-                            }}>
-                              <SelectTrigger className="h-8 w-28">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="asc">Ascending</SelectItem>
-                                <SelectItem value="desc">Descending</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                              const newFields = [...sortByFields];
-                              newFields.splice(index, 1);
-                              setSortByFields(newFields);
-                            }}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
+                                                  <div key={index} className="flex items-center gap-2">
+                                                    <Select value={field.key} onValueChange={(v: string) => {
+                                                      const newFields = [...sortByFields];
+                                                      newFields[index] = { ...newFields[index], key: v };
+                                                      setSortByFields(newFields);
+                                                    }}>
+                                                      <SelectTrigger className="h-8 flex-1">
+                                                        <SelectValue placeholder="Select field" />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        {getAvailableSortFields().map((f) => (
+                                                          <SelectItem key={f.value} value={f.value} disabled={sortByFields.some(sf => sf.key === f.value)}>{f.label}</SelectItem>
+                                                        ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <Select value={field.direction} onValueChange={(v: "asc" | "desc") => {
+                                                      const newFields = [...sortByFields];
+                                                      newFields[index] = { ...newFields[index], direction: v };
+                                                      setSortByFields(newFields);
+                                                    }}>
+                                                      <SelectTrigger className="h-8 w-28">
+                                                        <SelectValue />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        <SelectItem value="asc">Ascending</SelectItem>
+                                                        <SelectItem value="desc">Descending</SelectItem>
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                                                      const newFields = [...sortByFields];
+                                                      newFields.splice(index, 1);
+                                                      setSortByFields(newFields);
+                                                    }}>
+                                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                                    </Button>
+                                                  </div>
+                                                ))}
                         <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSortByFields([...sortByFields, { key: '', direction: 'asc' }])}>
                           <Plus className="w-4 h-4" /> Add sorting level
                         </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
+                 
                   {sortByFields.length > 0 && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortByFields([])} title="Clear all sorting"><X className="w-4 h-4" /></Button>)}
                 </div>
               </div>
@@ -1727,12 +1785,13 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                             id={`column-${column.key}`} 
                             checked={!hiddenColumns.includes(column.key)} 
                             onCheckedChange={(checked: boolean) => { 
-                              if (checked) { 
- 
-                                setHiddenColumns(hiddenColumns.filter(c => c !== column.key)); 
-                              } else { 
-                                setHiddenColumns([...hiddenColumns, column.key]); 
-                              } 
+                              setHiddenColumns(prevHidden => {
+                                if (checked) { 
+                                  return prevHidden.filter(c => c !== column.key); 
+                                } else { 
+                                  return [...prevHidden, column.key]; 
+                                } 
+                              });
                             }} 
                           />
                           <label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label>
@@ -1826,8 +1885,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                       frozenColumnKey={frozenColumnKey}
                       columnOrder={columnOrder}
                       columnSizing={columnSizing}
-                      setViewColumnOrder={(newOrder) => setViewColumnOrder(prev => ({ ...prev, [activeView]: newOrder }))} // <-- ADD THIS
-                      // <-- add this prop
+                      setViewColumnOrder={setViewColumnOrder}
                     />
                   )}
                 </div>

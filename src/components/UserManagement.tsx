@@ -83,7 +83,8 @@ const APP_RESOURCES = [
   "Topic Number Source",
   "TopicGivenBy",
   "Segment Category",
-  "User Management"
+  "User Management",
+  "Column Management"
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";
