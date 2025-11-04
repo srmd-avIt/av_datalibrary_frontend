@@ -1,10 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
-import { Search } from 'lucide-react';
+import { Search, Check, ChevronsUpDown } from 'lucide-react';
 import { ClickUpListViewUpdated } from './ClickUpListViewUpdated';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+
+// --- NEW: Reusable Searchable Dropdown (Combobox) Component ---
+interface ComboboxProps {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  style?: React.CSSProperties;
+}
+
+const Combobox: React.FC<ComboboxProps> = ({ options, value, onChange, placeholder, style }) => {
+  const [open, setOpen] = useState(false);
+  const currentLabel = useMemo(() => options.find(option => option.value === value)?.label, [options, value]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between" style={style}>
+          <span className="truncate">{currentLabel || placeholder}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+        <Command>
+          <CommandInput placeholder="Search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              {options.map(option => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => {
+                    onChange(option.value === value ? '' : option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={`mr-2 h-4 w-4 ${value === option.value ? 'opacity-100' : 'opacity-0'}`} />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 
 // Provide a minimal local fallback for VIEW_CONFIGS to avoid a missing-module compile error.
 // Replace or remove this fallback once a proper ../view-configs module exists.
@@ -139,9 +190,52 @@ const VIEW_CONFIGS: Record<string, any> = {
   },
 };
 
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
+
 export function SatsangDashboard() {
   const [searchFilters, setSearchFilters] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any> | undefined>(undefined);
+  
+  // --- NEW: State for dropdown options ---
+  const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([]);
+  const [stateOptions, setStateOptions] = useState<{ value: string; label: string }[]>([]);
+  const [cityOptions, setCityOptions] = useState<{ value: string; label: string }[]>([]);
+
+  // --- NEW: Fetch options for dropdowns on component mount ---
+  useEffect(() => {
+    const fetchOptions = async (endpoint: string, dataKey: string, setter: React.Dispatch<React.SetStateAction<{ value: string; label: string }[]>>) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        if (!response.ok) throw new Error(`Failed to fetch ${dataKey}`);
+        const data = await response.json();
+
+        // Normalize values to strings, split comma-separated entries, remove falsy values,
+        // dedupe using Set and sort — this ensures TypeScript infers string[].
+        const allValues = (data || []).map((item: any) => item[dataKey]);
+        const normalized: string[] = allValues
+          .flatMap((v: any) => {
+            if (v === null || v === undefined) return [];
+            if (typeof v === "string" && v.includes(",")) {
+              return v.split(",").map((s: string) => s.trim()).filter(Boolean);
+            }
+            return [v];
+          })
+          .map((v: any) => String(v).trim())
+          .filter(Boolean);
+
+        const uniqueValues = Array.from(new Set(normalized)).sort((a, b) => a.localeCompare(b));
+
+        setter(uniqueValues.map((val) => ({ value: val, label: val })));
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchOptions('/countries/options', 'fkCountry', setCountryOptions);
+    fetchOptions('/states/options', 'fkState', setStateOptions);
+    fetchOptions('/cities/options', 'fkCity', setCityOptions);
+  }, []);
+
 
   const handleInputChange = (field: string, value: string) => {
     setSearchFilters(prev => ({ ...prev, [field]: value }));
@@ -183,21 +277,23 @@ export function SatsangDashboard() {
         gap: "20px",
       }}
     >
+      {/* --- MODIFIED: City is now a Combobox --- */}
       <div>
         <Label htmlFor="fkCity" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
           City
         </Label>
-        <Input
-          id="fkCity"
-          placeholder="e.g., Ahmedabad"
+        <Combobox
+          options={cityOptions}
           value={searchFilters.fkCity || ''}
-          onChange={e => handleInputChange('fkCity', e.target.value)}
+          onChange={value => handleInputChange('fkCity', value)}
+          placeholder="Select a city..."
           style={{
             width: "100%",
             padding: "10px 12px",
             borderRadius: "8px",
             border: "1px solid #474849ff",
             fontSize: "14px",
+            height: 'auto',
           }}
         />
       </div>
@@ -259,45 +355,47 @@ export function SatsangDashboard() {
         />
       </div>
 
+      {/* --- MODIFIED: Country is now a Combobox --- */}
       <div>
         <Label htmlFor="fkCountry" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
           Country
         </Label>
-        <Input
-          id="fkCountry"
-          placeholder="e.g., India"
+        <Combobox
+          options={countryOptions}
           value={searchFilters.fkCountry || ''}
-          onChange={e => handleInputChange('fkCountry', e.target.value)}
+          onChange={value => handleInputChange('fkCountry', value)}
+          placeholder="Select a country..."
           style={{
             width: "100%",
             padding: "10px 12px",
             borderRadius: "8px",
             border: "1px solid #474849ff",
             fontSize: "14px",
+            height: 'auto',
           }}
         />
       </div>
 
+      {/* --- MODIFIED: State is now a Combobox --- */}
       <div>
         <Label htmlFor="fkState" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
           State
         </Label>
-        <Input
-          id="fkState"
-          placeholder="e.g., Gujarat"
+        <Combobox
+          options={stateOptions}
           value={searchFilters.fkState || ''}
-          onChange={e => handleInputChange('fkState', e.target.value)}
+          onChange={value => handleInputChange('fkState', value)}
+          placeholder="Select a state..."
           style={{
             width: "100%",
             padding: "10px 12px",
             borderRadius: "8px",
             border: "1px solid #474849ff",
             fontSize: "14px",
+            height: 'auto',
           }}
         />
       </div>
-
-     
 
       <div>
         <Label htmlFor="ContentFrom" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
@@ -432,6 +530,7 @@ export function SatsangDashboard() {
               title="Search Results"
               columns={satsangCategoryConfig.columns}
               apiEndpoint={satsangCategoryConfig.apiEndpoint}
+              viewId={satsangCategoryConfig.idKey || 'medialog_satsang_category'}
               idKey={satsangCategoryConfig.idKey}
               initialFilters={appliedFilters}
               onViewChange={() => setAppliedFilters(undefined)}

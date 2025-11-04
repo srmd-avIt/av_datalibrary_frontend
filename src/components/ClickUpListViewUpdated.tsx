@@ -287,6 +287,7 @@ export function ClickUpListViewUpdated({
   title,
   columns,
   apiEndpoint,
+  viewId, // <-- ADD THIS
   filterConfigs = [],
   views = [],
   onRowSelect,
@@ -295,8 +296,8 @@ export function ClickUpListViewUpdated({
   // optional props passed from App.tsx
   rowTransformer,
   initialGroupBy,
-  initialSortBy, // <-- ADD THIS
-  initialSortDirection, // <-- ADD THIS
+  initialSortBy,
+  initialSortDirection,
   groupEnabled,
   initialFilters,
   onViewChange,
@@ -304,6 +305,7 @@ export function ClickUpListViewUpdated({
   title: string;
   columns: Column[];
   apiEndpoint: string;
+  viewId: string; // <-- ADD THIS
   filterConfigs?: FilterConfig[];
   views?: ViewConfig[];
   onRowSelect?: (item: ListItem) => void;
@@ -311,8 +313,8 @@ export function ClickUpListViewUpdated({
   showAddButton?: boolean;
   rowTransformer?: (row: any) => any;
   initialGroupBy?: string | null;
-  initialSortBy?: string; // <-- ADD THIS
-  initialSortDirection?: "asc" | "desc"; // <-- ADD THIS
+  initialSortBy?: string; 
+  initialSortDirection?: "asc" | "desc"; 
   groupEnabled?: boolean;
   initialFilters?: Record<string, any>;
   onViewChange?: () => void;
@@ -323,17 +325,19 @@ export function ClickUpListViewUpdated({
   // GLOBAL / SHARED STATE:
   // - `savedFilters`: This state is persisted in localStorage with a key that is the same for all users viewing this table
   //   (e.g., 'global-saved-filters-My-Table'). This simulates a shared database of saved filters that everyone can see and use.
+  // - Global Column Layouts: Persisted with a `global-column-` prefix, these are managed by Admins and applied to all 'Guest' role users.
   //
   // USER-SPECIFIC STATE:
   // - All other view-related settings (sorting, grouping, applied filters, column order, frozen columns, etc.)
   //   are persisted in localStorage with a unique key prefix for this table instance. This ensures that each user's
   //   personalization settings are saved and restored without affecting other users.
+  // - User-Specific Column Layouts: For non-Guest users, their column order and visibility is saved to a personal key.
   //
   // TRANSIENT STATE:
   // - `currentPage`, `isExporting`, etc., are managed with `useState` as they are session-specific and not meant to be persisted.
 
   // --- Create a unique key prefix for this specific table instance ---
-  const localStorageKeyPrefix = `tableView-${title.replace(/\s/g, '-')}`;
+  const localStorageKeyPrefix = `view-${viewId}`;
 
   // --- State ---
   const { user } = useAuth();
@@ -397,50 +401,47 @@ export function ClickUpListViewUpdated({
   // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
   const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
 
-  // --- NEW: Simplified Column Management Logic ---
-  // This logic provides a persistent, user-specific view for regular users,
-  // while ensuring Admins always see the default, non-persistent view.
-
-  const isUserAdmin = user?.role === 'Admin' || user?.role === 'Owner';
-
-  // Define unique localStorage keys for the user's settings.
-  const userColumnOrderKey = `user-column-order-${localStorageKeyPrefix}-${user?.email || 'guest'}`;
-  const userHiddenColumnsKey = `user-hidden-columns-${localStorageKeyPrefix}-${user?.email || 'guest'}`;
-
-  // State for column order
-  const [adminColumnOrder, setAdminColumnOrder] = useState(() => columns.map(c => c.key));
-  const [userColumnOrder, setUserColumnOrder] = useLocalStorageState(userColumnOrderKey, () => columns.map(c => c.key));
-
-  // State for hidden columns
-  const [adminHiddenColumns, setAdminHiddenColumns] = useState<string[]>([]);
-  const [userHiddenColumns, setUserHiddenColumns] = useLocalStorageState<string[]>(userHiddenColumnsKey, []);
-
-  // Resolve possibly-lazy value from useLocalStorageState so columnOrder is always a string[]
-  const resolvedUserColumnOrder: string[] = React.useMemo(() => {
-    if (typeof userColumnOrder === "function") {
-      try {
-        // If a lazy initializer function was stored, call it to get the array
-        return (userColumnOrder as () => string[])();
-      } catch {
-        // Fallback to default if something unexpected is returned
-        return columns.map(c => c.key);
-      }
-    }
-    return userColumnOrder ?? columns.map(c => c.key);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userColumnOrder, columns.map(c => c.key).join(",")]);
-
-  // Select the correct state and setters based on user role
-  const columnOrder: string[] = isUserAdmin ? adminColumnOrder : resolvedUserColumnOrder;
-  // raw setter can be one of two Dispatch types (from useLocalStorageState or useState)
-  const rawSetViewColumnOrder = isUserAdmin ? setAdminColumnOrder : setUserColumnOrder;
-  // Provide a stable, strongly-typed wrapper that always matches (newOrder: string[]) => void
-  const setViewColumnOrder = (newOrder: string[]) => {
-    // cast to any to call the underlying setter regardless of its exact SetStateAction type
-    (rawSetViewColumnOrder as any)(newOrder);
+  // --- MODIFIED: Role-based & User-Specific Column Layout Logic ---
+  // This logic now correctly loads the most specific layout available for the user.
+  const getLayoutKeys = (userId?: string | null) => {
+    const prefix = userId ? `user-${userId}-view-${viewId}` : `global-view-${viewId}`;
+    return {
+      orderKey: `column-order-${prefix}`,
+      hiddenKey: `hidden-columns-${prefix}`,
+    };
   };
-  const hiddenColumns = isUserAdmin ? adminHiddenColumns : userHiddenColumns;
-  const setHiddenColumns = isUserAdmin ? setAdminHiddenColumns : setUserHiddenColumns;
+
+  const [columnOrder, setColumnOrder] = useLocalStorageState<string[]>(
+    getLayoutKeys(user?.id).orderKey,
+    (() => {
+      const userKeys = getLayoutKeys(user?.id);
+      const guestKeys = getLayoutKeys(); // No user ID for guest/global
+
+      const userOrder = localStorage.getItem(userKeys.orderKey);
+      if (userOrder) return JSON.parse(userOrder) as string[];
+
+      const guestOrder = localStorage.getItem(guestKeys.orderKey);
+      if (guestOrder) return JSON.parse(guestOrder) as string[];
+
+      return columns.map(c => c.key);
+    })()
+  );
+
+  const [hiddenColumns, setHiddenColumns] = useLocalStorageState<string[]>(
+    getLayoutKeys(user?.id).hiddenKey,
+    (() => {
+      const userKeys = getLayoutKeys(user?.id);
+      const guestKeys = getLayoutKeys();
+
+      const userHidden = localStorage.getItem(userKeys.hiddenKey);
+      if (userHidden) return JSON.parse(userHidden) as string[];
+
+      const guestHidden = localStorage.getItem(guestKeys.hiddenKey);
+      if (guestHidden) return JSON.parse(guestHidden) as string[];
+
+      return [];
+    })()
+  );
   
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 
@@ -983,7 +984,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     state: { columnOrder, columnSizing },
     onColumnOrderChange: (newOrder) => {
       const newOrderArray = typeof newOrder === 'function' ? newOrder(columnOrder) : newOrder;
-      setViewColumnOrder(newOrderArray);
+      setColumnOrder(newOrderArray);
     },
     onColumnSizingChange: (newSizing) =>
   setViewColumnSizing((prev) => ({
@@ -1885,7 +1886,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                       frozenColumnKey={frozenColumnKey}
                       columnOrder={columnOrder}
                       columnSizing={columnSizing}
-                      setViewColumnOrder={setViewColumnOrder}
+                      setViewColumnOrder={setColumnOrder}
                     />
                   )}
                 </div>

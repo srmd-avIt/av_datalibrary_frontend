@@ -11,47 +11,39 @@ import { MobileNavigation } from "./components/MobileNavigation";
 import { ResponsiveLayout, useMobile } from "./components/ResponsiveLayout";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { Button } from "./components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, AlertTriangle } from "lucide-react";
 import { getColorForString } from "./components/ui/utils";
-// --- NEW --- Import the EventTimeline component
 import { EventTimeline } from "./components/EventTimeline";
 import { SatsangDashboard } from "./components/SatsangDashboard";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
-import { ManageColumnsDialog } from "./components/ManageColumnsDialog";
 import { useAuth } from "./contexts/AuthContext";
-import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+
+// --- NEW --- Import the updated dialog and its types
+import { ManageColumnsDialog, SaveConfig } from "./components/ManageColumnsDialog";
+
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
 // ===================================================================================
 // --- 1. VIEW CONFIGURATIONS & HELPERS ---
-// All column definitions and view-specific settings are centralized here.
-// This makes the main component JSX much cleaner.
+// (This section remains unchanged, so it's collapsed for brevity)
 // ===================================================================================
-
 const categoryTagRenderer = (value: string | null | undefined) => {
     if (!value) return <span className="text-slate-500"></span>;
-
     const getTextColorForBg = (hex: string): string => {
         if (!hex || hex.length < 7) return "#0f172a";
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.7 ? "#f7f9fcff" : "#f1f5f9";
     };
-
     const values = value.split(',').map(v => v.trim()).filter(Boolean);
-
     return (
         <div className="flex flex-wrap justify-center gap-1.5">
             {values.map((val, index) => {
                 const bgColor = getColorForString(val);
                 return (
-                    <div
-                        key={index}
-                        className="inline-block whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold border backdrop-blur-sm"
-                        style={{ backgroundColor: `${bgColor}40`, borderColor: `${bgColor}66`, color: getTextColorForBg(bgColor) }}
-                    >
+                    <div key={index} className="inline-block whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold border backdrop-blur-sm" style={{ backgroundColor: `${bgColor}40`, borderColor: `${bgColor}66`, color: getTextColorForBg(bgColor) }}>
                         {val}
                     </div>
                 );
@@ -59,7 +51,6 @@ const categoryTagRenderer = (value: string | null | undefined) => {
         </div>
     );
 };
-
 const VIEW_CONFIGS: Record<string, any> = {
   events: {
     title: "Events",
@@ -838,7 +829,6 @@ medialog_formal: {
     ],
   },
 };
-
 type SidebarStackItem = {
   type: string;
   data: Record<string, any>;
@@ -858,20 +848,60 @@ export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { user } = useAuth();
   
-  // --- State for Column Management Page ---
   const [selectedViewsForMgmt, setSelectedViewsForMgmt] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [changesSummary, setChangesSummary] = useState<string[]>([]);
   const [isColumnMgmtDialogOpen, setIsColumnMgmtDialogOpen] = useState(false);
 
-  // For mobile, we start with sidebar closed
+  // --- MODIFIED: Initialize summary from localStorage to make it persistent ---
+  const [changesSummary, setChangesSummary] = useState<string[]>(() => {
+    try {
+      const savedSummary = localStorage.getItem('columnChangesSummary');
+      return savedSummary ? JSON.parse(savedSummary) : [];
+    } catch (error) {
+      console.error("Failed to parse changes summary from localStorage", error);
+      return [];
+    }
+  });
+
+  // --- NEW: A helper function to update both state and localStorage ---
+  const updateChangesSummary = (newSummary: string) => {
+    setChangesSummary(prev => {
+      const updatedSummary = [...prev, newSummary];
+      localStorage.setItem('columnChangesSummary', JSON.stringify(updatedSummary));
+      return updatedSummary;
+    });
+  };
+
+  // --- NEW: A function to clear the summary ---
+  const clearChangesSummary = () => {
+    setChangesSummary([]);
+    localStorage.removeItem('columnChangesSummary');
+  };
+
+  // --- NEW: Fetch all users for column management dialog ---
+  const { data: allUsers } = useQuery({
+    queryKey: ['allUsersForColumnMgmt'],
+    queryFn: async () => {
+      const resp = await fetch(`${API_BASE_URL}/users`);
+      if (!resp.ok) throw new Error('Failed to fetch users');
+      const users = await resp.json();
+      // --- MODIFIED: Ensure 'name' is prioritized, fallback to email if name is missing ---
+      return users.map((u: any) => ({ 
+        id: u.id, 
+        name: u.name || u.email, // Use name, but have email as a fallback
+        email: u.email 
+      }));
+    },
+    // Only fetch if the user is an admin/owner and the management page is potentially active
+    enabled: !!user && (user.role === 'Admin' || user.role === 'Owner'),
+  });
+
   useEffect(() => {
     if (isMobile) {
       setSidebarCollapsed(true);
     }
   }, [isMobile]);
 
-  // --- Handlers ---
   const handleCloseSidebar = () => setSidebarStack([]);
   const handlePopSidebar = () => setSidebarStack((prev) => prev.slice(0, -1));
 
@@ -884,9 +914,16 @@ export default function App() {
   const handlePushSidebar = (item: SidebarStackItem) => {
     setSidebarStack((prev) => [...prev, item]);
   };
-
-  // --- Logic for Column Management Page ---
-  const getStorageKey = (viewId: string) => `global-column-order-${viewId.replace(/\s/g, "")}`;
+  
+  // --- NEW: A more versatile key generation function for layouts ---
+  const getLayoutKeys = (viewId: string, userId?: string | null) => {
+    // If a userId is provided, create a user-specific key. Otherwise, create a global key.
+    const prefix = userId ? `user-${userId}-view-${viewId}` : `global-view-${viewId}`;
+    return {
+      orderKey: `column-order-${prefix}`,
+      hiddenKey: `hidden-columns-${prefix}`,
+    };
+  };
 
   const manageableViews = useMemo(() => {
     return Object.entries(VIEW_CONFIGS)
@@ -894,40 +931,29 @@ export default function App() {
       .map(([id, config]) => ({ id, title: config.title, columns: config.columns }));
   }, []);
 
-  const handleColumnMgmtSave = (newVisibleKeys: string[]) => {
-    if (selectedViewsForMgmt.length === 0) return;
-    const viewId = selectedViewsForMgmt[currentIndex];
-    const storageKey = getStorageKey(viewId);
-    localStorage.setItem(storageKey, JSON.stringify(newVisibleKeys));
-    // The onSave in the dialog will handle the summary message
-  };
-
   const getVisibleColumnKeysForMgmt = (viewId: string) => {
     const config = VIEW_CONFIGS[viewId];
     if (!config) return [];
-    const storageKey = getStorageKey(viewId);
-    const savedState = localStorage.getItem(storageKey);
+    // For editing, we always load the GLOBAL/GUEST layout as the base
+    const { orderKey } = getLayoutKeys(viewId); 
+    const savedState = localStorage.getItem(orderKey);
     if (savedState) {
       try {
-        return JSON.parse(savedState);
+        const parsed = JSON.parse(savedState);
+        return Array.isArray(parsed) ? parsed : config.columns.map((c: any) => c.key);
       } catch (e) { console.error("Failed to parse column order", e); }
     }
     return config.columns.map((c: any) => c.key);
   };
 
 
-  // --- 3. DYNAMIC VIEW RENDERER ---
-  // This function now reads from the config object to render the correct view.
- // --- Helper: Build a lookup for events by code (for digitalrecordings grouping) ---
   const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
 
   React.useEffect(() => {
-    // Only fetch if digitalrecordings view is used
     if (activeView === "digitalrecordings") {
       fetch(`${API_BASE_URL}/events`)
         .then((res) => res.json())
         .then((data) => {
-          // Build a lookup by EventCode
           const lookup: Record<string, any> = {};
           (Array.isArray(data) ? data : []).forEach((ev) => {
             if (ev.EventCode) lookup[ev.EventCode] = ev;
@@ -939,13 +965,11 @@ export default function App() {
   }, [activeView]);
 
  const renderView = () => {
-  // A) Handle non-list views (which don't use the config object)
   switch (activeView) {
     case "dashboard": return <Dashboard onShowDetails={handlePushSidebar} />;
     case "ai-assistant": return <AIAssistant />;
     case "user-management": return <UserManagement />;
-   case "column-management":
-    // --- PERMISSION CHECK ---
+    case "column-management":
     if (user?.role !== 'Admin' && user?.role !== 'Owner') {
       return (
         <div className="p-4 md:p-6 flex flex-col items-center justify-center text-center h-full">
@@ -956,131 +980,265 @@ export default function App() {
       );
     }
   return (
-    <div className="p-4 md:p-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-6">
-        Column Management
-      </h1>
+<div
+  style={{
+    padding: "1rem",
+  }}
+>
+  <h1
+    style={{
+      fontSize: "1.875rem",
+      fontWeight: "bold",
+      color: "var(--foreground)",
+      marginBottom: "1.5rem",
+    }}
+  >
+    Column Management
+  </h1>
 
-      <Card
-        className="max-w-3xl mx-auto"
+  <Card
+    style={{
+      maxWidth: "1200px",
+      
+      margin: "2rem auto",
+      padding: "1.5rem",
+      borderRadius: "0.75rem",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+      height: "480px", // 👈 Smaller card height
+      display: "flex",
+      flexDirection: "column",
+      backgroundColor: "#000", // same dark look
+      border: "1px solid rgb(51 65 85)",
+    }}
+  >
+    <CardHeader>
+      <CardTitle
         style={{
-          marginTop: "30px",
-          marginBottom: "30px",
-          padding: "24px",
-          borderRadius: "12px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+          fontSize: "1.25rem",
+          fontWeight: 600,
         }}
       >
-        <CardHeader style={{ marginBottom: "16px" }}>
-          <CardTitle
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              marginBottom: "4px",
-            }}
-          >
-            Manage View Columns
-          </CardTitle>
-          <CardDescription
-            style={{
-              fontSize: "0.95rem",
-              color: "#666",
-            }}
-          >
-            Select one or more views to manage their columns globally.
-          </CardDescription>
-        </CardHeader>
+        Manage Column Layouts
+      </CardTitle>
+      <CardDescription
+        style={{
+          fontSize: "1rem",
+          color: "rgb(148 163 184)",
+        }}
+      >
+        Select views to configure their default column layout for guests or
+        specific users.
+      </CardDescription>
+    </CardHeader>
 
-        <CardContent className="space-y-6" style={{ paddingTop: "8px" }}>
-          {/* Multi-Select List */}
-          <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "8px", padding: "10px" }}>
-            {manageableViews.map((view) => (
-              <label
-                key={view.id}
-                className="flex items-center gap-3 py-1 cursor-pointer hover:bg-gray-50 rounded-md px-2"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedViewsForMgmt.includes(view.id)}
-                  onChange={(e) => {
-                    if (e.target.checked)
-                      setSelectedViewsForMgmt([...selectedViewsForMgmt, view.id]);
-                    else
-                      setSelectedViewsForMgmt(
-                        selectedViewsForMgmt.filter((id: string) => id !== view.id)
-                      );
-                  }}
-                />
-                <span>{view.title}</span>
-              </label>
-            ))}
+    <CardContent
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        gap: "1.5rem",
+        paddingTop: "0.5rem",
+        overflow: "hidden",
+      }}
+    >
+      {/* Scrollable list of selectable views */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          borderRadius: "0.5rem",
+          border: "1px solid rgb(51 65 85)",
+          padding: "0.5rem",
+          backgroundColor: "#000",
+          scrollbarWidth: "thin",
+          scrollbarColor: "#475569 #1e293b",
+        }}
+        className="scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800"
+      >
+        {manageableViews.map((view) => (
+          <label
+            key={view.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              padding: "0.4rem 0.5rem",
+              cursor: "pointer",
+              borderRadius: "0.375rem",
+            }}
+            className="hover:bg-slate-800/50"
+          >
+            <input
+              type="checkbox"
+              checked={selectedViewsForMgmt.includes(view.id)}
+              onChange={(e) => {
+                if (e.target.checked)
+                  setSelectedViewsForMgmt([
+                    ...selectedViewsForMgmt,
+                    view.id,
+                  ]);
+                else
+                  setSelectedViewsForMgmt(
+                    selectedViewsForMgmt.filter((id) => id !== view.id)
+                  );
+              }}
+              style={{
+                height: "1rem",
+                width: "1rem",
+                borderRadius: "0.25rem",
+                backgroundColor: "rgb(51 65 85)",
+                border: "1px solid rgb(71 85 105)",
+                accentColor: "#3b82f6",
+              }}
+            />
+            <span style={{ color: "rgb(226 232 240)" }}>{view.title}</span>
+          </label>
+        ))}
+      </div>
+
+      {/* Manage button */}
+      <Button
+        onClick={() => {
+          if (selectedViewsForMgmt.length > 0) {
+            setCurrentIndex(0);
+            setIsColumnMgmtDialogOpen(true);
+          }
+        }}
+        disabled={selectedViewsForMgmt.length === 0}
+        style={{
+          width: "50%",
+          fontSize: "1.125rem",
+          padding: "0.75rem 0",
+          alignSelf: "center",
+        }}
+      >
+        Manage Layouts for Selected Views
+      </Button>
+
+      {/* Summary of changes */}
+      {changesSummary.length > 0 && (
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "0.75rem",
+            border: "1px solid rgb(51 65 85)",
+            borderRadius: "0.5rem",
+            backgroundColor: "rgb(30 41 59 / 0.5)",
+            overflowY: "auto",
+            maxHeight: "120px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <h3
+              style={{
+                fontWeight: 600,
+                color: "rgb(226 232 240)",
+              }}
+            >
+              Summary of Changes
+            </h3>
+            {/* --- NEW: Clear button for the summary --- */}
+            <Button
+              variant="link"
+              onClick={clearChangesSummary}
+              style={{ padding: 0, height: "auto", color: "rgb(148 163 184)" }}
+            >
+              Clear
+            </Button>
           </div>
-
-          {/* Manage button */}
-          <Button
-            onClick={() => {
-              if (selectedViewsForMgmt.length > 0) {
-                setCurrentIndex(0);
-                setIsColumnMgmtDialogOpen(true);
-              }
-            }}
-            disabled={selectedViewsForMgmt.length === 0}
-            className="w-full"
+          <ul
             style={{
-              marginTop: "12px",
-              padding: "10px 0",
-              fontSize: "1rem",
-              fontWeight: 500,
-              borderRadius: "8px",
+              fontSize: "0.875rem",
+              color: "rgb(203 213 225)",
+              listStyle: "none",
+              paddingLeft: 0,
+              margin: 0,
             }}
           >
-            Manage Columns for Selected Views
-          </Button>
-
-          {/* Summary Section */}
-          {changesSummary.length > 0 && (
-            <div className="mt-6 p-3 border rounded-md bg-gray-50">
-              <h3 className="font-semibold mb-2 text-gray-800">Summary of Changes</h3>
-              <ul className="text-sm text-gray-700 space-y-1">
-                {changesSummary.map((item: string, idx: number) => (
-                  <li key={idx}>✅ {item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Dialog to manage one view at a time */}
-      {selectedViewsForMgmt.length > 0 && selectedViewsForMgmt[currentIndex] && (
-        <ManageColumnsDialog
-          isOpen={isColumnMgmtDialogOpen}
-          onClose={() => {
-            setIsColumnMgmtDialogOpen(false);
-            // move to next view if available
-            if (currentIndex + 1 < selectedViewsForMgmt.length) {
-              setCurrentIndex(currentIndex + 1);
-              setIsColumnMgmtDialogOpen(true);
-            } else {
-              // Reset after the last one is done
-              setCurrentIndex(0);
-              setSelectedViewsForMgmt([]);
-            }
-          }}
-          allColumns={manageableViews.find(v => v.id === selectedViewsForMgmt[currentIndex])?.columns}
-          visibleColumnKeys={getVisibleColumnKeysForMgmt(selectedViewsForMgmt[currentIndex])}
-          onSave={(changes) => {
-            // First, save the actual changes
-            handleColumnMgmtSave(changes);
-            // Then, update the summary state
-            setChangesSummary((prev: string[]) => [
-              ...prev,
-              `View "${manageableViews.find(v => v.id === selectedViewsForMgmt[currentIndex])?.title}" was updated.`,
-            ]);
-          }}
-        />
+            {changesSummary.map((item, idx) => (
+              <li key={idx}>✅ {item}</li>
+            ))}
+          </ul>
+        </div>
       )}
-    </div>
+    </CardContent>
+  </Card>
+
+  {/* Dialog Component */}
+  {selectedViewsForMgmt.length > 0 && selectedViewsForMgmt[currentIndex] && (
+    <ManageColumnsDialog
+      isOpen={isColumnMgmtDialogOpen}
+      onClose={() => {
+        setIsColumnMgmtDialogOpen(false);
+        if (currentIndex + 1 < selectedViewsForMgmt.length) {
+          setCurrentIndex(currentIndex + 1);
+          setIsColumnMgmtDialogOpen(true);
+        } else {
+          setCurrentIndex(0);
+          setSelectedViewsForMgmt([]);
+        }
+      }}
+      allColumns={
+        manageableViews.find(
+          (v) => v.id === selectedViewsForMgmt[currentIndex]
+        )?.columns || []
+      }
+      visibleColumnKeys={getVisibleColumnKeysForMgmt(
+        selectedViewsForMgmt[currentIndex]
+      )}
+     viewId={selectedViewsForMgmt[currentIndex]}
+      users={allUsers || []}
+      onSave={(saveConfig: SaveConfig) => {
+        const { viewId, visibleKeys, hiddenKeys, target } = saveConfig;
+        const viewTitle =
+          manageableViews.find((v) => v.id === viewId)?.title || viewId;
+
+        if (target.type === "global_guest") {
+          const { orderKey, hiddenKey } = getLayoutKeys(viewId);
+          localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
+          localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
+          const summaryMsg = `Guest layout for "${viewTitle}" was updated.`;
+          updateChangesSummary(summaryMsg); // --- MODIFIED: Use the new helper function
+          toast.success(summaryMsg);
+        } else if (target.type === "specific_users") {
+          target.userIds.forEach((userId) => {
+            const { orderKey, hiddenKey } = getLayoutKeys(viewId, userId);
+            localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
+            localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
+          });
+
+          // --- MODIFIED: Generate summary message with user emails instead of names ---
+          const selectedUsers = (allUsers || []).filter((u: any) => target.userIds.includes(u.id));
+          const userEmails = selectedUsers.map((u: any) => u.email); // Use email instead of name
+          let userSummaryText = '';
+
+          if (userEmails.length === 1) {
+            userSummaryText = `for ${userEmails[0]}`;
+          } else if (userEmails.length > 1 && userEmails.length <= 3) {
+            userSummaryText = `for ${userEmails.slice(0, -1).join(', ')} and ${userEmails.slice(-1)}`;
+          } else if (userEmails.length > 3) {
+            userSummaryText = `for ${userEmails.slice(0, 2).join(', ')} and ${userEmails.length - 2} others`;
+          } else {
+            userSummaryText = `for ${target.userIds.length} user(s)`;
+          }
+
+          const summaryMsg = `Layout for "${viewTitle}" was updated ${userSummaryText}.`;
+          updateChangesSummary(summaryMsg); // --- MODIFIED: Use the new helper function
+          toast.success(summaryMsg);
+        }
+      }}
+    />
+  )}
+</div>
+
+
   );
 
     case "satsang_dashboard": return (
@@ -1093,22 +1251,16 @@ export default function App() {
       );
   }
 
-  // B) Handle all list views dynamically using the config object
   const config = VIEW_CONFIGS[activeView];
   if (config) {
-    // Check for the timeline flag
     if (config.isTimeline) {
-      // --- ✅ THIS IS THE FIX ---
-      // Instead of passing `handlePushSidebar` directly, create a new function.
-      // This new function takes the `event` object from the child component,
-      // wraps it in the correct `SidebarStackItem` format, and then calls `handlePushSidebar`.
       return (
         <EventTimeline
           apiEndpoint={config.apiEndpoint}
           title={config.title}
           onShowDetails={(eventData) =>
             handlePushSidebar({
-              type: config.detailsType, // e.g., "event"
+              type: config.detailsType,
               data: eventData,
               title: "Event Details",
             })
@@ -1116,28 +1268,35 @@ export default function App() {
         />
       );
     }
+    
+    // --- IMPORTANT ---
+    // For the specific user layouts to work, you must update ClickUpListViewUpdated.tsx.
+    // It needs to check for a user-specific layout in localStorage first,
+    // then fall back to the global layout, and finally to the default config.
+    // Example logic for ClickUpListViewUpdated:
+    // const { user } = useAuth();
+    // const userLayoutKey = `user-${user.id}-view-${viewId}`;
+    // const globalLayoutKey = `global-view-${viewId}`;
+    // const userOrder = localStorage.getItem(`column-order-${userLayoutKey}`);
+    // const globalOrder = localStorage.getItem(`column-order-${globalLayoutKey}`);
+    // // ... then use the most specific layout found.
 
-    // Render the standard table view for all other configs
-    // --- MODIFIED: Cleaned up prop passing to be data-driven ---
     const extraProps = activeView === "digitalrecordings"
       ? {
           groupEnabled: true,
           rowTransformer: (row: any) => {
             const ev = eventsLookup[row.fkEventCode || row.EventCode || row.RecordingEventCode] || null;
             const Yr = row.Yr || (row.SubmittedDate ? new Date(row.SubmittedDate).getFullYear() : ev && (ev.Yr || (ev.FromDate ? new Date(ev.FromDate).getFullYear() : undefined)));
-            return {
-              ...row,
-              Yr,
-              EventName: row.EventName || ev?.EventName || "",
-              fkEventCategory: row.fkEventCategory || ev?.fkEventCategory || "",
-            };
+            return { ...row, Yr, EventName: row.EventName || ev?.EventName || "", fkEventCategory: row.fkEventCategory || ev?.fkEventCategory || "", };
           },
         }
       : {};
 
     return (
       <ClickUpListViewUpdated
+        key={activeView}
         title={config.title}
+        viewId={activeView}
         apiEndpoint={config.apiEndpoint}
         idKey={config.idKey}
         onRowSelect={(row) => handleRowSelect(row, config.detailsType)}
@@ -1145,113 +1304,65 @@ export default function App() {
         views={config.views}
         filterConfigs={[]}
         showAddButton={!!config.isDropdown}
-        initialGroupBy={config.groupBy} // <-- Pass the default group from the config
+        initialGroupBy={config.groupBy}
         initialSortBy={config.sortBy}
         initialSortDirection={config.sortDirection}
         initialFilters={initialFilters}
-        onViewChange={() => setInitialFilters(undefined)} // Clear filters when view changes
+        onViewChange={() => setInitialFilters(undefined)}
         {...extraProps}
       />
     );
   }
   
-  // C) Fallback to the dashboard if no view matches
   return <Dashboard onShowDetails={handlePushSidebar} />;
 };
-  // --- Layout Calculation ---
+  
   const sidebarWidth = 384;
   const cascadeOffset = 24;
   const sidebarContainerWidth = sidebarStack.length > 0 ? sidebarWidth + (sidebarStack.length - 1) * cascadeOffset : 0;
 
   // ===================================================================================
   // --- 4. JSX LAYOUT ---
+ 
+  // (This section remains unchanged)
   // ===================================================================================
   if (isMobile) {
     return (
       <div className="dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        {/* Mobile Header Bar */}
         <div className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 px-4 py-3 flex items-center justify-between shadow-sm">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="p-2 -ml-2 text-white hover:bg-slate-800"
-          >
+          <Button variant="ghost" size="sm" onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)} className="p-2 -ml-2 text-white hover:bg-slate-800" >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold text-white truncate">
-            {VIEW_CONFIGS[activeView]?.title || 'Dashboard'}
-          </h1>
-          <div className="w-10"></div> {/* Spacer for centered title */}
+          <h1 className="text-lg font-semibold text-white truncate">{VIEW_CONFIGS[activeView]?.title || 'Dashboard'}</h1>
+          <div className="w-10"></div>
         </div>
-
-        {/* Mobile Sidebar Overlay */}
         {mobileSidebarOpen && (
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)}>
-            <div 
-              className="fixed left-0 top-0 h-full w-80 max-w-[90vw] bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out" 
-              onClick={(e) => e.stopPropagation()}
-              style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}
-            >
-              {/* Mobile Sidebar Header */}
+            <div className="fixed left-0 top-0 h-full w-80 max-w-[90vw] bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-out" onClick={(e) => e.stopPropagation()} style={{ transform: mobileSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }} >
               <div className="flex items-center justify-between p-4 border-b bg-slate-900 border-slate-700">
                 <h2 className="text-lg font-semibold text-white">Navigation</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className="p-2 text-white hover:bg-slate-800"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setMobileSidebarOpen(false)} className="p-2 text-white hover:bg-slate-800" >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              
-              {/* Sidebar Content */}
               <div className="h-full overflow-y-auto pb-20">
-                <Sidebar
-                  activeView={activeView}
-                  onViewChange={(view) => {
-                    setActiveView(view);
-                    setMobileSidebarOpen(false); // Close sidebar when item is selected
-                  }}
-                  collapsed={false}
-                  isOpen={mobileSidebarOpen}
-                  onClose={() => setMobileSidebarOpen(false)}
-                />
+                <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setMobileSidebarOpen(false); }} collapsed={false} isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
               </div>
             </div>
           </div>
         )}
-
         <InstallPrompt />
         <ResponsiveLayout>
           <DevelopmentBanner />
-          <div key={activeView} className="w-full">
-            {renderView()}
-          </div>
-          {/* Mobile Details Modal */}
+          <div key={activeView} className="w-full">{renderView()}</div>
           {sidebarStack.length > 0 && (
             <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
               <div className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-xl max-h-[80vh] overflow-hidden animate-slide-up border-t border-slate-700">
-                {sidebarStack.map((item, index) => (
-                  <DetailsSidebar
-                    key={index}
-                    isOpen={true}
-                    onClose={index === 0 ? handleCloseSidebar : handlePopSidebar}
-                    data={item.data}
-                    type={item.type}
-                    title={item.title}
-                    onPushSidebar={handlePushSidebar}
-                    zIndex={100 + index}
-                    positionOffset={0}
-                  />
-                ))}
+                {sidebarStack.map((item, index) => (<DetailsSidebar key={index} isOpen={true} onClose={index === 0 ? handleCloseSidebar : handlePopSidebar} data={item.data} type={item.type} title={item.title} onPushSidebar={handlePushSidebar} zIndex={100 + index} positionOffset={0} />))}
               </div>
             </div>
           )}
         </ResponsiveLayout>
-
-        {/* Bottom Navigation for Mobile */}
         <MobileNavigation activeView={activeView} onViewChange={setActiveView} />
       </div>
     );
@@ -1259,39 +1370,15 @@ export default function App() {
 
   return (
     <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      {/* MAIN SIDEBAR */}
-      <Sidebar
-        activeView={activeView}
-        onViewChange={setActiveView}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-
-      {/* MAIN CONTENT + STACKED SIDE PANELS */}
+      <Sidebar activeView={activeView} onViewChange={setActiveView} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className="flex-1 flex overflow-hidden">
-        {/* MAIN CONTENT */}
         <main className="flex-1 overflow-auto transition-all duration-300 ease-in-out">
           <DevelopmentBanner />
           <div key={activeView}>{renderView()}</div>
         </main>
-
-        {/* STACKED SIDE DETAILS */}
-        <div
-          className="relative transition-all duration-300 ease-in-out flex-shrink-0"
-          style={{ width: `${sidebarContainerWidth}px` }}
-        >
+        <div className="relative transition-all duration-300 ease-in-out flex-shrink-0" style={{ width: `${sidebarContainerWidth}px` }} >
           {sidebarStack.map((item, index) => (
-            <DetailsSidebar
-              key={index}
-              isOpen={true}
-              onClose={index === 0 ? handleCloseSidebar : handlePopSidebar}
-              data={item.data}
-              type={item.type}
-              title={item.title}
-              onPushSidebar={handlePushSidebar}
-              zIndex={100 + index}
-              positionOffset={index * cascadeOffset}
-            />
+            <DetailsSidebar key={index} isOpen={true} onClose={index === 0 ? handleCloseSidebar : handlePopSidebar} data={item.data} type={item.type} title={item.title} onPushSidebar={handlePushSidebar} zIndex={100 + index} positionOffset={index * cascadeOffset} />
           ))}
         </div>
       </div>
