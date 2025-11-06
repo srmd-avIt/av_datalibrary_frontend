@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -690,7 +689,27 @@ export function DetailsSidebar({
                     <CardTitle className="text-lg px-2">Metadata</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 p-4">
-                    <FieldRow label="EventCode" value={data.EventCode} />
+                    {/* --- MODIFIED: EventCode is now a clickable drilldown button --- */}
+                    {data.EventCode && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Event Code</span>
+                        {hasAccess("Events", 'read') ? (
+                          <DrilldownButton
+                            id={data.EventCode}
+                            apiEndpoint="/events"
+                            targetType="event"
+                            titlePrefix="Event"
+                            onPushSidebar={onPushSidebar}
+                          >
+                            {data.EventCode}
+                          </DrilldownButton>
+                        ) : (
+                          <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+                            <Lock className="w-3 h-3"/> {data.EventCode}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {data.fkDigitalRecordingCode && (
                        <div className="flex justify-between items-center">
                          <span className="text-muted-foreground">Recording Code</span>

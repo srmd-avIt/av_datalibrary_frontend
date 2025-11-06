@@ -8,7 +8,7 @@ import { ClickUpListViewUpdated } from './ClickUpListViewUpdated';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 
-// --- NEW: Reusable Searchable Dropdown (Combobox) Component ---
+// --- Reusable Searchable Dropdown (Combobox) Component ---
 interface ComboboxProps {
   options: { value: string; label: string }[];
   value: string;
@@ -192,11 +192,15 @@ const VIEW_CONFIGS: Record<string, any> = {
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
-export function SatsangDashboard() {
+// --- MODIFIED: Add onShowDetails to props ---
+export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { type: string; data: any; title: string }) => void }) {
   const [searchFilters, setSearchFilters] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any> | undefined>(undefined);
   
-  // --- NEW: State for dropdown options ---
+  // --- REMOVED: Local state for sidebar is no longer needed ---
+  // const [selectedItem, setSelectedItem] = useState<Record<string, any> | null>(null);
+
+  // --- State for dropdown options ---
   const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([]);
   const [stateOptions, setStateOptions] = useState<{ value: string; label: string }[]>([]);
   const [cityOptions, setCityOptions] = useState<{ value: string; label: string }[]>([]);
@@ -254,6 +258,17 @@ export function SatsangDashboard() {
   const handleClear = () => {
     setSearchFilters({});
     setAppliedFilters(undefined);
+  };
+
+  // --- MODIFIED: Row selection now calls the onShowDetails prop ---
+  const handleRowSelect = (item: Record<string, any>) => {
+    if (onShowDetails) {
+      onShowDetails({
+        type: 'medialog', // The type expected by DetailsSidebar
+        data: item,
+        title: 'Media Log Details'
+      });
+    }
   };
 
   const satsangCategoryConfig = VIEW_CONFIGS['medialog_satsang_category'];
@@ -437,13 +452,13 @@ export function SatsangDashboard() {
 
 <div>
   <Label htmlFor="MLUniqueID" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-    ML Unique ID
+    EventRef MLUniqueID
   </Label>
   <Input
-    id="MLUniqueID"
+    id="EventRefMLID"
     placeholder="e.g., ML-12345"
-    value={searchFilters.MLUniqueID || ''}
-    onChange={e => handleInputChange('MLUniqueID', e.target.value)}
+    value={searchFilters.EventRefMLID || ''}
+    onChange={e => handleInputChange('EventRefMLID', e.target.value)}
     style={{
       width: "100%",
       padding: "10px 12px",
@@ -534,6 +549,7 @@ export function SatsangDashboard() {
               idKey={satsangCategoryConfig.idKey}
               initialFilters={appliedFilters}
               onViewChange={() => setAppliedFilters(undefined)}
+              onRowSelect={handleRowSelect} // Pass the updated handler
             />
           ) : (
             <Card>
@@ -545,6 +561,8 @@ export function SatsangDashboard() {
           )}
         </div>
       )}
+
+      {/* --- REMOVED: The local sidebar rendering is no longer needed here --- */}
     </div>
   );
 }

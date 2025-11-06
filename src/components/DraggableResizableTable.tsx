@@ -83,11 +83,28 @@ function RenderGroupRows({ groupData, columns, level, onRowSelect, sortedData, i
             const isFrozen = frozenColumns.includes(column.key);
             const cellValue = item[column.key];
             const isEditing = editingCell?.rowIndex === absoluteIndex && editingCell?.columnKey === column.key;
-            const cellStyle: React.CSSProperties = { width: `${columnWidths[column.key] || 150}px`, minWidth: `${columnWidths[column.key] || 150}px`, maxWidth: `${columnWidths[column.key] || 150}px`, position: isFrozen ? "sticky" : undefined, left: isFrozen ? leftOffsets[column.key] : undefined, zIndex: isFrozen ? 20 : undefined, background: isFrozen ? "oklch(0.07 0 0)" : undefined, borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined };
+            
+            // --- MODIFIED: Remove background color logic ---
+            const hasPendingChange = item.pendingChanges && item.pendingChanges[column.key] !== undefined;
+
+            const cellStyle: React.CSSProperties = { 
+              width: `${columnWidths[column.key] || 150}px`, 
+              minWidth: `${columnWidths[column.key] || 150}px`, 
+              maxWidth: `${columnWidths[column.key] || 150}px`, 
+              position: isFrozen ? "sticky" : undefined, 
+              left: isFrozen ? leftOffsets[column.key] : undefined, 
+              zIndex: isFrozen ? 20 : undefined, 
+              background: isFrozen ? "oklch(0.07 0 0)" : undefined, // Set background to undefined for non-frozen cells
+              borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined 
+            };
+            
             return (
-              <TableCell key={column.key} style={cellStyle} className={cn("px-6 py-4 text-sm text-foreground/90 transition-colors group-hover:bg-muted/30", isFrozen && "group-hover:bg-black/80", "cursor-pointer")} onClick={() => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); clickTimeoutRef.current = setTimeout(() => onRowSelect(item), 250); }} onDoubleClick={(e) => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); e.stopPropagation(); if (handleCellDoubleClick && column.editable) handleCellDoubleClick(absoluteIndex, column, cellValue); }}>
+              <TableCell key={column.key} style={cellStyle} className={cn("px-6 py-4 text-sm text-foreground/90 transition-colors group-hover:bg-muted/30", isFrozen && "group-hover:bg-black/80", "cursor-pointer relative")} onClick={() => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); clickTimeoutRef.current = setTimeout(() => onRowSelect(item), 250); }} onDoubleClick={(e) => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); e.stopPropagation(); if (handleCellDoubleClick && column.editable) handleCellDoubleClick(absoluteIndex, column, cellValue); }}>
+                {hasPendingChange && !isEditing && (
+                  <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-blue-400" title="Unsaved change"></div>
+                )}
                 {isEditing ? (
-                  <Input type="text" value={editValue ?? ''} onChange={(e) => setEditValue && setEditValue(e.target.value)} onBlur={() => handleCellEdit && handleCellEdit(absoluteIndex, column, editValue)} onKeyDown={(e) => { if (e.key === 'Enter') handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); if (e.key === 'Escape') setEditingCell && setEditingCell(null); }} autoFocus className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                  <Input type="text" value={editValue ?? ''} onChange={(e) => setEditValue && setEditValue(e.target.value)} onBlur={() => { handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); setEditingCell && setEditingCell(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); setEditingCell && setEditingCell(null); } if (e.key === 'Escape') setEditingCell && setEditingCell(null); }} autoFocus className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
                 ) : (
                   <div className="truncate">{column.render ? column.render(cellValue, item) : String(cellValue ?? "")}</div>
                 )}

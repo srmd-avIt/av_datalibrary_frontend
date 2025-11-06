@@ -38,8 +38,6 @@ import { Column, ListItem } from "./types"; // Import ListItem from ./types
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { ManageColumnsDialog } from "./ManageColumnsDialog"; // add import if not present
 
-// --- REMOVED: Local Column definition is no longer needed ---
-
 import useLocalStorageState from "../hooks/useLocalStorageState"; 
 import { useAuth } from "../contexts/AuthContext"; // For permission checks
 import { useQueryClient } from "@tanstack/react-query"; // To invalidate cache
@@ -366,6 +364,9 @@ export function ClickUpListViewUpdated({
   const [isExporting, setIsExporting] = useState(false);
   const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
   
+  // --- MODIFIED: State for bulk editing is now persisted in localStorage ---
+  const [pendingChanges, setPendingChanges] = useLocalStorageState<Record<string, Record<string, any>>>(`${localStorageKeyPrefix}-pendingChanges`, {});
+
   // --- NEW: State for inline editing ---
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
   const [editValue, setEditValue] = useState<any>('');
@@ -568,13 +569,13 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
 } else if (effectiveApiEndpoint.includes("bhajantype")) {
   endpoint = "/bhajantype";
   rowId = updatedRow.BTID;
-}else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
+} else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
   endpoint = "/digitalmastercategory";
   rowId = updatedRow.DMCID;
 } else if (effectiveApiEndpoint.includes("distributionlabel")) {
   endpoint = "/distributionlabel";
   rowId = updatedRow.LabelID;
-}else if (effectiveApiEndpoint.includes("editingtype")) {
+} else if (effectiveApiEndpoint.includes("editingtype")) {
   endpoint = "/editingtype";
   rowId = updatedRow.EdID;
 } else if (effectiveApiEndpoint.includes("editingstatus")) {
@@ -603,7 +604,7 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   rowId = updatedRow.OrganizationID;
 } else if (effectiveApiEndpoint.includes("neweventcategory")) {
   endpoint = "/neweventcategory";
-  rowId = updatedRow.CategoryID; // This should match your data key for SrNo/CategoryID
+  rowId = updatedRow.SrNo || updatedRow.CategoryID;
 } else if (effectiveApiEndpoint.includes("newcities")) {
   endpoint = "/newcities";
   rowId = updatedRow.CityID;
@@ -829,6 +830,17 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     }
     return sortedData; // For paginated view, use the client-sorted data
   }, [sortedData, currentPage, itemsPerPage, shouldFetchAllForGrouping]);
+
+  // Overlay any staged pendingChanges onto the finalItems so the UI shows staged edits
+  const finalItemsWithPendingChanges = useMemo(() => {
+    if (!pendingChanges || Object.keys(pendingChanges).length === 0) return finalItems;
+    return finalItems.map(item => {
+      const rowId = item[idKey];
+      const changes = pendingChanges[rowId];
+      if (!changes) return item;
+      return { ...item, ...changes };
+    });
+  }, [finalItems, pendingChanges, idKey]);
 
   const totalItems = shouldFetchAllForGrouping ? (sortedData.length) : (queryData?.pagination.totalItems || 0);
   const totalPages = shouldFetchAllForGrouping ? Math.ceil(totalItems / itemsPerPage) : (queryData?.pagination.totalPages || 1);
@@ -1328,6 +1340,205 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     }
   };
 
+    const handleCellChange = (rowIndex: number, columnKey: string, newValue: any) => {
+    const item = finalItems[rowIndex];
+    if (!item) return;
+
+    const rowId = item[idKey];
+    const originalValue = item[columnKey];
+
+    // Exit edit mode immediately
+    setEditingCell(null);
+
+    // If the new value is the same as the original, we might need to remove a pending change.
+    if (newValue === originalValue) {
+      if (pendingChanges[rowId] && pendingChanges[rowId][columnKey] !== undefined) {
+        setPendingChanges(prev => {
+          const newRowChanges = { ...prev[rowId] };
+          delete newRowChanges[columnKey];
+          if (Object.keys(newRowChanges).length === 0) {
+            const newTotalChanges = { ...prev };
+            delete newTotalChanges[rowId];
+            return newTotalChanges;
+          }
+          return { ...prev, [rowId]: newRowChanges };
+        });
+      }
+      return;
+    }
+
+    // Stage the change to make the Save/Discard buttons appear
+    setPendingChanges(prev => ({
+      ...prev,
+      [rowId]: {
+        ...prev[rowId],
+        [columnKey]: newValue,
+      }
+    }));
+  };
+  // --- REPLACEMENT: Efficient bulk update function ---
+    const handleBulkUpdate = async () => {
+    const changesToSave = Object.entries(pendingChanges);
+    if (changesToSave.length === 0) {
+      toast.info("No changes to save.");
+      return;
+    }
+
+    const savingToast = toast.loading(`Saving ${changesToSave.length} update(s)...`);
+
+    const updatePromises = changesToSave.map(async ([rowId, changes]) => {
+      // --- FIX: Search the full dataset (`sortedData`) instead of just the current page (`finalItems`).
+      // This ensures updates work correctly when grouping is active and changes are on different pages.
+      const originalItem = sortedData.find(item => String(item[idKey]) === String(rowId));
+      
+      if (!originalItem) {
+        // This should not happen if UI is in sync, but we handle it.
+        return { status: 'rejected', reason: `Original item with ID ${rowId} not found.` };
+      }
+
+      // Create the full updated row object
+      const updatedRow = { ...originalItem, ...changes };
+
+      // Add audit fields
+      if (user?.email) {
+        updatedRow.LastModifiedBy = user.email;
+      }
+      delete updatedRow.LastModifiedTimestamp;
+
+      // Determine the correct endpoint and ID for this specific row
+      let endpoint = "";
+      let resolvedRowId = "";
+
+      if (effectiveApiEndpoint.includes("digitalrecording")) {
+        endpoint = "/digitalrecording";
+        resolvedRowId = updatedRow.RecordingCode;
+      } else if (effectiveApiEndpoint.includes("auxfiles")) {
+        endpoint = "/auxfiles";
+        resolvedRowId = updatedRow.AuxCode;
+      } else if (effectiveApiEndpoint.includes("newmedialog")) {
+        endpoint = "/newmedialog";
+        resolvedRowId = updatedRow.MLUniqueID;
+      } else if (effectiveApiEndpoint.includes("events")) {
+        endpoint = "/events";
+        resolvedRowId = updatedRow.EventID;
+      } else if (effectiveApiEndpoint.includes("audio")) {
+        endpoint = "/audio";
+        resolvedRowId = updatedRow.AID;
+      } else if (effectiveApiEndpoint.includes("bhajantype")) {
+        endpoint = "/bhajantype";
+        resolvedRowId = updatedRow.BTID;
+      } else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
+        endpoint = "/digitalmastercategory";
+        resolvedRowId = updatedRow.DMCID;
+      } else if (effectiveApiEndpoint.includes("distributionlabel")) {
+        endpoint = "/distributionlabel";
+        resolvedRowId = updatedRow.LabelID;
+      } else if (effectiveApiEndpoint.includes("editingtype")) {
+        endpoint = "/editingtype";
+        resolvedRowId = updatedRow.EdID;
+      } else if (effectiveApiEndpoint.includes("editingstatus")) {
+        endpoint = "/editingstatus";
+        resolvedRowId = updatedRow.EdID;
+      } else if (effectiveApiEndpoint.includes("eventcategory")) {
+        endpoint = "/eventcategory";
+        resolvedRowId = updatedRow.EventCategoryID;
+      } else if (effectiveApiEndpoint.includes("footagetype")) {
+        endpoint = "/footagetype";
+        resolvedRowId = updatedRow.FootageID;
+      } else if (effectiveApiEndpoint.includes("formattype")) {
+        endpoint = "/formattype";
+        resolvedRowId = updatedRow.FTID;
+      } else if (effectiveApiEndpoint.includes("granths")) {
+        endpoint = "/granths";
+        resolvedRowId = updatedRow.ID;
+      } else if (effectiveApiEndpoint.includes("language")) {
+        endpoint = "/language";
+        resolvedRowId = updatedRow.STID;
+      } else if (effectiveApiEndpoint.includes("master-quality")) {
+        endpoint = "/master-quality";
+        resolvedRowId = updatedRow.MQID;
+      } else if (effectiveApiEndpoint.includes("organizations")) {
+        endpoint = "/organizations";
+        resolvedRowId = updatedRow.OrganizationID;
+      } else if (effectiveApiEndpoint.includes("neweventcategory")) {
+        endpoint = "/neweventcategory";
+        resolvedRowId = updatedRow.SrNo || updatedRow.CategoryID;
+      } else if (effectiveApiEndpoint.includes("newcities")) {
+        endpoint = "/newcities";
+        resolvedRowId = updatedRow.CityID;
+      } else if (effectiveApiEndpoint.includes("newcountries")) {
+        endpoint = "/newcountries";
+        resolvedRowId = updatedRow.CountryID;
+      } else if (effectiveApiEndpoint.includes("newstates")) {
+        endpoint = "/newstates";
+        resolvedRowId = updatedRow.StateID;
+      } else if (effectiveApiEndpoint.includes("occasions")) {
+        endpoint = "/occasions";
+        resolvedRowId = updatedRow.OccasionID;
+      } else if (effectiveApiEndpoint.includes("topicnumbersource")) {
+        endpoint = "/topicnumbersource";
+        resolvedRowId = updatedRow.TNID;
+      } else if (effectiveApiEndpoint.includes("time-of-day")) {
+        endpoint = "/time-of-day";
+        resolvedRowId = updatedRow.TimeID;
+      }  else if (effectiveApiEndpoint.includes("aux-file-type")) {
+        endpoint = "/aux-file-type";
+        resolvedRowId = updatedRow.AuxTypeID;
+      } else if (effectiveApiEndpoint.includes("topic-given-by")) {
+        endpoint = "/topic-given-by";
+        resolvedRowId = updatedRow.TGBID;
+      } else {
+        endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`;
+        resolvedRowId = updatedRow[idKey];
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}/${resolvedRowId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedRow),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Failed to update ${resolvedRowId}`);
+        }
+        return { status: 'fulfilled', value: resolvedRowId };
+      } catch (error: any) {
+        return { status: 'rejected', reason: error.message, rowId };
+      }
+    });
+
+    const results = await Promise.allSettled(updatePromises);
+
+    let successfulUpdates = 0;
+    let failedUpdates = 0;
+
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
+        successfulUpdates++;
+      } else {
+        failedUpdates++;
+        const reason = result.status === 'rejected' ? result.reason : (result.value as any).reason;
+        console.error(`Failed to update an item:`, reason);
+      }
+    });
+
+    if (failedUpdates > 0) {
+      toast.error(`${failedUpdates} update(s) failed. ${successfulUpdates} saved.`, { id: savingToast });
+    } else {
+      toast.success(`${successfulUpdates} update(s) saved successfully!`, { id: savingToast });
+    }
+
+    setPendingChanges({});
+    await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
+  };
+  // Handler to discard pending changes
+  const handleDiscardChanges = () => {
+    setPendingChanges({});
+    toast.info("All pending changes discarded.");
+  };
+
   // --- Render ---
   return (
     <div className={`${isMobile ? 'p-2 space-y-3' : 'p-6 space-y-4'}`}>
@@ -1397,6 +1608,17 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   </button>
                 </div>
                 <div className="ml-auto flex gap-2">
+                  {/* --- NEW: Bulk Edit Buttons for Mobile --- */}
+                  {Object.keys(pendingChanges).length > 0 && (
+                    <>
+                      <Button variant="destructive" size="sm" className="gap-2 h-8" onClick={handleDiscardChanges}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                      <Button variant="default" size="sm" className="gap-2 h-8" onClick={handleBulkUpdate}>
+                        Save ({Object.keys(pendingChanges).length})
+                      </Button>
+                    </>
+                  )}
                   <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-slate-600 text-white hover:bg-slate-800" onClick={handleExport} disabled={isExporting}>
                     {isExporting ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Download className="w-3 h-3" />)}
                     {isExporting ? 'Export' : 'Export'}
@@ -1418,6 +1640,18 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                 </Tabs>
                 {/* Desktop: Export button */}
                 <div className="flex items-center gap-2">
+                  {/* --- NEW: Bulk Edit Buttons for Desktop --- */}
+                  {Object.keys(pendingChanges).length > 0 && (
+                    <>
+                      <Button variant="destructive" size="sm" className="gap-2 h-8" onClick={handleDiscardChanges}>
+                        <X className="w-4 h-4" />
+                        Discard
+                      </Button>
+                      <Button variant="default" size="sm" className="gap-2 h-8" onClick={handleBulkUpdate}>
+                        Save Changes ({Object.keys(pendingChanges).length})
+                      </Button>
+                    </>
+                  )}
                   <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
                     {isExporting ? (<Loader2 className="w-4 h-4 animate-spin" />) : (<Download className="w-4 h-4" />)}
                     {isExporting ? 'Exporting...' : 'Export'}
@@ -1608,6 +1842,19 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   <PopoverContent className="w-72" align="start">
                     <div className="space-y-3">
                       <div className="font-medium text-sm">Show/Hide Columns</div>
+                      {/* --- NEW: Select/Deselect All for Mobile --- */}
+                      <div className="flex items-center space-x-2 border-b pb-2 mb-2">
+                        <Checkbox
+                          id="mobile-select-all-columns"
+                          checked={hiddenColumns.length === 0}
+                          onCheckedChange={(checked) => {
+                            setHiddenColumns(checked ? [] : columns.map(c => c.key));
+                          }}
+                        />
+                        <label htmlFor="mobile-select-all-columns" className="text-sm font-medium">
+                          {hiddenColumns.length > 0 ? "Show All" : "Hide All"}
+                        </label>
+                      </div>
                       <div className="max-h-64 overflow-y-auto space-y-2">
                         {columns.map((column) => (
                           <div key={column.key} className="flex items-center space-x-2">
@@ -1674,7 +1921,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   )}
                 </div>
 
-                {/* --- MODIFIED: Grouping controls for multiple fields --- */}
+                {/* --- MODIFIED: Grouping controls for multiple fields --- */} 
                 <div className="flex items-center gap-1">
                   <Popover>
                     <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />Group</Button></PopoverTrigger>
@@ -1773,35 +2020,89 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
               </div>
               
               {/* Search and column hiding */}
-              <div className="flex items-center gap-2 ml-auto">
-                <div className="relative"><Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8"/></div>
-                <Popover>
-                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
-                  <PopoverContent className="w-64" align="end">
-                    <div className="space-y-3">
-                      <div className="font-medium">Show/Hide Columns</div>
-                      {columns.map((column) => (
-                        <div key={column.key} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`column-${column.key}`} 
-                            checked={!hiddenColumns.includes(column.key)} 
-                            onCheckedChange={(checked: boolean) => { 
-                              setHiddenColumns(prevHidden => {
-                                if (checked) { 
-                                  return prevHidden.filter(c => c !== column.key); 
-                                } else { 
-                                  return [...prevHidden, column.key]; 
-                                } 
-                              });
-                            }} 
-                          />
-                          <label htmlFor={`column-${column.key}`} className="text-sm">{column.label}</label>
-                        </div>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+           <div className="flex items-center gap-2 ml-auto">
+  <div className="relative">
+    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <Input
+      placeholder="Search"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="pl-8 w-64 h-8"
+    />
+  </div>
+
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button variant="outline" size="sm" className="gap-2 h-8">
+        <EyeOff className="w-4 h-4" />Hide
+      </Button>
+    </PopoverTrigger>
+
+    <PopoverContent className="w-64 max-h-72 overflow-y-auto" align="end"
+      style={{
+        scrollbarWidth: "thin",
+        scrollbarColor: "#475569 #1e293b", // subtle scrollbar colors for Firefox
+      }}
+    >
+      <div className="space-y-3">
+        <div className="font-medium">Show/Hide Columns</div>
+
+        {/* Select/Deselect All */}
+        <div className="flex items-center space-x-2 border-b pb-2 mb-2">
+          <Checkbox
+            id="desktop-select-all-columns"
+            checked={hiddenColumns.length === 0}
+            onCheckedChange={(checked) => {
+              setHiddenColumns(checked ? [] : columns.map((c) => c.key));
+            }}
+          />
+          <label
+            htmlFor="desktop-select-all-columns"
+            className="text-sm font-medium"
+          >
+            {hiddenColumns.length > 0 ? "Show All" : "Hide All"}
+          </label>
+        </div>
+
+        {/* Scrollable Column List */}
+        <div
+          className="space-y-2 pr-1"
+          style={{
+            maxHeight: "200px",
+            overflowY: "auto",
+            scrollbarWidth: "thin",
+            scrollbarColor: "#475569 #f0f2f5ff",
+          }}
+        >
+          {columns.map((column) => (
+            <div key={column.key} className="flex items-center space-x-2">
+              <Checkbox
+                id={`column-${column.key}`}
+                checked={!hiddenColumns.includes(column.key)}
+                onCheckedChange={(checked: boolean) => {
+                  setHiddenColumns((prevHidden) => {
+                    if (checked) {
+                      return prevHidden.filter((c) => c !== column.key);
+                    } else {
+                      return [...prevHidden, column.key];
+                    }
+                  });
+                }}
+              />
+              <label
+                htmlFor={`column-${column.key}`}
+                className="text-sm text-foreground"
+              >
+                {column.label}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </PopoverContent>
+  </Popover>
+</div>
+
             </div>
           )}
         </CardHeader>
@@ -1859,13 +2160,13 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                         handleUpdateCell={handleUpdateCell}
                           handleCellDoubleClick={handleCellDoubleClick}
                          isMobile={isMobile}
-                           handleCellEdit={handleCellEdit}
+                           handleCellEdit={(rowIndex, column, newValue) => handleCellChange(rowIndex, column.key, newValue)}
                       />
                     </div>
                   ) : (
                     /* Desktop view: Full table with drag, resize, grouping, sorting, selection */
                     <DraggableResizableTable
-                      data={finalItems}
+                      data={finalItemsWithPendingChanges}
                       columns={visibleColumns as any}
                       onRowSelect={(item) => onRowSelect?.(item as any)}
                       onSort={handleHeaderSort} // onSort is now handled by the popover
@@ -1873,11 +2174,12 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                       groupedData={groupedData as any}
                       groupByFields={groupByFields.filter(f => f).map(f => ({ key: f!, direction: groupDirections[f!] || 'asc' }))}
                       idKey={idKey}
-                       handleCellEdit={handleCellEdit} // <-- use this i
+                       handleCellEdit={(rowIndex, column, newValue) => handleCellChange(rowIndex, column.key, newValue)}
                       // --- Pass editing props to the table ---
                       editingCell={editingCell}
                       editValue={editValue}
                       setEditValue={setEditValue}
+      
                       handleUpdateCell={handleUpdateCell}
                       handleCellDoubleClick={handleCellDoubleClick}
                       setEditingCell={setEditingCell} // Pass the setter function

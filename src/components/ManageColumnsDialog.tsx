@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users } from 'lucide-react';
+import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users, Plus, Trash2 } from 'lucide-react'; // Add Plus, Trash2
 import { Column } from './types';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
@@ -39,6 +39,7 @@ interface DraggableColumnProps {
   moveCard: (dragIndex: number, hoverIndex: number) => void;
   onToggle: () => void;
   isVisible: boolean;
+  // onRemove prop is removed
 }
 
 const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCard, onToggle, isVisible }) => {
@@ -79,9 +80,12 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCa
         </div>
         <span className="text-sm">{column.label}</span>
       </div>
-      <Button variant="ghost" size="sm" onClick={onToggle} title={isVisible ? 'Hide' : 'Show'}>
-        {isVisible ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-      </Button>
+      <div className="flex items-center gap-1">
+        {/* --- REMOVED: The trash icon button for removing a column --- */}
+        <Button variant="ghost" size="sm" onClick={onToggle} title={isVisible ? 'Hide' : 'Show'}>
+          {isVisible ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+        </Button>
+      </div>
     </div>
   );
 };
@@ -94,21 +98,33 @@ interface ManageColumnsDialogProps {
   visibleColumnKeys: string[];
   onSave: (saveConfig: SaveConfig) => void;
   viewId: string;
+  tableName: string; // --- NEW: Add tableName to know which DB table to alter
   users?: SimpleUser[];
+  onUpdateColumns: (viewId:string, newColumns: Column[]) => void;
 }
 
-export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen, onClose, allColumns, visibleColumnKeys, onSave, viewId, users = [] }) => {
+export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen, onClose, allColumns, visibleColumnKeys, onSave, viewId, tableName, users = [], onUpdateColumns }) => {
   const [currentVisible, setCurrentVisible] = useState<Column[]>([]);
   const [currentHidden, setCurrentHidden] = useState<Column[]>([]);
   const [isUserSelectOpen, setIsUserSelectOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
 
+  // --- MODIFIED: State for "Add Column" now only needs the label ---
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+  const [newColumnLabel, setNewColumnLabel] = useState('');
+
   useEffect(() => {
     if (isOpen) {
-      const visible = visibleColumnKeys.map(key => allColumns.find(c => c.key === key)).filter((c): c is Column => !!c);
-      const hidden = allColumns.filter(c => !visibleColumnKeys.includes(c.key));
-      setCurrentVisible(visible);
+      // Ensure visible columns are ordered correctly based on visibleColumnKeys
+      const visibleOrdered = visibleColumnKeys
+        .map(key => allColumns.find(c => c.key === key))
+        .filter((c): c is Column => !!c);
+      
+      const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
+      const hidden = allColumns.filter(c => !visibleKeysSet.has(c.key));
+
+      setCurrentVisible(visibleOrdered);
       setCurrentHidden(hidden);
     }
   }, [isOpen, allColumns, visibleColumnKeys]);
@@ -128,7 +144,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
       const columnToHide = currentVisible.find(c => c.key === columnKey);
       if (columnToHide) {
         setCurrentVisible(prev => prev.filter(c => c.key !== columnKey));
-        setCurrentHidden(prev => [...prev, columnToHide]);
+        setCurrentHidden(prev => [...prev, columnToHide].sort((a, b) => a.label.localeCompare(b.label)));
       }
     } else {
       const columnToShow = currentHidden.find(c => c.key === columnKey);
@@ -136,6 +152,57 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
         setCurrentHidden(prev => prev.filter(c => c.key !== columnKey));
         setCurrentVisible(prev => [...prev, columnToShow]);
       }
+    }
+  };
+
+  // --- MODIFIED: Handler to add a new column with an auto-generated key ---
+  const handleAddColumn = async () => {
+    if (!newColumnLabel.trim()) {
+      toast.error("Column Label is required.");
+      return;
+    }
+
+    // Auto-generate a unique key from the label (e.g., "My Column" -> "myColumn")
+    const generateKey = (label: string) => {
+      return label
+        .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
+          index === 0 ? word.toLowerCase() : word.toUpperCase()
+        )
+        .replace(/\s+/g, '');
+    };
+
+    let baseKey = generateKey(newColumnLabel);
+    let finalKey = baseKey;
+    let counter = 1;
+    while (allColumns.some(c => c.key === finalKey)) {
+      finalKey = `${baseKey}${counter++}`;
+    }
+
+    // --- NEW: API Call to add column to the database ---
+    try {
+      const response = await fetch(`${(import.meta as any).env.VITE_API_URL}/manage-columns/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tableName, columnKey: finalKey }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to add column on the server.');
+      }
+
+      // If API call is successful, update the UI state
+      const newColumnDef: Column = { key: finalKey, label: newColumnLabel, sortable: true, editable: true };
+      const newAllColumns = [...allColumns, newColumnDef];
+      onUpdateColumns(viewId, newAllColumns); // Update the master list in App.tsx
+      setCurrentHidden(prev => [...prev, newColumnDef].sort((a, b) => a.label.localeCompare(b.label))); // Add to hidden list by default
+      setIsAddColumnOpen(false);
+      setNewColumnLabel('');
+      toast.success(`Column "${newColumnLabel}" added successfully.`);
+
+    } catch (error: any) {
+      console.error("Error adding column:", error);
+      toast.error(error.message || "An unexpected error occurred.");
     }
   };
 
@@ -221,15 +288,91 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
     </Dialog>
   );
 
+  // --- NEW: Dialog for adding a new column ---
+  const AddColumnDialog = (
+    <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Column</DialogTitle>
+          <DialogDescription>
+            Enter a label for the new column. A unique key will be generated automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 py-4">
+          {/* --- REMOVED: Column Key input is no longer needed --- */}
+          <div>
+            <label htmlFor="new-col-label" className="text-sm font-medium">Column Header</label>
+            <Input
+              id="new-col-label"
+              placeholder="e.g., 'My Custom Column'"
+              value={newColumnLabel}
+              onChange={(e) => setNewColumnLabel(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Display name for the column header.</p>
+          </div>
+        </div>
+       <DialogFooter
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    paddingTop: "20px",
+  }}
+>
+  <Button
+    onClick={handleAddColumn}
+    style={{
+      flex: 1,
+      minWidth: "140px",
+      padding: "10px 0",
+      fontSize: "15px",
+    }}
+  >
+    Add Column
+  </Button>
+
+  <Button
+    variant="outline"
+    onClick={() => setIsAddColumnOpen(false)}
+    style={{
+      flex: 1,
+      minWidth: "140px",
+      padding: "10px 0",
+      fontSize: "15px",
+    }}
+  >
+    Cancel
+  </Button>
+</DialogFooter>
+
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent style={{ maxWidth: "800px", width: "90%", padding: "20px", borderRadius: "12px" }}>
           <DialogHeader>
-            <DialogTitle>Manage Columns</DialogTitle>
-            <DialogDescription>
-              Drag to reorder, use arrows to show/hide. Use the 'Save As' button to apply changes.
-            </DialogDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <DialogTitle>Manage Columns</DialogTitle>
+                <DialogDescription>
+                  Drag to reorder, use arrows to show/hide. Use the 'Save As' button to apply changes.
+                </DialogDescription>
+              </div>
+              {/* --- NEW: Add Column Button --- */}
+              <Button
+  variant="outline"
+  size="sm"
+  onClick={() => setIsAddColumnOpen(true)}
+  style={{ marginRight: "auto" }}
+>
+  <Plus className="mr-2 h-4 w-4" />
+  Add Column
+</Button>
+ 
+            </div>
           </DialogHeader>
 
           <DndProvider backend={HTML5Backend}>
@@ -295,6 +438,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
         </DialogContent>
       </Dialog>
       {UserSelectionDialog}
+      {AddColumnDialog}
     </>
   );
 };

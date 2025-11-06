@@ -1194,7 +1194,11 @@ export default function App() {
         selectedViewsForMgmt[currentIndex]
       )}
      viewId={selectedViewsForMgmt[currentIndex]}
+     tableName={manageableViews.find((v) => v.id === selectedViewsForMgmt[currentIndex])?.title || selectedViewsForMgmt[currentIndex]}
       users={allUsers || []}
+      onUpdateColumns={(...args: any[]) => {
+        // noop handler to satisfy ManageColumnsDialogProps; can be extended to preview changes
+      }}
       onSave={(saveConfig: SaveConfig) => {
         const { viewId, visibleKeys, hiddenKeys, target } = saveConfig;
         const viewTitle =
