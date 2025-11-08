@@ -62,6 +62,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         { id: "medialog_all", label: "ML formal & Informal", icon: List },
          
         { id: "medialog_formal", label: "ML Formal", icon: Folder },
+       { id: "medialog_pending_gsheet", label: "MLFormal (Pending Push to DB)", icon: FileText },
         { id: "medialog_all_except_satsang", label: "All Except Satsang", icon: ListFilter },
         { id: "medialog_satsang_extracted_clips", label: "Satsang Extracted Clips", icon: Scissors },
         { id: "medialog_satsang_category", label: "Satsang Category", icon: ListTree },

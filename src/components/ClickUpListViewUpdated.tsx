@@ -285,7 +285,8 @@ export function ClickUpListViewUpdated({
   title,
   columns,
   apiEndpoint,
-  viewId, // <-- ADD THIS
+  viewId,
+  keyMap, // <-- ADD THIS PROP
   filterConfigs = [],
   views = [],
   onRowSelect,
@@ -303,7 +304,8 @@ export function ClickUpListViewUpdated({
   title: string;
   columns: Column[];
   apiEndpoint: string;
-  viewId: string; // <-- ADD THIS
+  viewId: string;
+  keyMap?: Record<string, string>; // <-- DEFINE THE PROP TYPE
   filterConfigs?: FilterConfig[];
   views?: ViewConfig[];
   onRowSelect?: (item: ListItem) => void;
@@ -803,16 +805,31 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
   // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
   let allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
   
-  // Apply optional rowTransformer (provided by App.tsx for digitalrecordings)
-  const transformedItems = React.useMemo(() => {
-    if (!rowTransformer || typeof rowTransformer !== "function") return allItems;
-    try {
-      return (allItems || []).map((r: any) => rowTransformer(r));
-    } catch (e) {
-      console.error("rowTransformer error:", e);
+  // --- NEW: Apply keyMap transformation if it exists ---
+  const transformedApiItems = useMemo(() => {
+    if (!keyMap || Object.keys(keyMap).length === 0) {
       return allItems;
     }
-  }, [allItems, rowTransformer]);
+    return allItems.map(item => {
+      const newItem: Record<string, any> = {};
+      for (const key in item) {
+        const newKey = keyMap[key] || key;
+        newItem[newKey] = item[key];
+      }
+      return newItem;
+    });
+  }, [allItems, keyMap]);
+
+  // Apply optional rowTransformer (provided by App.tsx for digitalrecordings)
+  const transformedItems = React.useMemo(() => {
+    if (!rowTransformer || typeof rowTransformer !== "function") return transformedApiItems;
+    try {
+      return (transformedApiItems || []).map((r: any) => rowTransformer(r));
+    } catch (e) {
+      console.error("rowTransformer error:", e);
+      return transformedApiItems;
+    }
+  }, [transformedApiItems, rowTransformer]);
   
   // Use transformed items as rows for sorting/grouping/pagination
   let rows = transformedItems;
@@ -842,8 +859,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     });
   }, [finalItems, pendingChanges, idKey]);
 
-  const totalItems = shouldFetchAllForGrouping ? (sortedData.length) : (queryData?.pagination.totalItems || 0);
-  const totalPages = shouldFetchAllForGrouping ? Math.ceil(totalItems / itemsPerPage) : (queryData?.pagination.totalPages || 1);
+  const totalItems = shouldFetchAllForGrouping ? (sortedData.length) : (queryData?.pagination?.totalItems || 0);
+  const totalPages = shouldFetchAllForGrouping ? Math.ceil(totalItems / itemsPerPage) : (queryData?.pagination?.totalPages || 1);
 
 
   // Reset page when filters/search/view change
@@ -1786,6 +1803,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                 {/* Mobile Group By */}
                 <Popover>
                   <PopoverTrigger asChild>
+
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
                       <Users className="w-3 h-3" />
                       {groupByFields[0] !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupByFields[0])?.label}` : "Group"}
@@ -2196,10 +2214,13 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
               {/* Background fetching indicator (buffering) */}
               {isFetching && !isLoading && !isGroupingDataLoading && (
-                <div className="absolute top-4 right-4 z-20 bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Buffering...</span>
-                </div>
+               <div className="fixed inset-0 z-50 flex items-center justify-center">
+  <div className="bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border">
+    <Loader2 className="w-4 h-4 animate-spin" />
+    <span>Buffering...</span>
+  </div>
+</div>
+
               )}
             </div>
         </CardContent>

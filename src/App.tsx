@@ -95,8 +95,9 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${en}${en && ec ? " - " : ""}${ec}`;
         },
       },
+        { key: "EventCode", label: "Event Code", sortable: true, editable: true },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-
+       
       // Core ML columns requested
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
@@ -111,7 +112,8 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-
+      
+ 
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
@@ -152,6 +154,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
+      
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -283,7 +286,158 @@ medialog_formal: {
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
 
+     
+     
+    ],
+  },
 
+      medialog_pending_gsheet: {
+    title: "ML-Formal (Pending to be pushed to DB)",
+    apiEndpoint: "/google-sheet/ml-formal-pending",
+    idKey: "mlUniqueID ", // This remains the same, as it's our clean key
+    detailsType: "medialog", // Assuming this is correct
+    keyMap: {
+      // --- CORRECTED KEY MAP ---
+      "Footage Sr. No.": "footageSrNo",
+      "Log Sr.No": "logSrNo",
+      "Event Code": "eventCode",
+      "Digital Media Code": "digitalMediaCode",
+      "ML Unique ID": "mlUniqueID",
+      "Content Date from (dd.mm.yyyy)": "contentDateFrom",
+      "Content Date to(dd.mm.yyyy)": "contentDateTo",
+      "Time of Day": "timeOfDay",
+      "Occasion": "occasion",
+      "Editing Status": "editingStatus",
+      "Footage Type": "footageType",
+      "Video Distribution": "videoDistribution",
+      "Content Details": "contentDetails",
+      "Content Sub Details": "contentSubDetails",
+      "Segment Category": "segmentCategory",
+      "Segment Duration": "segmentDuration",
+      "Counter from": "counterFrom",
+      "Counter to": "counterTo",
+      "Sub Duration": "subDuration",
+      "Total Duration": "totalDuration",
+      "Content Language": "contentLanguage",
+      "Content Speaker/Singer": "contentSpeakerSinger",
+      // --- FIX: Corrected combined keys from your API response ---
+      "Saints/Speaker's Organization": "saintsSpeakersOrganization",
+      "Speakers/Dignitary Designation/Profession": "speakersDignitaryDesignationProfession",
+      "Content Country": "contentCountry",
+      "Content State/Province": "contentStateProvince",
+      "Content City/Town": "contentCityTown",
+      "Content Location": "contentLocation",
+      "Location within Ashram": "locationWithinAshram",
+      "Low Res DR code": "lowResDRCode",
+      "Low Res MLID": "lowResMLID",
+      "Low Res Subtitle": "lowResSubtitle",
+      "Low Res IsStartPage": "lowResIsStartPage",
+      "Low Res Remarks": "lowResRemarks",
+      "Low Res Counter From": "lowResCounterFrom",
+      "Low Res Counter To": "lowResCounterTo",
+      "Low Res Total Duration": "lowResTotalDuration",
+      "Granth Name": "granthName",
+      "Number (Patrank/Adhyay/Prakaran/Padd/Shlok)": "numberPatrank",
+      "Topic": "topic",
+      "Topic Given By": "topicGivenBy",
+      "Synopsis": "synopsis",
+      "Keywords": "keywords",
+      "Series Name": "seriesName",
+      "Satsang START (3 words)": "satsangStart",
+      "Satsang End (3 words)": "satsangEnd",
+      "Audio MP3 Distribution": "audioMP3Distribution",
+      "Audio WAV Distribution": "audioWAVDistribution",
+      "Audio MP3 DR Code": "audioMP3DRCode",
+      "Audio WAV DR Code": "audioWAVDRCode",
+      "Audio Full WAV DR Code": "audioFullWAVDRCode",
+      "Remarks": "remarks",
+      "Start page": "startPage",
+      "End Page": "endPage",
+      "Footage (Mention if VERY PRIVATE)": "footageVeryPrivate",
+      "Mention ONLY if Bapa NOT present": "bapaNotPresent",
+      "Guidance Received from PPG/Hierarchy": "guidanceFromPPG",
+      "App/Distribution Duration": "appDistributionDuration",
+      "Event Reference - Remarks/Counters": "eventRefRemarks",
+      "Event Reference 1 - ML Unique ID": "eventRef1MLID",
+      "Event Reference 2 - ML Unique ID": "eventRef2MLID",
+      "Dubbed Language": "dubbedLanguage",
+      "Dubbing Artist": "dubbingArtist",
+      "Sub -Titles": "subTitles",
+      "Sub Titles Language": "subTitlesLanguage",
+      "Editing Type (Audio)": "editingTypeAudio",
+      "Bhajan Type/Theme": "bhajanTypeTheme",
+      "Grading": "grading"
+    },
+    columns: [
+      // --- CORRECTED COLUMNS using the clean keys from the map above ---
+      { key: "footageSrNo", label: "Footage Sr. No.", sortable: true, editable: true },
+      { key: "logSrNo", label: "Log Sr.No", sortable: true, editable: true },
+      { key: "eventCode", label: "Event Code", sortable: true, editable: true },
+      { key: "digitalMediaCode", label: "Digital Media Code", sortable: true, editable: true },
+      { key: "mlUniqueID", label: "ML Unique ID", sortable: true, editable: true },
+      { key: "contentDateFrom", label: "Content Date from", sortable: true, editable: true },
+      { key: "contentDateTo", label: "Content Date to", sortable: true, editable: true },
+      { key: "timeOfDay", label: "Time of Day", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "occasion", label: "Occasion", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "editingStatus", label: "Editing Status", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "footageType", label: "Footage Type", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "videoDistribution", label: "Video Distribution", sortable: true, editable: true },
+      { key: "contentDetails", label: "Content Details", sortable: true, editable: true },
+      { key: "contentSubDetails", label: "Content Sub Details", sortable: true, editable: true },
+      { key: "segmentCategory", label: "Segment Category", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "segmentDuration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "counterFrom", label: "Counter from", sortable: true, editable: true },
+      { key: "counterTo", label: "Counter to", sortable: true, editable: true },
+      { key: "subDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "totalDuration", label: "Total Duration", sortable: true, editable: true },
+      { key: "contentLanguage", label: "Content Language", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "contentSpeakerSinger", label: "Content Speaker/Singer", sortable: true, editable: true },
+      { key: "saintsSpeakersOrganization", label: "Saints/Speaker's Organization", sortable: true, editable: true },
+      { key: "speakersDignitaryDesignationProfession", label: "Speakers/Dignitary Designation/Profession", sortable: true, editable: true },
+      { key: "contentCountry", label: "Content Country", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "contentStateProvince", label: "Content State/Province", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "contentCityTown", label: "Content City/Town", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "contentLocation", label: "Content Location", sortable: true, editable: true },
+      { key: "locationWithinAshram", label: "Location within Ashram", sortable: true, editable: true },
+      { key: "lowResDRCode", label: "Low Res DR code", sortable: true, editable: true },
+      { key: "lowResMLID", label: "Low Res MLID", sortable: true, editable: true },
+      { key: "lowResSubtitle", label: "Low Res Subtitle", sortable: true, editable: true },
+      { key: "lowResIsStartPage", label: "Low Res IsStartPage", sortable: true, editable: true },
+      { key: "lowResRemarks", label: "Low Res Remarks", sortable: true, editable: true },
+      { key: "lowResCounterFrom", label: "Low Res Counter From", sortable: true, editable: true },
+      { key: "lowResCounterTo", label: "Low Res Counter To", sortable: true, editable: true },
+      { key: "lowResTotalDuration", label: "Low Res Total Duration", sortable: true, editable: true },
+      { key: "granthName", label: "Granth Name", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "numberPatrank", label: "Number (Patrank/Adhyay/...)", sortable: true, editable: true },
+      { key: "topic", label: "Topic", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "topicGivenBy", label: "Topic Given By", sortable: true, editable: true },
+      { key: "synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "keywords", label: "Keywords", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "seriesName", label: "Series Name", sortable: true, editable: true },
+      { key: "satsangStart", label: "Satsang START (3 words)", sortable: true, editable: true },
+      { key: "satsangEnd", label: "Satsang End (3 words)", sortable: true, editable: true },
+      { key: "audioMP3Distribution", label: "Audio MP3 Distribution", sortable: true, editable: true },
+      { key: "audioWAVDistribution", label: "Audio WAV Distribution", sortable: true, editable: true },
+      { key: "audioMP3DRCode", label: "Audio MP3 DR Code", sortable: true, editable: true },
+      { key: "audioWAVDRCode", label: "Audio WAV DR Code", sortable: true, editable: true },
+      { key: "audioFullWAVDRCode", label: "Audio Full WAV DR Code", sortable: true, editable: true },
+      { key: "remarks", label: "Remarks", sortable: true, editable: true },
+      { key: "startPage", label: "Start page", sortable: true, editable: true },
+      { key: "endPage", label: "End Page", sortable: true, editable: true },
+      { key: "footageVeryPrivate", label: "Footage (VERY PRIVATE)", sortable: true, editable: true },
+      { key: "bapaNotPresent", label: "Mention ONLY if Bapa NOT present", sortable: true, editable: true },
+      { key: "guidanceFromPPG", label: "Guidance Received from PPG/Hierarchy", sortable: true, editable: true },
+      { key: "appDistributionDuration", label: "App/Distribution Duration", sortable: true, editable: true },
+      { key: "eventRefRemarks", label: "Event Reference - Remarks/Counters", sortable: true, editable: true },
+      { key: "eventRef1MLID", label: "Event Reference 1 - ML Unique ID", sortable: true, editable: true },
+      { key: "eventRef2MLID", label: "Event Reference 2 - ML Unique ID", sortable: true, editable: true },
+      { key: "dubbedLanguage", label: "Dubbed Language", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "dubbingArtist", label: "Dubbing Artist", sortable: true, editable: true },
+      { key: "subTitles", label: "Sub -Titles", sortable: true, editable: true },
+      { key: "subTitlesLanguage", label: "Sub Titles Language", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "editingTypeAudio", label: "Editing Type (Audio)", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "bhajanTypeTheme", label: "Bhajan Type/Theme", sortable: true, editable: true, render: categoryTagRenderer },
+      { key: "grading", label: "Grading", sortable: true, editable: true },
     ],
   },
 
@@ -1298,11 +1452,12 @@ export default function App() {
 
     return (
       <ClickUpListViewUpdated
-        key={activeView}
+          key={activeView}
         title={config.title}
         viewId={activeView}
         apiEndpoint={config.apiEndpoint}
         idKey={config.idKey}
+        keyMap={config.keyMap} // <-- ADD THIS PROP
         onRowSelect={(row) => handleRowSelect(row, config.detailsType)}
         columns={config.columns}
         views={config.views}

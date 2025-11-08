@@ -204,6 +204,8 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
   const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([]);
   const [stateOptions, setStateOptions] = useState<{ value: string; label: string }[]>([]);
   const [cityOptions, setCityOptions] = useState<{ value: string; label: string }[]>([]);
+  // --- NEW: State for Event Category options ---
+  const [eventCategoryOptions, setEventCategoryOptions] = useState<{ value: string; label: string }[]>([]);
 
   // --- NEW: Fetch options for dropdowns on component mount ---
   useEffect(() => {
@@ -238,6 +240,8 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     fetchOptions('/countries/options', 'fkCountry', setCountryOptions);
     fetchOptions('/states/options', 'fkState', setStateOptions);
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
+    // --- NEW: Fetch Event Category options ---
+    fetchOptions('/event-category/options', 'fkEventCategory', setEventCategoryOptions);
   }, []);
 
 
@@ -292,6 +296,27 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         gap: "20px",
       }}
     >
+      {/* --- NEW: Event Category Combobox --- */}
+      <div>
+        <Label htmlFor="fkEventCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
+          Event Category
+        </Label>
+        <Combobox
+          options={eventCategoryOptions}
+          value={searchFilters.fkEventCategory || ''}
+          onChange={value => handleInputChange('fkEventCategory', value)}
+          placeholder="Select an event category..."
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: "8px",
+            border: "1px solid #474849ff",
+            fontSize: "14px",
+            height: 'auto',
+          }}
+        />
+      </div>
+
       {/* --- MODIFIED: City is now a Combobox --- */}
       <div>
         <Label htmlFor="fkCity" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
