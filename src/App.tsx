@@ -114,6 +114,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       },
       
  
+
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
@@ -154,7 +155,28 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
-      
+     {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
+
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+}
+,
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -261,6 +283,28 @@ medialog_formal: {
       { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
+      {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
+
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+},
+
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -296,6 +340,7 @@ medialog_formal: {
     apiEndpoint: "/google-sheet/ml-formal-pending",
     idKey: "mlUniqueID ", // This remains the same, as it's our clean key
     detailsType: "medialog", // Assuming this is correct
+       disableRowClick: true,
     keyMap: {
       // --- CORRECTED KEY MAP ---
       "Footage Sr. No.": "footageSrNo",
@@ -496,7 +541,28 @@ medialog_formal: {
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
+  {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
 
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+}
+,
      
 
   
@@ -547,7 +613,29 @@ medialog_formal: {
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
 
       // Keep identifiers / minimal extras
-      
+        {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
+
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+}
+,
+     
      
    
     ],
@@ -622,10 +710,28 @@ medialog_formal: {
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
 
       // DR filename and other ML identifiers
-     
+      {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
 
-    
-     
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+},
+
     ],
   },
   // ...existing code...
@@ -1458,7 +1564,7 @@ export default function App() {
         apiEndpoint={config.apiEndpoint}
         idKey={config.idKey}
         keyMap={config.keyMap} // <-- ADD THIS PROP
-        onRowSelect={(row) => handleRowSelect(row, config.detailsType)}
+       onRowSelect={config.disableRowClick ? () => {} : (row) => handleRowSelect(row, config.detailsType)}
         columns={config.columns}
         views={config.views}
         filterConfigs={[]}

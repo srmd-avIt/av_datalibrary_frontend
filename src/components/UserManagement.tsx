@@ -52,10 +52,13 @@ declare global {
 
 const APP_RESOURCES = [
   "Dashboard",
+  "Satsang Dashboard",
   "Events",
   "Event Timeline",
   "Digital Recordings",
-  "All",
+  "ML formal & Informal",
+  "ML Formal",
+  "MLFormal (Pending Push to DB)",
   "All Except Satsang",
   "Satsang Extracted Clips",
   "Satsang Category",
@@ -572,18 +575,17 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
               <DropdownMenuContent className="w-64" side="top" align="center">
                 <DropdownMenuLabel>Permissions for {user.name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {/* Select All (View Only) with right-side dropdown */}
                 <div className="flex items-center justify-between px-2 py-1">
                   <div className="flex items-center">
-                    {/* Helper for all view access */}
                     {(() => {
-                      const hasAllViewAccess = APP_RESOURCES.every(resourceName =>
-                        user.permissions.some(p => p.resource === resourceName && p.actions.includes('read'))
-                      );
+                      const permissionsSet = new Set(user.permissions.filter(p => p.actions.includes('read')).map(p => p.resource));
+                      const hasAllViewAccess = APP_RESOURCES.every(resourceName => permissionsSet.has(resourceName));
+                      
                       return (
                         <Checkbox
                           checked={hasAllViewAccess}
-                          onCheckedChange={() => handleBulkPermissionChange(user.id, "View Only")}
+                          // ✅ FIX: Use checked state to determine if we are setting or removing permissions.
+                          onCheckedChange={(checked) => handleBulkPermissionChange(user.id, checked ? "View Only" : "No Access")}
                           className="mr-2"
                           disabled={disableManageAccess}
                         />
@@ -626,7 +628,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                   </DropdownMenu>
                 </div>
                 <DropdownMenuSeparator />
-                {/* Show ALL resources, not just 8 */}
                 <div className="max-h-48 overflow-y-auto">
                   {APP_RESOURCES.map((resource) => {
                     const currentLevel = getAccessLevel(user, resource);
@@ -708,9 +709,8 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                       ? "Only Admins/Owners can manage access."
                       : `Manage access for ${user.name}`;
                     
-                    const hasAllViewAccess = APP_RESOURCES.every(resourceName =>
-                        user.permissions.some(p => p.resource === resourceName && p.actions.includes('read'))
-                    );
+                    const permissionsSet = new Set(user.permissions.filter(p => p.actions.includes('read')).map(p => p.resource));
+                    const hasAllViewAccess = APP_RESOURCES.every(resourceName => permissionsSet.has(resourceName));
 
                     return (
                       <div>
@@ -741,12 +741,13 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                               <div className="flex items-center">
                                 <Checkbox
                                   checked={hasAllViewAccess}
+                                  // ✅ FIX: Use checked state to determine if we are setting or removing permissions.
                                   onCheckedChange={(checked) => {
-                                        handleBulkPermissionChange(user.id, "View Only");
-                                      }}
-                                      className="mr-2"
-                                      disabled={disableManageAccess}
-                                    />
+                                      handleBulkPermissionChange(user.id, checked ? "View Only" : "No Access");
+                                  }}
+                                  className="mr-2"
+                                  disabled={disableManageAccess}
+                                />
                                 <span className="text-sm">Select All (View Only)</span>
                               </div>
 
@@ -793,7 +794,6 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                               return (
                                 <DropdownMenuSub key={resource}>
                                   <DropdownMenuSubTrigger>
-                                    {/* ✅ MODIFIED: This checkbox is now a non-interactive visual indicator */}
                                     <Checkbox
                                       checked={currentLevel !== "No Access"}
                                       disabled // This prevents clicking and makes it a read-only indicator
