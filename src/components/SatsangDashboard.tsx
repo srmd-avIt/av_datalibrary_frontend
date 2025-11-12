@@ -338,24 +338,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         />
       </div>
 
-      <div>
-        <Label htmlFor="ContentFrom" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-          Content From
-        </Label>
-        <Input
-          id="ContentFrom"
-          placeholder="e.g., 00:15:30"
-          value={searchFilters.ContentFrom || ''}
-          onChange={e => handleInputChange('ContentFrom', e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: "8px",
-            border: "1px solid #474849ff",
-            fontSize: "14px",
-          }}
-        />
-      </div>
+     
 
       <div>
         <Label htmlFor="Topic" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
@@ -443,7 +426,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         </Label>
         <Input
           id="ContentFrom"
-          placeholder="e.g., 1000"
+          placeholder="e.g., dd.mm.yyyy"
           value={searchFilters.ContentFrom || ''}
           onChange={e => handleInputChange('ContentFrom', e.target.value)}
           style={{
@@ -462,7 +445,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         </Label>
         <Input
           id="ContentTo"
-          placeholder="e.g., 2000"
+          placeholder="e.g., dd.mm.yyyy"
           value={searchFilters.ContentTo || ''}
           onChange={e => handleInputChange('ContentTo', e.target.value)}
           style={{

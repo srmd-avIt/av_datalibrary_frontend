@@ -11,7 +11,7 @@ import { MobileNavigation } from "./components/MobileNavigation";
 import { ResponsiveLayout, useMobile } from "./components/ResponsiveLayout";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { Button } from "./components/ui/button";
-import { Menu, X, AlertTriangle } from "lucide-react";
+import { Menu, X, AlertTriangle, Key } from "lucide-react";
 import { getColorForString } from "./components/ui/utils";
 import { EventTimeline } from "./components/EventTimeline";
 import { SatsangDashboard } from "./components/SatsangDashboard";
@@ -708,6 +708,7 @@ medialog_formal: {
       { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
+      { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
 
       // DR filename and other ML identifiers
       {
@@ -731,6 +732,7 @@ medialog_formal: {
     return parts.join(" - ");
   },
 },
+
 
     ],
   },
