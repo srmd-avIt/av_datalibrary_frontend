@@ -931,7 +931,7 @@ medialog_formal: {
       { key: "NewEventCategoryName", label: "NewEventCategoryName", sortable: true, editable: true },
       { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true },
       { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true },
-      { key: "MARK_DISCARD", label: "MARK_DISCARD", sortable: true, editable: true },
+      
     ],
   },
   newCities: {

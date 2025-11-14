@@ -387,39 +387,91 @@ export function AdvancedFiltersClickUp({
   'TopicGivenBy',
   'Segment Category'
 ];
-
+  
+  // ========================================================================
+  // === START: CORRECTED applyFilters FUNCTION ===
+  // ========================================================================
   const applyFilters = () => {
     const finalFilterGroups: FilterGroup[] = [];
+    let groupCounter = 0; // To generate unique group IDs
 
-    filterGroups.forEach(group => {
-      const multiSelectRules = group.rules.filter(rule => multiSelectFields.includes(rule.field) && rule.value);
-      const standardRules = group.rules.filter(rule => !multiSelectFields.includes(rule.field));
+    filterGroups.forEach((group, groupIndex) => {
+      let currentStandardRules: FilterRule[] = [];
+      let isFirstChunkInGroup = true;
 
-      if (standardRules.length > 0) {
-        finalFilterGroups.push({ ...group, rules: standardRules });
-      }
+      // Helper function to push the buffered standard rules as a new group
+      const flushStandardRules = () => {
+        if (currentStandardRules.length > 0) {
+          // Determine the logic for this chunk.
+          // - If it's the first chunk of the first UI group, it's 'AND'.
+          // - If it's the first chunk of a subsequent UI group, it's that group's inter-group logic.
+          // - If it's not the first chunk, its logic is determined by the first rule it contains.
+          const chunkLogic = isFirstChunkInGroup
+            ? (groupIndex === 0 ? 'AND' : group.logic)
+            : (currentStandardRules[0].logic || 'AND');
 
-      multiSelectRules.forEach(rule => {
-        const values = rule.value.split(',');
-        if (values.length > 0) {
           finalFilterGroups.push({
-            id: `group_${rule.id}`,
-            logic: 'OR',
-            rules: values.map((val: string, index: number) => ({
-              id: `rule_${rule.id}_${index}`,
-              field: rule.field,
-              operator: rule.operator || 'contains',
-              value: val,
-              logic: 'OR'
-            }))
+            id: `group_std_${group.id}_${groupCounter++}`,
+            logic: chunkLogic,
+            rules: currentStandardRules,
           });
+
+          currentStandardRules = []; // Reset the buffer
+          isFirstChunkInGroup = false;
+        }
+      };
+
+      // Process rules sequentially to maintain logical order
+      group.rules.forEach(rule => {
+        if (multiSelectFields.includes(rule.field) && rule.value) {
+          // 1. A multi-select rule is found. First, flush any standard rules before it.
+          flushStandardRules();
+
+          // 2. Now, create and push a dedicated group for this multi-select rule.
+          const values = rule.value.split(',').map((v: string) => v.trim()).filter(Boolean);
+          if (values.length > 0) {
+            // Determine the logic for this new multi-select group.
+            // It's connected by the UI group's logic if it's the first element,
+            // otherwise, it's connected by its own rule's logic.
+            const chunkLogic = isFirstChunkInGroup
+              ? (groupIndex === 0 ? 'AND' : group.logic)
+              : (rule.logic || 'AND');
+            
+            finalFilterGroups.push({
+              id: `group_multi_${rule.id}`,
+              logic: chunkLogic,
+              rules: values.map((val: string, index: number) => ({
+                id: `rule_multi_${rule.id}_${index}`,
+                field: rule.field,
+                operator: rule.operator || 'contains',
+                value: val,
+                // Logic *inside* a multi-select group is always OR.
+                // By convention, the first rule is 'AND' and subsequent are 'OR'.
+                logic: index === 0 ? 'AND' : 'OR',
+              }))
+            });
+            isFirstChunkInGroup = false;
+          }
+        } else {
+          // 3. It's a standard rule. Add it to the current buffer.
+          currentStandardRules.push(rule);
         }
       });
-    });
 
-    onFiltersChange(finalFilterGroups);
+      // 4. After the loop, flush any remaining standard rules at the end of the group.
+      flushStandardRules();
+    });
+    
+    // Filter out any empty groups that might have been created
+    const nonEmptyGroups = finalFilterGroups.filter(g => g.rules && g.rules.length > 0);
+
+    onFiltersChange(nonEmptyGroups);
     setIsOpen(false);
   };
+  // ========================================================================
+  // === END: CORRECTED applyFilters FUNCTION ===
+  // ========================================================================
+
 
   const handleSaveFilter = () => {
     if (filterName.trim() && onSaveFilter && getActiveFiltersCount() > 0) {

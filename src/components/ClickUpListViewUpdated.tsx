@@ -279,6 +279,22 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
   );
 }
 
+// --- Helper Function for Frontend CSV Export ---
+// This function escapes values to be safely included in a CSV file.
+const escapeCsvValue = (value: any): string => {
+  if (value == null) {
+    return ''; // Return an empty string for null or undefined
+  }
+  const stringValue = String(value);
+  // If the value contains a comma, a double quote, or a newline, it needs to be wrapped in double quotes.
+  if (/[",\r\n]/.test(stringValue)) {
+    // Within a quoted field, any double quote must be escaped by another double quote.
+    const escapedValue = stringValue.replace(/"/g, '""');
+    return `"${escapedValue}"`;
+  }
+  return stringValue;
+};
+
 // --- Main Component ---
 // This is the main list/table view component with filtering, sorting, grouping, column hiding, pagination, and timeline view
 export function ClickUpListViewUpdated({
@@ -572,22 +588,22 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   endpoint = "/bhajantype";
   rowId = updatedRow.BTID;
 } else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
-  endpoint = "/digitalmastercategory";
+  endpoint = "/digital-master-category";
   rowId = updatedRow.DMCID;
 } else if (effectiveApiEndpoint.includes("distributionlabel")) {
-  endpoint = "/distributionlabel";
+  endpoint = "/distribution-label";
   rowId = updatedRow.LabelID;
 } else if (effectiveApiEndpoint.includes("editingtype")) {
-  endpoint = "/editingtype";
+  endpoint = "/editing-type";
   rowId = updatedRow.EdID;
 } else if (effectiveApiEndpoint.includes("editingstatus")) {
-  endpoint = "/editingstatus";
+  endpoint = "/editing-status";
   rowId = updatedRow.EdID;
 } else if (effectiveApiEndpoint.includes("eventcategory")) {
-  endpoint = "/eventcategory";
+  endpoint = "/event-category";
   rowId = updatedRow.EventCategoryID;
 } else if (effectiveApiEndpoint.includes("footagetype")) {
-  endpoint = "/footagetype";
+  endpoint = "/footage-type";
   rowId = updatedRow.FootageID;
 } else if (effectiveApiEndpoint.includes("formattype")) {
   endpoint = "/formattype";
@@ -605,22 +621,22 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   endpoint = "/organizations";
   rowId = updatedRow.OrganizationID;
 } else if (effectiveApiEndpoint.includes("neweventcategory")) {
-  endpoint = "/neweventcategory";
+  endpoint = "/new-event-category";
   rowId = updatedRow.SrNo || updatedRow.CategoryID;
 } else if (effectiveApiEndpoint.includes("newcities")) {
-  endpoint = "/newcities";
+  endpoint = "/new-cities";
   rowId = updatedRow.CityID;
 } else if (effectiveApiEndpoint.includes("newcountries")) {
-  endpoint = "/newcountries";
+  endpoint = "/new-countries";
   rowId = updatedRow.CountryID;
 } else if (effectiveApiEndpoint.includes("newstates")) {
-  endpoint = "/newstates";
+  endpoint = "/new-states";
   rowId = updatedRow.StateID;
 } else if (effectiveApiEndpoint.includes("occasions")) {
   endpoint = "/occasions";
   rowId = updatedRow.OccasionID;
 } else if (effectiveApiEndpoint.includes("topicnumbersource")) {
-  endpoint = "/topicnumbersource";
+  endpoint = "/topic-number-source";
   rowId = updatedRow.TNID;
 } else if (effectiveApiEndpoint.includes("time-of-day")) {
   endpoint = "/time-of-day";
@@ -908,50 +924,83 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
   }, [sortedData, finalItems, groupByFields, groupDirections]);
 
   // --- Export logic ---
-  // Exports filtered and sorted data as CSV
+  // MODIFIED: This function now handles the entire export process on the frontend.
   const handleExport = async () => {
     setIsExporting(true);
+    toast.info("Preparing your export. This may take a moment for large datasets.");
+
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      Object.entries(activeViewFilters || {}).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "" && value !== "all") params.append(key, String(value));
+      // 1. Fetch ALL data that matches the current filters and sorting from the API
+      const allDataResponse = await fetchDataFromApi({
+        apiEndpoint: effectiveApiEndpoint,
+        page: 1,
+        limit: 1000000, // Fetch a very large number of items to get all of them
+        searchTerm,
+        filters: activeViewFilters,
+        advancedFilters,
+        sortBy: activeSortBy,
+        sortDirection: activeSortDirection as "asc" | "desc",
       });
-      if (advancedFilters && advancedFilters.length > 0 && advancedFilters.some(g => g.rules.length > 0)) {
-        params.append('advanced_filters', JSON.stringify(advancedFilters));
+
+      let itemsToExport = allDataResponse.data || [];
+
+      // 2. Apply the same transformations as the displayed data (keyMap and rowTransformer)
+      if (keyMap && Object.keys(keyMap).length > 0) {
+        itemsToExport = itemsToExport.map(item => {
+          const newItem: Record<string, any> = {};
+          for (const key in item) {
+            const newKey = keyMap[key] || key;
+            newItem[newKey] = item[key];
+          }
+          // Ensure 'id' property exists for ListItem type
+          if (!('id' in newItem)) {
+            newItem.id = item.id ?? item[keyMap['id']] ?? '';
+          }
+          return newItem as ListItem;
+        });
       }
-      if (activeSortBy && activeSortBy !== 'none') {
-        params.append('sortBy', activeSortBy);
-        params.append('sortDirection', activeSortDirection || 'asc');
+
+      if (rowTransformer && typeof rowTransformer === "function") {
+        itemsToExport = itemsToExport.map(r => rowTransformer(r));
       }
-      const exportUrl = new URL(API_BASE_URL);
-      const cleanApiEndpoint = apiEndpoint.endsWith('/') ? apiEndpoint.slice(0, -1) : apiEndpoint;
-      exportUrl.pathname += `${cleanApiEndpoint}/export`;
-      exportUrl.search = params.toString();
-      const response = await fetch(exportUrl.href);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Export failed: ${response.statusText} - ${errorText}`);
+
+      if (itemsToExport.length === 0) {
+        toast.warning("No data to export for the current filters.");
+        setIsExporting(false);
+        return;
       }
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = `${title.toLowerCase().replace(/\s/g, '_')}_export.csv`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
-        if (filenameMatch && filenameMatch.length === 2) {
-          filename = filenameMatch[1];
-        }
-      }
+
+      // 3. Convert the JSON data to a CSV string using only the currently visible columns
+      const headers = visibleColumns.map(col => col.label);
+      const dataKeys = visibleColumns.map(col => col.key);
+
+      const csvRows = [
+        headers.map(escapeCsvValue).join(','), // Create the header row
+        ...itemsToExport.map(row =>
+          dataKeys.map(key => escapeCsvValue(row[key])).join(',')
+        )
+      ];
+
+      const csvContent = csvRows.join('\n');
+
+      // 4. Create a Blob from the CSV string and trigger a download in the browser
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // \uFEFF for Excel compatibility
+      const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_export_${new Date().toISOString().slice(0,10)}.csv`;
+
       const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = filename;
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(link.href);
+
+      toast.success("Export started successfully!");
+
     } catch (err) {
       console.error("Export error:", err);
-      alert('Failed to export data. Please check the console for details.');
+      toast.error('Failed to export data. Please check the console for details.');
     } finally {
       setIsExporting(false);
     }
@@ -1357,17 +1406,17 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     }
   };
 
-    const handleCellChange = (rowIndex: number, columnKey: string, newValue: any) => {
-    const item = finalItems[rowIndex];
+  // --- Cell editing: always use sortedData ---
+  const handleCellChange = (rowIndex: number, columnKey: string, newValue: any) => {
+    // Use sortedData for editing, so it works with grouping and paging
+    const item = sortedData[rowIndex];
     if (!item) return;
 
     const rowId = item[idKey];
     const originalValue = item[columnKey];
 
-    // Exit edit mode immediately
     setEditingCell(null);
 
-    // If the new value is the same as the original, we might need to remove a pending change.
     if (newValue === originalValue) {
       if (pendingChanges[rowId] && pendingChanges[rowId][columnKey] !== undefined) {
         setPendingChanges(prev => {
@@ -1384,7 +1433,6 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       return;
     }
 
-    // Stage the change to make the Save/Discard buttons appear
     setPendingChanges(prev => ({
       ...prev,
       [rowId]: {
@@ -1393,8 +1441,9 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       }
     }));
   };
-  // --- REPLACEMENT: Efficient bulk update function ---
-    const handleBulkUpdate = async () => {
+
+  // --- Bulk update: already uses sortedData ---
+  const handleBulkUpdate = async () => {
     const changesToSave = Object.entries(pendingChanges);
     if (changesToSave.length === 0) {
       toast.info("No changes to save.");
@@ -1404,18 +1453,12 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     const savingToast = toast.loading(`Saving ${changesToSave.length} update(s)...`);
 
     const updatePromises = changesToSave.map(async ([rowId, changes]) => {
-      // --- FIX: Search the full dataset (`sortedData`) instead of just the current page (`finalItems`).
-      // This ensures updates work correctly when grouping is active and changes are on different pages.
+      // Always search the full dataset (`sortedData`)
       const originalItem = sortedData.find(item => String(item[idKey]) === String(rowId));
-      
       if (!originalItem) {
-        // This should not happen if UI is in sync, but we handle it.
         return { status: 'rejected', reason: `Original item with ID ${rowId} not found.` };
       }
-
-      // Create the full updated row object
       const updatedRow = { ...originalItem, ...changes };
-
       // Add audit fields
       if (user?.email) {
         updatedRow.LastModifiedBy = user.email;
@@ -1445,22 +1488,22 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
         endpoint = "/bhajantype";
         resolvedRowId = updatedRow.BTID;
       } else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
-        endpoint = "/digitalmastercategory";
+        endpoint = "/digital-master-category";
         resolvedRowId = updatedRow.DMCID;
       } else if (effectiveApiEndpoint.includes("distributionlabel")) {
-        endpoint = "/distributionlabel";
+        endpoint = "/distribution-label";
         resolvedRowId = updatedRow.LabelID;
       } else if (effectiveApiEndpoint.includes("editingtype")) {
-        endpoint = "/editingtype";
+        endpoint = "/editing-type";
         resolvedRowId = updatedRow.EdID;
       } else if (effectiveApiEndpoint.includes("editingstatus")) {
-        endpoint = "/editingstatus";
+        endpoint = "/editing-status";
         resolvedRowId = updatedRow.EdID;
       } else if (effectiveApiEndpoint.includes("eventcategory")) {
-        endpoint = "/eventcategory";
+        endpoint = "/event-category";
         resolvedRowId = updatedRow.EventCategoryID;
       } else if (effectiveApiEndpoint.includes("footagetype")) {
-        endpoint = "/footagetype";
+        endpoint = "/footage-type";
         resolvedRowId = updatedRow.FootageID;
       } else if (effectiveApiEndpoint.includes("formattype")) {
         endpoint = "/formattype";
@@ -1478,7 +1521,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
         endpoint = "/organizations";
         resolvedRowId = updatedRow.OrganizationID;
       } else if (effectiveApiEndpoint.includes("neweventcategory")) {
-        endpoint = "/neweventcategory";
+        endpoint = "/new-event-category";
         resolvedRowId = updatedRow.SrNo || updatedRow.CategoryID;
       } else if (effectiveApiEndpoint.includes("newcities")) {
         endpoint = "/newcities";
