@@ -606,7 +606,7 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   endpoint = "/footage-type";
   rowId = updatedRow.FootageID;
 } else if (effectiveApiEndpoint.includes("formattype")) {
-  endpoint = "/formattype";
+  endpoint = "/format-type";
   rowId = updatedRow.FTID;
 } else if (effectiveApiEndpoint.includes("granths")) {
   endpoint = "/granths";
