@@ -528,10 +528,17 @@ export function ClickUpListViewUpdated({
         body: JSON.stringify({ [columnKey]: editValue }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to save changes.');
-      }
+     if (!response.ok) {
+  const errorData = await response.json().catch(() => ({}));
+  const errorMsg =
+    errorData.message ||
+    errorData.sqlMessage ||
+    errorData.error ||
+    errorData.toString() ||
+    'Failed to save changes.';
+  toast.error(`Error: ${errorMsg}`, { id: savingToast });
+  throw new Error(errorMsg);
+}
 
       toast.success("Update saved successfully!", { id: savingToast });
       // Refetch data to show the update
@@ -1396,7 +1403,17 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
         });
       }
 
-      if (!response.ok) throw new Error("Failed to add entry");
+      if (!response.ok) {
+  const errorData = await response.json().catch(() => ({}));
+  const errorMsg =
+    errorData.message ||
+    errorData.sqlMessage ||
+    errorData.error ||
+    errorData.toString() ||
+    "Failed to add entry";
+  toast.error(`Error: ${errorMsg}`);
+  return;
+}
       toast.success("Entry added!");
       setAddOpen(false);
       setAddForm({});
@@ -1559,10 +1576,16 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
           body: JSON.stringify(updatedRow),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Failed to update ${resolvedRowId}`);
-        }
+       if (!response.ok) {
+  const errorData = await response.json().catch(() => ({}));
+  const errorMsg =
+    errorData.message ||
+    errorData.sqlMessage ||
+    errorData.error ||
+    errorData.toString() ||
+    `Failed to update ${resolvedRowId}`;
+  throw new Error(errorMsg);
+}
         return { status: 'fulfilled', value: resolvedRowId };
       } catch (error: any) {
         return { status: 'rejected', reason: error.message, rowId };
@@ -1712,10 +1735,39 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                       </Button>
                     </>
                   )}
-                  <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
-                    {isExporting ? (<Loader2 className="w-4 h-4 animate-spin" />) : (<Download className="w-4 h-4" />)}
-                    {isExporting ? 'Exporting...' : 'Export'}
-                  </Button>
+                 <Button
+  variant="outline"
+  size="sm"
+  className="gap-2 h-8"
+  onClick={handleExport}
+  disabled={isExporting}
+>
+  {isExporting ? (
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      <Loader2
+        className="w-4 h-4"
+        style={{
+          animation: "spin 0.7s linear infinite",
+          transformOrigin: "center",
+        }}
+      />
+    </>
+  ) : (
+    <Download className="w-4 h-4" />
+  )}
+
+  {isExporting ? "Exporting..." : "Export"}
+</Button>
+
                   {showAddButton && hasAccess(title, 'write') && (
                     <Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>
                       + Add
@@ -2171,7 +2223,31 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
         <CardContent className="p-0">
             <div className={`${isMobile ? 'overflow-y-auto mobile-scroll' : 'overflow-x-auto'} relative custom-scrollbar`} style={{ maxHeight: isMobile ? 'calc(100vh - 280px)' : '60vh' }}>
               {/* Initial loading state (blocks the whole view) */}
-              {(isLoading || isGroupingDataLoading) && <div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>}
+            {(isLoading || isGroupingDataLoading) && (
+  <>
+    <style>
+      {`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+
+    <div className="p-8 text-center flex items-center justify-center gap-2">
+      <Loader2
+        className="w-4 h-4"
+        style={{
+          animation: "spin 0.7s linear infinite",
+          transformOrigin: "center"
+        }}
+      />
+      Loading...
+    </div>
+  </>
+)}
+
+
               
               {/* Error state */}
               {error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div>}
@@ -2256,15 +2332,32 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
               )}
 
               {/* Background fetching indicator (buffering) */}
-              {isFetching && !isLoading && !isGroupingDataLoading && (
-               <div className="fixed inset-0 z-50 flex items-center justify-center">
-  <div className="bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border">
-    <Loader2 className="w-4 h-4 animate-spin" />
-    <span>Buffering...</span>
-  </div>
-</div>
+{isFetching && !isLoading && !isGroupingDataLoading && (
+  <>
+    <style>
+      {`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+      `}
+    </style>
 
-              )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border">
+        <Loader2
+          className="w-4 h-4"
+          style={{
+            animation: "spin 0.7s linear infinite",
+            transformOrigin: "center"
+          }}
+        />
+        <span>Buffering...</span>
+      </div>
+    </div>
+  </>
+)}
+
             </div>
         </CardContent>
         {/* Pagination and results count */}

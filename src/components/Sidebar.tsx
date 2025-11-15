@@ -278,61 +278,351 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         )}
       </div>
 
-      <nav className={`flex-1 ${collapsed ? "p-2" : "p-4"} overflow-y-auto transition-all duration-300 custom-sidebar-scrollbar`}>
-        <div className="space-y-1">
-          {visibleMenuItems.map((item) => {
-            if (!item) return null;
-            const Icon = item.icon;
-            const isParentActive = item.children?.some(child => child.id === activeView);
-            const isActive = activeView === item.id || isParentActive;
+    <nav
+  className={`flex-1 ${collapsed ? "p-2" : "p-4"} overflow-y-auto transition-all duration-300 custom-sidebar-scrollbar`}
+>
+  <div className="space-y-1">
+    {visibleMenuItems.map((item) => {
+      if (!item) return null;
+      const Icon = item.icon;
+      const isParentActive = item.children?.some(child => child.id === activeView);
+      const isActive = activeView === item.id || isParentActive;
+      const isOpenState = openMenus[item.id] || false;
 
-            if (item.children && item.children.length > 0) {
-              const isOpenState = openMenus[item.id] || false;
-              return (
-                <div key={item.id}>
-                  <Button variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive || isOpenState ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`} onClick={() => toggleMenu(item.id)} title={collapsed ? item.label : undefined}>
-                    <Icon className="w-4 h-4" />
-                    {!collapsed && (<><span className="font-medium">{item.label}</span>{isOpenState ? <ChevronDown className="ml-auto w-4 h-4" /> : <ChevronRight className="ml-auto w-4 h-4" />}</>)}
-                  </Button>
-                  {!collapsed && isOpenState && (
-                    <div className="pl-4 pt-1 space-y-1">
-                      {item.children?.map(child => {
-                        const ChildIcon = child.icon;
-                        const isChildActive = activeView === child.id;
-                        return (
-                          <Button key={child.id} variant="ghost" size="default" className={`w-full justify-start gap-3 h-11 rounded-xl transition-all duration-200 ${isChildActive ? "bg-slate-700/50 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/50"}`} onClick={() => handleMenuClick(child.id)}>
-                            <ChildIcon className="w-4 h-4" />
-                            <span className="font-medium">{child.label}</span>
-                            {isChildActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></div>}
-                          </Button>
-                        );
-                      })}
-                    </div>
+      // --- PARENT WITH CHILDREN ---
+      if (item.children && item.children.length > 0) {
+        // Slideshow effect: reveal children one by one when menu opens
+        const visibleCount = useSlideshow(isOpenState, item.children.length, 120);
+
+        return (
+          <div key={item.id}>
+            <Button
+              variant="ghost"
+              size={collapsed ? "sm" : "default"}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                justifyContent: collapsed ? "center" : "flex-start",
+                padding: collapsed
+                  ? "0"
+                  : window.innerWidth <= 600
+                  ? "0 8px"
+                  : "0 16px",
+                height: collapsed
+                  ? "40px"
+                  : window.innerWidth <= 600
+                  ? "38px"
+                  : "44px",
+                gap: collapsed
+                  ? "0px"
+                  : window.innerWidth <= 600
+                  ? "8px"
+                  : "12px",
+                borderRadius: "16px",
+                transition: "all 200ms",
+                fontSize: window.innerWidth <= 600 ? "14px" : "16px",
+                textAlign: "left",
+              }}
+              className={`w-full ${
+                collapsed ? "justify-center p-0 h-10" : "gap-3 h-11"
+              } rounded-xl transition-all duration-200 ${
+                isActive || isOpenState
+                  ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"
+              }`}
+              onClick={() => toggleMenu(item.id)}
+              title={collapsed ? item.label : undefined}
+            >
+              <Icon
+                className="w-4 h-4"
+                style={{
+                  width: window.innerWidth <= 600 ? "14px" : "16px",
+                  height: window.innerWidth <= 600 ? "14px" : "16px",
+                }}
+              />
+              {!collapsed && (
+                <>
+                  <span
+                    className="font-medium"
+                    style={{
+                      fontWeight: 500,
+                      flex: 1,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      textAlign: "left",
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                  {isOpenState ? (
+                    <ChevronDown className="ml-auto w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="ml-auto w-4 h-4" />
                   )}
-                </div>
-              );
-            }
-            return (
-              <Button key={item.id} variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`} onClick={() => handleMenuClick(item.id)} title={collapsed ? item.label : undefined}>
-                <Icon className="w-4 h-4" />
-                {!collapsed && (
-                  <>
-                    <span className="font-medium">{item.label}</span>
-                    {isActive && (<div className="ml-auto w-2 h-2 rounded-full bg-blue-400"></div>)}
-                  </>
-                )}
-              </Button>
-            );
-          })}
-        </div>
-        <Separator className="my-6 bg-slate-700/50" />
-        <div className="space-y-1">
-          <Button variant="ghost" size={collapsed ? "sm" : "default"} className={`w-full ${collapsed ? "justify-center p-0 h-10" : "justify-start gap-3 h-11"} rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all duration-200`} onClick={logout} title={collapsed ? "Logout" : undefined}>
-            <LogOut className="w-4 h-4" />
-            {!collapsed && <span className="font-medium">Logout</span>}
-          </Button>
-        </div>
-      </nav>
+                </>
+              )}
+            </Button>
+
+            {/* CHILDREN with slideshow effect */}
+            {!collapsed && isOpenState && (
+              <div className="pl-4 pt-1 space-y-1">
+                {item.children?.map((child, idx) => {
+                  if (idx >= visibleCount) return null; // Only show revealed children
+                  const ChildIcon = child.icon;
+                  const isChildActive = activeView === child.id;
+
+                  return (
+                    <Button
+                      key={child.id}
+                      variant="ghost"
+                      size="default"
+                      onClick={() => handleMenuClick(child.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        width: "100%",
+                        gap: window.innerWidth <= 600 ? "8px" : "12px",
+                        height: window.innerWidth <= 600 ? "38px" : "44px",
+                        borderRadius: "16px",
+                        transition: "all 0.2s ease",
+                        justifyContent: "flex-start",
+                        paddingLeft: window.innerWidth <= 600 ? "8px" : "16px",
+                        paddingRight: window.innerWidth <= 600 ? "8px" : "16px",
+                        fontSize: window.innerWidth <= 600 ? "13px" : "15px",
+                        backdropFilter: "blur(8px)",
+                        background: isChildActive
+                          ? "linear-gradient(90deg, rgba(51,65,85,0.5) 60%, rgba(59,130,246,0.15) 100%)"
+                          : "rgba(30,41,59,0.25)",
+                        border: isChildActive
+                          ? "2px solid rgba(59,130,246,0.25)"
+                          : "2px solid rgba(51,65,85,0.10)",
+                        color: isChildActive ? "white" : "rgb(148,163,184)",
+                        cursor: "pointer",
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textAlign: "left",
+                        opacity: 1,
+                        transform: "translateY(0)",
+                        transitionProperty: "opacity, transform",
+                        transitionDuration: "300ms",
+                      }}
+                      onMouseEnter={e => {
+                        if (!isChildActive) {
+                          e.currentTarget.style.background = "rgba(59,130,246,0.10)";
+                          e.currentTarget.style.color = "#f4f6f8ff";
+                          e.currentTarget.style.border = "2px solid rgba(59,130,246,0.15)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isChildActive) {
+                          e.currentTarget.style.background = "rgba(30,41,59,0.25)";
+                          e.currentTarget.style.color = "rgb(148,163,184)";
+                          e.currentTarget.style.border = "2px solid rgba(51,65,85,0.10)";
+                        }
+                      }}
+                    >
+                      <ChildIcon style={{ width: window.innerWidth <= 600 ? "14px" : "16px", height: window.innerWidth <= 600 ? "14px" : "16px", flexShrink: 0 }} />
+                      <span
+                        style={{
+                          fontWeight: 500,
+                          flex: 1,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          textAlign: "left",
+                        }}
+                      >
+                        {child.label}
+                      </span>
+                      {isChildActive && (
+                        <div
+                          style={{
+                            marginLeft: "auto",
+                            width: window.innerWidth <= 600 ? "5px" : "6px",
+                            height: window.innerWidth <= 600 ? "5px" : "6px",
+                            borderRadius: "9999px",
+                            backgroundColor: "rgb(96,165,250)",
+                            boxShadow: "0 0 8px 2px rgba(59,130,246,0.25)",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // --- SINGLE MENU ITEM ---
+      return (
+ <Button
+  key={item.id}
+  variant="ghost"
+  size={collapsed ? "sm" : "default"}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    width: "100%",
+    justifyContent: collapsed ? "center" : "flex-start",
+    padding: collapsed
+      ? "0"
+      : window.innerWidth <= 600
+      ? "0 8px"
+      : "0 12px",
+    height: collapsed
+      ? "40px"
+      : window.innerWidth <= 600
+      ? "38px"
+      : "44px",
+    gap: collapsed
+      ? "0px"
+      : window.innerWidth <= 600
+      ? "8px"
+      : "12px",
+    borderRadius: "12px",
+    transition: "all 200ms",
+    fontSize: window.innerWidth <= 600 ? "14px" : "16px",
+    ...(isActive
+      ? {
+          background:
+            "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))",
+          color: "white",
+          border: "1px solid rgba(59,130,246,0.30)",
+          boxShadow: "0 0 10px rgba(59,130,246,0.25)",
+        }
+      : {
+          color: "rgb(203,213,225)",
+          border: "1px solid transparent",
+          cursor: "pointer",
+        }),
+  }}
+  onClick={() => handleMenuClick(item.id)}
+  title={collapsed ? item.label : undefined}
+  onMouseEnter={e => {
+    if (!isActive) {
+      e.currentTarget.style.background = "rgba(59,130,246,0.10)";
+      e.currentTarget.style.color = "#f0f3f7ff"; // Tailwind blue-500
+      e.currentTarget.style.border = "1px solid rgba(59,130,246,0.15)";
+    }
+  }}
+  onMouseLeave={e => {
+    if (!isActive) {
+      e.currentTarget.style.background = "transparent";
+      e.currentTarget.style.color = "rgb(203,213,225)";
+      e.currentTarget.style.border = "1px solid transparent";
+    }
+  }}
+>
+  <Icon
+    style={{
+      width: window.innerWidth <= 600 ? "14px" : "16px",
+      height: window.innerWidth <= 600 ? "14px" : "16px",
+    }}
+  />
+
+  {!collapsed && (
+    <>
+      <span
+        style={{
+          fontWeight: 500,
+          flex: 1,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          textAlign: "left",
+        }}
+      >
+        {item.label}
+      </span>
+
+      {isActive && (
+        <div
+          style={{
+            marginLeft: "auto",
+            width: window.innerWidth <= 600 ? "6px" : "8px",
+            height: window.innerWidth <= 600 ? "6px" : "8px",
+            borderRadius: "9999px",
+            backgroundColor: "rgb(96,165,250)",
+          }}
+        ></div>
+      )}
+    </>
+  )}
+</Button>
+
+      );
+    })}
+  </div>
+
+  <Separator className="my-6 bg-slate-700/50" />
+
+  {/* LOGOUT */}
+  <div className="space-y-1">
+  <Button
+  variant="ghost"
+  size={collapsed ? "sm" : "default"}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    width: "100%",
+    justifyContent: collapsed ? "center" : "flex-start",
+    padding: collapsed
+      ? "0"
+      : window.innerWidth <= 600
+      ? "0 8px"
+      : "0 16px",
+    height: collapsed
+      ? "40px"
+      : window.innerWidth <= 600
+      ? "38px"
+      : "44px",
+    gap: collapsed
+      ? "0px"
+      : window.innerWidth <= 600
+      ? "8px"
+      : "12px",
+    borderRadius: "16px",
+    transition: "all 200ms",
+    fontSize: window.innerWidth <= 600 ? "14px" : "16px",
+    textAlign: "left",
+  }}
+  className={`w-full ${
+    collapsed ? "justify-center p-0 h-10" : "gap-3 h-11"
+  } rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all duration-200`}
+  onClick={logout}
+  title={collapsed ? "Logout" : undefined}
+>
+  <LogOut
+    className="w-4 h-4"
+    style={{
+      width: window.innerWidth <= 600 ? "14px" : "16px",
+      height: window.innerWidth <= 600 ? "14px" : "16px",
+    }}
+  />
+  {!collapsed && (
+    <span
+      className="font-medium"
+      style={{
+        fontWeight: 500,
+        flex: 1,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        textAlign: "left",
+      }}
+    >
+      Logout
+    </span>
+  )}
+</Button>
+  </div>
+</nav>
+
       {!collapsed && (
         <div className="p-4 border-t border-slate-700/50">
           <div className="text-xs text-slate-500 text-center">© 2025 Data Library v2.1.0</div>
@@ -340,4 +630,24 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
       )}
     </div>
   );
+}
+
+// Add this hook at the top of your file (after imports)
+function useSlideshow(trigger: boolean, count: number, delay = 200) {
+  const [visibleCount, setVisibleCount] = useState(trigger ? 0 : count);
+  useEffect(() => {
+    if (trigger) {
+      setVisibleCount(0);
+      let i = 0;
+      const interval = setInterval(() => {
+        i++;
+        setVisibleCount(i);
+        if (i >= count) clearInterval(interval);
+      }, delay);
+      return () => clearInterval(interval);
+    } else {
+      setVisibleCount(count);
+    }
+  }, [trigger, count, delay]);
+  return visibleCount;
 }

@@ -19,7 +19,7 @@ const isSameDay = (date1: Date | null, date2: Date | null): boolean => {
   );
 };
 
-
+// --- Fix for instanceof error in parseFlexibleDate ---
 const parseFlexibleDate = (dateInput: string | number | null | undefined): Date | null => {
   if (!dateInput && dateInput !== 0) return null;
 
@@ -33,11 +33,10 @@ const parseFlexibleDate = (dateInput: string | number | null | undefined): Date 
     const trimmedInput = dateInput.trim();
 
     // Priority 1: Handle dd/mm/yyyy format. This is the specified format for the data.
-    // The regex [./-]+ handles single or multiple separators like / or //
     const dmyParts = trimmedInput.match(/^(\d{1,2})[./-]+(\d{1,2})[./-]+(\d{2,4})$/);
     if (dmyParts) {
       const day = parseInt(dmyParts[1], 10);
-      const month = parseInt(dmyParts[2], 10) - 1; // JS months are 0-indexed
+      const month = parseInt(dmyParts[2], 10) - 1;
       let year = parseInt(dmyParts[3], 10);
       if (year < 100) year += 2000;
 
@@ -49,21 +48,25 @@ const parseFlexibleDate = (dateInput: string | number | null | undefined): Date 
       }
     }
 
-    // Priority 2: Handle unambiguous ISO 8601 format (YYYY-MM-DD), which comes from the date picker.
+    // Priority 2: Handle ISO 8601 format (YYYY-MM-DD)
     if (/^\d{4}-\d{2}-\d{2}/.test(trimmedInput)) {
-        const d = new Date(trimmedInput);
-        if (!isNaN(d.getTime())) {
-            return d;
-        }
+      const d = new Date(trimmedInput);
+      if (!isNaN(d.getTime())) {
+        return d;
+      }
     }
-    
-    // Do not proceed with a generic new Date(string) for other formats to avoid ambiguity.
+
     return null;
   }
 
-  // Handle if dateInput is already a Date object
-  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
-    return dateInput;
+  // --- FIX: Use Object.prototype.toString instead of instanceof ---
+  if (
+    typeof dateInput === "object" &&
+    dateInput !== null &&
+    Object.prototype.toString.call(dateInput) === "[object Date]" &&
+    !isNaN((dateInput as Date).getTime())
+  ) {
+    return dateInput as Date;
   }
 
   return null;
@@ -215,8 +218,8 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
     return { pagedDates: sliceDates, groupedEvents: grouped, pagedEvents: [], totalPages: calcPages, totalEvents: filtered.length };
   }, [allEvents, groupBy, page, startDate, endDate, effectivePageSize, searchMode]); // Added searchMode to dependencies
 
-  const formatDateForDisplay = (d: string | number) => {
-    const pd = parseFlexibleDate(d);
+  const formatDateForDisplay = (d: string | number | Date) => {
+    const pd = typeof d === "string" || typeof d === "number" ? parseFlexibleDate(d) : d instanceof Date ? d : null;
     if (!pd) return "Invalid Date";
     try {
       return format(pd, "dd/MM/yyyy");
@@ -312,7 +315,72 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
         </div>
       )}
 
-      {loading && ( <div className="flex flex-col items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-white" /><span className="mt-3 text-white">Loading events...</span></div> )}
+    {loading && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "256px", // h-64
+      animation: "fadeIn 0.4s ease",
+      backdropFilter: "blur(6px)",
+      background: "rgba(0,0,0,0.25)",
+      borderRadius: "12px",
+    }}
+  >
+    {/* SPINNER */}
+    <Loader2
+      style={{
+        width: "32px",
+        height: "32px",
+        color: "white",
+        animation: "spin 1s linear infinite, glowPulse 1.5s ease-in-out infinite",
+        filter: "drop-shadow(0 0 6px rgba(59,130,246,0.7))",
+      }}
+    />
+
+    {/* TEXT */}
+    <span
+      style={{
+        marginTop: "12px",
+        color: "white",
+        fontSize: "15px",
+        fontWeight: 500,
+        animation: "pulseText 1.8s ease-in-out infinite",
+      }}
+    >
+      Loading events...
+    </span>
+
+    {/* BONUS: Inject keyframe animations */}
+    <style>
+      {`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        @keyframes glowPulse {
+          0% { filter: drop-shadow(0 0 2px rgba(59,130,246,0.4)); }
+          50% { filter: drop-shadow(0 0 10px rgba(59,130,246,0.9)); }
+          100% { filter: drop-shadow(0 0 2px rgba(59,130,246,0.4)); }
+        }
+
+        @keyframes pulseText {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}
+    </style>
+  </div>
+)}
+
       {error && ( <div className="bg-red-900/50 border border-red-700 text-red-300 rounded-lg p-4"><p className="font-semibold text-white">Error loading events</p><pre className="text-xs mt-2 text-white">{error}</pre></div> )}
       {!loading && !error && !hasResults && ( <div className="text-center py-16"><p className="text-slate-400 text-lg text-white">No events found for the selected criteria.</p></div> )}
 

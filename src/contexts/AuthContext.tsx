@@ -30,7 +30,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }) => {
+import { ReactNode } from 'react';
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -115,7 +117,11 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('Login error:', error.message);
+      if (error instanceof Error) {
+        console.error('Login error:', error.message);
+      } else {
+        console.error('Login error:', error);
+      }
       // Only show the popup on an explicit login attempt
       if (isLogin) {
         Swal.fire({

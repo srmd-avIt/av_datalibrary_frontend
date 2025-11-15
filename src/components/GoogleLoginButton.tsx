@@ -11,14 +11,14 @@ export const GoogleLoginButton = () => {
   // GOOGLE AUTH INTEGRATION: Get the login function from our context
   const { login } = useAuth();
 
-  const handleLoginSuccess = async (tokenResponse) => {
+  const handleLoginSuccess = async (tokenResponse: { access_token: string }) => {
     console.log('Login successful:', tokenResponse);
     // GOOGLE AUTH INTEGRATION: Call the context login function with the access token
     await login(tokenResponse.access_token);
     setIsLoggingIn(false); // Stop loading indicator on success
   };
 
-  const handleLoginError = (error) => {
+  const handleLoginError = (error: unknown) => {
     console.error('Login failed:', error);
     setIsLoggingIn(false); // Stop loading indicator on error
   };

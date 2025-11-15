@@ -333,16 +333,35 @@ export function Dashboard({ onShowDetails }: DashboardProps) {
             <h3 style={{ fontSize: "0.875rem", fontWeight: 500, margin: 0 }}>Recent Cities</h3>
             <MapPin style={{ width: "1rem", height: "1rem", color: "rgb(59,130,246)" }} />
           </div>
-          <div>
-            <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(59,130,246)" }}>
-              {isLoadingCity ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : cityError ? (
-                <span className="text-sm text-red-500">Error</span>
-              ) : (
-                cityCount
-              )}
-            </div>
+         <div>
+  <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(59,130,246)" }}>
+    {isLoadingCity ? (
+      <>
+        <style>
+          {`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to   { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+
+        <Loader2
+          className="w-6 h-6"
+          style={{
+            animation: "spin 0.7s linear infinite",
+            transformOrigin: "center",
+          }}
+        />
+      </>
+    ) : cityError ? (
+      <span className="text-sm text-red-500">Error</span>
+    ) : (
+      cityCount
+    )}
+  </div>
+
+
             <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Visited in last 90 days</p>
             <Badge onClick={() => handleShowRecent('City')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <TrendingUp style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New cities
@@ -365,15 +384,33 @@ export function Dashboard({ onShowDetails }: DashboardProps) {
             <MapPin style={{ width: "1rem", height: "1rem", color: "rgb(34,197,94)" }} />
           </div>
           <div>
-            <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(34,197,94)" }}>
-              {isLoadingCountry ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : countryError ? (
-                <span className="text-sm text-red-500">Error</span>
-              ) : (
-                countryCount
-              )}
-            </div>
+          <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(34,197,94)" }}>
+  {isLoadingCountry ? (
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      <Loader2
+        className="w-6 h-6"
+        style={{
+          animation: "spin 0.7s linear infinite",
+          transformOrigin: "center",
+        }}
+      />
+    </>
+  ) : countryError ? (
+    <span className="text-sm text-red-500">Error</span>
+  ) : (
+    countryCount
+  )}
+</div>
+
             <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Visted in last 90 days</p>
             <Badge onClick={() => handleShowRecent('Country')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <Calendar style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New countries
@@ -397,14 +434,32 @@ export function Dashboard({ onShowDetails }: DashboardProps) {
           </div>
           <div>
             <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(139,92,246)" }}>
-              {isLoadingPratishtha ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : pratishthaError ? (
-                <span className="text-sm text-red-500">Error</span>
-              ) : (
-                pratishthasCount
-              )}
-            </div>
+  {isLoadingPratishtha ? (
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      <Loader2
+        className="w-6 h-6"
+        style={{
+          animation: "spin 0.7s linear infinite",
+          transformOrigin: "center",
+        }}
+      />
+    </>
+  ) : pratishthaError ? (
+    <span className="text-sm text-red-500">Error</span>
+  ) : (
+    pratishthasCount
+  )}
+</div>
+
             <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established in last 90 days</p>
             <Badge onClick={() => handleShowRecent('Pratishtha')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <MapPin style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New centers
@@ -427,15 +482,33 @@ export function Dashboard({ onShowDetails }: DashboardProps) {
             <Building style={{ width: "1rem", height: "1rem", color: "rgb(251,146,60)" }} />
           </div>
           <div>
-            <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(251,146,60)" }}>
-              {isLoadingPadhramani ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : padhramaniError ? (
-                <span className="text-sm text-red-500">Error</span>
-              ) : (
-                padhramanisCount
-              )}
-            </div>
+           <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgb(251,146,60)" }}>
+  {isLoadingPadhramani ? (
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      <Loader2
+        className="w-6 h-6"
+        style={{
+          animation: "spin 0.7s linear infinite",
+          transformOrigin: "center",
+        }}
+      />
+    </>
+  ) : padhramaniError ? (
+    <span className="text-sm text-red-500">Error</span>
+  ) : (
+    padhramanisCount
+  )}
+</div>
+
             <p style={{ fontSize: "0.75rem", color: "rgba(107,114,128,1)", margin: "0.25rem 0 0 0" }}>Established in last 90 days</p>
             <Badge onClick={() => handleShowRecent('Padhramani')} variant="secondary" style={{ display: "inline-flex", alignItems: "center", marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} className="hover:bg-muted/80">
               <MapPin style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} /> New locations
