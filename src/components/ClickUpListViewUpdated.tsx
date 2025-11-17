@@ -915,8 +915,36 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
       const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
         const direction = groupDirection === "asc" ? 1 : -1;
-        if (a < b) return -1 * direction;
-        if (a > b) return 1 * direction;
+
+        // Try numeric comparison first
+        const toNum = (v: string) => {
+          const n = Number(v);
+          return Number.isFinite(n) ? n : null;
+        };
+
+        const aNum = toNum(String(a));
+        const bNum = toNum(String(b));
+
+        if (aNum !== null && bNum !== null) {
+          // both numeric -> numeric compare
+          return (aNum - bNum) * direction;
+        }
+
+        if (aNum !== null && bNum === null) {
+          // numbers come before text
+          return -1 * direction;
+        }
+
+        if (aNum === null && bNum !== null) {
+          // text comes after numbers
+          return 1 * direction;
+        }
+
+        // both non-numeric -> case-insensitive alphabetical compare
+        const aStr = String(a).toLowerCase();
+        const bStr = String(b).toLowerCase();
+        if (aStr < bStr) return -1 * direction;
+        if (aStr > bStr) return 1 * direction;
         return 0;
       });
 
@@ -1460,6 +1488,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
   };
 
   // --- Bulk update: already uses sortedData ---
+  // ...existing code...
+  // --- Bulk update: already uses sortedData ---
   const handleBulkUpdate = async () => {
     const changesToSave = Object.entries(pendingChanges);
     if (changesToSave.length === 0) {
@@ -1473,7 +1503,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       // Always search the full dataset (`sortedData`)
       const originalItem = sortedData.find(item => String(item[idKey]) === String(rowId));
       if (!originalItem) {
-        return { status: 'rejected', reason: `Original item with ID ${rowId} not found.` };
+        return { status: 'rejected', reason: `Original item with ID ${rowId} not found.`, rowId };
       }
       const updatedRow = { ...originalItem, ...changes };
       // Add audit fields
@@ -1576,19 +1606,20 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
           body: JSON.stringify(updatedRow),
         });
 
-       if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-  const errorMsg =
-    errorData.message ||
-    errorData.sqlMessage ||
-    errorData.error ||
-    errorData.toString() ||
-    `Failed to update ${resolvedRowId}`;
-  throw new Error(errorMsg);
-}
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg =
+            errorData?.message ||
+            errorData?.sqlMessage ||
+            errorData?.error ||
+            (typeof errorData === "string" ? errorData : JSON.stringify(errorData)) ||
+            `Failed to update ${resolvedRowId}`;
+          return { status: 'rejected', reason: errorMsg, rowId };
+        }
+
         return { status: 'fulfilled', value: resolvedRowId };
       } catch (error: any) {
-        return { status: 'rejected', reason: error.message, rowId };
+        return { status: 'rejected', reason: error?.message || String(error), rowId };
       }
     });
 
@@ -1596,19 +1627,35 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
     let successfulUpdates = 0;
     let failedUpdates = 0;
+    const failedDetails: string[] = [];
 
     results.forEach(result => {
-      if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
-        successfulUpdates++;
+      if (result.status === 'fulfilled') {
+        const value = result.value;
+        // value is the returned object from the inner promise
+        if (value && (value as any).status === 'fulfilled') {
+          successfulUpdates++;
+        } else if (value && (value as any).status === 'rejected') {
+          failedUpdates++;
+          const reason = (value as any).reason || (value as any).rowId || 'Unknown';
+          failedDetails.push(`ID ${ (value as any).rowId || 'unknown' }: ${reason}`);
+        } else {
+          // unexpected shape
+          failedUpdates++;
+          failedDetails.push(`Unknown failure: ${JSON.stringify(value)}`);
+        }
       } else {
+        // outer promise rejected (should be rare given catch inside map)
         failedUpdates++;
-        const reason = result.status === 'rejected' ? result.reason : (result.value as any).reason;
-        console.error(`Failed to update an item:`, reason);
+        failedDetails.push(`Promise rejected: ${String(result.reason)}`);
       }
     });
 
     if (failedUpdates > 0) {
-      toast.error(`${failedUpdates} update(s) failed. ${successfulUpdates} saved.`, { id: savingToast });
+      const summary = `${failedUpdates} update(s) failed. ${successfulUpdates} saved.`;
+      toast.error(summary, { id: savingToast });
+      const detailsMsg = failedDetails.length > 0 ? `\n\nDetails:\n${failedDetails.join('\n')}` : '';
+      showErrorDialog(`${summary}${detailsMsg}`, 'Update results');
     } else {
       toast.success(`${successfulUpdates} update(s) saved successfully!`, { id: savingToast });
     }
@@ -1620,6 +1667,17 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
   const handleDiscardChanges = () => {
     setPendingChanges({});
     toast.info("All pending changes discarded.");
+  };
+// ...existing code...
+
+  // --- NEW: Error dialog state/helper ---
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; title?: string; message?: string }>({
+    open: false,
+    title: "Error",
+    message: "",
+  });
+  const showErrorDialog = (message: string, title = "Error") => {
+    setErrorDialog({ open: true, title, message });
   };
 
   // --- Render ---
@@ -2485,6 +2543,49 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
           </form>
         </DialogContent>
       </Dialog>
+       {/* Error Dialog for showing backend/bulk-update failures */}
+      <Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{errorDialog.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 text-sm whitespace-pre-wrap">{errorDialog.message}</div>
+         <DialogFooter
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    paddingTop: "12px",
+  }}
+>
+  <button
+    onClick={() =>
+      setErrorDialog({ open: false, title: "Error", message: "" })
+    }
+    style={{
+      padding: "8px 16px",
+      borderRadius: "8px",
+      backgroundColor: "rgb(51, 65, 85)",      // slate-700
+      color: "white",
+      fontSize: "14px",
+      fontWeight: 500,
+      border: "1px solid rgba(255,255,255,0.1)",
+      cursor: "pointer",
+      transition: "all 0.2s ease-in-out",
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundColor = "rgb(71, 85, 105)"; // slate-600
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundColor = "rgb(51, 65, 85)"; // slate-700
+    }}
+  >
+    Close
+  </button>
+</DialogFooter>
+
+        </DialogContent>
+      </Dialog>
     </div>
+    
   );
 }

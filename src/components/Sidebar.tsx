@@ -106,20 +106,46 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     { id: "user-management", label: "User Management", icon: User, requiredRoles: ['Admin', 'Owner'] }
   ];
 
+  // Logic to filter the menu items based on user permissions
   const visibleMenuItems = useMemo(() => {
-    const filterItems = (items: MenuItem[]): MenuItem[] => {
-      return items
-        .filter(item => {
-          if (!item.requiredRoles) return true;
-          return user && item.requiredRoles.includes(user.role);
-        })
-        .map(item => ({
-          ...item,
-          children: item.children ? filterItems(item.children) : undefined,
-        }));
-    };
-    return filterItems(allMenuItems);
-  }, [user]);
+    if (!user) return []; // If user isn't loaded, show nothing
+
+    // Owners and Admins see everything
+    if (user.role === "Owner" || user.role === "Admin") {
+      return allMenuItems;
+    }
+
+    // --- CHANGED: use plain object instead of `Map` to avoid TS errors ---
+    const permMap: Record<string, Set<string>> = {};
+    (user.permissions || []).forEach((p) => {
+      permMap[p.resource] = new Set(p.actions);
+    });
+
+    const allowed = allMenuItems
+      .map((item) => {
+        // Dashboard always visible
+        if (item.label === "Dashboard") return item;
+
+        // If item has children, keep only children the user has read/write access to
+        if (item.children && item.children.length > 0) {
+          const visibleChildren = item.children.filter((child) => {
+            const actions = permMap[child.label];
+            return actions && (actions.has("read") || actions.has("write"));
+          });
+          if (visibleChildren.length > 0) return { ...item, children: visibleChildren };
+          return null;
+        }
+
+        // Single item: show only if permission exists with read or write
+        const actions = permMap[item.label];
+        if (actions && (actions.has("read") || actions.has("write"))) return item;
+
+        return null;
+      })
+      .filter(Boolean) as MenuItem[];
+
+    return allowed;
+  }, [user, allMenuItems]);
 
   const handleMenuClick = (id: string) => {
     onViewChange(id);

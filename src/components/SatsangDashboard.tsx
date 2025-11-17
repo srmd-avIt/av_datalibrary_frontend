@@ -206,6 +206,8 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
   const [cityOptions, setCityOptions] = useState<{ value: string; label: string }[]>([]);
   // --- NEW: State for Event Category options ---
   const [eventCategoryOptions, setEventCategoryOptions] = useState<{ value: string; label: string }[]>([]);
+  // --- NEW: State for Number dropdown options ---
+  const [numberOptions, setNumberOptions] = useState<{ value: string; label: string }[]>([]);
 
   // --- NEW: Fetch options for dropdowns on component mount ---
   useEffect(() => {
@@ -242,7 +244,9 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
     // --- NEW: Fetch Event Category options ---
     fetchOptions('/event-category/options', 'fkEventCategory', setEventCategoryOptions);
-  }, []);
+    fetchOptions('/number/options', 'Number', setNumberOptions); // Number dropdown options
+  }, []); // Pre-fetch Number options if needed
+  
 
 
   const handleInputChange = (field: string, value: string) => {
@@ -363,17 +367,18 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         <Label htmlFor="Number" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
           Number
         </Label>
-        <Input
-          id="Number"
-          placeholder="e.g., 123"
+        <Combobox
+         options={numberOptions}
           value={searchFilters.Number || ''}
-          onChange={e => handleInputChange('Number', e.target.value)}
+          onChange={value => handleInputChange('Number', value)}
+          placeholder="Select or type a number..."
           style={{
             width: "100%",
             padding: "10px 12px",
             borderRadius: "8px",
             border: "1px solid #474849ff",
             fontSize: "14px",
+            height: 'auto',
           }}
         />
       </div>
