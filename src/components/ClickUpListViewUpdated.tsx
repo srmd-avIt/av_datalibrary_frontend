@@ -582,7 +582,7 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   rowId = updatedRow.RecordingCode;
 } else if (effectiveApiEndpoint.includes("auxfiles")) {
   endpoint = "/auxfiles";
-  rowId = updatedRow.AuxCode; // <-- FIXED HERE
+  rowId = updatedRow.new_auxid; // <-- FIXED HERE
 } else if (effectiveApiEndpoint.includes("newmedialog")) {
   endpoint = "/newmedialog";
   rowId = updatedRow.MLUniqueID;
