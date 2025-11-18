@@ -503,52 +503,53 @@ export function ClickUpListViewUpdated({
     setEditValue(value);
   };
 
-  const handleUpdateCell = async () => {
-    if (!editingCell) return;
+const handleUpdateCell = async () => {
+  if (!editingCell) return;
 
-    const { rowIndex, columnKey } = editingCell;
-    const item = finalItems[rowIndex];
-    const id = item[idKey];
-    const originalValue = item[columnKey];
+  const { rowIndex, columnKey } = editingCell;
+  const item = finalItems[rowIndex];
+  const id = item[idKey];
+  const originalValue = item[columnKey];
 
-    // Exit edit mode immediately
-    setEditingCell(null);
+  // Exit edit mode immediately
+  setEditingCell(null);
 
-    // Don't save if the value hasn't changed
-    if (editValue === originalValue) {
+  // Don't save if the value hasn't changed
+  if (editValue === originalValue) {
+    return;
+  }
+
+  const savingToast = toast.loading(`Updating ${columnKey}...`);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [columnKey]: editValue }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      // Extract the most detailed error message
+      const errorMsg =
+        errorData.sqlMessage ||
+        errorData.message ||
+        errorData.error ||
+        errorData.toString() ||
+        `Failed to update ${id}`;
+      toast.error(`Error: ${errorMsg}`, { id: savingToast });
       return;
     }
 
-    const savingToast = toast.loading(`Updating ${columnKey}...`);
+    toast.success("Update saved successfully!", { id: savingToast });
+    // Refetch data to show the update
+    await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [columnKey]: editValue }),
-      });
-
-     if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-  const errorMsg =
-    errorData.message ||
-    errorData.sqlMessage ||
-    errorData.error ||
-    errorData.toString() ||
-    'Failed to save changes.';
-  toast.error(`Error: ${errorMsg}`, { id: savingToast });
-  throw new Error(errorMsg);
-}
-
-      toast.success("Update saved successfully!", { id: savingToast });
-      // Refetch data to show the update
-      await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
-
-    } catch (error: any) {
-      toast.error(`Error: ${error.message}`, { id: savingToast });
-      console.error("Failed to update cell:", error);
-    }
-  };
+  } catch (error: any) {
+    toast.error(`Error: ${error.message}`, { id: savingToast });
+    console.error("Failed to update cell:", error);
+  }
+};
 
 const handleCellEdit = async (rowIndex: number, column: Column, newValue: any) => {
   // Get the updated row
@@ -592,7 +593,7 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   endpoint = "/audio";
   rowId = updatedRow.AID;
 } else if (effectiveApiEndpoint.includes("bhajantype")) {
-  endpoint = "/bhajantype";
+  endpoint = "/bhajan-type";
   rowId = updatedRow.BTID;
 } else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
   endpoint = "/digital-master-category";
@@ -667,7 +668,14 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Failed to save changes.');
+      // Extract the most detailed error message
+      const errorMsg =
+        errorData.sqlMessage ||
+        errorData.message ||
+        errorData.error ||
+        errorData.toString() ||
+        `Failed to update ${rowId}`;
+      return { status: 'rejected', reason: errorMsg, rowId };
     }
 
     toast.success("Update saved successfully!", { id: savingToast });
@@ -1433,9 +1441,10 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
       if (!response.ok) {
   const errorData = await response.json().catch(() => ({}));
+  // Extract the most detailed error message
   const errorMsg =
-    errorData.message ||
     errorData.sqlMessage ||
+    errorData.message ||
     errorData.error ||
     errorData.toString() ||
     "Failed to add entry";
@@ -1605,17 +1614,25 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedRow),
         });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMsg =
-            errorData?.message ||
-            errorData?.sqlMessage ||
-            errorData?.error ||
-            (typeof errorData === "string" ? errorData : JSON.stringify(errorData)) ||
-            `Failed to update ${resolvedRowId}`;
-          return { status: 'rejected', reason: errorMsg, rowId };
-        }
+if (!response.ok) {
+  const errorData = await response.json().catch(() => ({}));
+  // Build a detailed error message from all fields
+  let errorMsg = '';
+  if (typeof errorData === 'object' && errorData !== null) {
+    if (errorData.sqlMessage) errorMsg += `❌ ${errorData.sqlMessage}\n`;
+    if (errorData.message) errorMsg += `Message: ${errorData.message}\n`;
+    if (errorData.sql) errorMsg += `SQL:\n${errorData.sql}\n`;
+    if (errorData.stack) errorMsg += `Stack:\n${errorData.stack}\n`;
+    if (errorData.code) errorMsg += `Code: ${errorData.code}\n`;
+    if (errorData.errno) errorMsg += `Errno: ${errorData.errno}\n`;
+    if (errorData.sqlState) errorMsg += `SQLState: ${errorData.sqlState}\n`;
+    // If still empty, show the whole object
+    if (!errorMsg) errorMsg = JSON.stringify(errorData, null, 2);
+  } else {
+    errorMsg = String(errorData) || `Failed to update ${resolvedRowId}`;
+  }
+  return { status: 'rejected', reason: errorMsg, rowId };
+}
 
         return { status: 'fulfilled', value: resolvedRowId };
       } catch (error: any) {
@@ -1629,27 +1646,50 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     let failedUpdates = 0;
     const failedDetails: string[] = [];
 
-    results.forEach(result => {
-      if (result.status === 'fulfilled') {
-        const value = result.value;
-        // value is the returned object from the inner promise
-        if (value && (value as any).status === 'fulfilled') {
-          successfulUpdates++;
-        } else if (value && (value as any).status === 'rejected') {
-          failedUpdates++;
-          const reason = (value as any).reason || (value as any).rowId || 'Unknown';
-          failedDetails.push(`ID ${ (value as any).rowId || 'unknown' }: ${reason}`);
-        } else {
-          // unexpected shape
-          failedUpdates++;
-          failedDetails.push(`Unknown failure: ${JSON.stringify(value)}`);
-        }
-      } else {
-        // outer promise rejected (should be rare given catch inside map)
-        failedUpdates++;
-        failedDetails.push(`Promise rejected: ${String(result.reason)}`);
+results.forEach(result => {
+  if (result.status === 'fulfilled') {
+    const value = result.value;
+    if (value && (value as any).status === 'fulfilled') {
+      successfulUpdates++;
+    } else if (value && (value as any).status === 'rejected') {
+      failedUpdates++;
+      let reason = (value as any).reason || (value as any).rowId || 'Unknown';
+      // Always stringify if not a string
+      if (typeof reason !== 'string') {
+        reason = JSON.stringify(reason, null, 2);
       }
-    });
+      // Try to parse JSON string if it looks like an object
+      try {
+        const parsed = JSON.parse(reason);
+        // If parsed object has sqlMessage or stack, build a detailed message
+        if (parsed && typeof parsed === 'object') {
+          let details = '';
+          if (parsed.sqlMessage) details += `❌ ${parsed.sqlMessage}\n`;
+          if (parsed.message) details += `Message: ${parsed.message}\n`;
+          if (parsed.sql) details += `SQL:\n${parsed.sql}\n`;
+          if (parsed.stack) details += `Stack:\n${parsed.stack}\n`;
+          if (parsed.code) details += `Code: ${parsed.code}\n`;
+          if (parsed.errno) details += `Errno: ${parsed.errno}\n`;
+          if (parsed.sqlState) details += `SQLState: ${parsed.sqlState}\n`;
+          if (parsed.error && !details) details += `Error: ${parsed.error}\n`;
+          if (!details) details = JSON.stringify(parsed, null, 2);
+          reason = details;
+        }
+      } catch { /* not JSON, leave as is */ }
+      failedDetails.push(`ID ${ (value as any).rowId || 'unknown' }: ${reason}`);
+    } else {
+      failedUpdates++;
+      failedDetails.push(`Unknown failure: ${JSON.stringify(value, null, 2)}`);
+    }
+  } else {
+    failedUpdates++;
+    let reason = result.reason;
+    if (typeof reason !== 'string') {
+      reason = JSON.stringify(reason, null, 2);
+    }
+    failedDetails.push(`Promise rejected: ${String(reason)}`);
+  }
+});
 
     if (failedUpdates > 0) {
       const summary = `${failedUpdates} update(s) failed. ${successfulUpdates} saved.`;
@@ -1997,7 +2037,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
                   </PopoverContent>
                 </Popover>
                 {groupByFields[0] !== "none" && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear grouping">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear all groupings">
                     <X className="w-4 h-4" />
                   </Button>
                 )}
@@ -2543,48 +2583,56 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
           </form>
         </DialogContent>
       </Dialog>
-       {/* Error Dialog for showing backend/bulk-update failures */}
-      <Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{errorDialog.title}</DialogTitle>
-          </DialogHeader>
-          <div className="py-2 text-sm whitespace-pre-wrap">{errorDialog.message}</div>
-         <DialogFooter
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    paddingTop: "12px",
-  }}
->
-  <button
-    onClick={() =>
-      setErrorDialog({ open: false, title: "Error", message: "" })
-    }
-    style={{
-      padding: "8px 16px",
-      borderRadius: "8px",
-      backgroundColor: "rgb(51, 65, 85)",      // slate-700
-      color: "white",
-      fontSize: "14px",
-      fontWeight: 500,
-      border: "1px solid rgba(255,255,255,0.1)",
-      cursor: "pointer",
-      transition: "all 0.2s ease-in-out",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor = "rgb(71, 85, 105)"; // slate-600
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor = "rgb(51, 65, 85)"; // slate-700
-    }}
-  >
-    Close
-  </button>
-</DialogFooter>
-
-        </DialogContent>
-      </Dialog>
+      {/* Error Dialog for showing backend/bulk-update failures */}
+<Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>{errorDialog.title}</DialogTitle>
+    </DialogHeader>
+    <div
+      className="py-2 text-sm whitespace-pre-wrap"
+      style={{
+        maxHeight: 400,
+        overflowY: "auto",
+        wordBreak: "break-word",
+      }}
+    >
+      {errorDialog.message}
+    </div>
+    <DialogFooter
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        paddingTop: "12px",
+      }}
+    >
+      <button
+        onClick={() =>
+          setErrorDialog({ open: false, title: "Error", message: "" })
+        }
+        style={{
+          padding: "8px 16px",
+          borderRadius: "8px",
+          backgroundColor: "rgb(51, 65, 85)",      // slate-700
+          color: "white",
+          fontSize: "14px",
+          fontWeight: 500,
+          border: "1px solid rgba(255,255,255,0.1)",
+          cursor: "pointer",
+          transition: "all 0.2s ease-in-out",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "rgb(71, 85, 105)"; // slate-600
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "rgb(51, 65, 85)"; // slate-700
+        }}
+      >
+        Close
+      </button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </div>
     
   );

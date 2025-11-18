@@ -161,7 +161,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
-
+      { key: "NewEventCategory", label: "New Event Category", sortable: true, render: categoryTagRenderer, editable: true },
     
 
       // Location fields (4)
@@ -243,7 +243,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     fetchOptions('/states/options', 'fkState', setStateOptions);
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
     // --- NEW: Fetch Event Category options ---
-    fetchOptions('/event-category/options', 'fkEventCategory', setEventCategoryOptions);
+    fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions); // Number dropdown options
   }, []); // Pre-fetch Number options if needed
   
@@ -302,13 +302,13 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     >
       {/* --- NEW: Event Category Combobox --- */}
       <div>
-        <Label htmlFor="fkEventCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-          Event Category
+        <Label htmlFor="NewEventCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
+          New Event Category
         </Label>
         <Combobox
           options={eventCategoryOptions}
-          value={searchFilters.fkEventCategory || ''}
-          onChange={value => handleInputChange('fkEventCategory', value)}
+          value={searchFilters.NewEventCategory || ''}
+          onChange={value => handleInputChange('NewEventCategory', value)}
           placeholder="Select an event category..."
           style={{
             width: "100%",
@@ -469,7 +469,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
   </Label>
   <Input
     id="EventRefMLID"
-    placeholder="e.g., ML-12345"
+    placeholder="e.g., E00001_001.1"
     value={searchFilters.EventRefMLID || ''}
     onChange={e => handleInputChange('EventRefMLID', e.target.value)}
     style={{
@@ -488,7 +488,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
   </Label>
   <Input
     id="EventCode"
-    placeholder="e.g., EC-123"
+    placeholder="e.g., E00001"
     value={searchFilters.EventCode || ''}
     onChange={e => handleInputChange('EventCode', e.target.value)} // <-- fixed key here
     style={{

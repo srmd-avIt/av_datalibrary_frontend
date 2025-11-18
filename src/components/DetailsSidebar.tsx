@@ -406,19 +406,22 @@ export function DetailsSidebar({
                 </div>
               </CardContent>
             </Card>
-            <Card className="w-full">
-              <CardHeader>
-                <CardTitle className="text-lg px-2">Metadata</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 break-words">
-                <FieldRow label="LastModifiedBy" value={data.LastModifiedBy}>
-                   <Badge variant="secondary">{data.LastModifiedBy}</Badge>
-                </FieldRow>
-                 <FieldRow label="LastModifiedTimestamp" value={data.LastModifiedTimestamp}>
-                   <Badge variant="secondary">{data.LastModifiedTimestamp}</Badge>
-                </FieldRow>
-              </CardContent>
-            </Card>
+           <Card className="w-full">
+  <CardHeader>
+    <CardTitle className="text-lg px-2">Metadata</CardTitle>
+  </CardHeader>
+
+  <CardContent className="space-y-4 p-4">
+    <FieldRow label="LastModifiedBy" value={data.LastModifiedBy}>
+      <Badge variant="secondary">{data.LastModifiedBy}</Badge>
+    </FieldRow>
+
+    <FieldRow label="LastModifiedTs" value={data.LastModifiedTimestamp}>
+      <Badge variant="secondary">{data.LastModifiedTimestamp}</Badge>
+    </FieldRow>
+  </CardContent>
+</Card>
+
           </div>
         );
 
