@@ -49,7 +49,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const allMenuItems: MenuItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "dashboard", label: "Home", icon: Home },
     { id: "satsang_dashboard", label: "Satsang Dashboard", icon: LayoutDashboard },
     { id: "events", label: "Events", icon: Map },
     { id: "eventtimeline", label: "Event Timeline", icon: Calendar },
