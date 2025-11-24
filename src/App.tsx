@@ -541,176 +541,28 @@ medialog_formal: {
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-  {
-  key: "ContentFromDetailCity",
-  label: "Content - Detail - City",
-  sortable: true,
-  editable: false,
-  render: (_v: any, row: any) => {
-    // Use backend-computed field if available
-    if (row.ContentFromDetailCity) {
-      return row.ContentFromDetailCity;
-    }
 
-    // ✅ Prevent fallback when EventRefMLID is empty
-    if (!row.EventRefMLID) {
-      return ""; // or return null;
-    }
+      // keep existing/other ML fields (preserve original keys)
 
-    // Fallback: build value manually if needed
-    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
-    return parts.join(" - ");
-  },
-}
-,
-     
-
-  
-    ],
-  },
-  medialog_satsang_extracted_clips: {
-    title: "Media Log: Satsang Extracted Clips",
-    apiEndpoint: "/newmedialog/satsang-extracted-clips",
-    idKey: "MLUniqueID",
-    detailsType: "medialog",
-    columns: [
-     { key: "Yr", label: "Year", sortable: true, editable: true },
-     
-      // Requested primary columns
-      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
-      {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-         editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || row.DetailMain || "";
-          const s = row.SubDetail || row.DetailSub || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
-      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SubDuration", label: "Duration", sortable: true, editable: true },
-      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Subtitle fields
-      { key: "HasSubtitle", label: "Has Subtitle", sortable: true, editable: true },
-      { key: "SubTitlesLanguage", label: "Subtitle Language", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Text/meta
-      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
-
-      // Satsang start / end words
-      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
-      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
-
-      // Audio codes / master quality / DR filename
-      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
-     
-
-      // Location: City (requested)
-      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Keep identifiers / minimal extras
-        {
-  key: "ContentFromDetailCity",
-  label: "Content - Detail - City",
-  sortable: true,
-  editable: false,
-  render: (_v: any, row: any) => {
-    // Use backend-computed field if available
-    if (row.ContentFromDetailCity) {
-      return row.ContentFromDetailCity;
-    }
-
-    // ✅ Prevent fallback when EventRefMLID is empty
-    if (!row.EventRefMLID) {
-      return ""; // or return null;
-    }
-
-    // Fallback: build value manually if needed
-    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
-    return parts.join(" - ");
-  },
-}
-,
-     
-     
-   
-    ],
-  },
-  medialog_satsang_category: {
-    title: "Media Log: Satsang Category",
-    apiEndpoint: "/newmedialog/satsang-category",
-    idKey: "MLUniqueID",
-    detailsType: "medialog",
-    columns: [
-      { key: "Yr", label: "Year", sortable: true, editable: true },
-      {
-        key: "EventName - EventCode",
-        label: "Event Name - EventCode",
-        sortable: true,
-        editable: true,
-        render: (_v: any, row: any) => {
-          const en = row.EventName || row.EventRefName || "";
-          const ec = row.EventCode || row.fkEventCode || "";
-          return `${en}${en && ec ? " - " : ""}${ec}`;
-        },
-      },
-      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-
-      // Content timing + details
-      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
-      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
-      {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-         editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || row.DetailMain || "";
-          const s = row.SubDetail || row.DetailSub || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
-
-      // Topic / Number / Granth / language / durations / categories
-      { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
-      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
-
-    
-
-      // Location fields (4)
-      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Venue", label: "Venue", sortable: true, editable: true },
-
-      // Additional textual/meta fields
-      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
+      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
+      
+      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
+      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
+      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
+      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
       { key: "Remarks", label: "Remarks", sortable: true, editable: true },
-      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
-      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Satsang specific start/end words (use your actual field names if different)
-      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
-      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
-
-      // Audio codes / master quality / distribution
-      { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
-      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
-      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
-      { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // DR filename and other ML identifiers
+      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
+      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
+      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
+      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
+      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
       {
   key: "ContentFromDetailCity",
   label: "Content - Detail - City",
@@ -733,10 +585,38 @@ medialog_formal: {
   },
 },
 
+      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
+      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
+      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
+      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
+      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
+      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Grading", label: "Grading", sortable: true, editable: true },
+      
+      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
 
+      // DR specific and then rest of existing ML fields
+      { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+
+     
+     
     ],
   },
-  // ...existing code...
+
+ 
+
   digitalrecordings: {
     title: "Digital Recordings",
     apiEndpoint: "/digitalrecording",
@@ -1455,12 +1335,8 @@ export default function App() {
       visibleColumnKeys={getVisibleColumnKeysForMgmt(
         selectedViewsForMgmt[currentIndex]
       )}
-     viewId={selectedViewsForMgmt[currentIndex]}
-     tableName={manageableViews.find((v) => v.id === selectedViewsForMgmt[currentIndex])?.title || selectedViewsForMgmt[currentIndex]}
+      viewId={selectedViewsForMgmt[currentIndex]}
       users={allUsers || []}
-      onUpdateColumns={(...args: any[]) => {
-        // noop handler to satisfy ManageColumnsDialogProps; can be extended to preview changes
-      }}
       onSave={(saveConfig: SaveConfig) => {
         const { viewId, visibleKeys, hiddenKeys, target } = saveConfig;
         const viewTitle =
@@ -1500,6 +1376,7 @@ export default function App() {
           toast.success(summaryMsg);
         }
       }}
+      onColumnsUpdate={() => {}} // Added required prop, you can implement logic if needed
     />
   )}
 </div>
@@ -1625,7 +1502,19 @@ export default function App() {
           {sidebarStack.length > 0 && (
             <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
               <div className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-xl max-h-[80vh] overflow-hidden animate-slide-up border-t border-slate-700">
-                {sidebarStack.map((item, index) => (<DetailsSidebar key={index} isOpen={true} onClose={index === 0 ? handleCloseSidebar : handlePopSidebar} data={item.data} type={item.type} title={item.title} onPushSidebar={handlePushSidebar} zIndex={100 + index} positionOffset={0} />))}
+                {sidebarStack.map((item, index) => (
+                  <DetailsSidebar
+                    key={index}
+                    isOpen={true}
+                    onClose={index === 0 ? handleCloseSidebar : handlePopSidebar}
+                    data={item.data}
+                    type={item.type}
+                    title={item.title}
+                    onPushSidebar={handlePushSidebar}
+                    zIndex={100 + index}
+                    positionOffset={0}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -1643,10 +1532,19 @@ export default function App() {
           <DevelopmentBanner />
           <div key={activeView}>{renderView()}</div>
         </main>
-        <div className="relative transition-all duration-300 ease-in-out flex-shrink-0" style={{ width: `${sidebarContainerWidth}px` }} >
-          {sidebarStack.map((item, index) => (
-            <DetailsSidebar key={index} isOpen={true} onClose={index === 0 ? handleCloseSidebar : handlePopSidebar} data={item.data} type={item.type} title={item.title} onPushSidebar={handlePushSidebar} zIndex={100 + index} positionOffset={index * cascadeOffset} />
-          ))}
+        <div className="relative transition-all duration-300 ease-in-out flex-shrink-0">
+          {sidebarStack.length > 0 && (
+            <DetailsSidebar
+              isOpen={true}
+              onClose={handleCloseSidebar}
+              data={sidebarStack[sidebarStack.length - 1].data}
+              type={sidebarStack[sidebarStack.length - 1].type}
+              title={sidebarStack[sidebarStack.length - 1].title}
+              onPushSidebar={handlePushSidebar}
+              zIndex={100}
+              positionOffset={0}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
@@ -28,6 +26,15 @@ import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 
 // TypeScript fix for Vite's import.meta.env
 interface ImportMetaEnv {
@@ -51,6 +58,7 @@ type SidebarStackItem = {
 interface DetailsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onPopSidebar?: () => void;
   data: any;
   type: string;
   title: string;
@@ -291,9 +299,684 @@ function DrilldownButton({
   );
 }
 
+// =================================================================
+// UTILITY COMPONENTS
+// =================================================================
+
+function getColorForString(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `#${hslToHex(hue, 60, 85)}`;
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+    l /= 100;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `${f(0)}${f(8)}${f(4)}`;
+}
+
+function exportToCSV(
+  data: any[],
+  columns: { key: string; label: string }[],
+  filename: string = "export.csv"
+) {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    alert("No data to export.");
+    return;
+  }
+  const csvRows: string[] = [];
+  csvRows.push(columns.map(col => `"${col.label.replace(/"/g, '""')}"`).join(","));
+  for (const row of data) {
+    csvRows.push(
+      columns
+        .map(col => {
+          let val = row[col.key];
+          if (val === undefined || val === null) val = "";
+          if (typeof val === "string") val = val.replace(/"/g, '""');
+          return `"${val}"`;
+        })
+        .join(",")
+    );
+  }
+  const csvContent = csvRows.join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+const categoryTagRenderer = (value: string | null | undefined) => {
+    if (!value) return <span className="text-slate-500"></span>;
+    const getTextColorForBg = (hex: string): string => {
+        if (!hex || hex.length < 7) return "#0f172a";
+        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.7 ? "#f7f9fcff" : "#f1f5f9";
+    };
+    const values = value.split(',').map(v => v.trim()).filter(Boolean);
+    return (
+        <div className="flex flex-wrap justify-center gap-1.5">
+            {values.map((val, index) => {
+                const bgColor = getColorForString(val);
+                return (
+                    <div key={index} className="inline-block whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold border backdrop-blur-sm" style={{ backgroundColor: `${bgColor}40`, borderColor: `${bgColor}66`, color: getTextColorForBg(bgColor) }}>
+                        {val}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+// =================================================================
+// DATA TABLE VIEW COMPONENTS
+// =================================================================
+
+function EventDataTableView({
+  eventCode,
+  onPushSidebar,
+}: {
+  eventCode: string;
+  onPushSidebar: (item: SidebarStackItem) => void;
+}) {
+  const [recordings, setRecordings] = useState<any[]>([]);
+  const [mediaLogs, setMediaLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const columns = [   { key: "Yr", label: "Year", sortable: true, editable: true },
+      {
+        key: "EventDisplay",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+        { key: "EventCode", label: "Event Code", sortable: true, editable: true },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+       
+      // Core ML columns requested
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+          editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || "";
+          const s = row.SubDetail || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+      
+ 
+
+      { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Counters / durations / language / speaker / org / designation
+      { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
+      { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
+      { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Designation", label: "Designation", sortable: true, editable: true },
+
+      // 4 location fields
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Venue", label: "Venue", sortable: true, editable: true },
+
+      // keep existing/other ML fields (preserve original keys)
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+      { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
+      { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
+      
+      { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
+      { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
+      { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
+      { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
+      { key: "EndPage", label: "EndPage", sortable: true, editable: true },
+      { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+      { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
+      { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
+      { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
+     {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
+
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+}
+,
+      { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
+      { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
+      { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
+      { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "EditingDeptRemarks", label: "EditingDeptRemarks", sortable: true, editable: true },
+      { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "IsDubbed", label: "IsDubbed", sortable: true, editable: true },
+      { key: "NumberSource", label: "NumberSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "TopicSource", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+      { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Grading", label: "Grading", sortable: true, editable: true },
+      
+      { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
+      { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
+
+      // DR specific and then rest of existing ML fields
+      { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+ ];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [recordingsResponse, mediaLogsResponse] = await Promise.all([ fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`), fetch(`${API_BASE_URL}/newmedialog?EventCode=${encodeURIComponent(eventCode)}`), ]);
+        if (!recordingsResponse.ok) throw new Error(`Failed to fetch recordings (Status: ${recordingsResponse.status})`);
+        if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`);
+        const recordingsResult = await recordingsResponse.json();
+        const mediaLogsResult = await mediaLogsResponse.json();
+        setRecordings(recordingsResult.data || []);
+        setMediaLogs(mediaLogsResult.data || []);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [eventCode]);
+
+  if (loading) return <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px",
+    color: "white",
+    fontSize: "14px",
+  }}
+>
+  <Loader2
+    style={{
+      marginRight: "8px",
+      width: "20px",
+      height: "20px",
+      animation: "spin 1s linear infinite",
+    }}
+  />
+
+  {/* Inline keyframes for spin */}
+  <style>
+    {`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+
+  Loading event data...
+</div>
+;
+  if (error) return <div className="text-destructive p-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{error}</div>;
+
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue="recordings" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="recordings">Digital Recordings</TabsTrigger>
+          <TabsTrigger value="medialogs">Media Log</TabsTrigger>
+        </TabsList>
+        <TabsContent value="recordings">
+          <CardContent className="p-0">
+            {recordings.length > 0 ? (
+              <>
+                 <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
+                    <Button variant="outline" size="sm" onClick={() => exportToCSV(recordings, [ { key: "Yr", label: "Year" }, { key: "EventName", label: "Event Name" }, { key: "fkEventCategory", label: "Event Category" }, { key: "fkEventCode", label: "fkEventCode" }, { key: "RecordingName", label: "Recording Name" }, { key: "RecordingCode", label: "Recording Code" }, { key: "Duration", label: "Duration" }, { key: "DistributionDriveLink", label: "Distribution Drive Link" }, { key: "BitRate", label: "Bit Rate" }, { key: "Dimension", label: "Dimension" }, { key: "Masterquality", label: "Masterquality" }, { key: "fkMediaName", label: "fkMediaName" }, { key: "Filesize", label: "Filesize" }, { key: "FilesizeInBytes", label: "FilesizeInBytes" }, { key: "NoOfFiles", label: "No Of Files" }, { key: "RecordingRemarks", label: "Recording Remarks" }, { key: "CounterError", label: "Counter Error" }, { key: "ReasonError", label: "Reason Error" }, { key: "MasterProductTitle", label: "Master Product Title" }, { key: "fkDistributionLabel", label: "fkDistributionLabel" }, { key: "ProductionBucket", label: "Production Bucket" }, { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" }, { key: "AudioBitrate", label: "Audio Bitrate" }, { key: "AudioTotalDuration", label: "Audio Total Duration" }, { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" }, { key: "PreservationStatus", label: "Preservation Status" }, { key: "QCSevak", label: "QC Sevak" }, { key: "QcStatus", label: "Qc Status" }, { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" }, { key: "SubmittedDate", label: "Submitted Date" }, { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" }, { key: "InfoOnCassette", label: "Info On Cassette" }, { key: "IsInformal", label: "Is Informal" }, { key: "AssociatedDR", label: "Associated DR" }, { key: "Teams", label: "Teams" }, ], "digital_recordings.csv")}>Export CSV</Button>
+                </div>
+                <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+                  <Table className="border">
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
+                      <TableRow className="border"><TableHead className="border whitespace-nowrap text-white ">Year</TableHead><TableHead className="border whitespace-nowrap text-white">Event Name</TableHead><TableHead className="border whitespace-nowrap text-white">Event Category</TableHead><TableHead className="border whitespace-nowrap text-white">fkEventCode</TableHead><TableHead className="border whitespace-nowrap text-white">Recording Name</TableHead><TableHead className="border whitespace-nowrap text-white">Recording Code</TableHead><TableHead className="border whitespace-nowrap text-white">Duration</TableHead><TableHead className="border whitespace-nowrap text-white">Distribution Drive Link</TableHead><TableHead className="border whitespace-nowrap text-white">Bit Rate</TableHead><TableHead className="border whitespace-nowrap text-white">Dimension</TableHead><TableHead className="border whitespace-nowrap text-white">Masterquality</TableHead><TableHead className="border whitespace-nowrap text-white">fkMediaName</TableHead><TableHead className="border whitespace-nowrap text-white">Filesize</TableHead><TableHead className="border whitespace-nowrap text-white">FilesizeInBytes</TableHead><TableHead className="border whitespace-nowrap text-white">No Of Files</TableHead><TableHead className="border whitespace-nowrap text-white">Recording Remarks</TableHead><TableHead className="border whitespace-nowrap text-white">Counter Error</TableHead><TableHead className="border whitespace-nowrap text-white">Reason Error</TableHead><TableHead className="border whitespace-nowrap text-white">Master Product Title</TableHead><TableHead className="border whitespace-nowrap text-white">fkDistributionLabel</TableHead><TableHead className="border whitespace-nowrap text-white">Production Bucket</TableHead><TableHead className="border whitespace-nowrap text-white">fkDigitalMasterCategory</TableHead><TableHead className="border whitespace-nowrap text-white">Audio Bitrate</TableHead><TableHead className="border whitespace-nowrap text-white">Audio Total Duration</TableHead><TableHead className="border whitespace-nowrap text-white">Qc Remarks Checked On</TableHead><TableHead className="border whitespace-nowrap text-white">Preservation Status</TableHead><TableHead className="border whitespace-nowrap text-white">QC Sevak</TableHead><TableHead className="border whitespace-nowrap text-white">Qc Status</TableHead><TableHead className="border whitespace-nowrap text-white">Last Modified Timestamp</TableHead><TableHead className="border whitespace-nowrap text-white">Submitted Date</TableHead><TableHead className="border whitespace-nowrap text-white">Pres Stat Guid Dt</TableHead><TableHead className="border whitespace-nowrap text-white">Info On Cassette</TableHead><TableHead className="border whitespace-nowrap text-white">Is Informal</TableHead><TableHead className="border whitespace-nowrap text-white">Associated DR</TableHead><TableHead className="border whitespace-nowrap text-white">Teams</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recordings.map((rec) => (<TableRow key={rec.RecordingCode} className="border"><TableCell className="border px-3 py-2">{rec.Yr}</TableCell><TableCell className="border px-3 py-2">{rec.EventName}</TableCell><TableCell className="border px-3 py-2">{categoryTagRenderer(rec.fkEventCategory)}</TableCell><TableCell className="border px-3 py-2">{rec.fkEventCode}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingName}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingCode}</TableCell><TableCell className="border px-3 py-2">{rec.Duration}</TableCell><TableCell className="border px-3 py-2">{rec.DistributionDriveLink ? (<a href={rec.DistributionDriveLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Link</a>) : ("")}</TableCell><TableCell className="border px-3 py-2">{rec.BitRate}</TableCell><TableCell className="border px-3 py-2">{rec.Dimension}</TableCell><TableCell className="border px-3 py-2">{rec.Masterquality}</TableCell><TableCell className="border px-3 py-2">{rec.fkMediaName}</TableCell><TableCell className="border px-3 py-2">{rec.Filesize}</TableCell><TableCell className="border px-3 py-2">{rec.FilesizeInBytes}</TableCell><TableCell className="border px-3 py-2">{rec.NoOfFiles}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingRemarks}</TableCell><TableCell className="border px-3 py-2">{rec.CounterError}</TableCell><TableCell className="border px-3 py-2">{rec.ReasonError}</TableCell><TableCell className="border px-3 py-2">{rec.MasterProductTitle}</TableCell><TableCell className="border px-3 py-2">{rec.fkDistributionLabel}</TableCell><TableCell className="border px-3 py-2">{rec.ProductionBucket}</TableCell><TableCell className="border px-3 py-2">{rec.fkDigitalMasterCategory}</TableCell><TableCell className="border px-3 py-2">{rec.AudioBitrate}</TableCell><TableCell className="border px-3 py-2">{rec.AudioTotalDuration}</TableCell><TableCell className="border px-3 py-2">{rec.QcRemarksCheckedOn}</TableCell><TableCell className="border px-3 py-2">{rec.PreservationStatus}</TableCell><TableCell className="border px-3 py-2">{rec.QCSevak}</TableCell><TableCell className="border px-3 py-2">{rec.QcStatus}</TableCell><TableCell className="border px-3 py-2">{rec.LastModifiedTimestamp}</TableCell><TableCell className="border px-3 py-2">{rec.SubmittedDate}</TableCell><TableCell className="border px-3 py-2">{rec.PresStatGuidDt}</TableCell><TableCell className="border px-3 py-2">{rec.InfoOnCassette}</TableCell><TableCell className="border px-3 py-2">{rec.IsInformal}</TableCell><TableCell className="border px-3 py-2">{rec.AssociatedDR}</TableCell><TableCell className="border px-3 py-2">{rec.Teams}</TableCell></TableRow>))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            ) : (<p className="text-sm text-muted-foreground text-center p-4">No recordings found for this event.</p>)}
+          </CardContent>
+        </TabsContent>
+        <TabsContent value="medialogs">
+          <CardContent className="p-0">
+            {mediaLogs.length > 0 ? (
+              <>
+                <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
+                    <Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}>Export CSV</Button>
+                </div>
+                <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+                  <Table className="border">
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
+                      <TableRow className="border text-white">
+                        {columns.map((col) => (<TableHead key={col.key} className="border font-semibold whitespace-nowrap text-white">{col.label}</TableHead>))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mediaLogs.map((row) => (<TableRow key={row.MLUniqueID} className="border">{columns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap max-w-[250px] truncate  px-3 py-2 ">{row[col.key] ?? "-"}</TableCell>))}</TableRow>))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            ) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this event.</p>)}
+          </CardContent>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function DigitalRecordingDataTableView({
+  recordingCode,
+  eventCode,
+  onPushSidebar,
+}: {
+  recordingCode: string;
+  eventCode: string;
+  onPushSidebar: (item: SidebarStackItem) => void;
+}) {
+  const [event, setEvent] = useState<any | null>(null);
+  const [mediaLogs, setMediaLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const eventColumns = [ { key: "Yr", label: "Year" }, { key: "NewEventCategory", label: "New Event Category" }, { key: "FromDate", label: "From Date" }, { key: "ToDate", label: "To Date" }, { key: "EventName", label: "Event Name" }, { key: "EventCode", label: "Event Code" }, { key: "EventRemarks", label: "Event Remarks" }, ];
+  const mediaLogColumns = [ { key: "Yr", label: "Year" }, { key: "EventDisplay", label: "Event Name - EventCode" }, { key: "EventCode", label: "Event Code" }, { key: "fkDigitalRecordingCode", label: "DR Code" }, { key: "ContentFrom", label: "Content From" }, { key: "ContentTo", label: "Content To" }, { key: "DetailSub", label: "Detail - SubDetail" }, { key: "EditingStatus", label: "Editing Status" }, { key: "FootageType", label: "Footage Type" }, { key: "fkOccasion", label: "Occasion" }, { key: "Segment Category", label: "Segment Category" }, { key: "CounterFrom", label: "Counter From" }, { key: "CounterTo", label: "Counter To" }, { key: "SubDuration", label: "Sub Duration" }, { key: "Language", label: "Language" }, { key: "SpeakerSinger", label: "Speaker / Singer" }, { key: "fkOrganization", label: "Organization" }, { key: "Designation", label: "Designation" }, { key: "fkCountry", label: "Country" }, { key: "fkState", label: "State" }, { key: "fkCity", label: "City" }, { key: "Venue", label: "Venue" }, { key: "MLUniqueID", label: "MLUniqueID" }, { key: "FootageSrNo", label: "FootageSrNo" }, { key: "LogSerialNo", label: "LogSerialNo" }, { key: "IsAudioRecorded", label: "IsAudioRecorded" }, { key: "AudioMP3Distribution", label: "AudioMP3Distribution" }, { key: "AudioWAVDistribution", label: "AudioWAVDistribution" }, { key: "AudioMP3DRCode", label: "AudioMP3DRCode" }, { key: "AudioWAVDRCode", label: "AudioWAVDRCode" }, { key: "FullWAVDRCode", label: "FullWAVDRCode" }, { key: "Remarks", label: "Remarks" }, { key: "IsStartPage", label: "IsStartPage" }, { key: "EndPage", label: "EndPage" }, { key: "IsInformal", label: "IsInformal" }, { key: "IsPPGNotPresent", label: "IsPPGNotPresent" }, { key: "Guidance", label: "Guidance" }, { key: "DiskMasterDuration", label: "DiskMasterDuration" }, { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters" }, { key: "EventRefMLID", label: "EventRefMLID" }, { key: "ContentFromDetailCity", label: "Content - Detail - City" }, { key: "EventRefMLID2", label: "EventRefMLID2" }, { key: "DubbedLanguage", label: "DubbedLanguage" }, { key: "DubbingArtist", label: "DubbingArtist" }, { key: "HasSubtitle", label: "HasSubtitle" }, { key: "SubTitlesLanguage", label: "SubTitlesLanguage" }, { key: "EditingDeptRemarks", label: "EditingDeptRemarks" }, { key: "EditingType", label: "EditingType" }, { key: "BhajanType", label: "BhajanType" }, { key: "IsDubbed", label: "IsDubbed" }, { key: "NumberSource", label: "NumberSource" }, { key: "TopicSource", label: "TopicSource" }, { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp" }, { key: "LastModifiedBy", label: "LastModifiedBy" }, { key: "Synopsis", label: "Synopsis" }, { key: "LocationWithinAshram", label: "LocationWithinAshram" }, { key: "Keywords", label: "Keywords" }, { key: "Grading", label: "Grading" }, { key: "Segment Duration", label: "Segment Duration" }, { key: "TopicGivenBy", label: "TopicGivenBy" }, { key: "RecordingName", label: "Recording Name" }, { key: "Masterquality", label: "DR Master Quality" }, ];
+ const mediaLogColumnRenderers: { [key: string]: (v: any, row: any) => React.ReactNode } = {
+  'EventDisplay': (_v, row) => `${row.EventName||""}${row.EventName&&row.EventCode?" - ":""}${row.EventCode||row.fkEventCode||""}`,
+  'DetailSub': (_v, row) => `${row.Detail||""}${row.Detail&&row.SubDetail?" - ":""}${row.SubDetail||""}`,
+  'ContentFromDetailCity': (_v, row) =>
+      row.ContentFromDetailCity
+        ? row.ContentFromDetailCity
+        : !row.EventRefMLID
+        ? ""
+        : [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean).join(" - "),
+
+  // 🔥 FIX: RecordingName renderer
+  'RecordingName': (v, row) =>
+      row.RecordingName ||
+      row.Recording_Name ||
+      row.recordingName ||
+      "-",
+
+  // existing category mappings…
+  'EditingStatus': (v) => categoryTagRenderer(v),
+  'FootageType': (v) => categoryTagRenderer(v),
+  'fkOccasion': (v) => categoryTagRenderer(v),
+  'Segment Category': (v) => categoryTagRenderer(v),
+  'Language': (v) => categoryTagRenderer(v),
+  'fkOrganization': (v) => categoryTagRenderer(v),
+  'fkCountry': (v) => categoryTagRenderer(v),
+  'fkState': (v) => categoryTagRenderer(v),
+  'fkCity': (v) => categoryTagRenderer(v),
+  'IsAudioRecorded': (v) => categoryTagRenderer(v),
+  'SubTitlesLanguage': (v) => categoryTagRenderer(v),
+  'EditingType': (v) => categoryTagRenderer(v),
+  'BhajanType': (v) => categoryTagRenderer(v),
+  'NumberSource': (v) => categoryTagRenderer(v),
+  'TopicSource': (v) => categoryTagRenderer(v),
+  'Keywords': (v) => categoryTagRenderer(v),
+  'Masterquality': (v) => categoryTagRenderer(v),
+};
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const requests = [ eventCode ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`) : Promise.resolve(null), recordingCode ? fetch(`${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`) : Promise.resolve(null), ];
+        const [eventResponse, mediaLogsResponse] = await Promise.all(requests);
+        if (eventResponse) { if (!eventResponse.ok) throw new Error(`Failed to fetch event (Status: ${eventResponse.status})`); const eventResult = await eventResponse.json(); setEvent(eventResult); }
+        if (mediaLogsResponse) { if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`); const mediaLogsResult = await mediaLogsResponse.json(); setMediaLogs(mediaLogsResult.data || []); }
+      } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+    };
+    fetchData();
+  }, [recordingCode, eventCode]);
+
+  if (loading) return <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px",
+    color: "white",
+    fontSize: "14px",
+  }}
+>
+  <Loader2
+    style={{
+      marginRight: "8px",
+      width: "20px",
+      height: "20px",
+      animation: "spin 1s linear infinite",
+    }}
+  />
+
+  {/* Inline keyframe animation */}
+  <style>
+    {`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+
+  Loading data...
+</div>
+;
+  if (error) return <div className="text-destructive p-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {error}</div>;
+
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue="events" className="w-full">
+        <TabsList className="mb-4"><TabsTrigger value="events">Event</TabsTrigger><TabsTrigger value="medialogs">Media Log</TabsTrigger></TabsList>
+        <TabsContent value="events">
+          <CardContent className="p-0">
+            {event ? (<> <div className="flex justify-between items-center mb-3"><h2 className="text-xl font-semibold px-2 text-white">Event Details</h2><Button variant="outline" size="sm" onClick={() => exportToCSV([event], eventColumns, "event.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{eventColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody><TableRow className="border">{eventColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">{col.key === 'NewEventCategory' ? categoryTagRenderer(event[col.key]) : event[col.key] ?? "-"}</TableCell>))}</TableRow></TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No event found for this recording.</p>)}
+          </CardContent>
+        </TabsContent>
+        <TabsContent value="medialogs">
+          <CardContent className="p-0">
+            {mediaLogs.length > 0 ? (<> <div className="flex justify-between items-center mb-3"><h2 className="text-xl font-semibold px-2 text-white">Media Log</h2><Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{mediaLogColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody>{mediaLogs.map((log, idx) => (<TableRow key={log.MLUniqueID || idx} className="border">{mediaLogColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate">{mediaLogColumnRenderers[col.key] ? mediaLogColumnRenderers[col.key](log[col.key], log) : log[col.key] ?? "-"}</TableCell>))}</TableRow>))}</TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this recording.</p>)}
+          </CardContent>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function MediaLogDataTableView({
+  recordingCode,
+  eventCode,
+}: {
+  recordingCode?: string;
+  eventCode?: string;
+}) {
+  const [recordings, setRecordings] = useState<any[]>([]);
+  const [event, setEvent] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // ---------------- RECORDING COLUMNS ----------------
+  const recordingColumns = [
+    { key: "Yr", label: "Year", sortable: true, editable: true },
+    { key: "EventName", label: "Event Name", sortable: true, editable: true },
+    { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "fkEventCode", label: "fkEventCode", sortable: true, editable: true },
+    { key: "RecordingName", label: "RecordingName", sortable: true, editable: true },
+    { key: "RecordingCode", label: "RecordingCode", sortable: true, editable: true },
+    { key: "Duration", label: "Duration", sortable: true, editable: true },
+    { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+    { key: "BitRate", label: "BitRate", sortable: true, editable: true },
+    { key: "Dimension", label: "Dimension", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "Masterquality", label: "Masterquality", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "fkMediaName", label: "fkMediaName", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "Filesize", label: "Filesize", sortable: true, editable: true },
+    { key: "FilesizeInBytes", label: "FilesizeInBytes", sortable: true, editable: true },
+    { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
+    { key: "RecordingRemarks", label: "RecordingRemarks", sortable: true, editable: true },
+    { key: "CounterError", label: "CounterError", sortable: true, editable: true },
+    { key: "ReasonError", label: "ReasonError", sortable: true, editable: true },
+    { key: "MasterProductTitle", label: "MasterProductTitle", sortable: true, editable: true },
+    { key: "fkDistributionLabel", label: "fkDistributionLabel", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "ProductionBucket", label: "ProductionBucket", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "AudioBitrate", label: "AudioBitrate", sortable: true, editable: true },
+    { key: "AudioTotalDuration", label: "AudioTotalDuration", sortable: true, editable: true },
+    { key: "QcRemarksCheckedOn", label: "QcRemarksCheckedOn", sortable: true, editable: true },
+    { key: "PreservationStatus", label: "PreservationStatus", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "QCSevak", label: "QCSevak", sortable: true, editable: true },
+    { key: "QcStatus", label: "QcStatus", sortable: true, editable: true },
+    { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+    { key: "SubmittedDate", label: "SubmittedDate", sortable: true, editable: true },
+    { key: "PresStatGuidDt", label: "PresStatGuidDt", sortable: true, editable: true },
+    { key: "InfoOnCassette", label: "InfoOnCassette", sortable: true, editable: true },
+    { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
+    { key: "AssociatedDR", label: "AssociatedDR", sortable: true, editable: true },
+    { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
+  ];
+
+  // ---------------- EVENT COLUMNS ----------------
+  const eventColumns = [
+    { key: "Yr", label: "Year", sortable: true, editable: true },
+    { key: "NewEventCategory", label: "New Event Category", sortable: true, render: categoryTagRenderer, editable: true },
+    { key: "FromDate", label: "From Date", sortable: true, editable: true },
+    { key: "ToDate", label: "To Date", sortable: true, editable: true },
+    { key: "EventName", label: "Event Name", sortable: true, editable: true },
+    { key: "EventCode", label: "Event Code", sortable: true, editable: true },
+    { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true },
+  ];
+
+  // ---------------- FETCH DATA ----------------
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // ✔ FIXED — now fetch recordings by event code (same as EventDataTableView)
+        const recordingRequest = eventCode
+          ? fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`)
+          : Promise.resolve(null);
+
+        const eventRequest = eventCode
+          ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`)
+          : Promise.resolve(null);
+
+        const [recordingResponse, eventResponse] = await Promise.all([
+          recordingRequest,
+          eventRequest,
+        ]);
+
+        if (recordingResponse) {
+          if (!recordingResponse.ok) throw new Error(`Failed to fetch recordings`);
+          const result = await recordingResponse.json();
+          setRecordings(result.data || []);
+        }
+
+        if (eventResponse) {
+          if (!eventResponse.ok) throw new Error(`Failed to fetch event`);
+          const eventData = await eventResponse.json();
+          setEvent(eventData || null);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [eventCode]);
+
+  if (loading)
+    return (
+     <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "16px",
+    color: "white",
+    fontSize: "14px",
+  }}
+>
+  <Loader2
+    style={{
+      marginRight: "8px",
+      width: "16px",
+      height: "16px",
+      animation: "spin 1s linear infinite",
+    }}
+  />
+
+  <style>
+    {`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+
+  Loading related data...
+</div>
+
+    );
+
+  if (error)
+    return (
+      <div className="text-destructive p-4 flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4" /> {error}
+      </div>
+    );
+
+  return (
+    <div className="space-y-6">
+      <Tabs defaultValue="recordings">
+        <TabsList className="mb-4">
+          <TabsTrigger value="recordings">Digital Recordings</TabsTrigger>
+          <TabsTrigger value="event">Event</TabsTrigger>
+        </TabsList>
+
+        {/* RECORDINGS TAB */}
+        <TabsContent value="recordings">
+          <CardContent className="p-0">
+            {recordings.length > 0 ? (
+              <Table className="text-white pd-2 py-3">
+                <TableHeader  className="text-white px-2 py-3">
+                  <TableRow>
+                    {recordingColumns.map(col => (
+                      <TableHead key={col.key}>{col.label}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recordings.map((row, idx) => (
+                    <TableRow key={idx}>
+                      {recordingColumns.map(col => (
+                       <TableCell key={col.key} className="border whitespace-nowrap px-4 py-3 text-white">
+
+                          {col.render ? col.render(row[col.key]) : row[col.key] ?? "-"}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center p-4">
+                No digital recordings found for this Event.
+              </p>
+            )}
+          </CardContent>
+        </TabsContent>
+
+        {/* EVENT TAB */}
+        <TabsContent value="event">
+          <CardContent className="p-0">
+            {event ? (
+              <Table  className="text-white pd-2 py-3">
+                <TableHeader>
+                  <TableRow>
+                    {eventColumns.map(col => (
+                      <TableHead key={col.key}>{col.label}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    {eventColumns.map(col => (
+                     <TableCell key={col.key} className="border whitespace-nowrap px-4 py-3 text-white">
+
+                        {col.render ? col.render(event[col.key]) : event[col.key] ?? "-"}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center p-4">
+                No event found.
+              </p>
+            )}
+          </CardContent>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+
+
+// =================================================================
+// MAIN SIDEBAR COMPONENT
+// =================================================================
 export function DetailsSidebar({
-  isOpen,
   onClose,
+  onPopSidebar,
   data,
   type,
   title,
@@ -303,22 +986,16 @@ export function DetailsSidebar({
 }: DetailsSidebarProps) {
   const { user } = useAuth();
 
-  const hasAccess = useMemo(() => {
-    return (resourceName: string, accessLevel: 'read' | 'write' = 'read'): boolean => {
-      if (!user) return false;
-      if (user.role === 'Admin' || user.role === 'Owner') return true;
-      const permission = user.permissions.find((p) => p.resource === resourceName);
-      if (!permission) return false;
-      return permission.actions.includes(accessLevel);
-    };
+  const hasAccess = useMemo(() => (resourceName: string, accessLevel: 'read' | 'write' = 'read'): boolean => {
+    if (!user) return false;
+    if (user.role === 'Admin' || user.role === 'Owner') return true;
+    const permission = user.permissions.find((p) => p.resource === resourceName);
+    if (!permission) return false;
+    return permission.actions.includes(accessLevel);
   }, [user]);
 
   const FieldRow = ({ label, value, children }: { label: string; value?: any; children?: React.ReactNode }) => {
-    if (value === undefined || value === null) return null;
-    if (typeof value === "string") {
-      const v = value.trim();
-      if (v === "" || v.toUpperCase() === "N/A") return null;
-    }
+    if (value === undefined || value === null || String(value).trim() === "" || String(value).toUpperCase() === "N/A") return null;
     return (
       <div className="flex justify-between items-start gap-4">
         <span className="text-muted-foreground flex-shrink-0">{label}</span>
@@ -327,14 +1004,10 @@ export function DetailsSidebar({
     );
   };
   
-  if (!isOpen || !data) return null;
+  if (!data) return null;
   
   const renderIcon = (icon: React.ReactNode, gradient: string) => (
-    <div
-      className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${gradient} flex items-center justify-center`}
-    >
-      {icon}
-    </div>
+    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${gradient} flex items-center justify-center`}>{icon}</div>
   );
   
   const renderContent = () => {
@@ -343,411 +1016,146 @@ export function DetailsSidebar({
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                <Calendar className="w-8 h-8 text-white" />
-              </div>
+              {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
               <h3 className="text-xl font-bold">{data.EventName}</h3>
               <p className="text-muted-foreground">Event ID: {data.EventID}</p>
-              <Badge className="mt-2">
-                {data.NewEventCategory || "N/A"}
-              </Badge>
+              <Badge className="mt-2">{data.NewEventCategory || "N/A"}</Badge>
             </div>
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg px-2">Event Details</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg px-2">Event Details</CardTitle></CardHeader>
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Event Code</span>
-                  {hasAccess("Digital Recordings", 'read') ? (
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-                      onClick={() =>
-                        onPushSidebar({
-                          type: "digitalrecording_list",
-                          data: { eventCode: data.EventCode },
-                          title: `Recordings for ${data.EventCode}`,
-                        })
-                      }
-                    >
-                      {data.EventCode}
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  ) : (
-                    <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-                      <Lock className="w-3 h-3"/> {data.EventCode}
-                    </span>
-                  )}
+                  {hasAccess("Digital Recordings", 'read') || hasAccess("Media Log", 'read') ? (<Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: "event_data_table", data: { eventCode: data.EventCode }, title: `Data for ${data.EventCode}` })}>{data.EventCode}<ChevronRight className="w-4 h-4 ml-1" /></Button>) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.EventCode}</span>)}
                 </div>
                 <FieldRow label="Year" value={data.Yr} />
-                <FieldRow label="EventName" value={data.EventName}>
-                  <span className="font-medium text-right break-words">{data.EventName}</span>
-                </FieldRow>
+                <FieldRow label="EventName" value={data.EventName}><span className="font-medium text-right break-words">{data.EventName}</span></FieldRow>
                 <Separator />
-                <FieldRow
-                  label="From Date"
-                  value={data.FromDate}
-                >
-                  <span className="font-medium">{data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined}</span>
-                </FieldRow>
-                <FieldRow
-                  label="To Date"
-                  value={data.ToDate}
-                >
-                  <span className="font-medium">{data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined}</span>
-                </FieldRow>
+                <FieldRow label="From Date" value={data.FromDate}><span className="font-medium">{data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined}</span></FieldRow>
+                <FieldRow label="To Date" value={data.ToDate}><span className="font-medium">{data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined}</span></FieldRow>
                 <Separator />
-                <div>
-                  <span className="text-muted-foreground">Remarks</span>
-                  <p className="mt-1 text-sm bg-muted p-3 rounded-lg">
-                    {data.EventRemarks || "No remarks provided."}
-                  </p>
-                </div>
+                <div><span className="text-muted-foreground">Remarks</span><p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.EventRemarks || "No remarks provided."}</p></div>
               </CardContent>
             </Card>
            <Card className="w-full">
-  <CardHeader>
-    <CardTitle className="text-lg px-2">Metadata</CardTitle>
-  </CardHeader>
-
-  <CardContent className="space-y-4 p-4">
-    <FieldRow label="LastModifiedBy" value={data.LastModifiedBy}>
-      <Badge variant="secondary">{data.LastModifiedBy}</Badge>
-    </FieldRow>
-
-    <FieldRow label="LastModifiedTs" value={data.LastModifiedTimestamp}>
-      <Badge variant="secondary">{data.LastModifiedTimestamp}</Badge>
-    </FieldRow>
-  </CardContent>
-</Card>
-
+            <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
+            <CardContent className="space-y-4 p-4"><FieldRow label="LastModifiedBy" value={data.LastModifiedBy}><Badge variant="secondary">{data.LastModifiedBy}</Badge></FieldRow><FieldRow label="LastModifiedTs" value={data.LastModifiedTimestamp}><Badge variant="secondary">{data.LastModifiedTimestamp}</Badge></FieldRow></CardContent>
+            </Card>
           </div>
         );
 
-      case "digitalrecording_list":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Refer for DigitalRecordings</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <DigitalRecordingsList eventCode={data.eventCode} onPushSidebar={onPushSidebar} />
-            </CardContent>
-          </Card>
-        );
+      case "event_data_table": return (<EventDataTableView eventCode={data.eventCode} onPushSidebar={onPushSidebar} />);
+      
+      case "digitalrecording_related_data": return (<DigitalRecordingDataTableView recordingCode={data.recordingCode} eventCode={data.eventCode} onPushSidebar={onPushSidebar} />);
+
+      case "medialog_related_data": return (<MediaLogDataTableView recordingCode={data.recordingCode} eventCode={data.eventCode} />);
+
+      case "digitalrecording_list": return (<Card><CardHeader><CardTitle className="text-lg px-2">Refer for DigitalRecordings</CardTitle></CardHeader><CardContent className="p-4"><DigitalRecordingsList eventCode={data.eventCode} onPushSidebar={onPushSidebar} /></CardContent></Card>);
 
       case "medialog_list": {
         const renderListItem = (log: any) => {
-          const cardProps = {
-            key: log.MLUniqueID,
-            className: "cursor-pointer hover:bg-muted/50 transition-colors",
-            onClick: () =>
-              onPushSidebar({
-                type: "medialog",
-                data: log,
-                title: "Media Log Details",
-              }),
-          };
-
-          let primaryText = log.Topic || log['Segment Category'] || `ID: ${log.MLUniqueID}`;
-          let secondaryText = log.Detail || `ID: ${log.MLUniqueID}`;
-
-          if (title.includes("Cities") || title.includes("Countries")) {
-            primaryText = log.fkCity ? `${log.fkCity}, ${log.fkCountry}` : log.fkCountry;
-            secondaryText = log.Topic || `ID: ${log.MLUniqueID}`;
-          } else if (title.includes("Padhramnis")) {
-            primaryText = log['Segment Category'];
-            secondaryText = log.Topic || `ID: ${log.MLUniqueID}`;
-          } else if (title.includes("Pratishthas")) {
-            primaryText = log['Segment Category'];
-            secondaryText = log.Topic || `ID: ${log.MLUniqueID}`;
-          }
-
-          return (
-            <Card {...cardProps}>
-              <CardContent className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-sm">{primaryText}</p>
-                  <p className="text-xs text-muted-foreground">{secondaryText}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </CardContent>
-            </Card>
-          );
+          const cardProps = { key: log.MLUniqueID, className: "cursor-pointer hover:bg-muted/50 transition-colors", onClick: () => onPushSidebar({ type: "medialog", data: log, title: "Media Log Details", }) };
+          let primaryText = log.Topic || log['Segment Category'] || `ID: ${log.MLUniqueID}`; let secondaryText = log.Detail || `ID: ${log.MLUniqueID}`;
+          if (title.includes("Cities") || title.includes("Countries")) { primaryText = log.fkCity ? `${log.fkCity}, ${log.fkCountry}` : log.fkCountry; secondaryText = log.Topic || `ID: ${log.MLUniqueID}`; } else if (title.includes("Padhramnis")) { primaryText = log['Segment Category']; secondaryText = log.Topic || `ID: ${log.MLUniqueID}`; } else if (title.includes("Pratishthas")) { primaryText = log['Segment Category']; secondaryText = log.Topic || `ID: ${log.MLUniqueID}`; }
+          return (<Card {...cardProps}><CardContent className="p-3 flex items-center justify-between"><div><p className="font-semibold text-sm">{primaryText}</p><p className="text-xs text-muted-foreground">{secondaryText}</p></div><ChevronRight className="w-4 h-4 text-muted-foreground" /></CardContent></Card>);
         };
-
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-2">
-                {data.items.map((log: any) => renderListItem(log))}
-              </div>
-            </CardContent>
-          </Card>
-        );
+        return (<Card><CardHeader><CardTitle className="text-lg px-2">{title}</CardTitle></CardHeader><CardContent className="p-4"><div className="space-y-2">{data.items.map((log: any) => renderListItem(log))}</div></CardContent></Card>);
       }
 
       case "digitalrecording":
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-green-500 to-blue-600 flex items-center justify-center">
-                <FileAudio className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-bold">
-                {data.RecordingName || "Digital Recording"}
-              </h3>
+              {renderIcon(<FileAudio className="w-8 h-8 text-white" />, "from-green-500 to-blue-600")}
+              <h3 className="text-xl font-bold">{data.RecordingName || "Digital Recording"}</h3>
               <p className="text-muted-foreground">Code: {data.RecordingCode}</p>
               <Badge className="mt-2">{data.QcStatus || "N/A"}</Badge>
             </div>
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg px-2">Recording Details</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg px-2">Recording Details</CardTitle></CardHeader>
               <CardContent className="space-y-4 p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Event Code</span>
                   {data.fkEventCode && hasAccess("Events", 'read') ? (
-                    <DrilldownButton
-                      id={data.fkEventCode}
-                      apiEndpoint="/events"
-                      targetType="event"
-                      titlePrefix="Event"
-                      onPushSidebar={onPushSidebar}
-                    >
-                      {data.fkEventCode}
-                    </DrilldownButton>
-                  ) : (
-                     <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-                       {data.fkEventCode ? <><Lock className="w-3 h-3"/> {data.fkEventCode}</> : 'N/A'}
-                    </span>
-                  )}
+                    <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: 'digitalrecording_related_data', data: { eventCode: data.fkEventCode, recordingCode: data.RecordingCode }, title: `Data for ${data.RecordingCode}` })}>
+                        {data.fkEventCode}
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  ) : ( <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">{data.fkEventCode ? <><Lock className="w-3 h-3"/> {data.fkEventCode}</> : 'N/A'}</span> )}
                 </div>
                 <FieldRow label="RecordingName" value={data.RecordingName} />
-                <FieldRow label="Duration" value={data.Duration}>
-                  <Badge variant="secondary">{data.Duration}</Badge>
-                </FieldRow>
-                <FieldRow
-                  label="File Size"
-                  value={data.FilesizeInBytes}
-                >
-                  <span className="font-medium">
-                    {data.FilesizeInBytes ? `${(data.FilesizeInBytes / 1024 / 1024).toFixed(2)} MB` : undefined}
-                  </span>
-                </FieldRow>
-                <FieldRow label="Preservation" value={data.PreservationStatus}>
-                  <span className="font-medium">{data.PreservationStatus}</span>
-                </FieldRow>
+                <FieldRow label="Duration" value={data.Duration}><Badge variant="secondary">{data.Duration}</Badge></FieldRow>
+                <FieldRow label="File Size" value={data.FilesizeInBytes}><span className="font-medium">{data.FilesizeInBytes ? `${(data.FilesizeInBytes / 1024 / 1024).toFixed(2)} MB` : undefined}</span></FieldRow>
+                <FieldRow label="Preservation" value={data.PreservationStatus}><span className="font-medium">{data.PreservationStatus}</span></FieldRow>
                 {data.DistributionDriveLink && (
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Link</span>
-                    <Button size="sm" variant="ghost" asChild>
-                      <a
-                        href={data.DistributionDriveLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Open Link <ExternalLink className="w-3 h-3 ml-2" />
-                      </a>
-                    </Button>
+                    <Button size="sm" variant="ghost" asChild><a href={data.DistributionDriveLink} target="_blank" rel="noopener noreferrer">Open Link <ExternalLink className="w-3 h-3 ml-2" /></a></Button>
                   </div>
                 )}
               </CardContent>
             </Card>
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg px-2">Metadata</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 p-4">
-                <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-              </CardContent>
+              <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
+              <CardContent className="space-y-4 p-4"><FieldRow label="Last Modified" value={data.LastModifiedTimestamp} /></CardContent>
             </Card>
             {hasAccess("Media Log") && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg px-2">Related Media Logs</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-lg px-2">Related Media Logs</CardTitle></CardHeader>
                 <CardContent className="p-4">
-                  {hasAccess("Media Log", 'read') ? (
-                    <MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />
-                  ) : (
-                    <div className="text-muted-foreground p-4 text-center flex items-center justify-center gap-2">
-                      <Lock className="w-4 h-4"/> You don't have access to view Media Logs.
-                    </div>
-                  )}
+                  {hasAccess("Media Log", 'read') ? (<MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />) : (<div className="text-muted-foreground p-4 text-center flex items-center justify-center gap-2"><Lock className="w-4 h-4"/> You don't have access to view Media Logs.</div>)}
                 </CardContent>
               </Card>
             )}
           </div>
         );
 
-        case "medialog": {
-          // Helper to check if a value is present and not 'N/A'
-          const hasValue = (value: any): boolean => {
-            if (value === undefined || value === null) return false;
-            if (typeof value === "string") {
-              const v = value.trim();
-              if (v === "" || v.toUpperCase() === "N/A") return false;
-            }
-            return true;
-          };
-  
-          // Check if each card has any content to display
+      case "medialog": {
+          const hasValue = (v: any): boolean => v !== undefined && v !== null && String(v).trim() !== "" && String(v).toUpperCase() !== "N/A";
           const hasLogDetails = [data.EventName, data.ContentFrom, data.ContentTo, data.TimeOfDay, data.Detail, data.SubDetail, data.fkOccasion, data.TotalDuration].some(hasValue);
           const hasStatusDetails = [data.FootageType, data.EditingStatus, data['Segment Category'], data.Remarks, data.Guidance, data.IsInformal].some(hasValue);
           const hasTopicDetails = [data.fkGranth, data.NumberSource, data.Topic, data.Synopsis, data.Keywords, data.TopicGivenBy, data.SatsangStart, data.SatsangEnd, data.HasSubtitle, data.SubTitlesLanguage, data.IsDubbed, data.DubbedLanguage, data.DubbedArtist].some(hasValue);
           const hasLocationDetails = [data.Language, data.SpeakerSinger, data.fkOrganization, data.Designation, data.fkCountry, data.fkCity, data.fkState, data.Venue].some(hasValue);
           const hasMetadata = [data.EventCode, data.fkDigitalRecordingCode, data.MLUniqueID, data.FootageSrNo, data.LogSerialNo, data.CounterFrom, data.CounterTo, data.SubDuration, data.TotalDuration].some(hasValue);
-          
           return (
             <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-600 flex items-center justify-center">
-                  <ListChecks className="w-8 h-8 text-white" />
-                </div>
-              </div>
-  
-              {hasLogDetails && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg px-2">Log Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 p-4">
-                    <FieldRow label="EventName" value={data.EventName} />
-                    <FieldRow label="Content From" value={data.ContentFrom} />
-                    <FieldRow label="Content To" value={data.ContentTo} />
-                    <FieldRow label="Time Of Day" value={data.TimeOfDay} />
-                   <FieldRow label=" Detail" value={data.Detail} />
-                   <FieldRow label=" Sub Detail" value={data.SubDetail} />
-                    <FieldRow label="Occasion" value={data.fkOccasion} />
-                    <FieldRow label="Duration" value={data.TotalDuration} />
-                  </CardContent>
-                </Card>
-              )}
-  
-              {hasStatusDetails && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg px-2">Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 p-4">
-                    <FieldRow label="Footage Type" value={data.FootageType} />
-                    <FieldRow label="Editing Status" value={data.EditingStatus} />
-                    <FieldRow label="Segment Category" value={data['Segment Category']} />
-                    <FieldRow label="Remarks" value={data.Remarks} />
-                    <FieldRow label="Guidance" value={data.Guidance} />
-                    <FieldRow label="IsInformal" value={data.IsInformal} />
-                  </CardContent>
-                </Card>
-              )}
-  
-              {hasTopicDetails && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg px-2">Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 p-4">
-                    <FieldRow label="Granth" value={data.fkGranth} />
-                    <FieldRow label="Number" value={data.NumberSource} />
-                    <FieldRow label="Topic" value={data.Topic} />
-                    <FieldRow label="Synopsis" value={data.Synopsis} />
-                    <FieldRow label="Keywords" value={data.Keywords} />
-                    <FieldRow label="TopicGivenBy" value={data.TopicGivenBy} />
-                    <FieldRow label="SatsangStart" value={data.SatsangStart} />
-                    <FieldRow label="SatsangEnd" value={data.SatsangEnd} />
-                    <FieldRow label="Has Subtitle" value={data.HasSubtitle} />
-                    <FieldRow label="Subtitle Language" value={data.SubTitlesLanguage} />
-                    <FieldRow label="IsDubbed" value={data.IsDubbed} />
-                    <FieldRow label="Dubbed Language" value={data.DubbedLanguage} />
-                    <FieldRow label="Dubbed Artist" value={data.DubbedArtist} />
-                  </CardContent>
-                </Card>
-              )}
-  
-              {hasLocationDetails && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg px-2">Locations</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 p-4">
-                    <FieldRow label="Language" value={data.Language} />
-                    <FieldRow label="Speaker" value={data.SpeakerSinger} />
-                    <FieldRow label="Organization" value={data.fkOrganization} />
-                    <FieldRow label="Designation" value={data.Designation} />
-                    <FieldRow label="Country" value={data.fkCountry} />
-                    <FieldRow label="City" value={data.fkCity} />
-                    <FieldRow label="State" value={data.fkState} />
-                    <FieldRow label="Venue" value={data.Venue} />
-                  </CardContent>
-                </Card>
-              )}
-  
+              <div className="text-center">{renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-teal-500 to-cyan-600")}</div>
+              {hasLogDetails && (<Card><CardHeader><CardTitle className="text-lg px-2">Log Details</CardTitle></CardHeader><CardContent className="space-y-4 p-4"><FieldRow label="EventName" value={data.EventName} /><FieldRow label="Content From" value={data.ContentFrom} /><FieldRow label="Content To" value={data.ContentTo} /><FieldRow label="Time Of Day" value={data.TimeOfDay} /><FieldRow label=" Detail" value={data.Detail} /><FieldRow label=" Sub Detail" value={data.SubDetail} /><FieldRow label="Occasion" value={data.fkOccasion} /><FieldRow label="Duration" value={data.TotalDuration} /></CardContent></Card>)}
+              {hasStatusDetails && (<Card><CardHeader><CardTitle className="text-lg px-2">Status</CardTitle></CardHeader><CardContent className="space-y-4 p-4"><FieldRow label="Footage Type" value={data.FootageType} /><FieldRow label="Editing Status" value={data.EditingStatus} /><FieldRow label="Segment Category" value={data['Segment Category']} /><FieldRow label="Remarks" value={data.Remarks} /><FieldRow label="Guidance" value={data.Guidance} /><FieldRow label="IsInformal" value={data.IsInformal} /></CardContent></Card>)}
+              {hasTopicDetails && (<Card><CardHeader><CardTitle className="text-lg px-2">Details</CardTitle></CardHeader><CardContent className="space-y-4 p-4"><FieldRow label="Granth" value={data.fkGranth} /><FieldRow label="Number" value={data.NumberSource} /><FieldRow label="Topic" value={data.Topic} /><FieldRow label="Synopsis" value={data.Synopsis} /><FieldRow label="Keywords" value={data.Keywords} /><FieldRow label="TopicGivenBy" value={data.TopicGivenBy} /><FieldRow label="SatsangStart" value={data.SatsangStart} /><FieldRow label="SatsangEnd" value={data.SatsangEnd} /><FieldRow label="Has Subtitle" value={data.HasSubtitle} /><FieldRow label="Subtitle Language" value={data.SubTitlesLanguage} /><FieldRow label="IsDubbed" value={data.IsDubbed} /><FieldRow label="Dubbed Language" value={data.DubbedLanguage} /><FieldRow label="Dubbed Artist" value={data.DubbedArtist} /></CardContent></Card>)}
+              {hasLocationDetails && (<Card><CardHeader><CardTitle className="text-lg px-2">Locations</CardTitle></CardHeader><CardContent className="space-y-4 p-4"><FieldRow label="Language" value={data.Language} /><FieldRow label="Speaker" value={data.SpeakerSinger} /><FieldRow label="Organization" value={data.fkOrganization} /><FieldRow label="Designation" value={data.Designation} /><FieldRow label="Country" value={data.fkCountry} /><FieldRow label="City" value={data.fkCity} /><FieldRow label="State" value={data.fkState} /><FieldRow label="Venue" value={data.Venue} /></CardContent></Card>)}
               {hasMetadata && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg px-2">Metadata</CardTitle>
-                  </CardHeader>
+                  <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
                   <CardContent className="space-y-4 p-4">
-                    {/* --- MODIFIED: EventCode is now a clickable drilldown button --- */}
                     {data.EventCode && (
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Event Code</span>
                         {hasAccess("Events", 'read') ? (
-                          <DrilldownButton
-                            id={data.EventCode}
-                            apiEndpoint="/events"
-                            targetType="event"
-                            titlePrefix="Event"
-                            onPushSidebar={onPushSidebar}
-                          >
-                            {data.EventCode}
-                          </DrilldownButton>
-                        ) : (
-                          <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-                            <Lock className="w-3 h-3"/> {data.EventCode}
-                          </span>
-                        )}
+                          <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: 'medialog_related_data', data: { eventCode: data.EventCode, recordingCode: data.fkDigitalRecordingCode }, title: `Related Data for ML ${data.MLUniqueID}` })}>
+                            {data.EventCode} <ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        ) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.EventCode}</span>)}
                       </div>
                     )}
                     {data.fkDigitalRecordingCode && (
                        <div className="flex justify-between items-center">
                          <span className="text-muted-foreground">Recording Code</span>
                          {hasAccess("Digital Recordings", 'read') ? (
-                           <DrilldownButton
-                             id={data.fkDigitalRecordingCode}
-                             apiEndpoint="/digitalrecordings"
-                             targetType="digitalrecording"
-                             titlePrefix="Recording"
-                             onPushSidebar={onPushSidebar}
-                           >
-                             {data.fkDigitalRecordingCode}
-                           </DrilldownButton>
-                         ) : (
-                           <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-                             <Lock className="w-3 h-3"/> {data.fkDigitalRecordingCode}
-                           </span>
-                         )}
+                            <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: 'medialog_related_data', data: { eventCode: data.EventCode, recordingCode: data.fkDigitalRecordingCode }, title: `Related Data for ML ${data.MLUniqueID}` })}>
+                                {data.fkDigitalRecordingCode} <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                         ) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.fkDigitalRecordingCode}</span>)}
                        </div>
                     )}
-                    <FieldRow label="MLID" value={data.MLUniqueID} />
-                    <FieldRow label="FootageSrNo" value={data.FootageSrNo} />
-                    <FieldRow label="LogSerialNo" value={data.LogSerialNo} />
-                    <FieldRow label="CounterFrom" value={data.CounterFrom} />
-                    <FieldRow label="CounterTo" value={data.CounterTo} />
-                    <FieldRow label="SubDuration" value={data.SubDuration} />
-                    <FieldRow label="TotalDuration" value={data.TotalDuration} />
+                    <FieldRow label="MLID" value={data.MLUniqueID} /><FieldRow label="FootageSrNo" value={data.FootageSrNo} /><FieldRow label="LogSerialNo" value={data.LogSerialNo} /><FieldRow label="CounterFrom" value={data.CounterFrom} /><FieldRow label="CounterTo" value={data.CounterTo} /><FieldRow label="SubDuration" value={data.SubDuration} /><FieldRow label="TotalDuration" value={data.TotalDuration} />
                   </CardContent>
                 </Card>
               )}
             </div>
           );
-        }
-
-      case "aux": {
+      }
+   case "aux": {
         const [isEditingSRT, setIsEditingSRT] = useState(false);
         const [srtLink, setSrtLink] = useState(data.SRTLink || "");
         const [isSaving, setIsSaving] = useState(false);
@@ -1022,7 +1430,6 @@ export function DetailsSidebar({
         </div>
       );
     }
-
     case "auxfiletype": {
       const [isEditingAuxFileType, setIsEditingAuxFileType] = useState(false);
       const [auxFileType, setAuxFileType] = useState(data.AuxFileType || "");
@@ -3583,37 +3990,27 @@ export function DetailsSidebar({
         </div>
       );
     }
-      default:
-        return (
-          <div className="text-center p-4">
-            Details view not implemented for type: "{type}"
-          </div>
-        );
+      // ... other cases ...
+      default: return (<div className="text-center p-4">Details view not implemented for type: "{type}"</div>);
     }
   };
 
   return (
-    <motion.div
-      initial={{ x: "100%" }}
-      animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      style={{ zIndex, right: positionOffset }}
-      className="fixed top-0 h-full w-96 bg-background border-l border-border shadow-2xl"
-    >
-      <div className="flex flex-col h-full">
-        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold truncate pr-4">{title}</h2>
-          <Button
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8 flex-shrink-0 !hover:bg-transparent !hover:text-current"
-          >
-            <X className="w-4 h-4" />
-          </Button>
+    <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} style={{ zIndex: zIndex - 1, position: "fixed", inset: 0, background: "rgba(30, 32, 38, 0.25)", backdropFilter: "blur(1px)", }} onClick={onClose} />
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} style={{ zIndex, position: "fixed", top: "50px", left: "300px", transform: "translate(-50%, -50%)", width: "1140px", maxWidth: "95vw", maxHeight: "90vh", background: "var(--background)", borderRadius: "16px", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--border)", overflow: "hidden", }}>
+        <div className="flex flex-col h-full">
+          <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
+            <h2 className="text-lg font-semibold truncate pr-4">{title}</h2>
+            <Button size="icon" onClick={() => { if (typeof onPopSidebar === "function") { onPopSidebar(); } else { onClose(); } }} className="h-8 w-8 flex-shrink-0 !hover:bg-transparent !hover:text-current">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex-1 p-6" style={{ overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: "#888 #272525ff", maxHeight: "calc(90vh - 64px)", }}>
+            {renderContent()}
+          </div>
         </div>
-        <div className="flex-1 p-6 overflow-y-auto">{renderContent()}</div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }
