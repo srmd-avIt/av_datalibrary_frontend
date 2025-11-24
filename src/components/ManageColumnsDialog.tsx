@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users, Plus, Trash2 } from 'lucide-react'; // Add Plus, Trash2
-import { Column } from './types';
+import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
@@ -15,6 +14,14 @@ import { Checkbox } from './ui/checkbox';
 const ITEM_TYPE = 'COLUMN';
 
 // --- Type Definitions ---
+export interface Column {
+  key: string;
+  label: string;
+  sortable?: boolean;
+  editable?: boolean;
+  isCustom?: boolean; // Flag for columns added on the front-end
+}
+
 interface SimpleUser {
   id: string;
   name: string;
@@ -39,10 +46,11 @@ interface DraggableColumnProps {
   moveCard: (dragIndex: number, hoverIndex: number) => void;
   onToggle: () => void;
   isVisible: boolean;
-  // onRemove prop is removed
+  onRemove: () => void;
+  isCustom?: boolean;
 }
 
-const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCard, onToggle, isVisible }) => {
+const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCard, onToggle, isVisible, onRemove, isCustom }) => {
   const ref = React.useRef<HTMLDivElement>(null);
 
   const [, drop] = useDrop({
@@ -81,7 +89,11 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCa
         <span className="text-sm">{column.label}</span>
       </div>
       <div className="flex items-center gap-1">
-        {/* --- REMOVED: The trash icon button for removing a column --- */}
+        {isCustom && (
+          <Button variant="ghost" size="sm" onClick={onRemove} title="Remove custom column">
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onToggle} title={isVisible ? 'Hide' : 'Show'}>
           {isVisible ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
         </Button>
@@ -98,31 +110,33 @@ interface ManageColumnsDialogProps {
   visibleColumnKeys: string[];
   onSave: (saveConfig: SaveConfig) => void;
   viewId: string;
-  tableName: string; // --- NEW: Add tableName to know which DB table to alter
   users?: SimpleUser[];
-  onUpdateColumns: (viewId:string, newColumns: Column[]) => void;
+  onColumnsUpdate: (newAllColumns: Column[]) => void;
 }
 
-export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen, onClose, allColumns, visibleColumnKeys, onSave, viewId, tableName, users = [], onUpdateColumns }) => {
+export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen, onClose, allColumns, visibleColumnKeys, onSave, viewId, users = [], onColumnsUpdate }) => {
+  const [internalColumns, setInternalColumns] = useState<Column[]>([]);
   const [currentVisible, setCurrentVisible] = useState<Column[]>([]);
   const [currentHidden, setCurrentHidden] = useState<Column[]>([]);
+  
   const [isUserSelectOpen, setIsUserSelectOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
 
-  // --- MODIFIED: State for "Add Column" now only needs the label ---
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      // Ensure visible columns are ordered correctly based on visibleColumnKeys
+      const initialColumns = JSON.parse(JSON.stringify(allColumns));
+      setInternalColumns(initialColumns);
+
       const visibleOrdered = visibleColumnKeys
-        .map(key => allColumns.find(c => c.key === key))
+        .map(key => initialColumns.find((c: Column) => c.key === key))
         .filter((c): c is Column => !!c);
       
       const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
-      const hidden = allColumns.filter(c => !visibleKeysSet.has(c.key));
+      const hidden = initialColumns.filter((c: Column) => !visibleKeysSet.has(c.key));
 
       setCurrentVisible(visibleOrdered);
       setCurrentHidden(hidden);
@@ -154,58 +168,60 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
       }
     }
   };
-
-  // --- MODIFIED: Handler to add a new column with an auto-generated key ---
-  const handleAddColumn = async () => {
+  
+  const handleAddColumn = () => {
     if (!newColumnLabel.trim()) {
       toast.error("Column Label is required.");
       return;
     }
-
-    // Auto-generate a unique key from the label (e.g., "My Column" -> "myColumn")
     const generateKey = (label: string) => {
-      return label
-        .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
-          index === 0 ? word.toLowerCase() : word.toUpperCase()
-        )
-        .replace(/\s+/g, '');
+      return label.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => index === 0 ? word.toLowerCase() : word.toUpperCase()).replace(/\s+/g, '');
     };
-
     let baseKey = generateKey(newColumnLabel);
     let finalKey = baseKey;
     let counter = 1;
-    while (allColumns.some(c => c.key === finalKey)) {
+    while (internalColumns.some(c => c.key === finalKey)) {
       finalKey = `${baseKey}${counter++}`;
     }
-
-    // --- NEW: API Call to add column to the database ---
-    try {
-      const response = await fetch(`${(import.meta as any).env.VITE_API_URL}/manage-columns/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tableName, columnKey: finalKey }),
-      });
-
-      if (!response.ok) {
-        const { error } = await response.json();
-        throw new Error(error || 'Failed to add column on the server.');
-      }
-
-      // If API call is successful, update the UI state
-      const newColumnDef: Column = { key: finalKey, label: newColumnLabel, sortable: true, editable: true };
-      const newAllColumns = [...allColumns, newColumnDef];
-      onUpdateColumns(viewId, newAllColumns); // Update the master list in App.tsx
-      setCurrentHidden(prev => [...prev, newColumnDef].sort((a, b) => a.label.localeCompare(b.label))); // Add to hidden list by default
-      setIsAddColumnOpen(false);
-      setNewColumnLabel('');
-      toast.success(`Column "${newColumnLabel}" added successfully.`);
-
-    } catch (error: any) {
-      console.error("Error adding column:", error);
-      toast.error(error.message || "An unexpected error occurred.");
-    }
+    const newColumnDef: Column = { 
+      key: finalKey, 
+      label: newColumnLabel, 
+      sortable: true,
+      editable: true,
+      isCustom: true
+    };
+    setInternalColumns(prev => [...prev, newColumnDef]);
+    setCurrentHidden(prev => [...prev, newColumnDef].sort((a, b) => a.label.localeCompare(b.label)));
+    setIsAddColumnOpen(false);
+    setNewColumnLabel('');
+    toast.success(`Column "${newColumnLabel}" added. Save to apply changes.`);
   };
 
+  const handleRemoveColumn = (keyToRemove: string) => {
+    setInternalColumns(prev => prev.filter(c => c.key !== keyToRemove));
+    setCurrentVisible(prev => prev.filter(c => c.key !== keyToRemove));
+    setCurrentHidden(prev => prev.filter(c => c.key !== keyToRemove));
+    toast.info("Custom column removed.");
+  };
+
+  const handleSave = (target: SaveTarget) => {
+    if (currentVisible.length === 0) {
+      toast.warning("Cannot save an empty layout. Please make at least one column visible.");
+      return;
+    }
+    onColumnsUpdate(internalColumns);
+    const visibleKeys = currentVisible.map(c => c.key);
+    const visibleKeysSet = new Set(visibleKeys);
+    const hiddenKeys = internalColumns
+      .filter(c => !visibleKeysSet.has(c.key))
+      .map(c => c.key);
+    onSave({ viewId, visibleKeys, hiddenKeys, target });
+    onClose();
+    setIsUserSelectOpen(false);
+    setSelectedUserIds([]);
+    setUserSearch('');
+  };
+  
   const filteredUsers = useMemo(() => {
     if (!userSearch) return users;
     return users.filter(u =>
@@ -213,20 +229,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
       u.email.toLowerCase().includes(userSearch.toLowerCase())
     );
   }, [users, userSearch]);
-
-  const handleSave = (target: SaveTarget) => {
-    if (currentVisible.length === 0) {
-      toast.warning("Cannot save an empty layout. Please make at least one column visible.");
-      return;
-    }
-    const visibleKeys = currentVisible.map(c => c.key);
-    const hiddenKeys = currentHidden.map(c => c.key);
-    onSave({ viewId, visibleKeys, hiddenKeys, target });
-    onClose();
-    setIsUserSelectOpen(false);
-    setSelectedUserIds([]);
-    setUserSearch('');
-  };
   
   const UserSelectionDialog = (
     <Dialog open={isUserSelectOpen} onOpenChange={setIsUserSelectOpen}>
@@ -268,83 +270,39 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
           </ScrollArea>
         </div>
        <DialogFooter className="flex gap-3">
-  <Button
-    variant="outline"
-    onClick={() => setIsUserSelectOpen(false)}
-    className="flex-1 py-2 text-base"
-  >
-    Cancel
-  </Button>
-  <Button
-    onClick={() => handleSave({ type: 'specific_users', userIds: selectedUserIds })}
-    disabled={selectedUserIds.length === 0}
-    className="flex-1 py-2 text-base"
-  >
-    Save for {selectedUserIds.length} User(s)
-  </Button>
-</DialogFooter>
-
+        <Button variant="outline" onClick={() => setIsUserSelectOpen(false)} className="flex-1 py-2 text-base">Cancel</Button>
+        <Button onClick={() => handleSave({ type: 'specific_users', userIds: selectedUserIds })} disabled={selectedUserIds.length === 0} className="flex-1 py-2 text-base">Save for {selectedUserIds.length} User(s)</Button>
+      </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 
-  // --- NEW: Dialog for adding a new column ---
   const AddColumnDialog = (
     <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Column</DialogTitle>
           <DialogDescription>
-            Enter a label for the new column. A unique key will be generated automatically.
+            Enter a label for the new column. It will exist only within this view until you save.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
-          {/* --- REMOVED: Column Key input is no longer needed --- */}
           <div>
             <label htmlFor="new-col-label" className="text-sm font-medium">Column Header</label>
             <Input
               id="new-col-label"
-              placeholder="e.g., 'My Custom Column'"
+              placeholder="e.g., 'My Custom Notes'"
               value={newColumnLabel}
               onChange={(e) => setNewColumnLabel(e.target.value)}
+              autoFocus
             />
             <p className="text-xs text-muted-foreground mt-1">Display name for the column header.</p>
           </div>
         </div>
-       <DialogFooter
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "12px",
-    paddingTop: "20px",
-  }}
->
-  <Button
-    onClick={handleAddColumn}
-    style={{
-      flex: 1,
-      minWidth: "140px",
-      padding: "10px 0",
-      fontSize: "15px",
-    }}
-  >
-    Add Column
-  </Button>
-
-  <Button
-    variant="outline"
-    onClick={() => setIsAddColumnOpen(false)}
-    style={{
-      flex: 1,
-      minWidth: "140px",
-      padding: "10px 0",
-      fontSize: "15px",
-    }}
-  >
-    Cancel
-  </Button>
-</DialogFooter>
-
+       <DialogFooter style={{ display: "flex", justifyContent: "space-between", gap: "12px", paddingTop: "20px" }}>
+        <Button onClick={handleAddColumn} style={{ flex: 1, minWidth: "140px", padding: "10px 0", fontSize: "15px" }}>Add Column</Button>
+        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} style={{ flex: 1, minWidth: "140px", padding: "10px 0", fontSize: "15px" }}>Cancel</Button>
+      </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -361,17 +319,10 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
                   Drag to reorder, use arrows to show/hide. Use the 'Save As' button to apply changes.
                 </DialogDescription>
               </div>
-              {/* --- NEW: Add Column Button --- */}
-              <Button
-  variant="outline"
-  size="sm"
-  onClick={() => setIsAddColumnOpen(true)}
-  style={{ marginRight: "auto" }}
->
-  <Plus className="mr-2 h-4 w-4" />
-  Add Column
-</Button>
- 
+              <Button variant="outline" size="sm" onClick={() => setIsAddColumnOpen(true)} style={{ marginLeft: "auto" }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Column
+              </Button>
             </div>
           </DialogHeader>
 
@@ -379,62 +330,35 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", paddingTop: "16px" }}>
               <Card style={{ padding: "12px" }}>
                 <CardHeader><CardTitle className="flex items-center gap-2"><Eye className="w-5 h-5" /> Visible</CardTitle></CardHeader>
-                <CardContent className="h-96 overflow-y-auto">{currentVisible.map((col, i) => (<DraggableColumn key={col.key} index={i} column={col} moveCard={moveVisibleCard} onToggle={() => toggleColumn(col.key, true)} isVisible={true} />))}</CardContent>
+                <CardContent className="h-96 overflow-y-auto">{currentVisible.map((col, i) => (<DraggableColumn key={col.key} index={i} column={col} moveCard={moveVisibleCard} onToggle={() => toggleColumn(col.key, true)} isVisible={true} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} />))}</CardContent>
               </Card>
               <Card style={{ padding: "12px" }}>
                 <CardHeader><CardTitle className="flex items-center gap-2"><EyeOff className="w-5 h-5" /> Hidden</CardTitle></CardHeader>
-                <CardContent className="h-96 overflow-y-auto">{currentHidden.map((col, i) => (<DraggableColumn key={col.key} index={i} column={col} moveCard={() => {}} onToggle={() => toggleColumn(col.key, false)} isVisible={false} />))}</CardContent>
+                <CardContent className="h-96 overflow-y-auto">{currentHidden.map((col, i) => (<DraggableColumn key={col.key} index={i} column={col} moveCard={() => {}} onToggle={() => toggleColumn(col.key, false)} isVisible={false} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} />))}</CardContent>
               </Card>
             </div>
           </DndProvider>
 
-          <DialogFooter
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "12px",
-    paddingTop: "20px",
-  }}
->
-  <Button
-    variant="outline"
-    onClick={onClose}
-    style={{
-      flex: 1,
-      minWidth: "140px",
-      padding: "10px 0",
-      fontSize: "15px",
-    }}
-  >
-    Cancel
-  </Button>
-
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button
-        style={{
-          flex: 1,
-          minWidth: "140px",
-          padding: "10px 0",
-          fontSize: "15px",
-        }}
-      >
-        Save As <ChevronDown className="ml-2 h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onSelect={() => handleSave({ type: "global_guest" })}>
-        <Users className="mr-2 h-4 w-4" />
-        <span>Save for All Guests</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem onSelect={() => setIsUserSelectOpen(true)}>
-        <User className="mr-2 h-4 w-4" />
-        <span>Save for Specific Users...</span>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-</DialogFooter>
-
+          <DialogFooter style={{ display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "20px" }}>
+            <Button variant="outline" onClick={onClose} style={{ flex: 1, minWidth: "140px", padding: "10px 0", fontSize: "15px" }}>Cancel</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button style={{ flex: 1, minWidth: "140px", padding: "10px 0", fontSize: "15px" }}>
+                  Save As <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => handleSave({ type: "global_guest" })}>
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>Save for All Guests</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setIsUserSelectOpen(true)}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Save for Specific Users...</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {UserSelectionDialog}
