@@ -885,6 +885,9 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isColumnMgmtDialogOpen, setIsColumnMgmtDialogOpen] = useState(false);
 
+  // --- NEW STATE: Version to force re-renders when columns are saved ---
+  const [layoutVersion, setLayoutVersion] = useState(0);
+
   const [changesSummary, setChangesSummary] = useState<string[]>(() => {
     try {
       const savedSummary = localStorage.getItem('columnChangesSummary');
@@ -970,56 +973,53 @@ export default function App() {
     return config.columns.map((c: any) => c.key);
   };
 
-  // --- NEW HELPER FUNCTION: Merge hardcoded columns with saved localStorage columns ---
-  const getMergedColumns = (viewId: string, hardcodedColumns: any[]) => {
-    // 1. Determine which layout key to use (User specific or Global)
-    // Note: This logic mirrors how ClickUpListViewUpdated decides which key to load
-    const userSpecificKey = user?.id ? getLayoutKeys(viewId, user.id).orderKey : null;
-    const globalKey = getLayoutKeys(viewId, null).orderKey;
+  // --- UPDATED HELPER: Wrapped in useMemo depending on layoutVersion ---
+  // This ensures that when layoutVersion changes (after saving), this recalculates
+  const activeColumns = useMemo(() => {
+    const config = VIEW_CONFIGS[activeView];
+    if (!config || !config.columns) return [];
 
+    const hardcodedColumns = config.columns;
     let savedKeys: string[] = [];
     
-    // Try to load user specific first
-    if (userSpecificKey) {
-        const savedData = localStorage.getItem(userSpecificKey);
+    // 1. Check for specific user layout FIRST
+    if (user?.id) {
+        const { orderKey } = getLayoutKeys(activeView, user.id);
+        const savedData = localStorage.getItem(orderKey);
         if (savedData) {
             try { savedKeys = JSON.parse(savedData); } catch (e) { console.error("Error parsing user columns", e); }
         }
     }
 
-    // If no user specific found, try global
+    // 2. If NO user layout found, fall back to GLOBAL layout
     if (savedKeys.length === 0) {
+        const { orderKey: globalKey } = getLayoutKeys(activeView, null);
         const globalData = localStorage.getItem(globalKey);
         if (globalData) {
             try { savedKeys = JSON.parse(globalData); } catch (e) { console.error("Error parsing global columns", e); }
         }
     }
 
-    // If still empty, just return hardcoded
-    if (savedKeys.length === 0) return hardcodedColumns;
+    // 3. If STILL no layout, default to hardcoded configuration
+    if (savedKeys.length === 0) {
+        return hardcodedColumns;
+    }
 
-    // 2. Create a set of known keys from hardcoded config
-    const knownKeys = new Set(hardcodedColumns.map((c) => c.key));
+    // 4. Merge logic: Create definitions for keys in saved layout that are missing from code
+    const knownKeys = new Set(hardcodedColumns.map((c: any) => c.key));
 
-    // 3. Identify keys in localStorage that are missing from hardcoded config
     const extraColumns = savedKeys
       .filter((key) => !knownKeys.has(key))
       .map((key) => ({
         key: key,
-        // Generate a readable label from the key (e.g., "some_field" -> "Some Field")
-        label: key
-          .replace(/([A-Z])/g, " $1") // Space before caps
-          .replace(/_/g, " ")         // Replace underscores
-          .trim()
-          .replace(/^./, (str) => str.toUpperCase()), // Capitalize first letter
+        label: key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim().replace(/^./, (str) => str.toUpperCase()),
         sortable: true,
-        editable: false, // Default to read-only for auto-discovered columns
+        editable: false,
         isCustom: false,
       }));
 
-    // 4. Return combined array
     return [...hardcodedColumns, ...extraColumns];
-  };
+  }, [activeView, user?.id, layoutVersion]); // recalculate when layoutVersion changes
 
   const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
 
@@ -1140,11 +1140,12 @@ export default function App() {
         const viewTitle = manageableViews.find((v) => v.id === viewId)?.title || viewId;
 
         if (target.type === "global_guest") {
-          const { orderKey, hiddenKey } = getLayoutKeys(viewId);
+          const { orderKey, hiddenKey } = getLayoutKeys(viewId, null);
           localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
           localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
           const summaryMsg = `Guest layout for "${viewTitle}" was updated.`;
           updateChangesSummary(summaryMsg); 
+          setLayoutVersion(v => v + 1); // Force refresh
           toast.success(summaryMsg);
         } else if (target.type === "specific_users") {
           target.userIds.forEach((userId) => {
@@ -1168,7 +1169,8 @@ export default function App() {
           }
 
           const summaryMsg = `Layout for "${viewTitle}" was updated ${userSummaryText}.`;
-          updateChangesSummary(summaryMsg); 
+          updateChangesSummary(summaryMsg);
+          setLayoutVersion(v => v + 1); // Force refresh 
           toast.success(summaryMsg);
         }
       }}
@@ -1217,9 +1219,6 @@ export default function App() {
         }
       : {};
 
-    // --- HERE IS THE CHANGE: Use getMergedColumns instead of config.columns directly ---
-    const activeColumns = getMergedColumns(activeView, config.columns);
-
     return (
       <ClickUpListViewUpdated
           key={activeView}
@@ -1229,7 +1228,7 @@ export default function App() {
         idKey={config.idKey}
         keyMap={config.keyMap}
        onRowSelect={config.disableRowClick ? () => {} : (row) => handleRowSelect(row, config.detailsType)}
-        // Pass the merged columns here
+        // Pass the MEMOIZED active columns
         columns={activeColumns}
         views={config.views}
         filterConfigs={[]}
