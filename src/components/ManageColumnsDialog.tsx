@@ -5,13 +5,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users, Plus, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 
 const ITEM_TYPE = 'COLUMN';
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
 // --- Type Definitions ---
 export interface Column {
@@ -82,13 +83,13 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCa
 
   return (
     <div ref={ref} className={`flex items-center justify-between p-2 mb-2 rounded-md border bg-muted/30 ${isDragging ? 'opacity-50' : 'opacity-100'}`}>
-      <div className="flex items-center gap-2">
-        <div ref={(node) => { drag(node as any); }} className="cursor-grab p-1">
+      <div className="flex items-center gap-2 overflow-hidden">
+        <div ref={(node) => { drag(node as any); }} className="cursor-grab p-1 flex-shrink-0">
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
-        <span className="text-sm">{column.label}</span>
+        <span className="text-sm truncate" title={column.label}>{column.label}</span>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-shrink-0">
         {isCustom && (
           <Button variant="ghost" size="sm" onClick={onRemove} title="Remove custom column">
             <Trash2 className="w-4 h-4 text-destructive" />
@@ -112,12 +113,24 @@ interface ManageColumnsDialogProps {
   viewId: string;
   users?: SimpleUser[];
   onColumnsUpdate: (newAllColumns: Column[]) => void;
+  apiEndpoint?: string; // <--- NEW PROP ADDED HERE
 }
 
-export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen, onClose, allColumns, visibleColumnKeys, onSave, viewId, users = [], onColumnsUpdate }) => {
+export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ 
+  isOpen, 
+  onClose, 
+  allColumns, 
+  visibleColumnKeys, 
+  onSave, 
+  viewId, 
+  users = [], 
+  onColumnsUpdate,
+  apiEndpoint // <--- Receive API Endpoint
+}) => {
   const [internalColumns, setInternalColumns] = useState<Column[]>([]);
   const [currentVisible, setCurrentVisible] = useState<Column[]>([]);
   const [currentHidden, setCurrentHidden] = useState<Column[]>([]);
+  const [isLoadingBackend, setIsLoadingBackend] = useState(false); // Loading state
   
   const [isUserSelectOpen, setIsUserSelectOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -126,22 +139,84 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState('');
 
+  // --- MAIN LOGIC: Fetch backend columns and merge ---
   useEffect(() => {
-    if (isOpen) {
-      const initialColumns = JSON.parse(JSON.stringify(allColumns));
-      setInternalColumns(initialColumns);
+    if (!isOpen) return;
 
+    const initializeColumns = async () => {
+      // 1. Start with columns defined in frontend config (VIEW_CONFIGS)
+      let mergedColumns = [...allColumns];
+
+      // 2. If apiEndpoint is provided, fetch from backend to discover ALL DB columns
+      if (apiEndpoint) {
+        setIsLoadingBackend(true);
+        try {
+          // Fetch just 1 item to get the keys (schema)
+          const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
+          const response = await fetch(fetchUrl);
+          
+          if (response.ok) {
+            const data = await response.json();
+            // Handle standard response format { data: [...] }
+            const rows = Array.isArray(data) ? data : (data.data || []);
+            
+            if (rows.length > 0) {
+              const sampleRow = rows[0];
+              const backendKeys = Object.keys(sampleRow);
+              
+              // Identify keys that are ALREADY in frontend config
+              const existingKeys = new Set(mergedColumns.map(c => c.key));
+              
+              // Filter: Keep keys found in DB but NOT in frontend config
+              const newDiscoveredColumns: Column[] = backendKeys
+                .filter(key => !existingKeys.has(key))
+                .map(key => ({
+                  key: key,
+                  // Format label: camelCase -> Title Case (e.g. "pra_su_duration" -> "Pra Su Duration")
+                  label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
+                  sortable: true,
+                  editable: false, 
+                  isCustom: false
+                }));
+
+              // Merge backend columns into the master list
+              if (newDiscoveredColumns.length > 0) {
+                mergedColumns = [...mergedColumns, ...newDiscoveredColumns];
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch backend columns", error);
+          toast.error("Could not fetch full column list from database.");
+        } finally {
+          setIsLoadingBackend(false);
+        }
+      }
+
+      setInternalColumns(mergedColumns);
+
+      // 3. Separate into Visible vs Hidden
+      
+      // A. Visible: Based strictly on `visibleColumnKeys` passed from parent (active view settings)
       const visibleOrdered = visibleColumnKeys
-        .map(key => initialColumns.find((c: Column) => c.key === key))
+        .map(key => mergedColumns.find(c => c.key === key))
         .filter((c): c is Column => !!c);
       
       const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
-      const hidden = initialColumns.filter((c: Column) => !visibleKeysSet.has(c.key));
+
+      // B. Hidden: Everything in the merged list that is NOT visible
+      const hidden = mergedColumns.filter(c => !visibleKeysSet.has(c.key));
+
+      // Sort hidden list alphabetically for easier searching
+      hidden.sort((a, b) => a.label.localeCompare(b.label));
 
       setCurrentVisible(visibleOrdered);
       setCurrentHidden(hidden);
-    }
-  }, [isOpen, allColumns, visibleColumnKeys]);
+    };
+
+    initializeColumns();
+
+  }, [isOpen, allColumns, visibleColumnKeys, apiEndpoint]);
 
   const moveVisibleCard = (dragIndex: number, hoverIndex: number) => {
     const dragCard = currentVisible[dragIndex];
@@ -155,12 +230,14 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
 
   const toggleColumn = (columnKey: string, isVisible: boolean) => {
     if (isVisible) {
+      // Hiding: Remove from Visible -> Add to Hidden
       const columnToHide = currentVisible.find(c => c.key === columnKey);
       if (columnToHide) {
         setCurrentVisible(prev => prev.filter(c => c.key !== columnKey));
         setCurrentHidden(prev => [...prev, columnToHide].sort((a, b) => a.label.localeCompare(b.label)));
       }
     } else {
+      // Showing: Remove from Hidden -> Add to Visible
       const columnToShow = currentHidden.find(c => c.key === columnKey);
       if (columnToShow) {
         setCurrentHidden(prev => prev.filter(c => c.key !== columnKey));
@@ -190,11 +267,14 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
       editable: true,
       isCustom: true
     };
-    setInternalColumns(prev => [...prev, newColumnDef]);
+    
+    const newAll = [...internalColumns, newColumnDef];
+    setInternalColumns(newAll);
     setCurrentHidden(prev => [...prev, newColumnDef].sort((a, b) => a.label.localeCompare(b.label)));
+    
     setIsAddColumnOpen(false);
     setNewColumnLabel('');
-    toast.success(`Column "${newColumnLabel}" added. Save to apply changes.`);
+    toast.success(`Column "${newColumnLabel}" added.`);
   };
 
   const handleRemoveColumn = (keyToRemove: string) => {
@@ -209,12 +289,16 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
       toast.warning("Cannot save an empty layout. Please make at least one column visible.");
       return;
     }
+    
+    // Pass the complete merged list (Front+Backend) back up
     onColumnsUpdate(internalColumns);
+
     const visibleKeys = currentVisible.map(c => c.key);
     const visibleKeysSet = new Set(visibleKeys);
     const hiddenKeys = internalColumns
       .filter(c => !visibleKeysSet.has(c.key))
       .map(c => c.key);
+      
     onSave({ viewId, visibleKeys, hiddenKeys, target });
     onClose();
     setIsUserSelectOpen(false);
@@ -235,9 +319,10 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Select Users</DialogTitle>
-          <DialogDescription>
+          {/* Fixed: Use div or p instead of DialogDescription if using custom modal wrapper in parent */}
+          <div className="text-sm text-muted-foreground">
             Apply this column layout to the selected users. This will override their existing custom layout for this view.
-          </DialogDescription>
+          </div>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <Input 
@@ -277,35 +362,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
     </Dialog>
   );
 
-  const AddColumnDialog = (
-    <Dialog open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New Column</DialogTitle>
-          <DialogDescription>
-            Enter a label for the new column. It will exist only within this view until you save.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
-          <div>
-            <label htmlFor="new-col-label" className="text-sm font-medium">Column Header</label>
-            <Input
-              id="new-col-label"
-              placeholder="e.g., 'My Custom Notes'"
-              value={newColumnLabel}
-              onChange={(e) => setNewColumnLabel(e.target.value)}
-              autoFocus
-            />
-            <p className="text-xs text-muted-foreground mt-1">Display name for the column header.</p>
-          </div>
-        </div>
-       <DialogFooter style={{ display: "flex", justifyContent: "space-between", gap: "12px", paddingTop: "20px" }}>
-        <Button onClick={handleAddColumn} style={{ flex: 1, minWidth: "140px", padding: "10px 0", fontSize: "15px" }}>Add Column</Button>
-        <Button variant="outline" onClick={() => setIsAddColumnOpen(false)} style={{ flex: 1, minWidth: "140px", padding: "10px 0", fontSize: "15px" }}>Cancel</Button>
-      </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+ 
 
   return (
     <>
@@ -315,27 +372,49 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
             <div className="flex justify-between items-center">
               <div>
                 <DialogTitle>Manage Columns</DialogTitle>
-                <DialogDescription>
-                  Drag to reorder, use arrows to show/hide. Use the 'Save As' button to apply changes.
-                </DialogDescription>
+                <div className="text-sm text-muted-foreground">
+                  Drag to reorder, use arrows to show/hide. "Hidden" list includes all available database fields.
+                </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setIsAddColumnOpen(true)} style={{ marginLeft: "auto" }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Column
-              </Button>
+              
             </div>
           </DialogHeader>
 
           <DndProvider backend={HTML5Backend}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", paddingTop: "16px" }}>
+              
+              {/* Visible Columns */}
               <Card style={{ padding: "12px" }}>
-                <CardHeader><CardTitle className="flex items-center gap-2"><Eye className="w-5 h-5" /> Visible</CardTitle></CardHeader>
-                <CardContent className="h-96 overflow-y-auto">{currentVisible.map((col, i) => (<DraggableColumn key={col.key} index={i} column={col} moveCard={moveVisibleCard} onToggle={() => toggleColumn(col.key, true)} isVisible={true} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} />))}</CardContent>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Eye className="w-5 h-5" /> Visible ({currentVisible.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-96 overflow-y-auto">
+                  {currentVisible.map((col, i) => (
+                    <DraggableColumn key={col.key} index={i} column={col} moveCard={moveVisibleCard} onToggle={() => toggleColumn(col.key, true)} isVisible={true} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} />
+                  ))}
+                  {currentVisible.length === 0 && <div className="text-center text-sm text-muted-foreground mt-10">No visible columns.</div>}
+                </CardContent>
               </Card>
+
+              {/* Hidden Columns */}
               <Card style={{ padding: "12px" }}>
-                <CardHeader><CardTitle className="flex items-center gap-2"><EyeOff className="w-5 h-5" /> Hidden</CardTitle></CardHeader>
-                <CardContent className="h-96 overflow-y-auto">{currentHidden.map((col, i) => (<DraggableColumn key={col.key} index={i} column={col} moveCard={() => {}} onToggle={() => toggleColumn(col.key, false)} isVisible={false} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} />))}</CardContent>
+                <CardHeader className="flex flex-row justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
+                    <EyeOff className="w-5 h-5" /> Hidden ({currentHidden.length})
+                  </CardTitle>
+                  {/* Show loading spinner while fetching backend columns */}
+                  {isLoadingBackend && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                </CardHeader>
+                <CardContent className="h-96 overflow-y-auto">
+                  {currentHidden.map((col, i) => (
+                    <DraggableColumn key={col.key} index={i} column={col} moveCard={() => {}} onToggle={() => toggleColumn(col.key, false)} isVisible={false} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} />
+                  ))}
+                  {!isLoadingBackend && currentHidden.length === 0 && <div className="text-center text-sm text-muted-foreground mt-10">All columns are visible.</div>}
+                </CardContent>
               </Card>
+
             </div>
           </DndProvider>
 
@@ -362,7 +441,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ isOpen
         </DialogContent>
       </Dialog>
       {UserSelectionDialog}
-      {AddColumnDialog}
+      
     </>
   );
 };
