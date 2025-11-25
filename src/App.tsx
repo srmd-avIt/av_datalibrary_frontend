@@ -20,15 +20,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./com
 import { useAuth } from "./contexts/AuthContext";
 import { toast } from "sonner";
 
-// --- NEW --- Import the updated dialog and its types
+// --- Import the updated dialog ---
 import { ManageColumnsDialog, SaveConfig } from "./components/ManageColumnsDialog";
-
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
 // ===================================================================================
 // --- 1. VIEW CONFIGURATIONS & HELPERS ---
-// (This section remains unchanged, so it's collapsed for brevity)
 // ===================================================================================
 const categoryTagRenderer = (value: string | null | undefined) => {
     if (!value) return <span className="text-slate-500"></span>;
@@ -51,6 +49,7 @@ const categoryTagRenderer = (value: string | null | undefined) => {
         </div>
     );
 };
+
 const VIEW_CONFIGS: Record<string, any> = {
   events: {
     title: "Events",
@@ -58,8 +57,6 @@ const VIEW_CONFIGS: Record<string, any> = {
     idKey: "EventID",
     detailsType: "event",
     columns: [
-      
-       
        { key: "Yr", label: "Year", sortable: true, editable: true }, 
         { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true },
        { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
@@ -67,21 +64,18 @@ const VIEW_CONFIGS: Record<string, any> = {
        { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
         { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
        { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true },
-
     ],
   },
   satsang_dashboard: {
     title: "Satsang Dashboard",
   },
-  // ... other configs for medialog, digitalrecordings, aux, etc.
   medialog_all: {
     title: "Media Log: ML formal & Informal",
     apiEndpoint: "/newmedialog",
     idKey: "MLUniqueID",
     detailsType: "medialog",
-     // Default multi-column sort when this view opens (backend should support comma-separated keys)
- sortBy: "EventCode,FootageSrNo,LogSerialNo",
-   sortDirection: "asc",
+    sortBy: "EventCode,FootageSrNo,LogSerialNo",
+    sortDirection: "asc",
     columns: [
        { key: "Yr", label: "Year", sortable: true, editable: true },
       {
@@ -97,8 +91,6 @@ const VIEW_CONFIGS: Record<string, any> = {
       },
         { key: "EventCode", label: "Event Code", sortable: true, editable: true },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-       
-      // Core ML columns requested
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       {
@@ -112,15 +104,10 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-      
- 
-
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
       { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
@@ -128,18 +115,13 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
       { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Designation", label: "Designation", sortable: true, editable: true },
-
-      // 4 location fields
       { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-
-      // keep existing/other ML fields (preserve original keys)
       { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
       { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      
       { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
       { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
@@ -155,28 +137,18 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
-     {
-  key: "ContentFromDetailCity",
-  label: "Content - Detail - City",
-  sortable: true,
-  editable: false,
-  render: (_v: any, row: any) => {
-    // Use backend-computed field if available
-    if (row.ContentFromDetailCity) {
-      return row.ContentFromDetailCity;
-    }
-
-    // ✅ Prevent fallback when EventRefMLID is empty
-    if (!row.EventRefMLID) {
-      return ""; // or return null;
-    }
-
-    // Fallback: build value manually if needed
-    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
-    return parts.join(" - ");
-  },
-}
-,
+      {
+        key: "ContentFromDetailCity",
+        label: "Content - Detail - City",
+        sortable: true,
+        editable: false,
+        render: (_v: any, row: any) => {
+          if (row.ContentFromDetailCity) return row.ContentFromDetailCity;
+          if (!row.EventRefMLID) return "";
+          const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+          return parts.join(" - ");
+        },
+      },
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -194,22 +166,15 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
       { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Grading", label: "Grading", sortable: true, editable: true },
-      
       { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
-
-      // DR specific and then rest of existing ML fields
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
-
-     
-     
     ],
   },
-
-medialog_formal: {
+  medialog_formal: {
     title: "Media Log: Formal View",
-    apiEndpoint: "/newmedialog/formal", // adjust endpoint if backend differs
+    apiEndpoint: "/newmedialog/formal", 
     idKey: "MLUniqueID",
     detailsType: "medialog",
     columns: [
@@ -226,8 +191,6 @@ medialog_formal: {
         },
       },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-
-      // Core ML columns requested
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       {
@@ -241,13 +204,10 @@ medialog_formal: {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
       { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
@@ -255,19 +215,13 @@ medialog_formal: {
       { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
       { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Designation", label: "Designation", sortable: true, editable: true },
-
-      // 4 location fields
       { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-
-      // keep existing/other ML fields (preserve original keys)
-
       { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
       { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      
       { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
       { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
@@ -284,27 +238,17 @@ medialog_formal: {
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
       {
-  key: "ContentFromDetailCity",
-  label: "Content - Detail - City",
-  sortable: true,
-  editable: false,
-  render: (_v: any, row: any) => {
-    // Use backend-computed field if available
-    if (row.ContentFromDetailCity) {
-      return row.ContentFromDetailCity;
-    }
-
-    // ✅ Prevent fallback when EventRefMLID is empty
-    if (!row.EventRefMLID) {
-      return ""; // or return null;
-    }
-
-    // Fallback: build value manually if needed
-    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
-    return parts.join(" - ");
-  },
-},
-
+        key: "ContentFromDetailCity",
+        label: "Content - Detail - City",
+        sortable: true,
+        editable: false,
+        render: (_v: any, row: any) => {
+          if (row.ContentFromDetailCity) return row.ContentFromDetailCity;
+          if (!row.EventRefMLID) return "";
+          const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+          return parts.join(" - ");
+        },
+      },
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -322,27 +266,19 @@ medialog_formal: {
       { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
       { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Grading", label: "Grading", sortable: true, editable: true },
-      
       { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
-
-      // DR specific and then rest of existing ML fields
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
-
-     
-     
     ],
   },
-
-      medialog_pending_gsheet: {
+  medialog_pending_gsheet: {
     title: "ML-Formal (Pending to be pushed to DB)",
     apiEndpoint: "/google-sheet/ml-formal-pending",
-    idKey: "mlUniqueID ", // This remains the same, as it's our clean key
-    detailsType: "medialog", // Assuming this is correct
-       disableRowClick: true,
+    idKey: "mlUniqueID ", 
+    detailsType: "medialog", 
+    disableRowClick: true,
     keyMap: {
-      // --- CORRECTED KEY MAP ---
       "Footage Sr. No.": "footageSrNo",
       "Log Sr.No": "logSrNo",
       "Event Code": "eventCode",
@@ -365,7 +301,6 @@ medialog_formal: {
       "Total Duration": "totalDuration",
       "Content Language": "contentLanguage",
       "Content Speaker/Singer": "contentSpeakerSinger",
-      // --- FIX: Corrected combined keys from your API response ---
       "Saints/Speaker's Organization": "saintsSpeakersOrganization",
       "Speakers/Dignitary Designation/Profession": "speakersDignitaryDesignationProfession",
       "Content Country": "contentCountry",
@@ -414,7 +349,6 @@ medialog_formal: {
       "Grading": "grading"
     },
     columns: [
-      // --- CORRECTED COLUMNS using the clean keys from the map above ---
       { key: "footageSrNo", label: "Footage Sr. No.", sortable: true, editable: true },
       { key: "logSrNo", label: "Log Sr.No", sortable: true, editable: true },
       { key: "eventCode", label: "Event Code", sortable: true, editable: true },
@@ -485,7 +419,6 @@ medialog_formal: {
       { key: "grading", label: "Grading", sortable: true, editable: true },
     ],
   },
-
   medialog_all_except_satsang: {
     title: "Media Log: All Except Satsang",
     apiEndpoint: "/newmedialog/all-except-satsang",
@@ -504,9 +437,6 @@ medialog_formal: {
           return `${en}${en && ec ? " - " : ""}${ec}`;
         },
       },
-      
-
-      // Core ML columns requested
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
@@ -521,13 +451,10 @@ medialog_formal: {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
       { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
@@ -535,19 +462,13 @@ medialog_formal: {
       { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
       { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Designation", label: "Designation", sortable: true, editable: true },
-
-      // 4 location fields
       { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-
-      // keep existing/other ML fields (preserve original keys)
-
       { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
       { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      
       { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
       { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
@@ -564,27 +485,17 @@ medialog_formal: {
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
       {
-  key: "ContentFromDetailCity",
-  label: "Content - Detail - City",
-  sortable: true,
-  editable: false,
-  render: (_v: any, row: any) => {
-    // Use backend-computed field if available
-    if (row.ContentFromDetailCity) {
-      return row.ContentFromDetailCity;
-    }
-
-    // ✅ Prevent fallback when EventRefMLID is empty
-    if (!row.EventRefMLID) {
-      return ""; // or return null;
-    }
-
-    // Fallback: build value manually if needed
-    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
-    return parts.join(" - ");
-  },
-},
-
+        key: "ContentFromDetailCity",
+        label: "Content - Detail - City",
+        sortable: true,
+        editable: false,
+        render: (_v: any, row: any) => {
+          if (row.ContentFromDetailCity) return row.ContentFromDetailCity;
+          if (!row.EventRefMLID) return "";
+          const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+          return parts.join(" - ");
+        },
+      },
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -602,33 +513,22 @@ medialog_formal: {
       { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
       { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Grading", label: "Grading", sortable: true, editable: true },
-      
       { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
-
-      // DR specific and then rest of existing ML fields
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
-
-     
-     
     ],
   },
-
- 
-
   digitalrecordings: {
     title: "Digital Recordings",
     apiEndpoint: "/digitalrecording",
     idKey: "RecordingCode",
     detailsType: "digitalrecording",
-    groupBy: "Yr", // <-- MODIFIED: Added default grouping configuration
+    groupBy: "Yr", 
     columns : [
-      // <-- ADDED: show event-related columns in digitalrecordings
       { key: "Yr", label: "Year", sortable: true, editable: true },
       { key: "EventName", label: "Event Name", sortable: true, editable: true },
       { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
-
       { key: "fkEventCode", label: "fkEventCode", sortable: true, editable: true },
       { key: "RecordingName", label: "RecordingName", sortable: true, editable: true },
       { key: "RecordingCode", label: "RecordingCode", sortable: true, editable: true },
@@ -663,7 +563,6 @@ medialog_formal: {
       { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
-// ...existing code...
   aux: {
     title: "Aux File",
     apiEndpoint: "/auxfiles",
@@ -692,7 +591,6 @@ medialog_formal: {
         { key: "ModifiedBy", label: "ModifiedBy", sortable: true, editable: true },
     ],
   },
-  // All dropdown configs
   auxfiletype: {
     title: "Aux File Type", apiEndpoint: "/aux-file-type", idKey: "AuxTypeID", detailsType: "auxfiletype", isDropdown: true,
     columns: [
@@ -904,13 +802,12 @@ medialog_formal: {
       { key: "LastModifiedTs", label: "LastModifiedTs", sortable: true },
     ],
   },
-  // --- NEW --- Add the configuration for the Event Timeline view
   eventtimeline: {
     title: "Event Timeline",
     apiEndpoint: "/events",
     idKey: "EventID",
     detailsType: "event",
-    isTimeline: true, // This special flag tells our render function to use the new component
+    isTimeline: true, 
     columns: [
        { key: "EventID", label: "Event ID", sortable: true, editable: true }, 
        { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
@@ -938,16 +835,13 @@ medialog_formal: {
        { key: "NewEventTo", label: "New Event To", sortable: true, editable: true },
     ],
   },
-
-
-    edited_highlights: {
+  edited_highlights: {
     title: "List of Edited Highlights",
     apiEndpoint: "/edited-highlights",
     idKey: "RecordingCode",
     detailsType: "highlight",
     columns: [
      { key: "Yr", label: "Event Year", sortable: true, editable: true },
-
      {
         key: "EventDisplay",
         label: "Event Name - EventCode",
@@ -959,15 +853,12 @@ medialog_formal: {
           return `${en}${en && ec ? " - " : ""}${ec}`;
         },
       },
-     
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Duration", label: "Duration", sortable: true, editable: true },
       { key: "RecordingCode", label: "Recording Code", sortable: true, editable: true },
        { key: "FromDate", label: "Event From Date", sortable: true, editable: true },
       { key: "ToDate", label: "Event To Date", sortable: true, editable: true },
       { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
-     
-     
     ],
   },
 };
@@ -994,7 +885,6 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isColumnMgmtDialogOpen, setIsColumnMgmtDialogOpen] = useState(false);
 
-  // --- MODIFIED: Initialize summary from localStorage to make it persistent ---
   const [changesSummary, setChangesSummary] = useState<string[]>(() => {
     try {
       const savedSummary = localStorage.getItem('columnChangesSummary');
@@ -1005,7 +895,6 @@ export default function App() {
     }
   });
 
-  // --- NEW: A helper function to update both state and localStorage ---
   const updateChangesSummary = (newSummary: string) => {
     setChangesSummary(prev => {
       const updatedSummary = [...prev, newSummary];
@@ -1014,27 +903,23 @@ export default function App() {
     });
   };
 
-  // --- NEW: A function to clear the summary ---
   const clearChangesSummary = () => {
     setChangesSummary([]);
     localStorage.removeItem('columnChangesSummary');
   };
 
-  // --- NEW: Fetch all users for column management dialog ---
   const { data: allUsers } = useQuery({
     queryKey: ['allUsersForColumnMgmt'],
     queryFn: async () => {
       const resp = await fetch(`${API_BASE_URL}/users`);
       if (!resp.ok) throw new Error('Failed to fetch users');
       const users = await resp.json();
-      // --- MODIFIED: Ensure 'name' is prioritized, fallback to email if name is missing ---
       return users.map((u: any) => ({ 
         id: u.id, 
-        name: u.name || u.email, // Use name, but have email as a fallback
+        name: u.name || u.email, 
         email: u.email 
       }));
     },
-    // Only fetch if the user is an admin/owner and the management page is potentially active
     enabled: !!user && (user.role === 'Admin' || user.role === 'Owner'),
   });
 
@@ -1057,9 +942,7 @@ export default function App() {
     setSidebarStack((prev) => [...prev, item]);
   };
   
-  // --- NEW: A more versatile key generation function for layouts ---
   const getLayoutKeys = (viewId: string, userId?: string | null) => {
-    // If a userId is provided, create a user-specific key. Otherwise, create a global key.
     const prefix = userId ? `user-${userId}-view-${viewId}` : `global-view-${viewId}`;
     return {
       orderKey: `column-order-${prefix}`,
@@ -1076,7 +959,6 @@ export default function App() {
   const getVisibleColumnKeysForMgmt = (viewId: string) => {
     const config = VIEW_CONFIGS[viewId];
     if (!config) return [];
-    // For editing, we always load the GLOBAL/GUEST layout as the base
     const { orderKey } = getLayoutKeys(viewId); 
     const savedState = localStorage.getItem(orderKey);
     if (savedState) {
@@ -1088,6 +970,56 @@ export default function App() {
     return config.columns.map((c: any) => c.key);
   };
 
+  // --- NEW HELPER FUNCTION: Merge hardcoded columns with saved localStorage columns ---
+  const getMergedColumns = (viewId: string, hardcodedColumns: any[]) => {
+    // 1. Determine which layout key to use (User specific or Global)
+    // Note: This logic mirrors how ClickUpListViewUpdated decides which key to load
+    const userSpecificKey = user?.id ? getLayoutKeys(viewId, user.id).orderKey : null;
+    const globalKey = getLayoutKeys(viewId, null).orderKey;
+
+    let savedKeys: string[] = [];
+    
+    // Try to load user specific first
+    if (userSpecificKey) {
+        const savedData = localStorage.getItem(userSpecificKey);
+        if (savedData) {
+            try { savedKeys = JSON.parse(savedData); } catch (e) { console.error("Error parsing user columns", e); }
+        }
+    }
+
+    // If no user specific found, try global
+    if (savedKeys.length === 0) {
+        const globalData = localStorage.getItem(globalKey);
+        if (globalData) {
+            try { savedKeys = JSON.parse(globalData); } catch (e) { console.error("Error parsing global columns", e); }
+        }
+    }
+
+    // If still empty, just return hardcoded
+    if (savedKeys.length === 0) return hardcodedColumns;
+
+    // 2. Create a set of known keys from hardcoded config
+    const knownKeys = new Set(hardcodedColumns.map((c) => c.key));
+
+    // 3. Identify keys in localStorage that are missing from hardcoded config
+    const extraColumns = savedKeys
+      .filter((key) => !knownKeys.has(key))
+      .map((key) => ({
+        key: key,
+        // Generate a readable label from the key (e.g., "some_field" -> "Some Field")
+        label: key
+          .replace(/([A-Z])/g, " $1") // Space before caps
+          .replace(/_/g, " ")         // Replace underscores
+          .trim()
+          .replace(/^./, (str) => str.toUpperCase()), // Capitalize first letter
+        sortable: true,
+        editable: false, // Default to read-only for auto-discovered columns
+        isCustom: false,
+      }));
+
+    // 4. Return combined array
+    return [...hardcodedColumns, ...extraColumns];
+  };
 
   const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
 
@@ -1108,7 +1040,7 @@ export default function App() {
 
  const renderView = () => {
   switch (activeView) {
-    case "dashboard": return <Dashboard onShowDetails={handlePushSidebar} />;
+    case "dashboard": return <Dashboard  />;
     case "ai-assistant": return <AIAssistant />;
     case "user-management": return <UserManagement />;
     case "column-management":
@@ -1122,123 +1054,39 @@ export default function App() {
       );
     }
   return (
-<div
-  style={{
-    padding: "1rem",
-  }}
->
-  <h1
-    style={{
-      fontSize: "1.875rem",
-      fontWeight: "bold",
-      color: "var(--foreground)",
-      marginBottom: "1.5rem",
-    }}
-  >
+<div style={{ padding: "1rem" }}>
+  <h1 style={{ fontSize: "1.875rem", fontWeight: "bold", color: "var(--foreground)", marginBottom: "1.5rem" }}>
     Column Management
   </h1>
 
-  <Card
-    style={{
-      maxWidth: "1200px",
-      
-      margin: "2rem auto",
-      padding: "1.5rem",
-      borderRadius: "0.75rem",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-      height: "480px", // 👈 Smaller card height
-      display: "flex",
-      flexDirection: "column",
-      backgroundColor: "#000", // same dark look
-      border: "1px solid rgb(51 65 85)",
-    }}
-  >
+  <Card style={{ maxWidth: "1200px", margin: "2rem auto", padding: "1.5rem", borderRadius: "0.75rem", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", height: "480px", display: "flex", flexDirection: "column", backgroundColor: "#000", border: "1px solid rgb(51 65 85)" }}>
     <CardHeader>
-      <CardTitle
-        style={{
-          fontSize: "1.25rem",
-          fontWeight: 600,
-        }}
-      >
-        Manage Column Layouts
-      </CardTitle>
-      <CardDescription
-        style={{
-          fontSize: "1rem",
-          color: "rgb(148 163 184)",
-        }}
-      >
-        Select views to configure their default column layout for guests or
-        specific users.
+      <CardTitle style={{ fontSize: "1.25rem", fontWeight: 600 }}>Manage Column Layouts</CardTitle>
+      <CardDescription style={{ fontSize: "1rem", color: "rgb(148 163 184)" }}>
+        Select views to configure their default column layout for guests or specific users.
       </CardDescription>
     </CardHeader>
 
-    <CardContent
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        gap: "1.5rem",
-        paddingTop: "0.5rem",
-        overflow: "hidden",
-      }}
-    >
-      {/* Scrollable list of selectable views */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          borderRadius: "0.5rem",
-          border: "1px solid rgb(51 65 85)",
-          padding: "0.5rem",
-          backgroundColor: "#000",
-          scrollbarWidth: "thin",
-          scrollbarColor: "#475569 #1e293b",
-        }}
-        className="scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800"
-      >
+    <CardContent style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1.5rem", paddingTop: "0.5rem", overflow: "hidden" }}>
+      <div style={{ flex: 1, overflowY: "auto", borderRadius: "0.5rem", border: "1px solid rgb(51 65 85)", padding: "0.5rem", backgroundColor: "#000", scrollbarWidth: "thin", scrollbarColor: "#475569 #1e293b" }} className="scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
         {manageableViews.map((view) => (
-          <label
-            key={view.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              padding: "0.4rem 0.5rem",
-              cursor: "pointer",
-              borderRadius: "0.375rem",
-            }}
-            className="hover:bg-slate-800/50"
-          >
+          <label key={view.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.4rem 0.5rem", cursor: "pointer", borderRadius: "0.375rem" }} className="hover:bg-slate-800/50">
             <input
               type="checkbox"
               checked={selectedViewsForMgmt.includes(view.id)}
               onChange={(e) => {
                 if (e.target.checked)
-                  setSelectedViewsForMgmt([
-                    ...selectedViewsForMgmt,
-                    view.id,
-                  ]);
+                  setSelectedViewsForMgmt([ ...selectedViewsForMgmt, view.id ]);
                 else
-                  setSelectedViewsForMgmt(
-                    selectedViewsForMgmt.filter((id) => id !== view.id)
-                  );
+                  setSelectedViewsForMgmt(selectedViewsForMgmt.filter((id) => id !== view.id));
               }}
-              style={{
-                height: "1rem",
-                width: "1rem",
-                borderRadius: "0.25rem",
-                backgroundColor: "rgb(51 65 85)",
-                border: "1px solid rgb(71 85 105)",
-                accentColor: "#3b82f6",
-              }}
+              style={{ height: "1rem", width: "1rem", borderRadius: "0.25rem", backgroundColor: "rgb(51 65 85)", border: "1px solid rgb(71 85 105)", accentColor: "#3b82f6" }}
             />
             <span style={{ color: "rgb(226 232 240)" }}>{view.title}</span>
           </label>
         ))}
       </div>
 
-      {/* Manage button */}
       <Button
         onClick={() => {
           if (selectedViewsForMgmt.length > 0) {
@@ -1247,73 +1095,25 @@ export default function App() {
           }
         }}
         disabled={selectedViewsForMgmt.length === 0}
-        style={{
-          width: "50%",
-          fontSize: "1.125rem",
-          padding: "0.75rem 0",
-          alignSelf: "center",
-        }}
+        style={{ width: "50%", fontSize: "1.125rem", padding: "0.75rem 0", alignSelf: "center" }}
       >
         Manage Layouts for Selected Views
       </Button>
 
-      {/* Summary of changes */}
       {changesSummary.length > 0 && (
-        <div
-          style={{
-            marginTop: "1rem",
-            padding: "0.75rem",
-            border: "1px solid rgb(51 65 85)",
-            borderRadius: "0.5rem",
-            backgroundColor: "rgb(30 41 59 / 0.5)",
-            overflowY: "auto",
-            maxHeight: "120px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "0.5rem",
-            }}
-          >
-            <h3
-              style={{
-                fontWeight: 600,
-                color: "rgb(226 232 240)",
-              }}
-            >
-              Summary of Changes
-            </h3>
-            {/* --- NEW: Clear button for the summary --- */}
-            <Button
-              variant="link"
-              onClick={clearChangesSummary}
-              style={{ padding: 0, height: "auto", color: "rgb(148 163 184)" }}
-            >
-              Clear
-            </Button>
+        <div style={{ marginTop: "1rem", padding: "0.75rem", border: "1px solid rgb(51 65 85)", borderRadius: "0.5rem", backgroundColor: "rgb(30 41 59 / 0.5)", overflowY: "auto", maxHeight: "120px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <h3 style={{ fontWeight: 600, color: "rgb(226 232 240)" }}>Summary of Changes</h3>
+            <Button variant="link" onClick={clearChangesSummary} style={{ padding: 0, height: "auto", color: "rgb(148 163 184)" }}>Clear</Button>
           </div>
-          <ul
-            style={{
-              fontSize: "0.875rem",
-              color: "rgb(203 213 225)",
-              listStyle: "none",
-              paddingLeft: 0,
-              margin: 0,
-            }}
-          >
-            {changesSummary.map((item, idx) => (
-              <li key={idx}>✅ {item}</li>
-            ))}
+          <ul style={{ fontSize: "0.875rem", color: "rgb(203 213 225)", listStyle: "none", paddingLeft: 0, margin: 0 }}>
+            {changesSummary.map((item, idx) => (<li key={idx}>✅ {item}</li>))}
           </ul>
         </div>
       )}
     </CardContent>
   </Card>
 
-  {/* Dialog Component */}
   {selectedViewsForMgmt.length > 0 && selectedViewsForMgmt[currentIndex] && (
     <ManageColumnsDialog
       isOpen={isColumnMgmtDialogOpen}
@@ -1328,26 +1128,23 @@ export default function App() {
         }
       }}
       allColumns={
-        manageableViews.find(
-          (v) => v.id === selectedViewsForMgmt[currentIndex]
-        )?.columns || []
+        manageableViews.find((v) => v.id === selectedViewsForMgmt[currentIndex])?.columns || []
       }
-      visibleColumnKeys={getVisibleColumnKeysForMgmt(
-        selectedViewsForMgmt[currentIndex]
-      )}
+      apiEndpoint={VIEW_CONFIGS[selectedViewsForMgmt[currentIndex]]?.apiEndpoint}
+      
+      visibleColumnKeys={getVisibleColumnKeysForMgmt(selectedViewsForMgmt[currentIndex])}
       viewId={selectedViewsForMgmt[currentIndex]}
       users={allUsers || []}
       onSave={(saveConfig: SaveConfig) => {
         const { viewId, visibleKeys, hiddenKeys, target } = saveConfig;
-        const viewTitle =
-          manageableViews.find((v) => v.id === viewId)?.title || viewId;
+        const viewTitle = manageableViews.find((v) => v.id === viewId)?.title || viewId;
 
         if (target.type === "global_guest") {
           const { orderKey, hiddenKey } = getLayoutKeys(viewId);
           localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
           localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
           const summaryMsg = `Guest layout for "${viewTitle}" was updated.`;
-          updateChangesSummary(summaryMsg); // --- MODIFIED: Use the new helper function
+          updateChangesSummary(summaryMsg); 
           toast.success(summaryMsg);
         } else if (target.type === "specific_users") {
           target.userIds.forEach((userId) => {
@@ -1356,9 +1153,8 @@ export default function App() {
             localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
           });
 
-          // --- MODIFIED: Generate summary message with user emails instead of names ---
           const selectedUsers = (allUsers || []).filter((u: any) => target.userIds.includes(u.id));
-          const userEmails = selectedUsers.map((u: any) => u.email); // Use email instead of name
+          const userEmails = selectedUsers.map((u: any) => u.email); 
           let userSummaryText = '';
 
           if (userEmails.length === 1) {
@@ -1372,16 +1168,14 @@ export default function App() {
           }
 
           const summaryMsg = `Layout for "${viewTitle}" was updated ${userSummaryText}.`;
-          updateChangesSummary(summaryMsg); // --- MODIFIED: Use the new helper function
+          updateChangesSummary(summaryMsg); 
           toast.success(summaryMsg);
         }
       }}
-      onColumnsUpdate={() => {}} // Added required prop, you can implement logic if needed
+      onColumnsUpdate={() => {}} 
     />
   )}
 </div>
-
-
   );
 
     case "satsang_dashboard": return (
@@ -1412,18 +1206,6 @@ export default function App() {
       );
     }
     
-    // --- IMPORTANT ---
-    // For the specific user layouts to work, you must update ClickUpListViewUpdated.tsx.
-    // It needs to check for a user-specific layout in localStorage first,
-    // then fall back to the global layout, and finally to the default config.
-    // Example logic for ClickUpListViewUpdated:
-    // const { user } = useAuth();
-    // const userLayoutKey = `user-${user.id}-view-${viewId}`;
-    // const globalLayoutKey = `global-view-${viewId}`;
-    // const userOrder = localStorage.getItem(`column-order-${userLayoutKey}`);
-    // const globalOrder = localStorage.getItem(`column-order-${globalLayoutKey}`);
-    // // ... then use the most specific layout found.
-
     const extraProps = activeView === "digitalrecordings"
       ? {
           groupEnabled: true,
@@ -1435,6 +1217,9 @@ export default function App() {
         }
       : {};
 
+    // --- HERE IS THE CHANGE: Use getMergedColumns instead of config.columns directly ---
+    const activeColumns = getMergedColumns(activeView, config.columns);
+
     return (
       <ClickUpListViewUpdated
           key={activeView}
@@ -1442,9 +1227,10 @@ export default function App() {
         viewId={activeView}
         apiEndpoint={config.apiEndpoint}
         idKey={config.idKey}
-        keyMap={config.keyMap} // <-- ADD THIS PROP
+        keyMap={config.keyMap}
        onRowSelect={config.disableRowClick ? () => {} : (row) => handleRowSelect(row, config.detailsType)}
-        columns={config.columns}
+        // Pass the merged columns here
+        columns={activeColumns}
         views={config.views}
         filterConfigs={[]}
         showAddButton={!!config.isDropdown}
@@ -1458,18 +1244,13 @@ export default function App() {
     );
   }
   
-  return <Dashboard onShowDetails={handlePushSidebar} />;
+  return <Dashboard />;
 };
   
   const sidebarWidth = 384;
   const cascadeOffset = 24;
   const sidebarContainerWidth = sidebarStack.length > 0 ? sidebarWidth + (sidebarStack.length - 1) * cascadeOffset : 0;
 
-  // ===================================================================================
-  // --- 4. JSX LAYOUT ---
- 
-  // (This section remains unchanged)
-  // ===================================================================================
   if (isMobile) {
     return (
       <div className="dark min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">

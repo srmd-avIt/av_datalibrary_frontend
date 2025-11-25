@@ -580,17 +580,19 @@ function EventDataTableView({
           <CardContent className="p-0">
             {recordings.length > 0 ? (
               <>
-                 <div className="flex justify-between items-center mb-3">
+                 <div className="flex justify-between items-center mb-4 px-2">
                     <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
                     <Button variant="outline" size="sm" onClick={() => exportToCSV(recordings, [ { key: "Yr", label: "Year" }, { key: "EventName", label: "Event Name" }, { key: "fkEventCategory", label: "Event Category" }, { key: "fkEventCode", label: "fkEventCode" }, { key: "RecordingName", label: "Recording Name" }, { key: "RecordingCode", label: "Recording Code" }, { key: "Duration", label: "Duration" }, { key: "DistributionDriveLink", label: "Distribution Drive Link" }, { key: "BitRate", label: "Bit Rate" }, { key: "Dimension", label: "Dimension" }, { key: "Masterquality", label: "Masterquality" }, { key: "fkMediaName", label: "fkMediaName" }, { key: "Filesize", label: "Filesize" }, { key: "FilesizeInBytes", label: "FilesizeInBytes" }, { key: "NoOfFiles", label: "No Of Files" }, { key: "RecordingRemarks", label: "Recording Remarks" }, { key: "CounterError", label: "Counter Error" }, { key: "ReasonError", label: "Reason Error" }, { key: "MasterProductTitle", label: "Master Product Title" }, { key: "fkDistributionLabel", label: "fkDistributionLabel" }, { key: "ProductionBucket", label: "Production Bucket" }, { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" }, { key: "AudioBitrate", label: "Audio Bitrate" }, { key: "AudioTotalDuration", label: "Audio Total Duration" }, { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" }, { key: "PreservationStatus", label: "Preservation Status" }, { key: "QCSevak", label: "QC Sevak" }, { key: "QcStatus", label: "Qc Status" }, { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" }, { key: "SubmittedDate", label: "Submitted Date" }, { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" }, { key: "InfoOnCassette", label: "Info On Cassette" }, { key: "IsInformal", label: "Is Informal" }, { key: "AssociatedDR", label: "Associated DR" }, { key: "Teams", label: "Teams" }, ], "digital_recordings.csv")}>Export CSV</Button>
                 </div>
                 <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
                   <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
-                      <TableRow className="border"><TableHead className="border whitespace-nowrap text-white ">Year</TableHead><TableHead className="border whitespace-nowrap text-white">Event Name</TableHead><TableHead className="border whitespace-nowrap text-white">Event Category</TableHead><TableHead className="border whitespace-nowrap text-white">fkEventCode</TableHead><TableHead className="border whitespace-nowrap text-white">Recording Name</TableHead><TableHead className="border whitespace-nowrap text-white">Recording Code</TableHead><TableHead className="border whitespace-nowrap text-white">Duration</TableHead><TableHead className="border whitespace-nowrap text-white">Distribution Drive Link</TableHead><TableHead className="border whitespace-nowrap text-white">Bit Rate</TableHead><TableHead className="border whitespace-nowrap text-white">Dimension</TableHead><TableHead className="border whitespace-nowrap text-white">Masterquality</TableHead><TableHead className="border whitespace-nowrap text-white">fkMediaName</TableHead><TableHead className="border whitespace-nowrap text-white">Filesize</TableHead><TableHead className="border whitespace-nowrap text-white">FilesizeInBytes</TableHead><TableHead className="border whitespace-nowrap text-white">No Of Files</TableHead><TableHead className="border whitespace-nowrap text-white">Recording Remarks</TableHead><TableHead className="border whitespace-nowrap text-white">Counter Error</TableHead><TableHead className="border whitespace-nowrap text-white">Reason Error</TableHead><TableHead className="border whitespace-nowrap text-white">Master Product Title</TableHead><TableHead className="border whitespace-nowrap text-white">fkDistributionLabel</TableHead><TableHead className="border whitespace-nowrap text-white">Production Bucket</TableHead><TableHead className="border whitespace-nowrap text-white">fkDigitalMasterCategory</TableHead><TableHead className="border whitespace-nowrap text-white">Audio Bitrate</TableHead><TableHead className="border whitespace-nowrap text-white">Audio Total Duration</TableHead><TableHead className="border whitespace-nowrap text-white">Qc Remarks Checked On</TableHead><TableHead className="border whitespace-nowrap text-white">Preservation Status</TableHead><TableHead className="border whitespace-nowrap text-white">QC Sevak</TableHead><TableHead className="border whitespace-nowrap text-white">Qc Status</TableHead><TableHead className="border whitespace-nowrap text-white">Last Modified Timestamp</TableHead><TableHead className="border whitespace-nowrap text-white">Submitted Date</TableHead><TableHead className="border whitespace-nowrap text-white">Pres Stat Guid Dt</TableHead><TableHead className="border whitespace-nowrap text-white">Info On Cassette</TableHead><TableHead className="border whitespace-nowrap text-white">Is Informal</TableHead><TableHead className="border whitespace-nowrap text-white">Associated DR</TableHead><TableHead className="border whitespace-nowrap text-white">Teams</TableHead></TableRow>
+                      <TableRow className="border"><TableHead className="border whitespace-nowrap text-white px-3 py-2">Year</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Category</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkEventCode</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Code</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Distribution Drive Link</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Bit Rate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Dimension</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Masterquality</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkMediaName</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Filesize</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">FilesizeInBytes</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">No Of Files</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Remarks</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Counter Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Reason Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Master Product Title</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDistributionLabel</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Production Bucket</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDigitalMasterCategory</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Bitrate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Total Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Remarks Checked On</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Preservation Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">QC Sevak</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Last Modified Timestamp</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Submitted Date</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Pres Stat Guid Dt</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Info On Cassette</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Is Informal</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Associated DR</TableHead>
+                      </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recordings.map((rec) => (<TableRow key={rec.RecordingCode} className="border"><TableCell className="border px-3 py-2">{rec.Yr}</TableCell><TableCell className="border px-3 py-2">{rec.EventName}</TableCell><TableCell className="border px-3 py-2">{categoryTagRenderer(rec.fkEventCategory)}</TableCell><TableCell className="border px-3 py-2">{rec.fkEventCode}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingName}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingCode}</TableCell><TableCell className="border px-3 py-2">{rec.Duration}</TableCell><TableCell className="border px-3 py-2">{rec.DistributionDriveLink ? (<a href={rec.DistributionDriveLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Link</a>) : ("")}</TableCell><TableCell className="border px-3 py-2">{rec.BitRate}</TableCell><TableCell className="border px-3 py-2">{rec.Dimension}</TableCell><TableCell className="border px-3 py-2">{rec.Masterquality}</TableCell><TableCell className="border px-3 py-2">{rec.fkMediaName}</TableCell><TableCell className="border px-3 py-2">{rec.Filesize}</TableCell><TableCell className="border px-3 py-2">{rec.FilesizeInBytes}</TableCell><TableCell className="border px-3 py-2">{rec.NoOfFiles}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingRemarks}</TableCell><TableCell className="border px-3 py-2">{rec.CounterError}</TableCell><TableCell className="border px-3 py-2">{rec.ReasonError}</TableCell><TableCell className="border px-3 py-2">{rec.MasterProductTitle}</TableCell><TableCell className="border px-3 py-2">{rec.fkDistributionLabel}</TableCell><TableCell className="border px-3 py-2">{rec.ProductionBucket}</TableCell><TableCell className="border px-3 py-2">{rec.fkDigitalMasterCategory}</TableCell><TableCell className="border px-3 py-2">{rec.AudioBitrate}</TableCell><TableCell className="border px-3 py-2">{rec.AudioTotalDuration}</TableCell><TableCell className="border px-3 py-2">{rec.QcRemarksCheckedOn}</TableCell><TableCell className="border px-3 py-2">{rec.PreservationStatus}</TableCell><TableCell className="border px-3 py-2">{rec.QCSevak}</TableCell><TableCell className="border px-3 py-2">{rec.QcStatus}</TableCell><TableCell className="border px-3 py-2">{rec.LastModifiedTimestamp}</TableCell><TableCell className="border px-3 py-2">{rec.SubmittedDate}</TableCell><TableCell className="border px-3 py-2">{rec.PresStatGuidDt}</TableCell><TableCell className="border px-3 py-2">{rec.InfoOnCassette}</TableCell><TableCell className="border px-3 py-2">{rec.IsInformal}</TableCell><TableCell className="border px-3 py-2">{rec.AssociatedDR}</TableCell><TableCell className="border px-3 py-2">{rec.Teams}</TableCell></TableRow>))}
+                      {recordings.map((rec) => (<TableRow key={rec.RecordingCode} className="border"><TableCell className="border px-3 py-2">{rec.Yr}</TableCell><TableCell className="border px-3 py-2">{rec.EventName}</TableCell><TableCell className="border px-3 py-2">{categoryTagRenderer(rec.fkEventCategory)}</TableCell><TableCell className="border px-3 py-2">{rec.fkEventCode}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingName}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingCode}</TableCell><TableCell className="border px-3 py-2">{rec.Duration}</TableCell>
+                      <TableCell className="border px-3 py-2">{rec.DistributionDriveLink }</TableCell><TableCell className="border px-3 py-2">{rec.BitRate}</TableCell><TableCell className="border px-3 py-2">{rec.Dimension}</TableCell><TableCell className="border px-3 py-2">{rec.Masterquality}</TableCell><TableCell className="border px-3 py-2">{rec.fkMediaName}</TableCell><TableCell className="border px-3 py-2">{rec.Filesize}</TableCell><TableCell className="border px-3 py-2">{rec.FilesizeInBytes}</TableCell><TableCell className="border px-3 py-2">{rec.NoOfFiles}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingRemarks}</TableCell><TableCell className="border px-3 py-2">{rec.CounterError}</TableCell><TableCell className="border px-3 py-2">{rec.ReasonError}</TableCell><TableCell className="border px-3 py-2">{rec.MasterProductTitle}</TableCell><TableCell className="border px-3 py-2">{rec.fkDistributionLabel}</TableCell><TableCell className="border px-3 py-2">{rec.ProductionBucket}</TableCell><TableCell className="border px-3 py-2">{rec.fkDigitalMasterCategory}</TableCell><TableCell className="border px-3 py-2">{rec.AudioBitrate}</TableCell><TableCell className="border px-3 py-2">{rec.AudioTotalDuration}</TableCell><TableCell className="border px-3 py-2">{rec.QcRemarksCheckedOn}</TableCell><TableCell className="border px-3 py-2">{rec.PreservationStatus}</TableCell><TableCell className="border px-3 py-2">{rec.QCSevak}</TableCell><TableCell className="border px-3 py-2">{rec.QcStatus}</TableCell><TableCell className="border px-3 py-2">{rec.LastModifiedTimestamp}</TableCell><TableCell className="border px-3 py-2">{rec.SubmittedDate}</TableCell><TableCell className="border px-3 py-2">{rec.PresStatGuidDt}</TableCell><TableCell className="border px-3 py-2">{rec.InfoOnCassette}</TableCell><TableCell className="border px-3 py-2">{rec.IsInformal}</TableCell><TableCell className="border px-5 py-2">{rec.AssociatedDR}</TableCell></TableRow>))}
                     </TableBody>
                   </Table>
                 </div>
@@ -602,7 +604,7 @@ function EventDataTableView({
           <CardContent className="p-0">
             {mediaLogs.length > 0 ? (
               <>
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-4 px-2">
                     <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
                     <Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}>Export CSV</Button>
                 </div>
@@ -610,11 +612,11 @@ function EventDataTableView({
                   <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
                       <TableRow className="border text-white">
-                        {columns.map((col) => (<TableHead key={col.key} className="border font-semibold whitespace-nowrap text-white">{col.label}</TableHead>))}
+                        {columns.map((col) => (<TableHead key={col.key} className="border font-semibold whitespace-nowrap text-white px-3 py-2">{col.label}</TableHead>))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mediaLogs.map((row) => (<TableRow key={row.MLUniqueID} className="border">{columns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap max-w-[250px] truncate  px-3 py-2 ">{row[col.key] ?? "-"}</TableCell>))}</TableRow>))}
+                      {mediaLogs.map((row) => (<TableRow key={row.MLUniqueID} className="border">{columns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap max-w-[250px] truncate  px-3 py-2 ">{row[col.key] ?? " "}</TableCell>))}</TableRow>))}
                     </TableBody>
                   </Table>
                 </div>
@@ -731,15 +733,15 @@ function DigitalRecordingDataTableView({
   return (
     <div className="space-y-6">
       <Tabs defaultValue="events" className="w-full">
-        <TabsList className="mb-4"><TabsTrigger value="events">Event</TabsTrigger><TabsTrigger value="medialogs">Media Log</TabsTrigger></TabsList>
+        <TabsList className="mb-4"><TabsTrigger value="medialogs">Media Log</TabsTrigger><TabsTrigger value="events">Event</TabsTrigger></TabsList>
         <TabsContent value="events">
           <CardContent className="p-0">
-            {event ? (<> <div className="flex justify-between items-center mb-3"><h2 className="text-xl font-semibold px-2 text-white">Event Details</h2><Button variant="outline" size="sm" onClick={() => exportToCSV([event], eventColumns, "event.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{eventColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody><TableRow className="border">{eventColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">{col.key === 'NewEventCategory' ? categoryTagRenderer(event[col.key]) : event[col.key] ?? "-"}</TableCell>))}</TableRow></TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No event found for this recording.</p>)}
+            {event ? (<> <div className="flex justify-between items-center mb-4 px-2"><h2 className="text-xl font-semibold px-2 text-white">Event Details</h2><Button variant="outline" size="sm" onClick={() => exportToCSV([event], eventColumns, "event.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{eventColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody><TableRow className="border">{eventColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">{col.key === 'NewEventCategory' ? categoryTagRenderer(event[col.key]) : event[col.key] ?? " "}</TableCell>))}</TableRow></TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No event found for this recording.</p>)}
           </CardContent>
         </TabsContent>
         <TabsContent value="medialogs">
           <CardContent className="p-0">
-            {mediaLogs.length > 0 ? (<> <div className="flex justify-between items-center mb-3"><h2 className="text-xl font-semibold px-2 text-white">Media Log</h2><Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{mediaLogColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody>{mediaLogs.map((log, idx) => (<TableRow key={log.MLUniqueID || idx} className="border">{mediaLogColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate">{mediaLogColumnRenderers[col.key] ? mediaLogColumnRenderers[col.key](log[col.key], log) : log[col.key] ?? "-"}</TableCell>))}</TableRow>))}</TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this recording.</p>)}
+            {mediaLogs.length > 0 ? (<> <div className="flex justify-between items-center mb-4 px-2"><h2 className="text-xl font-semibold px-2 text-white">Media Log</h2><Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{mediaLogColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody>{mediaLogs.map((log, idx) => (<TableRow key={log.MLUniqueID || idx} className="border">{mediaLogColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate">{mediaLogColumnRenderers[col.key] ? mediaLogColumnRenderers[col.key](log[col.key], log) : log[col.key] ?? " "}</TableCell>))}</TableRow>))}</TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this recording.</p>)}
           </CardContent>
         </TabsContent>
       </Tabs>
@@ -750,14 +752,18 @@ function DigitalRecordingDataTableView({
 function MediaLogDataTableView({
   recordingCode,
   eventCode,
+  mlid
 }: {
   recordingCode?: string;
   eventCode?: string;
+  mlid?: string;
 }) {
-  const [recordings, setRecordings] = useState<any[]>([]);
+const [recordings, setRecordings] = useState<any[]>([]);
   const [event, setEvent] = useState<any | null>(null);
+  const [auxList, setAuxList] = useState<any[]>([]); // <-- Add this line
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   // ---------------- RECORDING COLUMNS ----------------
   const recordingColumns = [
@@ -795,19 +801,33 @@ function MediaLogDataTableView({
     { key: "InfoOnCassette", label: "InfoOnCassette", sortable: true, editable: true },
     { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
     { key: "AssociatedDR", label: "AssociatedDR", sortable: true, editable: true },
-    { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
+    
   ];
 
   // ---------------- EVENT COLUMNS ----------------
-  const eventColumns = [
-    { key: "Yr", label: "Year", sortable: true, editable: true },
-    { key: "NewEventCategory", label: "New Event Category", sortable: true, render: categoryTagRenderer, editable: true },
-    { key: "FromDate", label: "From Date", sortable: true, editable: true },
-    { key: "ToDate", label: "To Date", sortable: true, editable: true },
-    { key: "EventName", label: "Event Name", sortable: true, editable: true },
-    { key: "EventCode", label: "Event Code", sortable: true, editable: true },
-    { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true },
-  ];
+  const auxColumns = [
+  { key: "new_auxid", label: "New aux id", sortable: true, editable: true },
+  { key: "AuxCode", label: "AuxCode", sortable: true, editable: true },
+  { key: "AuxFileType", label: "AuxFileType", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "AuxLanguage", label: "AuxLanguage", sortable: true, editable: true },
+  { key: "fkMLID", label: "fkMLID", sortable: true, editable: true },
+  { key: "AuxTopic", label: "AuxTopic", sortable: true, editable: true },
+  { key: "NotesRemarks", label: "NotesRemarks", sortable: true, editable: true },
+  { key: "GoogleDriveLink", label: "GoogleDriveLink", sortable: true, editable: true },
+  { key: "NoOfFiles", label: "NoOfFiles", sortable: true, editable: true },
+  { key: "FilesizeBytes", label: "FilesizeBytes", sortable: true, editable: true },
+  { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp", sortable: true, editable: true },
+  { key: "LastModifiedBy", label: "LastModifiedBy", sortable: true, editable: true },
+  { key: "ProjFileCode", label: "ProjFileCode", sortable: true, editable: true },
+  { key: "ProjFileSize", label: "ProjFileSize", sortable: true, editable: true },
+  { key: "ProjFileName", label: "ProjFileName", sortable: true, editable: true },
+  { key: "SRTLink", label: "SRTLink", sortable: true, editable: true },
+  { key: "CreatedOn", label: "CreatedOn", sortable: true, editable: true },
+  { key: "CreatedBy", label: "CreatedBy", sortable: true, editable: true },
+  { key: "ModifiedOn", label: "ModifiedOn", sortable: true, editable: true },
+  { key: "ModifiedBy", label: "ModifiedBy", sortable: true, editable: true },
+];
+
 
   // ---------------- FETCH DATA ----------------
   useEffect(() => {
@@ -816,18 +836,27 @@ function MediaLogDataTableView({
         setLoading(true);
         setError(null);
 
-        // ✔ FIXED — now fetch recordings by event code (same as EventDataTableView)
-        const recordingRequest = eventCode
-          ? fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`)
-          : Promise.resolve(null);
+       const recordingRequest = recordingCode
+  ? fetch(`${API_BASE_URL}/digitalrecording?RecordingCode=${encodeURIComponent(recordingCode)}`)
+  : eventCode
+  ? fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`)
+  : Promise.resolve(null);
+
 
         const eventRequest = eventCode
           ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`)
           : Promise.resolve(null);
 
-        const [recordingResponse, eventResponse] = await Promise.all([
+      const auxRequest = mlid
+  ? fetch(`${API_BASE_URL}/auxfiles?fkMLID=${encodeURIComponent(mlid)}`)
+  : Promise.resolve(null);
+
+
+
+        const [recordingResponse, eventResponse, auxResponse] = await Promise.all([
           recordingRequest,
           eventRequest,
+          auxRequest,
         ]);
 
         if (recordingResponse) {
@@ -841,6 +870,12 @@ function MediaLogDataTableView({
           const eventData = await eventResponse.json();
           setEvent(eventData || null);
         }
+
+        if (auxResponse) {
+          if (!auxResponse.ok) throw new Error(`Failed to fetch aux data`);
+          const auxData = await auxResponse.json();
+          setAuxList(auxData.data || []);
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -849,7 +884,7 @@ function MediaLogDataTableView({
     };
 
     fetchData();
-  }, [eventCode]);
+  }, [eventCode, recordingCode, mlid]);
 
   if (loading)
     return (
@@ -897,73 +932,84 @@ function MediaLogDataTableView({
     <div className="space-y-6">
       <Tabs defaultValue="recordings">
         <TabsList className="mb-4">
-          <TabsTrigger value="recordings">Digital Recordings</TabsTrigger>
-          <TabsTrigger value="event">Event</TabsTrigger>
-        </TabsList>
+  <TabsTrigger value="recordings">Digital Recordings</TabsTrigger>
+  <TabsTrigger value="aux">AUX</TabsTrigger>
+</TabsList>
 
-        {/* RECORDINGS TAB */}
-        <TabsContent value="recordings">
+
+    {/* RECORDINGS TAB */}
+<TabsContent value="recordings">
           <CardContent className="p-0">
             {recordings.length > 0 ? (
-              <Table className="text-white pd-2 py-3">
-                <TableHeader  className="text-white px-2 py-3">
-                  <TableRow>
-                    {recordingColumns.map(col => (
-                      <TableHead key={col.key}>{col.label}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recordings.map((row, idx) => (
-                    <TableRow key={idx}>
-                      {recordingColumns.map(col => (
-                       <TableCell key={col.key} className="border whitespace-nowrap px-4 py-3 text-white">
-
-                          {col.render ? col.render(row[col.key]) : row[col.key] ?? "-"}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center p-4">
-                No digital recordings found for this Event.
-              </p>
-            )}
+              <>
+                 <div className="flex justify-between items-center mb-4 px-2">
+                    <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
+                    <Button variant="outline" size="sm" onClick={() => exportToCSV(recordings, [ { key: "Yr", label: "Year" }, { key: "EventName", label: "Event Name" }, { key: "fkEventCategory", label: "Event Category" }, { key: "fkEventCode", label: "fkEventCode" }, { key: "RecordingName", label: "Recording Name" }, { key: "RecordingCode", label: "Recording Code" }, { key: "Duration", label: "Duration" }, { key: "DistributionDriveLink", label: "Distribution Drive Link" }, { key: "BitRate", label: "Bit Rate" }, { key: "Dimension", label: "Dimension" }, { key: "Masterquality", label: "Masterquality" }, { key: "fkMediaName", label: "fkMediaName" }, { key: "Filesize", label: "Filesize" }, { key: "FilesizeInBytes", label: "FilesizeInBytes" }, { key: "NoOfFiles", label: "No Of Files" }, { key: "RecordingRemarks", label: "Recording Remarks" }, { key: "CounterError", label: "Counter Error" }, { key: "ReasonError", label: "Reason Error" }, { key: "MasterProductTitle", label: "Master Product Title" }, { key: "fkDistributionLabel", label: "fkDistributionLabel" }, { key: "ProductionBucket", label: "Production Bucket" }, { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" }, { key: "AudioBitrate", label: "Audio Bitrate" }, { key: "AudioTotalDuration", label: "Audio Total Duration" }, { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" }, { key: "PreservationStatus", label: "Preservation Status" }, { key: "QCSevak", label: "QC Sevak" }, { key: "QcStatus", label: "Qc Status" }, { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" }, { key: "SubmittedDate", label: "Submitted Date" }, { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" }, { key: "InfoOnCassette", label: "Info On Cassette" }, { key: "IsInformal", label: "Is Informal" }, { key: "AssociatedDR", label: "Associated DR" }, { key: "Teams", label: "Teams" }, ], "digital_recordings.csv")}>Export CSV</Button>
+                </div>
+                <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+                  <Table className="border">
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
+                      <TableRow className="border"><TableHead className="border whitespace-nowrap text-white px-3 py-2 ">Year</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Category</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkEventCode</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Code</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Distribution Drive Link</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Bit Rate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Dimension</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Masterquality</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkMediaName</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Filesize</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">FilesizeInBytes</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">No Of Files</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Remarks</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Counter Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Reason Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Master Product Title</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDistributionLabel</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Production Bucket</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDigitalMasterCategory</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Bitrate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Total Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Remarks Checked On</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Preservation Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">QC Sevak</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Last Modified Timestamp</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Submitted Date</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Pres Stat Guid Dt</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Info On Cassette</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Is Informal</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Associated DR</TableHead>
+</TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recordings.map((rec) => (<TableRow key={rec.RecordingCode} className="border"><TableCell className="border px-3 py-2">{rec.Yr}</TableCell><TableCell className="border px-3 py-2">{rec.EventName}</TableCell><TableCell className="border px-3 py-2">{categoryTagRenderer(rec.fkEventCategory)}</TableCell><TableCell className="border px-3 py-2">{rec.fkEventCode}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingName}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingCode}</TableCell><TableCell className="border px-3 py-2">{rec.Duration}</TableCell>
+                      <TableCell className="border px-3 py-2">{rec.DistributionDriveLink }</TableCell><TableCell className="border px-3 py-2">{rec.BitRate}</TableCell><TableCell className="border px-3 py-2">{rec.Dimension}</TableCell><TableCell className="border px-3 py-2">{rec.Masterquality}</TableCell><TableCell className="border px-3 py-2">{rec.fkMediaName}</TableCell><TableCell className="border px-3 py-2">{rec.Filesize}</TableCell><TableCell className="border px-3 py-2">{rec.FilesizeInBytes}</TableCell><TableCell className="border px-3 py-2">{rec.NoOfFiles}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingRemarks}</TableCell><TableCell className="border px-3 py-2">{rec.CounterError}</TableCell><TableCell className="border px-3 py-2">{rec.ReasonError}</TableCell><TableCell className="border px-3 py-2">{rec.MasterProductTitle}</TableCell><TableCell className="border px-3 py-2">{rec.fkDistributionLabel}</TableCell><TableCell className="border px-3 py-2">{rec.ProductionBucket}</TableCell><TableCell className="border px-3 py-2">{rec.fkDigitalMasterCategory}</TableCell><TableCell className="border px-3 py-2">{rec.AudioBitrate}</TableCell><TableCell className="border px-3 py-2">{rec.AudioTotalDuration}</TableCell><TableCell className="border px-3 py-2">{rec.QcRemarksCheckedOn}</TableCell><TableCell className="border px-3 py-2">{rec.PreservationStatus}</TableCell><TableCell className="border px-3 py-2">{rec.QCSevak}</TableCell><TableCell className="border px-3 py-2">{rec.QcStatus}</TableCell><TableCell className="border px-3 py-2">{rec.LastModifiedTimestamp}</TableCell><TableCell className="border px-3 py-2">{rec.SubmittedDate}</TableCell><TableCell className="border px-3 py-2">{rec.PresStatGuidDt}</TableCell><TableCell className="border px-3 py-2">{rec.InfoOnCassette}</TableCell><TableCell className="border px-3 py-2">{rec.IsInformal}</TableCell><TableCell className="border px-3 py-2">{rec.AssociatedDR}</TableCell>
+                      </TableRow>))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            ) : (<p className="text-sm text-muted-foreground text-center p-4">No recordings found for this event.</p>)}
           </CardContent>
         </TabsContent>
 
-        {/* EVENT TAB */}
-        <TabsContent value="event">
-          <CardContent className="p-0">
-            {event ? (
-              <Table  className="text-white pd-2 py-3">
-                <TableHeader>
-                  <TableRow>
-                    {eventColumns.map(col => (
-                      <TableHead key={col.key}>{col.label}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    {eventColumns.map(col => (
-                     <TableCell key={col.key} className="border whitespace-nowrap px-4 py-3 text-white">
+        {/* AUX TAB */}
+      <TabsContent value="aux">
+  <CardContent className="p-0">
+    {auxList.length > 0 ? (
+      <>
+        <div className="flex justify-between items-center mb-4 px-2">
+          <h2 className="text-xl font-semibold px-2 text-white">AUX Files</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportToCSV(auxList, auxColumns, "aux_files.csv")}
+          >
+            Export CSV
+          </Button>
+        </div>
+        <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+        <Table className="text-white pd-2 py-3">
+          <TableHeader className=" text-white">
+            <TableRow className=" text-white">
+              {auxColumns.map(col => (
+                <TableHead className=" text-white px-3 py-2" key={col.key}>{col.label}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {auxList.map((row, idx) => (
+              <TableRow key={idx}>
+                {auxColumns.map(col => (
+                  <TableCell key={col.key} className="border whitespace-nowrap px-3 py-2 text-white">
+                    {col.render ? col.render(row[col.key]) : row[col.key] ?? " "}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        </div>
+      </>
+    ) : (
+      <p className="text-sm text-muted-foreground text-center p-4">
+        No AUX data found.
+      </p>
+    )}
+  </CardContent>
+</TabsContent>
 
-                        {col.render ? col.render(event[col.key]) : event[col.key] ?? "-"}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center p-4">
-                No event found.
-              </p>
-            )}
-          </CardContent>
-        </TabsContent>
       </Tabs>
     </div>
   );
@@ -1048,8 +1094,14 @@ export function DetailsSidebar({
       
       case "digitalrecording_related_data": return (<DigitalRecordingDataTableView recordingCode={data.recordingCode} eventCode={data.eventCode} onPushSidebar={onPushSidebar} />);
 
-      case "medialog_related_data": return (<MediaLogDataTableView recordingCode={data.recordingCode} eventCode={data.eventCode} />);
-
+      case "medialog_related_data": 
+        return (
+            <MediaLogDataTableView 
+                recordingCode={data.recordingCode} 
+                eventCode={data.eventCode} 
+                mlid={data.mlid} // <<< PASS THE mlid PROP
+            />
+        );
       case "digitalrecording_list": return (<Card><CardHeader><CardTitle className="text-lg px-2">Refer for DigitalRecordings</CardTitle></CardHeader><CardContent className="p-4"><DigitalRecordingsList eventCode={data.eventCode} onPushSidebar={onPushSidebar} /></CardContent></Card>);
 
       case "medialog_list": {
@@ -1062,27 +1114,45 @@ export function DetailsSidebar({
         return (<Card><CardHeader><CardTitle className="text-lg px-2">{title}</CardTitle></CardHeader><CardContent className="p-4"><div className="space-y-2">{data.items.map((log: any) => renderListItem(log))}</div></CardContent></Card>);
       }
 
+      
       case "digitalrecording":
         return (
           <div className="space-y-6">
             <div className="text-center">
               {renderIcon(<FileAudio className="w-8 h-8 text-white" />, "from-green-500 to-blue-600")}
-              <h3 className="text-xl font-bold">{data.RecordingName || "Digital Recording"}</h3>
-              <p className="text-muted-foreground">Code: {data.RecordingCode}</p>
-              <Badge className="mt-2">{data.QcStatus || "N/A"}</Badge>
+             
+              
             </div>
             <Card>
               <CardHeader><CardTitle className="text-lg px-2">Recording Details</CardTitle></CardHeader>
               <CardContent className="space-y-4 p-4">
+                <FieldRow label="EventCode" value={data.fkEventCode} />
+
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Event Code</span>
-                  {data.fkEventCode && hasAccess("Events", 'read') ? (
-                    <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: 'digitalrecording_related_data', data: { eventCode: data.fkEventCode, recordingCode: data.RecordingCode }, title: `Data for ${data.RecordingCode}` })}>
-                        {data.fkEventCode}
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  ) : ( <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">{data.fkEventCode ? <><Lock className="w-3 h-3"/> {data.fkEventCode}</> : 'N/A'}</span> )}
-                </div>
+  <span className="text-muted-foreground">Recording Code</span>
+
+  {data.RecordingCode ? (
+    <Button
+      variant="link"
+      className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+      onClick={() =>
+        onPushSidebar({
+          type: "digitalrecording_related_data",
+          data: {
+            recordingCode: data.RecordingCode,
+            eventCode: data.fkEventCode || "",
+          },
+          title: `Recording ${data.RecordingCode}`,
+        })
+      }
+    >
+      {data.RecordingCode}
+      <ChevronRight className="w-4 h-4 ml-1" />
+    </Button>
+  ) : (
+    <span className="font-medium text-muted-foreground">N/A</span>
+  )}
+</div>
                 <FieldRow label="RecordingName" value={data.RecordingName} />
                 <FieldRow label="Duration" value={data.Duration}><Badge variant="secondary">{data.Duration}</Badge></FieldRow>
                 <FieldRow label="File Size" value={data.FilesizeInBytes}><span className="font-medium">{data.FilesizeInBytes ? `${(data.FilesizeInBytes / 1024 / 1024).toFixed(2)} MB` : undefined}</span></FieldRow>
@@ -1097,7 +1167,11 @@ export function DetailsSidebar({
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
-              <CardContent className="space-y-4 p-4"><FieldRow label="Last Modified" value={data.LastModifiedTimestamp} /></CardContent>
+              <CardContent className="space-y-4 p-4">
+                <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+                <FieldRow label="Last Modified By" value={data.LastModifiedBy} />
+                <FieldRow label="QcStatus" value={data.QcStatus} />
+                </CardContent>
             </Card>
             {hasAccess("Media Log") && (
               <Card>
@@ -1129,32 +1203,68 @@ export function DetailsSidebar({
                   <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
                   <CardContent className="space-y-4 p-4">
                     {data.EventCode && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Event Code</span>
-                        {hasAccess("Events", 'read') ? (
-                          <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: 'medialog_related_data', data: { eventCode: data.EventCode, recordingCode: data.fkDigitalRecordingCode }, title: `Related Data for ML ${data.MLUniqueID}` })}>
-                            {data.EventCode} <ChevronRight className="w-4 h-4 ml-1" />
-                          </Button>
-                        ) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.EventCode}</span>)}
-                      </div>
-                    )}
+  <div className="flex justify-between items-center">
+    <span className="text-muted-foreground">Event Code</span>
+    <span className="font-medium text-white">{data.EventCode}</span>
+  </div>
+)}
+
                     {data.fkDigitalRecordingCode && (
                        <div className="flex justify-between items-center">
                          <span className="text-muted-foreground">Recording Code</span>
                          {hasAccess("Digital Recordings", 'read') ? (
-                            <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: 'medialog_related_data', data: { eventCode: data.EventCode, recordingCode: data.fkDigitalRecordingCode }, title: `Related Data for ML ${data.MLUniqueID}` })}>
+                            <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => 
+                            onPushSidebar({ 
+                                type: 'medialog_related_data', 
+                                data: { 
+                                    eventCode: data.EventCode, 
+                                    recordingCode: data.fkDigitalRecordingCode,
+                                    mlid: data.MLUniqueID // <<< ADD THIS
+                                }, 
+                                title: `Related Data for ML ${data.MLUniqueID}` 
+                            })}>
                                 {data.fkDigitalRecordingCode} <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
                          ) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.fkDigitalRecordingCode}</span>)}
                        </div>
                     )}
-                    <FieldRow label="MLID" value={data.MLUniqueID} /><FieldRow label="FootageSrNo" value={data.FootageSrNo} /><FieldRow label="LogSerialNo" value={data.LogSerialNo} /><FieldRow label="CounterFrom" value={data.CounterFrom} /><FieldRow label="CounterTo" value={data.CounterTo} /><FieldRow label="SubDuration" value={data.SubDuration} /><FieldRow label="TotalDuration" value={data.TotalDuration} />
+                  <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">MLID</span>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+                        onClick={() =>
+                          onPushSidebar({
+                            type: "aux_related_data",
+                            data: { 
+                                mlid: data.MLUniqueID,
+                                eventCode: data.EventCode, // <<< ADD THIS
+                                recordingCode: data.fkDigitalRecordingCode, // <<< ADD THIS
+                            },
+                            title: `Related Data for ML ${data.MLUniqueID}`, // <<< UPDATED TITLE
+                          })
+                        }
+                      >
+                        {data.MLUniqueID} <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+<FieldRow label="FootageSrNo" value={data.FootageSrNo} /><FieldRow label="LogSerialNo" value={data.LogSerialNo} /><FieldRow label="CounterFrom" value={data.CounterFrom} /><FieldRow label="CounterTo" value={data.CounterTo} /><FieldRow label="SubDuration" value={data.SubDuration} /><FieldRow label="TotalDuration" value={data.TotalDuration} />
                   </CardContent>
                 </Card>
               )}
             </div>
           );
+
       }
+
+       case "aux_related_data":
+        return (
+            <MediaLogDataTableView
+            mlid={data.mlid}
+            eventCode={data.eventCode} // <<< PASS THE eventCode PROP
+            recordingCode={data.recordingCode} // <<< PASS THE recordingCode PROP
+            />
+        );
    case "aux": {
         const [isEditingSRT, setIsEditingSRT] = useState(false);
         const [srtLink, setSrtLink] = useState(data.SRTLink || "");
@@ -3998,7 +4108,7 @@ export function DetailsSidebar({
   return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} style={{ zIndex: zIndex - 1, position: "fixed", inset: 0, background: "rgba(30, 32, 38, 0.25)", backdropFilter: "blur(1px)", }} onClick={onClose} />
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} style={{ zIndex, position: "fixed", top: "50px", left: "300px", transform: "translate(-50%, -50%)", width: "1140px", maxWidth: "95vw", maxHeight: "90vh", background: "var(--background)", borderRadius: "16px", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--border)", overflow: "hidden", }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} style={{ zIndex, position: "fixed", top: "65px", left: "330px", transform: "translate(-50%, -50%)", width: "1200px", maxWidth: "95vw", maxHeight: "90vh", background: "var(--background)", borderRadius: "16px", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--border)", overflow: "hidden", }}>
         <div className="flex flex-col h-full">
           <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-semibold truncate pr-4">{title}</h2>
