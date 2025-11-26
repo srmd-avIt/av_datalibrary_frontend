@@ -65,6 +65,7 @@ interface DetailsSidebarProps {
   onPushSidebar: (item: SidebarStackItem) => void;
   zIndex: number;
   positionOffset: number;
+  sidebarStack: SidebarStackItem[]; // <-- Add this line
 }
 
 function DigitalRecordingsList({
@@ -148,6 +149,7 @@ function DigitalRecordingsList({
     </div>
   );
 }
+
 
 function MediaLogsList({
   recordingCode,
@@ -1029,7 +1031,8 @@ export function DetailsSidebar({
   onPushSidebar,
   zIndex,
   positionOffset,
-}: DetailsSidebarProps) {
+  sidebarStack, // <-- Add sidebarStack prop
+}: DetailsSidebarProps & { sidebarStack: SidebarStackItem[] }) {
   const { user } = useAuth();
 
   const hasAccess = useMemo(() => (resourceName: string, accessLevel: 'read' | 'write' = 'read'): boolean => {
@@ -1178,14 +1181,7 @@ export function DetailsSidebar({
                 <FieldRow label="QcStatus" value={data.QcStatus} />
                 </CardContent>
             </Card>
-            {hasAccess("Media Log") && (
-              <Card>
-                <CardHeader><CardTitle className="text-lg px-2">Related Media Logs</CardTitle></CardHeader>
-                <CardContent className="p-4">
-                  {hasAccess("Media Log", 'read') ? (<MediaLogsList recordingCode={data.RecordingCode} onPushSidebar={onPushSidebar} />) : (<div className="text-muted-foreground p-4 text-center flex items-center justify-center gap-2"><Lock className="w-4 h-4"/> You don't have access to view Media Logs.</div>)}
-                </CardContent>
-              </Card>
-            )}
+          
           </div>
         );
 
@@ -4134,7 +4130,7 @@ export function DetailsSidebar({
   };
 
   return (
-   <>
+<>
   {/* Background Overlay */}
   <motion.div
     initial={{ opacity: 0 }}
@@ -4191,41 +4187,66 @@ export function DetailsSidebar({
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <h2
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {/* Back Button */}
+      {sidebarStack && sidebarStack.length > 1 && (
+  <Button
+    size="icon"
+    variant="outline"
+    onClick={() => {
+      if (typeof onPopSidebar === "function") onPopSidebar();
+    }}
+    style={{
+      height: "32px",
+      width: "32px",
+      borderRadius: "6px",
+      marginRight: "8px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+    title="Back"
+  >
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M11 14L6 9L11 4" stroke="#fdfafaff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </Button>
+)}
+          <h2
+            style={{
+              fontSize: "1.125rem",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              paddingRight: "16px",
+            }}
+          >
+            {title}
+          </h2>
+        </div>
+
+        <Button
+          size="icon"
+          onClick={() => {
+            if (typeof onPopSidebar === "function") {
+              onPopSidebar();
+            } else {
+              onClose();
+            }
+          }}
           style={{
-            fontSize: "1.125rem",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            paddingRight: "16px",
+            height: "32px",
+            width: "32px",
+            flexShrink: 0,
+            background: "#faf8f8ff",
+            color: "#181717ff",
+            border: "1px solid #444",
+            borderRadius: "6px",
           }}
         >
-          {title}
-        </h2>
-
-       <Button
-  size="icon"
-  onClick={() => {
-    if (typeof onPopSidebar === "function") {
-      onPopSidebar();
-    } else {
-      onClose();
-    }
-  }}
-  style={{
-    height: "32px",
-    width: "32px",
-    flexShrink: 0,
-    background: "#faf8f8ff",      // ← Button background color
-    color: "#181717ff",            // ← Button text/icon color
-    border: "1px solid #444",    // ← Optional border
-    borderRadius: "6px",         // ← Optional rounded
-  }}
->
-  <X style={{ width: "16px", height: "16px", color: "#0c0c0cff" }} /> 
-</Button>
-
+          <X style={{ width: "16px", height: "16px", color: "#0c0c0cff" }} />
+        </Button>
       </div>
 
       {/* Body / Scroll */}
@@ -4244,6 +4265,8 @@ export function DetailsSidebar({
     </div>
   </motion.div>
 </>
+
+
 
   );
 }

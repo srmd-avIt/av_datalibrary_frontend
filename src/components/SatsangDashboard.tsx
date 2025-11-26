@@ -69,29 +69,84 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
           className="w-full justify-between"
           style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }}
         >
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flex: 1, overflow: 'hidden' }}>
-            {selectedOptions.length === 0 ? (
-              <span className="text-muted-foreground truncate" style={{ opacity: 0.75 }}>{placeholder}</span>
-            ) : (
-              <>
-                {selectedOptions.length <= maxVisibleBadges
-                  ? selectedOptions.map(opt => (
-                      <span key={opt.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#111827', color: '#fff', padding: '2px 8px', borderRadius: 8, fontSize: 12 }}>
-                        <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{opt.label}</span>
-                        <X style={{ width: 12, height: 12, cursor: 'pointer', flexShrink: 0 }} onClick={(e) => clearOne(e, opt.value)} />
-                      </span>
-                    ))
-                  : (
-                    <span style={{ color: '#e6eef9' }}>{`${selectedOptions.length} selected`}</span>
-                  )}
-              </>
-            )}
-          </div>
+        
+<div
+  style={{
+    display: 'flex',
+    gap: 6,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+    overflow: 'hidden'
+  }}
+>
+  {selectedOptions.length === 0 ? (
+    <span style={{ opacity: 0.75 }}>{placeholder}</span>
+  ) : (
+    <>
+      {selectedOptions.length <= maxVisibleBadges
+        ? selectedOptions.map(opt => (
+            <span
+              key={opt.value}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#111827',
+                color: '#fff',
+                padding: '2px 8px',
+                borderRadius: 8,
+                fontSize: 12
+              }}
+            >
+              <span
+                style={{
+                  maxWidth: 120,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {opt.label}
+              </span>
+
+              {/* BUTTON FIX: stop propagation on pointer/mouse down and on click */}
+              <button
+                type="button"
+                aria-label={`Remove ${opt.label}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();   // prevents focus jump in some cases
+                  e.stopPropagation();  // stop parent handlers that run on mousedown
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();  // extra safety
+                  clearOne(e, opt.value);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X style={{ width: 12, height: 12, pointerEvents: 'none' }} />
+              </button>
+            </span>
+          ))
+        : (
+          <span style={{ color: '#e6eef9' }}>{`${selectedOptions.length} selected`}</span>
+        )}
+    </>
+  )}
+</div>
+
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {value.length > 0 && (
-              <X style={{ width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} onClick={(e) => clearAll(e)} />
-            )}
+           
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </div>
         </Button>

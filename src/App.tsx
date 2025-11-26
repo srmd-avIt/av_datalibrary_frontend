@@ -1293,6 +1293,7 @@ export default function App() {
                     onPushSidebar={handlePushSidebar}
                     zIndex={100 + index}
                     positionOffset={0}
+                    sidebarStack={sidebarStack}
                   />
                 ))}
               </div>
@@ -1313,18 +1314,20 @@ export default function App() {
           <div key={activeView}>{renderView()}</div>
         </main>
         <div className="relative transition-all duration-300 ease-in-out flex-shrink-0">
-          {sidebarStack.length > 0 && (
-            <DetailsSidebar
-              isOpen={true}
-              onClose={handleCloseSidebar}
-              data={sidebarStack[sidebarStack.length - 1].data}
-              type={sidebarStack[sidebarStack.length - 1].type}
-              title={sidebarStack[sidebarStack.length - 1].title}
-              onPushSidebar={handlePushSidebar}
-              zIndex={100}
-              positionOffset={0}
-            />
-          )}
+         {sidebarStack.length > 0 && (
+  <DetailsSidebar
+    isOpen={true}
+    onClose={handleCloseSidebar}
+    onPopSidebar={handlePopSidebar} // <-- ADD THIS LINE!
+    data={sidebarStack[sidebarStack.length - 1].data}
+    type={sidebarStack[sidebarStack.length - 1].type}
+    title={sidebarStack[sidebarStack.length - 1].title}
+    onPushSidebar={handlePushSidebar}
+    zIndex={100}
+    positionOffset={0}
+    sidebarStack={sidebarStack}
+  />
+)}
         </div>
       </div>
     </div>
