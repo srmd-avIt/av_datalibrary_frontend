@@ -2,10 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, ChevronDown, User, Users, Plus, Trash2, Loader2 } from 'lucide-react';
+import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, User, Users, Trash2, Loader2, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
@@ -20,7 +19,7 @@ export interface Column {
   label: string;
   sortable?: boolean;
   editable?: boolean;
-  isCustom?: boolean; // Flag for columns added on the front-end
+  isCustom?: boolean; 
 }
 
 interface SimpleUser {
@@ -40,7 +39,7 @@ export interface SaveConfig {
   target: SaveTarget;
 }
 
-// --- Draggable Column Component (Helper) ---
+// --- Draggable Column Component ---
 interface DraggableColumnProps {
   column: Column;
   index: number;
@@ -113,7 +112,7 @@ interface ManageColumnsDialogProps {
   viewId: string;
   users?: SimpleUser[];
   onColumnsUpdate: (newAllColumns: Column[]) => void;
-  apiEndpoint?: string; // <--- NEW PROP ADDED HERE
+  apiEndpoint?: string; 
 }
 
 export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({ 
@@ -125,65 +124,65 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   viewId, 
   users = [], 
   onColumnsUpdate,
-  apiEndpoint // <--- Receive API Endpoint
+  apiEndpoint 
 }) => {
   const [internalColumns, setInternalColumns] = useState<Column[]>([]);
   const [currentVisible, setCurrentVisible] = useState<Column[]>([]);
   const [currentHidden, setCurrentHidden] = useState<Column[]>([]);
-  const [isLoadingBackend, setIsLoadingBackend] = useState(false); // Loading state
+  const [isLoadingBackend, setIsLoadingBackend] = useState(false);
   
-  const [isUserSelectOpen, setIsUserSelectOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  // --- User Selection State ---
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
+  const [showColumnEditor, setShowColumnEditor] = useState(false); // Controls View Switching
+  
   const [lastUserSummary, setLastUserSummary] = useState<string | null>(null);
-
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState('');
 
-  const [prevVisible, setPrevVisible] = useState<Column[]>([]);
-  const [prevHidden, setPrevHidden] = useState<Column[]>([]);
-
-  // --- MAIN LOGIC: Fetch backend columns and merge ---
+  // --- Reset state when dialog opens/closes ---
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setSelectedUserIds([]);
+      setShowColumnEditor(false);
+      setUserSearch('');
+    }
+  }, [isOpen]);
+
+  // --- MAIN LOGIC: Fetch backend columns and merge (Runs when Editor Opens) ---
+  useEffect(() => {
+    if (!isOpen || !showColumnEditor) return;
 
     const initializeColumns = async () => {
-      // 1. Start with columns defined in frontend config (VIEW_CONFIGS)
+      // 1. Start with columns defined in frontend config
       let mergedColumns = [...allColumns];
 
-      // 2. If apiEndpoint is provided, fetch from backend to discover ALL DB columns
+      // 2. Fetch from backend if endpoint provided
       if (apiEndpoint) {
         setIsLoadingBackend(true);
         try {
-          // Fetch just 1 item to get the keys (schema)
           const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
           const response = await fetch(fetchUrl);
           
           if (response.ok) {
             const data = await response.json();
-            // Handle standard response format { data: [...] }
             const rows = Array.isArray(data) ? data : (data.data || []);
             
             if (rows.length > 0) {
               const sampleRow = rows[0];
               const backendKeys = Object.keys(sampleRow);
-              
-              // Identify keys that are ALREADY in frontend config
               const existingKeys = new Set(mergedColumns.map(c => c.key));
               
-              // Filter: Keep keys found in DB but NOT in frontend config
               const newDiscoveredColumns: Column[] = backendKeys
                 .filter(key => !existingKeys.has(key))
                 .map(key => ({
                   key: key,
-                  // Format label: camelCase -> Title Case (e.g. "pra_su_duration" -> "Pra Su Duration")
                   label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
                   sortable: true,
                   editable: false, 
                   isCustom: false
                 }));
 
-              // Merge backend columns into the master list
               if (newDiscoveredColumns.length > 0) {
                 mergedColumns = [...mergedColumns, ...newDiscoveredColumns];
               }
@@ -199,19 +198,44 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
       setInternalColumns(mergedColumns);
 
-      // 3. Separate into Visible vs Hidden
-      
-      // A. Visible: Based strictly on `visibleColumnKeys` passed from parent (active view settings)
-      const visibleOrdered = visibleColumnKeys
+      // 3. Determine Visible vs Hidden
+      let initialVisibleKeys = visibleColumnKeys;
+
+      // --- SINGLE USER MODE: Check localStorage ---
+      // If only 1 user is selected, we try to load their specific previous config.
+      // If MULTIPLE users are selected, we default to the view's base config (safer than loading User A's config for User B).
+      if (selectedUserIds.length === 1) {
+        const savedConfigStr = localStorage.getItem(`columnConfig-${viewId}-${selectedUserIds[0]}`);
+        if (savedConfigStr) {
+          try {
+            const savedConfig = JSON.parse(savedConfigStr);
+            if (savedConfig && Array.isArray(savedConfig.visible)) {
+              initialVisibleKeys = savedConfig.visible;
+              
+              // Load summary for the UI
+              const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${selectedUserIds[0]}`);
+              setLastUserSummary(summary || null);
+            }
+          } catch (e) {
+            console.error("Error parsing saved config", e);
+          }
+        } else {
+            setLastUserSummary(null);
+        }
+      } else {
+        // Multi-user mode: Clear summary, start fresh from default
+        setLastUserSummary(null);
+      }
+
+      // A. Visible
+      const visibleOrdered = initialVisibleKeys
         .map(key => mergedColumns.find(c => c.key === key))
         .filter((c): c is Column => !!c);
       
       const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
 
-      // B. Hidden: Everything in the merged list that is NOT visible
+      // B. Hidden (Everything else)
       const hidden = mergedColumns.filter(c => !visibleKeysSet.has(c.key));
-
-      // Sort hidden list alphabetically for easier searching
       hidden.sort((a, b) => a.label.localeCompare(b.label));
 
       setCurrentVisible(visibleOrdered);
@@ -220,7 +244,43 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
     initializeColumns();
 
-  }, [isOpen, allColumns, visibleColumnKeys, apiEndpoint]);
+  }, [isOpen, showColumnEditor, allColumns, visibleColumnKeys, apiEndpoint, selectedUserIds, viewId]); 
+
+  // --- Handlers ---
+
+  const handleToggleUser = (userId: string) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleSelectAllUsers = () => {
+    // If all filtered users are selected, deselect them. Otherwise, select all filtered.
+    const filtered = getFilteredUsers();
+    const filteredIds = filtered.map(u => u.id);
+    const allSelected = filteredIds.every(id => selectedUserIds.includes(id));
+
+    if (allSelected) {
+      // Remove filtered IDs from selection
+      setSelectedUserIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      // Add missing filtered IDs
+      const newIds = [...selectedUserIds];
+      filteredIds.forEach(id => {
+        if (!newIds.includes(id)) newIds.push(id);
+      });
+      setSelectedUserIds(newIds);
+    }
+  };
+
+  const getFilteredUsers = () => {
+    return !userSearch
+      ? users
+      : users.filter(u =>
+          u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+          u.email.toLowerCase().includes(userSearch.toLowerCase())
+        );
+  };
 
   const moveVisibleCard = (dragIndex: number, hoverIndex: number) => {
     const dragCard = currentVisible[dragIndex];
@@ -234,14 +294,12 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
   const toggleColumn = (columnKey: string, isVisible: boolean) => {
     if (isVisible) {
-      // Hiding: Remove from Visible -> Add to Hidden
       const columnToHide = currentVisible.find(c => c.key === columnKey);
       if (columnToHide) {
         setCurrentVisible(prev => prev.filter(c => c.key !== columnKey));
         setCurrentHidden(prev => [...prev, columnToHide].sort((a, b) => a.label.localeCompare(b.label)));
       }
     } else {
-      // Showing: Remove from Hidden -> Add to Visible
       const columnToShow = currentHidden.find(c => c.key === columnKey);
       if (columnToShow) {
         setCurrentHidden(prev => prev.filter(c => c.key !== columnKey));
@@ -301,102 +359,180 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     const hiddenKeys = internalColumns
       .filter(c => !visibleKeysSet.has(c.key))
       .map(c => c.key);
+    
+    const summaryText = `Visible: ${visibleKeys.join(', ')}, Hidden: ${hiddenKeys.join(', ')}`;
 
-    // Save config for selected user
-    if (target.type === 'specific_users' && target.userIds.length === 1) {
-      localStorage.setItem(
-        `columnConfig-${viewId}-${target.userIds[0]}`,
-        JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys })
-      );
-      localStorage.setItem(
-        `columnChangesSummary-${viewId}-${target.userIds[0]}`,
-        `Visible: ${visibleKeys.join(', ')}, Hidden: ${hiddenKeys.join(', ')}`
-      );
+    // Save config for ALL selected users locally
+    if (target.type === 'specific_users') {
+      target.userIds.forEach(uid => {
+        localStorage.setItem(
+          `columnConfig-${viewId}-${uid}`,
+          JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys })
+        );
+        localStorage.setItem(
+          `columnChangesSummary-${viewId}-${uid}`,
+          summaryText
+        );
+      });
+      
+      // Update UI state immediately if just 1 user (for better UX if dialog reopens)
+      if (target.userIds.length === 1) {
+        setLastUserSummary(summaryText);
+      }
     }
 
     onSave({ viewId, visibleKeys, hiddenKeys, target });
     onClose();
-    setIsUserSelectOpen(false);
-    setSelectedUserId(null);
+    // Reset internal state
+    setShowColumnEditor(false);
+    setSelectedUserIds([]);
     setUserSearch('');
   };
-  
-  // --- Fetch last changes summary for selected user ---
-  useEffect(() => {
-    if (selectedUserId) {
-      // Replace with your logic to fetch summary for selected user
-      const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${selectedUserId}`);
-      setLastUserSummary(summary || null);
 
-      // Fetch previous columns config
-      const configStr = localStorage.getItem(`columnConfig-${viewId}-${selectedUserId}`);
-      if (configStr) {
-        try {
-          const config = JSON.parse(configStr);
-          // Map keys to columns using allColumns
-          setPrevVisible(config.visible.map((key: string) => allColumns.find(c => c.key === key)).filter(Boolean));
-          setPrevHidden(config.hidden.map((key: string) => allColumns.find(c => c.key === key)).filter(Boolean));
-        } catch {
-          setPrevVisible([]);
-          setPrevHidden([]);
-        }
-      } else {
-        setPrevVisible([]);
-        setPrevHidden([]);
-      }
-    }
-  }, [selectedUserId, viewId, allColumns]);
-
-  // --- Only show user selection if not selected ---
-  if (!selectedUserId) {
-    const filteredUsers = !userSearch
-      ? users
-      : users.filter(u =>
-          u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-          u.email.toLowerCase().includes(userSearch.toLowerCase())
-        );
+  // --- RENDER 1: User Selection Screen ---
+  if (!showColumnEditor) {
+    const filteredUsers = getFilteredUsers();
+    
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Select User</DialogTitle>
+            <DialogTitle>Select Users</DialogTitle>
             <div className="text-sm text-muted-foreground">
-              Select a user to manage their column layout.
+              Select one or more users to apply column settings.
             </div>
           </DialogHeader>
-          <Input
-            placeholder="Search by name or email..."
-            value={userSearch}
-            onChange={e => setUserSearch(e.target.value)}
+          
+          <div className="flex gap-2 items-center mb-2">
+            <Input
+              placeholder="Search by name or email..."
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm" onClick={handleSelectAllUsers}>
+              {filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
+            </Button>
+          </div>
+
+         <ScrollArea
+  style={{
+    height: "18rem",        // h-72
+    width: "100%",          // w-full
+    border: "1px solid #e5e7eb",   // border
+    borderRadius: "8px",    // rounded-md
+    padding: "8px",         // p-2
+    overflowY: "auto"
+  }}
+>
+  {filteredUsers.length === 0 ? (
+    <div
+      style={{
+        textAlign: "center",
+        padding: "16px 0",
+        color: "var(--muted-foreground)"
+      }}
+    >
+      No users found
+    </div>
+  ) : (
+    filteredUsers.map(user => {
+      const isSelected = selectedUserIds.includes(user.id);
+
+      return (
+        <div
+          key={user.id}
+          onClick={() => handleToggleUser(user.id)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",                 // space-x-3
+            padding: "8px",              // p-2
+            borderRadius: "8px",         // rounded-md
+            cursor: "pointer",
+            backgroundColor: isSelected
+              ? "var(--muted)"
+              : "transparent",
+            transition: "background 0.2s"
+          }}
+          onMouseEnter={e => {
+            if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)";
+          }}
+          onMouseLeave={e => {
+            if (!isSelected) e.currentTarget.style.background = "transparent";
+          }}
+        >
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => handleToggleUser(user.id)}
           />
-          <ScrollArea className="h-72 w-full rounded-md border p-2 mt-2">
-            {filteredUsers.map(user => (
-              <div key={user.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                onClick={() => setSelectedUserId(user.id)}>
-                <User className="w-4 h-4" />
-                <div>
-                  <div className="font-semibold">{user.name}</div>
-                  <div className="text-xs text-muted-foreground">{user.email}</div>
-                </div>
-              </div>
-            ))}
-          </ScrollArea>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: "14px" }}>
+              {user.name}
+            </div>
+            <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>
+              {user.email}
+            </div>
+          </div>
+        </div>
+      );
+    })
+  )}
+</ScrollArea>
+
+
+          <DialogFooter className="flex justify-between sm:justify-between w-full mt-4">
+             <div className="text-sm text-muted-foreground self-center">
+                {selectedUserIds.length} user{selectedUserIds.length !== 1 && 's'} selected
+             </div>
+            <div
+  style={{
+    display: "flex",
+    gap: "8px",         // replaces gap-2
+    marginTop: "8px"    // optional (remove if not needed)
+  }}
+>
+  <Button
+    variant="ghost"
+    onClick={onClose}
+    style={{
+      padding: "8px 16px",
+      fontSize: "14px",
+      borderRadius: "6px"
+    }}
+  >
+    Cancel
+  </Button>
+
+  <Button
+    onClick={() => setShowColumnEditor(true)}
+    disabled={selectedUserIds.length === 0}
+    style={{
+      padding: "8px 16px",
+      fontSize: "14px",
+      borderRadius: "6px"
+    }}
+  >
+    Next
+  </Button>
+</div>
+
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
   }
 
-  // --- Show last changes summary for selected user ---
-  const LastSummary = lastUserSummary ? (
-    <div className="mb-4 p-2 border rounded bg-muted/30 text-sm text-muted-foreground">
-      <strong>Last changes for this user:</strong>
-      <div>{lastUserSummary}</div>
-    </div>
-  ) : null;
+  // --- RENDER 2: Column Editor Screen ---
 
-  // --- Show previous visible/hidden columns ---
-  
-  // --- Main column management UI ---
+  const getUserLabel = () => {
+    if (selectedUserIds.length === 1) {
+      return users.find(u => u.id === selectedUserIds[0])?.name || "User";
+    }
+    return `${selectedUserIds.length} Users`;
+  };
+
   return (
   <Dialog open={isOpen} onOpenChange={onClose}>
   <DialogContent
@@ -409,143 +545,218 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
       borderRadius: "12px",
       display: "flex",
       flexDirection: "column",
-      overflow: "hidden" // ❌ No scroll at dialog level
+      overflow: "hidden" 
     }}
   >
     <DialogHeader>
-      <DialogTitle>Manage Columns for User</DialogTitle>
+      <DialogTitle>Manage Columns for {getUserLabel()}</DialogTitle>
       <div className="text-sm text-muted-foreground">
         Drag to reorder, use arrows to show/hide. "Hidden" list includes all available database fields.
       </div>
     </DialogHeader>
 
-    {LastSummary}
+    {lastUserSummary && selectedUserIds.length === 1 && (
+      <div className="mb-2 p-2 border rounded bg-muted/30 text-sm text-muted-foreground">
+        <strong>Last changes for this user:</strong>
+        <div className="line-clamp-2">{lastUserSummary}</div>
+      </div>
+    )}
 
-    <DndProvider backend={HTML5Backend}>
-      <div
+    {selectedUserIds.length > 1 && (
+      <div className="mb-2 p-2 border rounded bg-blue-50/50 text-blue-800 text-sm flex items-center gap-2">
+         <Users className="w-4 h-4" />
+         <span>You are applying this layout to <strong>{selectedUserIds.length}</strong> users at once.</span>
+      </div>
+    )}
+
+   <DndProvider backend={HTML5Backend}>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "20px",
+      paddingTop: "10px",
+      flex: 1,
+      overflow: "hidden"
+    }}
+  >
+
+    {/* Visible Columns */}
+    <Card
+      style={{
+        padding: "12px",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden"
+      }}
+    >
+      <CardHeader>
+        <CardTitle
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}
+        >
+          <Eye className="w-5 h-5" /> Visible ({currentVisible.length})
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "20px",
-          paddingTop: "16px",
           flex: 1,
-          overflow: "hidden" // ❌ Prevent grid scroll
+          overflowY: "auto",
+          minHeight: 0
         }}
       >
+        {currentVisible.map((col, i) => (
+          <DraggableColumn
+            key={col.key}
+            index={i}
+            column={col}
+            moveCard={moveVisibleCard}
+            onToggle={() => toggleColumn(col.key, true)}
+            isVisible={true}
+            onRemove={() => handleRemoveColumn(col.key)}
+            isCustom={col.isCustom}
+          />
+        ))}
 
-        {/* Visible Columns */}
-        <Card style={{ padding: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" /> Visible ({currentVisible.length})
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent
+        {currentVisible.length === 0 && (
+          <div
             style={{
-              flex: 1,
-              overflowY: "auto",     // ✅ Scroll only here
-              minHeight: 0
+              textAlign: "center",
+              fontSize: "14px",
+              color: "var(--muted-foreground)",
+              marginTop: "40px"
             }}
           >
-            {currentVisible.map((col, i) => (
-              <DraggableColumn
-                key={col.key}
-                index={i}
-                column={col}
-                moveCard={moveVisibleCard}
-                onToggle={() => toggleColumn(col.key, true)}
-                isVisible={true}
-                onRemove={() => handleRemoveColumn(col.key)}
-                isCustom={col.isCustom}
-              />
-            ))}
+            No visible columns.
+          </div>
+        )}
+      </CardContent>
+    </Card>
 
-            {currentVisible.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground mt-10">
-                No visible columns.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+    {/* Hidden Columns */}
+    <Card
+      style={{
+        padding: "12px",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden"
+      }}
+    >
+      <CardHeader
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
+        <CardTitle
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+            padding: "4px 0"
+          }}
+        >
+          <EyeOff className="w-5 h-5" /> Hidden ({currentHidden.length})
+        </CardTitle>
 
-        {/* Hidden Columns */}
-        <Card style={{ padding: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <CardHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <CardTitle className="flex items-center gap-4 py-1">
-              <EyeOff className="w-5 h-5" /> Hidden ({currentHidden.length})
-            </CardTitle>
-            {isLoadingBackend && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
-          </CardHeader>
+        {isLoadingBackend && (
+          <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#3b82f6" }} />
+        )}
+      </CardHeader>
 
-          <CardContent
+      <CardContent
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          minHeight: 0
+        }}
+      >
+        {currentHidden.map((col, i) => (
+          <DraggableColumn
+            key={col.key}
+            index={i}
+            column={col}
+            moveCard={() => {}}
+            onToggle={() => toggleColumn(col.key, false)}
+            isVisible={false}
+            onRemove={() => handleRemoveColumn(col.key)}
+            isCustom={col.isCustom}
+          />
+        ))}
+
+        {!isLoadingBackend && currentHidden.length === 0 && (
+          <div
             style={{
-              flex: 1,
-              overflowY: "auto",   // ✅ Scroll only inside Hidden card
-              minHeight: 0,
+              textAlign: "center",
+              fontSize: "14px",
+              color: "var(--muted-foreground)",
+              marginTop: "40px"
             }}
           >
-            {currentHidden.map((col, i) => (
-              <DraggableColumn
-                key={col.key}
-                index={i}
-                column={col}
-                moveCard={() => {}}
-                onToggle={() => toggleColumn(col.key, false)}
-                isVisible={false}
-                onRemove={() => handleRemoveColumn(col.key)}
-                isCustom={col.isCustom}
-              />
-            ))}
+            All columns are visible.
+          </div>
+        )}
+      </CardContent>
+    </Card>
 
-            {!isLoadingBackend && currentHidden.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground mt-10">
-                All columns are visible.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+  </div>
+</DndProvider>
 
-      </div>
-    </DndProvider>
 
     <DialogFooter
       style={{
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "space-between", // Changed for Back button
         gap: "12px",
         paddingTop: "20px"
       }}
     >
-      <Button
-        variant="outline"
-        onClick={onClose}
-        style={{
-          flex: 1,
-          minWidth: "140px",
-          padding: "10px 0",
-          fontSize: "15px"
-        }}
+      <Button 
+         variant="ghost" 
+         onClick={() => setShowColumnEditor(false)}
       >
-        Cancel
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Users
       </Button>
 
-      <Button
-        style={{
-          flex: 1,
-          minWidth: "140px",
-          padding: "10px 0",
-          fontSize: "15px"
-        }}
-        onClick={() => handleSave({ type: "specific_users", userIds: [selectedUserId!] })}
-      >
-        Save for {users.find(u => u.id === selectedUserId)?.name || "User"}
-      </Button>
+     <div
+  style={{
+    display: "flex",
+    gap: "8px" // gap-2
+  }}
+>
+  <Button
+    variant="outline"
+    onClick={onClose}
+    style={{
+      padding: "8px 16px",
+      fontSize: "14px",
+      borderRadius: "6px"
+    }}
+  >
+    Cancel
+  </Button>
+
+  <Button
+    onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })}
+    style={{
+      minWidth: "140px",   // min-w-[140px]
+      padding: "8px 16px",
+      fontSize: "14px",
+      borderRadius: "6px"
+    }}
+  >
+    Save for {getUserLabel()}
+  </Button>
+</div>
+
     </DialogFooter>
 
   </DialogContent>
 </Dialog>
-
-
   );
 };

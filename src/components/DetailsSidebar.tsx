@@ -1128,27 +1128,32 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <FieldRow label="EventCode" value={data.fkEventCode} />
 
-                <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center">
   <span className="text-muted-foreground">Recording Code</span>
-
   {data.RecordingCode ? (
-    <Button
-      variant="link"
-      className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-      onClick={() =>
-        onPushSidebar({
-          type: "digitalrecording_related_data",
-          data: {
-            recordingCode: data.RecordingCode,
-            eventCode: data.fkEventCode || "",
-          },
-          title: `Recording ${data.RecordingCode}`,
-        })
-      }
-    >
-      {data.RecordingCode}
-      <ChevronRight className="w-4 h-4 ml-1" />
-    </Button>
+    hasAccess("Events", 'read') || hasAccess("Media Log", 'read') ? (
+      <Button
+        variant="link"
+        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+        onClick={() =>
+          onPushSidebar({
+            type: "digitalrecording_related_data",
+            data: {
+              recordingCode: data.RecordingCode,
+              eventCode: data.fkEventCode || "",
+            },
+            title: `Recording ${data.RecordingCode}`,
+          })
+        }
+      >
+        {data.RecordingCode}
+        <ChevronRight className="w-4 h-4 ml-1" />
+      </Button>
+    ) : (
+      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+        <Lock className="w-3 h-3" /> {data.RecordingCode}
+      </span>
+    )
   ) : (
     <span className="font-medium text-muted-foreground">N/A</span>
   )}
@@ -1210,44 +1215,67 @@ export function DetailsSidebar({
 )}
 
                     {data.fkDigitalRecordingCode && (
-                       <div className="flex justify-between items-center">
-                         <span className="text-muted-foreground">Recording Code</span>
-                         {hasAccess("Digital Recordings", 'read') ? (
-                            <Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => 
-                            onPushSidebar({ 
-                                type: 'medialog_related_data', 
-                                data: { 
-                                    eventCode: data.EventCode, 
-                                    recordingCode: data.fkDigitalRecordingCode,
-                                    mlid: data.MLUniqueID // <<< ADD THIS
-                                }, 
-                                title: `Related Data for ML ${data.MLUniqueID}` 
-                            })}>
-                                {data.fkDigitalRecordingCode} <ChevronRight className="w-4 h-4 ml-1" />
-                            </Button>
-                         ) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.fkDigitalRecordingCode}</span>)}
-                       </div>
+                      <div className="flex justify-between items-center">
+  <span className="text-muted-foreground">Recording Code</span>
+  {data.fkDigitalRecordingCode ? (
+    hasAccess("Digital Recordings", 'read') ? (
+      <Button
+        variant="link"
+        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+        onClick={() =>
+          onPushSidebar({
+            type: 'medialog_related_data',
+            data: {
+              eventCode: data.EventCode,
+              recordingCode: data.fkDigitalRecordingCode,
+              mlid: data.MLUniqueID
+            },
+            title: `Related Data for ML ${data.MLUniqueID}`
+          })
+        }
+      >
+        {data.fkDigitalRecordingCode} <ChevronRight className="w-4 h-4 ml-1" />
+      </Button>
+    ) : (
+      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+        <Lock className="w-3 h-3" /> {data.fkDigitalRecordingCode}
+      </span>
+    )
+  ) : (
+    <span className="font-medium text-muted-foreground">N/A</span>
+  )}
+</div>
                     )}
-                  <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">MLID</span>
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-                        onClick={() =>
-                          onPushSidebar({
-                            type: "aux_related_data",
-                            data: { 
-                                mlid: data.MLUniqueID,
-                                eventCode: data.EventCode, // <<< ADD THIS
-                                recordingCode: data.fkDigitalRecordingCode, // <<< ADD THIS
-                            },
-                            title: `Related Data for ML ${data.MLUniqueID}`, // <<< UPDATED TITLE
-                          })
-                        }
-                      >
-                        {data.MLUniqueID} <ChevronRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    </div>
+              <div className="flex justify-between items-center">
+  <span className="text-muted-foreground">MLID</span>
+  {data.MLUniqueID ? (
+    hasAccess("Aux Files", 'read') ? (
+      <Button
+        variant="link"
+        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+        onClick={() =>
+          onPushSidebar({
+            type: "aux_related_data",
+            data: {
+              mlid: data.MLUniqueID,
+              eventCode: data.EventCode,
+              recordingCode: data.fkDigitalRecordingCode,
+            },
+            title: `Related Data for ML ${data.MLUniqueID}`,
+          })
+        }
+      >
+        {data.MLUniqueID} <ChevronRight className="w-4 h-4 ml-1" />
+      </Button>
+    ) : (
+      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
+        <Lock className="w-3 h-3" /> {data.MLUniqueID}
+      </span>
+    )
+  ) : (
+    <span className="font-medium text-muted-foreground">N/A</span>
+  )}
+</div>
 <FieldRow label="FootageSrNo" value={data.FootageSrNo} /><FieldRow label="LogSerialNo" value={data.LogSerialNo} /><FieldRow label="CounterFrom" value={data.CounterFrom} /><FieldRow label="CounterTo" value={data.CounterTo} /><FieldRow label="SubDuration" value={data.SubDuration} /><FieldRow label="TotalDuration" value={data.TotalDuration} />
                   </CardContent>
                 </Card>
@@ -4106,21 +4134,116 @@ export function DetailsSidebar({
   };
 
   return (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} style={{ zIndex: zIndex - 1, position: "fixed", inset: 0, background: "rgba(30, 32, 38, 0.25)", backdropFilter: "blur(1px)", }} onClick={onClose} />
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} style={{ zIndex, position: "fixed", top: "65px", left: "330px", transform: "translate(-50%, -50%)", width: "1200px", maxWidth: "95vw", maxHeight: "90vh", background: "var(--background)", borderRadius: "16px", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", border: "1px solid var(--border)", overflow: "hidden", }}>
-        <div className="flex flex-col h-full">
-          <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-border">
-            <h2 className="text-lg font-semibold truncate pr-4">{title}</h2>
-            <Button size="icon" onClick={() => { if (typeof onPopSidebar === "function") { onPopSidebar(); } else { onClose(); } }} className="h-8 w-8 flex-shrink-0 !hover:bg-transparent !hover:text-current">
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="flex-1 p-6" style={{ overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: "#888 #272525ff", maxHeight: "calc(90vh - 64px)", }}>
-            {renderContent()}
-          </div>
-        </div>
-      </motion.div>
-    </>
+   <>
+  {/* Background Overlay */}
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.2 }}
+    style={{
+      zIndex: zIndex - 1,
+      position: "fixed",
+      inset: 0,
+      background: "rgba(30, 32, 38, 0.25)",
+      backdropFilter: "blur(1px)",
+    }}
+    onClick={onClose}
+  />
+
+  {/* Main Popup */}
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.95 }}
+    transition={{ type: "spring", damping: 25, stiffness: 200 }}
+    style={{
+      zIndex,
+      position: "fixed",
+      top: "65px",
+      left: "330px",
+      transform: "translate(-50%, -50%)",
+      width: "1200px",
+      maxWidth: "95vw",
+      maxHeight: "90vh",
+      background: "var(--background)",
+      borderRadius: "16px",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+      border: "1px solid var(--border)",
+      overflow: "hidden",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "16px",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: "1.125rem",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            paddingRight: "16px",
+          }}
+        >
+          {title}
+        </h2>
+
+       <Button
+  size="icon"
+  onClick={() => {
+    if (typeof onPopSidebar === "function") {
+      onPopSidebar();
+    } else {
+      onClose();
+    }
+  }}
+  style={{
+    height: "32px",
+    width: "32px",
+    flexShrink: 0,
+    background: "#faf8f8ff",      // ← Button background color
+    color: "#181717ff",            // ← Button text/icon color
+    border: "1px solid #444",    // ← Optional border
+    borderRadius: "6px",         // ← Optional rounded
+  }}
+>
+  <X style={{ width: "16px", height: "16px", color: "#0c0c0cff" }} /> 
+</Button>
+
+      </div>
+
+      {/* Body / Scroll */}
+      <div
+        style={{
+          flex: 1,
+          padding: "24px",
+          overflowY: "auto",
+          scrollbarWidth: "thin",
+          scrollbarColor: "#888 #272525ff",
+          maxHeight: "calc(90vh - 64px)",
+        }}
+      >
+        {renderContent()}
+      </div>
+    </div>
+  </motion.div>
+</>
+
   );
 }

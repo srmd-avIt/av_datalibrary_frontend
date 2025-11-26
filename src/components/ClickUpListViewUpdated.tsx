@@ -95,6 +95,7 @@ interface ApiResponse {
 // Fetches data from the backend API with support for pagination, search, filters, and advanced filters
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+// Find this function near the top of ClickUpListViewUpdated.tsx
 async function fetchDataFromApi({
   apiEndpoint,
   page,
@@ -121,6 +122,7 @@ async function fetchDataFromApi({
   });
   if (searchTerm) params.append("search", searchTerm);
 
+  // --- ✅ FIXED SECTION STARTS HERE ---
   // Add simple filters
   Object.entries(filters || {}).forEach(([key, value]) => {
     if (
@@ -129,9 +131,21 @@ async function fetchDataFromApi({
       value !== "" &&
       value !== "all"
     ) {
-      params.append(key, String(value));
+      if (Array.isArray(value)) {
+        // If it is an array, append the key for EACH item
+        // resulting in ?key=val1&key=val2
+        value.forEach((v) => {
+          if (v !== null && v !== "") {
+            params.append(key, String(v));
+          }
+        });
+      } else {
+        // Normal string handling
+        params.append(key, String(value));
+      }
     }
   });
+  // --- ✅ FIXED SECTION ENDS HERE ---
 
   // Add advanced filters if present
   if (advancedFilters && advancedFilters.length > 0) {
@@ -176,7 +190,6 @@ async function fetchDataFromApi({
     );
   return response.json();
 }
-
 // --- SimplePagination ---
 // Responsive pagination controls for navigating pages
 function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void; }) {
@@ -464,20 +477,18 @@ export function ClickUpListViewUpdated({
   
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 
+  // --- ✅ FIX: REMOVED THE USEEFFECT THAT CONVERTED initialFilters to AdvancedFilters ---
+  /* 
   useEffect(() => {
     if (initialFilters && Object.keys(initialFilters).length > 0) {
-      const rules = Object.entries(initialFilters).map(([field, value]) => ({
-        id: `rule_${field}_${Date.now()}`,
-        field,
-        operator: "contains", // Use 'contains' for flexible searching
-        value: String(value),
-      }));
-      setAdvancedFilters([{ id: `group_${Date.now()}`, rules, logic: "AND" }]);
+      // This was causing multi-select arrays to become string literals in JSON,
+      // breaking backend IN/LIKE logic.
+      // We now pass initialFilters directly to the query below.
     } else if (initialFilters === undefined) {
-      // This allows clearing filters when the search is reset
       setAdvancedFilters([]);
     }
   }, [initialFilters]);
+  */
 
   // --- NEW: Permission Check Logic ---
   const hasAccess = useMemo(() => {
@@ -787,8 +798,9 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
     searchTerm,
     JSON.stringify(activeViewFilters),
     JSON.stringify(advancedFilters),
-    activeSortBy, // <-- Pass the combined string
-    activeSortDirection, // <-- Pass the combined string
+    JSON.stringify(initialFilters), // ✅ ADD THIS: Trigger refetch when dashboard filters change
+    activeSortBy, 
+    activeSortDirection, 
   ],
   queryFn: () =>
     fetchDataFromApi({
@@ -796,10 +808,11 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
       page: currentPage,
       limit: itemsPerPage,
       searchTerm,
-      filters: activeViewFilters,
+      // ✅ FIX: Merge initialFilters here so they go as standard params
+      filters: { ...activeViewFilters, ...initialFilters }, 
       advancedFilters,
-      sortBy: activeSortBy, // <-- Pass the combined string
-      sortDirection: activeSortDirection as "asc" | "desc", // <-- Pass the combined string
+      sortBy: activeSortBy, 
+      sortDirection: activeSortDirection as "asc" | "desc", 
     }),
   enabled: !shouldFetchAllForGrouping,
   staleTime: 60 * 1000, // 1 minute
@@ -813,8 +826,9 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
     searchTerm,
     JSON.stringify(activeViewFilters),
     JSON.stringify(advancedFilters),
-    activeSortBy, // <-- Pass the combined string
-    activeSortDirection, // <-- Pass the combined string
+    JSON.stringify(initialFilters), // ✅ ADD THIS
+    activeSortBy, 
+    activeSortDirection, 
   ],
   queryFn: () =>
     fetchDataFromApi({
@@ -822,10 +836,11 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       page: 1,
       limit: 1000000,
       searchTerm,
-      filters: activeViewFilters,
+      // ✅ FIX: Merge initialFilters here too
+      filters: { ...activeViewFilters, ...initialFilters }, 
       advancedFilters,
-      sortBy: activeSortBy, // <-- Pass the combined string
-      sortDirection: activeSortDirection as "asc" | "desc", // <-- Pass the combined string
+      sortBy: activeSortBy, 
+      sortDirection: activeSortDirection as "asc" | "desc", 
     }),
   enabled: shouldFetchAllForGrouping,
   staleTime: 60 * 1000,
@@ -867,7 +882,69 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
 
   // --- REMOVED: Client-side sorting logic has been removed. ---
   // The component now relies entirely on the API for sorting.
-  const sortedData = rows;
+  // const sortedData = rows;
+  
+   // --- MODIFIED: Custom Client-side Sorting for Nested Numeric/Alphanumeric Logic ---
+  // This handles the "Numbers First (001, 1), Alphanumeric Last (A01)" requirement
+  // and supports nested keys like "EventCode,FootageSrNo,LogSerialNo"
+  const sortedData = useMemo(() => {
+    if (!rows || rows.length === 0) return [];
+    
+    // If no sort is active, return original order (which comes from API)
+    // However, the user wants this to apply for the default view config too.
+    if (!activeSortBy || activeSortBy === "none") return rows;
+
+    const keys = activeSortBy.split(',');
+    const directions = (activeSortDirection || "").split(',');
+
+    // Create a copy to sort
+    return [...rows].sort((a, b) => {
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        // Default to asc if direction missing
+        const direction = directions[i] || 'asc';
+        const dirMult = direction === 'desc' ? -1 : 1;
+
+        const valA = a[key];
+        const valB = b[key];
+
+        // Equality check to skip to next key
+        if (valA === valB) continue;
+
+        // Null handling (push to end)
+        if (valA === null || valA === undefined || valA === "") return 1;
+        if (valB === null || valB === undefined || valB === "") return -1;
+
+        const strA = String(valA).trim();
+        const strB = String(valB).trim();
+
+        // Check if strictly numeric (digits only)
+        // This distinguishes "1" from "A1"
+        const isNumA = /^\d+$/.test(strA);
+        const isNumB = /^\d+$/.test(strB);
+
+        // Logic: Numbers come BEFORE Text
+        // If sorting ASC: Numbers (top) -> Text (bottom)
+        // If sorting DESC: Text (top) -> Numbers (bottom)
+        if (isNumA && !isNumB) return -1 * dirMult;
+        if (!isNumA && isNumB) return 1 * dirMult;
+
+        let comparison = 0;
+        if (isNumA && isNumB) {
+          // Both numbers: numeric sort
+          comparison = Number(strA) - Number(strB);
+        } else {
+          // Both text (or mixed like "A1", "A2"): natural sort
+          comparison = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        if (comparison !== 0) {
+          return comparison * dirMult;
+        }
+      }
+      return 0;
+    });
+  }, [rows, activeSortBy, activeSortDirection]);
 
   // --- MODIFIED: Client-side pagination now uses the API-sorted data ---
   const finalItems = useMemo(() => {
@@ -876,7 +953,10 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       const end = start + itemsPerPage;
       return sortedData.slice(start, end);
     }
-    return sortedData; // For paginated view, use the client-sorted data
+    // For paginated view, we use the client-sorted data as well, because the
+    // client sort handles the "Number vs String" logic that the API likely does not.
+    // However, if pagination is truly server-side, we only sort the current page here.
+    return sortedData; 
   }, [sortedData, currentPage, itemsPerPage, shouldFetchAllForGrouping]);
 
   // Overlay any staged pendingChanges onto the finalItems so the UI shows staged edits
@@ -897,7 +977,7 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
   // Reset page when filters/search/view change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, activeSortBy, activeSortDirection]);
+  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, activeSortBy, activeSortDirection, JSON.stringify(initialFilters)]);
 
   // --- Grouping logic ---
   // This logic now correctly operates on `sortedData` and `finalItems`.
@@ -979,7 +1059,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
         page: 1,
         limit: 1000000, // Fetch a very large number of items to get all of them
         searchTerm,
-        filters: activeViewFilters,
+        // ✅ Include initialFilters in export query
+        filters: { ...activeViewFilters, ...initialFilters },
         advancedFilters,
         sortBy: activeSortBy,
         sortDirection: activeSortDirection as "asc" | "desc",
