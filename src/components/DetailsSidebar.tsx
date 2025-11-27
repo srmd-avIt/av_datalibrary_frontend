@@ -4156,16 +4156,24 @@ export function DetailsSidebar({
     style={{
       zIndex,
       position: "fixed",
-      top: "65px",
-      left: "330px",
+      // Positioning based on screen size
+      top: window.innerWidth >= 1024 ? "65px" : "50%", // Laptop/Desktop/4K: offset, others: center
+      left: window.innerWidth >= 1024 ? "330px" : "50%", // Laptop/Desktop/4K: offset, others: center
       transform: "translate(-50%, -50%)",
-      width: "1200px",
+      width: (() => {
+        if (window.innerWidth >= 2560) return "clamp(320px, calc(100vw - 360px), 2000px)"; // 4K
+        if (window.innerWidth >= 1440) return "clamp(320px, calc(100vw - 360px), 1400px)"; // Desktop
+        if (window.innerWidth >= 1024) return "clamp(320px, calc(100vw - 360px), 1000px)"; // Laptop
+        if (window.innerWidth >= 768) return "clamp(320px, 90vw, 800px)"; // Tablet
+        if (window.innerWidth >= 480) return "clamp(320px, 95vw, 600px)"; // Mobile large
+        return "95vw"; // Mobile medium/small
+      })(),
       maxWidth: "95vw",
-      maxHeight: "90vh",
+      maxHeight: window.innerWidth >= 1024 ? "90vh" : "100vh", // Laptop/Desktop/4K: 90vh, others: full height
       background: "var(--background)",
-      borderRadius: "16px",
+      borderRadius: window.innerWidth >= 1024 ? "16px" : "0px", // Laptop/Desktop/4K: rounded, others: full-screen
       boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-      border: "1px solid var(--border)",
+      border: window.innerWidth >= 1024 ? "1px solid var(--border)" : "none", // Laptop/Desktop/4K: border, others: none
       overflow: "hidden",
     }}
   >
@@ -4183,38 +4191,48 @@ export function DetailsSidebar({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "16px",
-          borderBottom: "1px solid var(--border)",
+          padding: (() => {
+            if (window.innerWidth >= 1440) return "16px"; // Desktop/4K
+            if (window.innerWidth >= 1024) return "15px"; // Laptop
+            if (window.innerWidth >= 768) return "14px"; // Tablet
+            return "12px"; // Mobile
+          })(),
+          borderBottom: window.innerWidth >= 1024 ? "1px solid var(--border)" : "none", // Laptop/Desktop/4K: border, others: none
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {/* Back Button */}
-      {sidebarStack && sidebarStack.length > 1 && (
-  <Button
-    size="icon"
-    variant="outline"
-    onClick={() => {
-      if (typeof onPopSidebar === "function") onPopSidebar();
-    }}
-    style={{
-      height: "32px",
-      width: "32px",
-      borderRadius: "6px",
-      marginRight: "8px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-    title="Back"
-  >
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path d="M11 14L6 9L11 4" stroke="#fdfafaff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  </Button>
-)}
+          {sidebarStack && sidebarStack.length > 1 && (
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => {
+                if (typeof onPopSidebar === "function") onPopSidebar();
+              }}
+              style={{
+                height: "32px",
+                width: "32px",
+                borderRadius: "6px",
+                marginRight: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title="Back"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M11 14L6 9L11 4" stroke="#fdfafaff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Button>
+          )}
           <h2
             style={{
-              fontSize: "1.125rem",
+              fontSize: (() => {
+                if (window.innerWidth >= 1440) return "1.125rem"; // Desktop/4K
+                if (window.innerWidth >= 1024) return "1.0625rem"; // Laptop
+                if (window.innerWidth >= 768) return "1.0625rem"; // Tablet
+                return "1rem"; // Mobile
+              })(),
               fontWeight: 600,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -4253,11 +4271,16 @@ export function DetailsSidebar({
       <div
         style={{
           flex: 1,
-          padding: "24px",
+          padding: (() => {
+            if (window.innerWidth >= 1440) return "24px"; // Desktop/4K
+            if (window.innerWidth >= 1024) return "22px"; // Laptop
+            if (window.innerWidth >= 768) return "20px"; // Tablet
+            return "16px"; // Mobile
+          })(),
           overflowY: "auto",
           scrollbarWidth: "thin",
           scrollbarColor: "#888 #272525ff",
-          maxHeight: "calc(90vh - 64px)",
+          maxHeight: window.innerWidth >= 1024 ? "calc(90vh - 64px)" : "calc(100vh - 64px)", // Laptop/Desktop/4K: 90vh, others: full height
         }}
       >
         {renderContent()}
@@ -4265,6 +4288,8 @@ export function DetailsSidebar({
     </div>
   </motion.div>
 </>
+
+
 
 
 
