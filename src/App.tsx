@@ -519,6 +519,178 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
+
+    medialog_satsang_extracted_clips: {
+    title: "Media Log: Satsang Extracted Clips",
+    apiEndpoint: "/newmedialog/satsang-extracted-clips",
+    idKey: "MLUniqueID",
+    detailsType: "medialog",
+    columns: [
+     { key: "Yr", label: "Year", sortable: true, editable: true },
+     
+      // Requested primary columns
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+         editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || row.DetailMain || "";
+          const s = row.SubDetail || row.DetailSub || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SubDuration", label: "Duration", sortable: true, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Subtitle fields
+      { key: "HasSubtitle", label: "Has Subtitle", sortable: true, editable: true },
+      { key: "SubTitlesLanguage", label: "Subtitle Language", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Text/meta
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+
+      // Satsang start / end words
+      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
+      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
+
+      // Audio codes / master quality / DR filename
+      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
+     
+
+      // Location: City (requested)
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Keep identifiers / minimal extras
+        {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
+
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+}
+,
+     
+     
+   
+    ],
+  },
+
+   medialog_satsang_category: {
+    title: "Media Log: Satsang Category",
+    apiEndpoint: "/newmedialog/satsang-category",
+    idKey: "MLUniqueID",
+    detailsType: "medialog",
+    columns: [
+      { key: "Yr", label: "Year", sortable: true, editable: true },
+      {
+        key: "EventName - EventCode",
+        label: "Event Name - EventCode",
+        sortable: true,
+        editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventRefName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+
+      // Content timing + details
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      {
+        key: "DetailSub",
+        label: "Detail - SubDetail",
+        sortable: true,
+         editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || row.DetailMain || "";
+          const s = row.SubDetail || row.DetailSub || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+
+      // Topic / Number / Granth / language / durations / categories
+      { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+
+    
+
+      // Location fields (4)
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Venue", label: "Venue", sortable: true, editable: true },
+
+      // Additional textual/meta fields
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // Satsang specific start/end words (use your actual field names if different)
+      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
+      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
+
+      // Audio codes / master quality / distribution
+      { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
+      { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
+
+      // DR filename and other ML identifiers
+      {
+  key: "ContentFromDetailCity",
+  label: "Content - Detail - City",
+  sortable: true,
+  editable: false,
+  render: (_v: any, row: any) => {
+    // Use backend-computed field if available
+    if (row.ContentFromDetailCity) {
+      return row.ContentFromDetailCity;
+    }
+
+    // ✅ Prevent fallback when EventRefMLID is empty
+    if (!row.EventRefMLID) {
+      return ""; // or return null;
+    }
+
+    // Fallback: build value manually if needed
+    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+    return parts.join(" - ");
+  },
+},
+
+
+    ],
+  },
+
+  
   digitalrecordings: {
     title: "Digital Recordings",
     apiEndpoint: "/digitalrecording",
