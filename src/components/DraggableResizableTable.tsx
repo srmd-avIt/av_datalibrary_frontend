@@ -3,13 +3,37 @@ import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Input } from "./ui/input";
-import { GripVertical, ChevronRight, ChevronDown } from "lucide-react";
+import { Button } from "./ui/button"; // Ensure Button is imported
+import { GripVertical, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 import { cn, getColorForString, getGlassForString } from "./ui/utils";
 import { ListItem, Column } from "./types";
 
 // Interfaces for props and DnD items
 interface GroupByConfig { key: string; direction: "asc" | "desc"; }
-interface DraggableResizableTableProps { data: ListItem[] | Record<string, any>; columns: Column[]; sortedData?: ListItem[]; onRowSelect: (item: ListItem) => void; onSort: (columnKey: string) => void; getSortIcon: (columnKey: string) => React.ReactNode; groupedData: Record<string, any>; groupByFields: GroupByConfig[]; idKey?: string; frozenColumnKey: string | null; columnOrder: string[]; columnSizing: Record<string, number>; setViewColumnOrder: (newOrder: string[]) => void; editingCell?: { rowIndex: number; columnKey: string } | null; editValue?: any; setEditValue?: (value: any) => void; setEditingCell?: (cell: { rowIndex: number; columnKey: string } | null) => void; handleUpdateCell?: () => Promise<void>; handleCellDoubleClick?: (rowIndex: number, column: Column, value: any) => void; handleCellEdit?: (rowIndex: number, column: Column, newValue: any) => void; isMobile?: boolean; }
+interface DraggableResizableTableProps { 
+  data: ListItem[] | Record<string, any>; 
+  columns: Column[]; 
+  sortedData?: ListItem[]; 
+  onRowSelect: (item: ListItem) => void; 
+  onSort: (columnKey: string) => void; 
+  getSortIcon: (columnKey: string) => React.ReactNode; 
+  groupedData: Record<string, any>; 
+  groupByFields: GroupByConfig[]; 
+  idKey?: string; 
+  frozenColumnKey: string | null; 
+  columnOrder: string[]; 
+  columnSizing: Record<string, number>; 
+  setViewColumnOrder: (newOrder: string[]) => void; 
+  editingCell?: { rowIndex: number; columnKey: string } | null; 
+  editValue?: any; 
+  setEditValue?: (value: any) => void; 
+  setEditingCell?: (cell: { rowIndex: number; columnKey: string } | null) => void; 
+  handleUpdateCell?: () => Promise<void>; 
+  handleCellDoubleClick?: (rowIndex: number, column: Column, value: any) => void; 
+  handleCellEdit?: (rowIndex: number, column: Column, newValue: any) => void; 
+  isMobile?: boolean; 
+}
+
 const ITEM_TYPE = "COLUMN";
 interface DragItem { index: number; key: string; type: string; }
 interface DraggableHeaderProps { column: Column; index: number; moveColumn: (dragIndex: number, hoverIndex: number) => void; onSort: (columnKey: string) => void; getSortIcon: (columnKey: string) => React.ReactNode; width: number; onResize: (columnKey: string, width: number) => void; isFrozen: boolean; isLastFrozen: boolean; leftOffset: number; }
@@ -57,9 +81,18 @@ interface RenderGroupRowsProps {
   moveColumn: (dragIndex: number, hoverIndex: number) => void;
   handleResize: (columnKey: string, width: number) => void;
   isGroupingActive: boolean;
+  // New Props for Group Pagination
+  groupVisibleCounts: Record<string, number>;
+  onLoadMoreGroup: (groupKey: string) => void;
 }
 
-function RenderGroupRows({ groupData, columns, level, onRowSelect, sortedData, idKey, editingCell, editValue, setEditValue, setEditingCell, handleCellDoubleClick, handleCellEdit, isMobile, frozenColumnKey, columnOrder, columnSizing, columnWidths, expandedGroups, toggleGroup, groupKeyPrefix, onSort, getSortIcon, moveColumn, handleResize, isGroupingActive }: RenderGroupRowsProps) {
+function RenderGroupRows({ 
+  groupData, columns, level, onRowSelect, sortedData, idKey, editingCell, editValue, setEditValue, 
+  setEditingCell, handleCellDoubleClick, handleCellEdit, isMobile, frozenColumnKey, columnOrder, 
+  columnSizing, columnWidths, expandedGroups, toggleGroup, groupKeyPrefix, onSort, getSortIcon, 
+  moveColumn, handleResize, isGroupingActive, groupVisibleCounts, onLoadMoreGroup 
+}: RenderGroupRowsProps) {
+  
   const { frozenColumns, leftOffsets, lastFrozenColumnKey } = useMemo(() => {
     if (!frozenColumnKey) return { frozenColumns: [] as string[], leftOffsets: {} as Record<string, number>, lastFrozenColumnKey: null };
     const orderedVisibleKeys = columnOrder.filter((key: string) => columns.some((c: Column) => c.key === key));
@@ -74,51 +107,96 @@ function RenderGroupRows({ groupData, columns, level, onRowSelect, sortedData, i
 
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // --- RENDERING LEAF NODES (ROWS) WITH PAGINATION ---
   if (Array.isArray(groupData)) {
-    return groupData.map((item) => {
-      const absoluteIndex = sortedData.findIndex((d: ListItem) => d[idKey as keyof ListItem] === item[idKey as keyof ListItem]);
-      return (
-        <TableRow key={item[idKey] || item.id} className="border-b border-border/50 transition-all duration-200 group">
-          {columns.map((column: Column) => {
-            const isFrozen = frozenColumns.includes(column.key);
-            const cellValue = item[column.key];
-            const isEditing = editingCell?.rowIndex === absoluteIndex && editingCell?.columnKey === column.key;
-            
-            // --- MODIFIED: Remove background color logic ---
-            const hasPendingChange = item.pendingChanges && item.pendingChanges[column.key] !== undefined;
+    // Determine how many items to show for this group
+    const uniqueGroupKey = groupKeyPrefix || "root";
+    const currentLimit = groupVisibleCounts[uniqueGroupKey] || 50;
+    const visibleItems = groupData.slice(0, currentLimit);
+    const remainingItems = groupData.length - visibleItems.length;
 
-            const cellStyle: React.CSSProperties = { 
-              width: `${columnWidths[column.key] || 150}px`, 
-              minWidth: `${columnWidths[column.key] || 150}px`, 
-              maxWidth: `${columnWidths[column.key] || 150}px`, 
-              position: isFrozen ? "sticky" : undefined, 
-              left: isFrozen ? leftOffsets[column.key] : undefined, 
-              zIndex: isFrozen ? 20 : undefined, 
-              background: isFrozen ? "oklch(0.07 0 0)" : undefined, // Set background to undefined for non-frozen cells
-              borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined 
-            };
-            
-            return (
-              <TableCell key={column.key} style={cellStyle} className={cn("px-6 py-4 text-sm text-foreground/90 transition-colors group-hover:bg-muted/30", isFrozen && "group-hover:bg-black/80", "cursor-pointer relative")} onClick={() => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); clickTimeoutRef.current = setTimeout(() => onRowSelect(item), 250); }} onDoubleClick={(e) => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); e.stopPropagation(); if (handleCellDoubleClick && column.editable) handleCellDoubleClick(absoluteIndex, column, cellValue); }}>
-                {hasPendingChange && !isEditing && (
-                  <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-blue-400" title="Unsaved change"></div>
-                )}
-                {isEditing ? (
-                  <Input type="text" value={editValue ?? ''} onChange={(e) => setEditValue && setEditValue(e.target.value)} onBlur={() => { handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); setEditingCell && setEditingCell(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); setEditingCell && setEditingCell(null); } if (e.key === 'Escape') setEditingCell && setEditingCell(null); }} autoFocus className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
-                ) : (
-                  <div className="truncate">{column.render ? column.render(cellValue, item) : String(cellValue ?? "")}</div>
-                )}
-              </TableCell>
-            );
-          })}
-        </TableRow>
-      );
-    });
+    return (
+      <>
+        {visibleItems.map((item) => {
+          const absoluteIndex = sortedData.findIndex((d: ListItem) => d[idKey as keyof ListItem] === item[idKey as keyof ListItem]);
+          return (
+            <TableRow key={item[idKey] || item.id} className="border-b border-border/50 transition-all duration-200 group">
+              {columns.map((column: Column) => {
+                const isFrozen = frozenColumns.includes(column.key);
+                const cellValue = item[column.key];
+                const isEditing = editingCell?.rowIndex === absoluteIndex && editingCell?.columnKey === column.key;
+                
+                const hasPendingChange = item.pendingChanges && item.pendingChanges[column.key] !== undefined;
+
+                const cellStyle: React.CSSProperties = { 
+                  width: `${columnWidths[column.key] || 150}px`, 
+                  minWidth: `${columnWidths[column.key] || 150}px`, 
+                  maxWidth: `${columnWidths[column.key] || 150}px`, 
+                  position: isFrozen ? "sticky" : undefined, 
+                  left: isFrozen ? leftOffsets[column.key] : undefined, 
+                  zIndex: isFrozen ? 20 : undefined, 
+                  background: isFrozen ? "oklch(0.07 0 0)" : undefined, 
+                  borderRight: isFrozen && column.key === lastFrozenColumnKey ? "2px solid hsl(var(--border))" : undefined 
+                };
+                
+                return (
+                  <TableCell key={column.key} style={cellStyle} className={cn("px-6 py-4 text-sm text-foreground/90 transition-colors group-hover:bg-muted/30", isFrozen && "group-hover:bg-black/80", "cursor-pointer relative")} onClick={() => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); clickTimeoutRef.current = setTimeout(() => onRowSelect(item), 250); }} onDoubleClick={(e) => { if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current); e.stopPropagation(); if (handleCellDoubleClick && column.editable) handleCellDoubleClick(absoluteIndex, column, cellValue); }}>
+                    {hasPendingChange && !isEditing && (
+                      <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-blue-400" title="Unsaved change"></div>
+                    )}
+                    {isEditing ? (
+                      <Input type="text" value={editValue ?? ''} onChange={(e) => setEditValue && setEditValue(e.target.value)} onBlur={() => { handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); setEditingCell && setEditingCell(null); }} onKeyDown={(e) => { if (e.key === 'Enter') { handleCellEdit && handleCellEdit(absoluteIndex, column, editValue); setEditingCell && setEditingCell(null); } if (e.key === 'Escape') setEditingCell && setEditingCell(null); }} autoFocus className="w-full bg-background p-1 border border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary" />
+                    ) : (
+                      <div className="truncate">{column.render ? column.render(cellValue, item) : String(cellValue ?? "")}</div>
+                    )}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          );
+        })}
+        {/* Load More Button Row */}
+        {remainingItems > 0 && (
+          <TableRow>
+  <TableCell 
+    colSpan={columns.length}
+    className="py-4 bg-muted/10"
+  >
+   <div
+  style={{
+    display: "flex",
+    justifyContent: "left",  // Centers the button
+    padding: "0 12px"          // Add padding (left & right)
+  }}
+>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          onLoadMoreGroup(uniqueGroupKey);
+        }}
+        style={{
+          padding: "8px 16px",
+          fontWeight: 500,
+        }}
+      >
+        Load more results ({remainingItems} remaining)
+      </Button>
+    </div>
+  </TableCell>
+</TableRow>
+
+        )}
+      </>
+    );
   }
 
+  // --- RENDERING GROUP HEADERS ---
   return Object.entries(groupData).map(([groupName, content]) => {
     if (!isGroupingActive && groupName === "") {
-        return <RenderGroupRows key="flat-list" level={0} groupData={content} {...{ columns, onRowSelect, sortedData, idKey, editingCell, editValue, setEditValue, setEditingCell, handleCellDoubleClick, handleCellEdit, isMobile, frozenColumnKey, columnOrder, columnSizing, columnWidths, expandedGroups, toggleGroup, onSort, getSortIcon, moveColumn, handleResize, isGroupingActive: false, groupKeyPrefix: "" }} />;
+        return <RenderGroupRows key="flat-list" level={0} groupData={content} {...{ columns, onRowSelect, sortedData, idKey, editingCell, editValue, setEditValue, setEditingCell, handleCellDoubleClick, handleCellEdit, isMobile, frozenColumnKey, columnOrder, columnSizing, columnWidths, expandedGroups, toggleGroup, onSort, getSortIcon, moveColumn, handleResize, isGroupingActive: false, groupKeyPrefix: "", groupVisibleCounts, onLoadMoreGroup }} />;
     }
 
     const compositeKey = groupKeyPrefix ? `${groupKeyPrefix}|${groupName}` : groupName;
@@ -136,7 +214,7 @@ function RenderGroupRows({ groupData, columns, level, onRowSelect, sortedData, i
     const itemCount = countItemsRecursively(content);
     
     const glass = getGlassForString(groupName);
-    const groupHeaderHeight = 53; // Assuming a fixed height for group headers
+    const groupHeaderHeight = 53; 
 
     return (
       <React.Fragment key={compositeKey}>
@@ -180,7 +258,7 @@ function RenderGroupRows({ groupData, columns, level, onRowSelect, sortedData, i
                 })}
               </TableRow>
             )}
-            <RenderGroupRows groupData={content} level={level + 1} groupKeyPrefix={compositeKey} {...{ columns, onRowSelect, sortedData, idKey, editingCell, editValue, setEditValue, setEditingCell, handleCellDoubleClick, handleCellEdit, isMobile, frozenColumnKey, columnOrder, columnSizing, columnWidths, expandedGroups, toggleGroup, onSort, getSortIcon, moveColumn, handleResize, isGroupingActive: true }} />
+            <RenderGroupRows groupData={content} level={level + 1} groupKeyPrefix={compositeKey} {...{ columns, onRowSelect, sortedData, idKey, editingCell, editValue, setEditValue, setEditingCell, handleCellDoubleClick, handleCellEdit, isMobile, frozenColumnKey, columnOrder, columnSizing, columnWidths, expandedGroups, toggleGroup, onSort, getSortIcon, moveColumn, handleResize, isGroupingActive: true, groupVisibleCounts, onLoadMoreGroup }} />
           </>
         )}
       </React.Fragment>
@@ -193,6 +271,16 @@ export function DraggableResizableTable({ data, columns: initialColumns, sortedD
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => { const widths: Record<string, number> = {}; initialColumns.forEach(col => widths[col.key] = 150); return widths; });
   
+  // State for pagination per group. Key is the group composite key, Value is current visible count.
+  const [groupVisibleCounts, setGroupVisibleCounts] = useState<Record<string, number>>({});
+
+  const handleLoadMoreGroup = useCallback((groupKey: string) => {
+    setGroupVisibleCounts(prev => ({
+      ...prev,
+      [groupKey]: (prev[groupKey] || 50) + 50
+    }));
+  }, []);
+
   const orderedColumns = useMemo(() => {
     const columnMap = new Map(initialColumns.map(c => [c.key, c]));
     return columnOrder.map(key => columnMap.get(key)).filter((c): c is Column => !!c);
@@ -288,6 +376,9 @@ export function DraggableResizableTable({ data, columns: initialColumns, sortedD
             moveColumn={moveColumn}
             handleResize={handleResize}
             isGroupingActive={isGrouping}
+            // Pass pagination props
+            groupVisibleCounts={groupVisibleCounts}
+            onLoadMoreGroup={handleLoadMoreGroup}
             {...rest}
           />
         </TableBody>

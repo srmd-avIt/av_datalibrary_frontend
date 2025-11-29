@@ -1073,10 +1073,65 @@ export function DetailsSidebar({
             <Card>
               <CardHeader><CardTitle className="text-lg px-2">Event Details</CardTitle></CardHeader>
               <CardContent className="space-y-4 p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Event Code</span>
-                  {hasAccess("Digital Recordings", 'read') || hasAccess("Media Log", 'read') ? (<Button variant="link" className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300" onClick={() => onPushSidebar({ type: "event_data_table", data: { eventCode: data.EventCode }, title: `Data for ${data.EventCode}` })}>{data.EventCode}<ChevronRight className="w-4 h-4 ml-1" /></Button>) : (<span className="font-medium text-muted-foreground flex items-center gap-1 text-sm"><Lock className="w-3 h-3"/> {data.EventCode}</span>)}
-                </div>
+               {data.EventCode && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "8px 12px",
+      background: "rgba(59,130,246,0.08)", // soft blue highlight
+      borderRadius: "10px",
+      marginTop: "10px",
+    }}
+  >
+    {/* Label */}
+    <span style={{ color: "var(--muted-foreground)" }}>Event Code</span>
+
+    {/* Value */}
+    {hasAccess("Digital Recordings", "read") || hasAccess("Media Log", "read") ? (
+      <button
+        onClick={() =>
+          onPushSidebar({
+            type: "event_data_table",
+            data: { eventCode: data.EventCode },
+            title: `Data for ${data.EventCode}`,
+          })
+        }
+        style={{
+          padding: "4px 10px",
+          fontSize: "14px",
+          fontWeight: 600,
+          background: "#1e40af",
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px",
+          display: "inline-flex",
+          alignItems: "center",
+          cursor: "pointer",
+        }}
+      >
+        {data.EventCode}
+        <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+      </button>
+    ) : (
+      <span
+        style={{
+          fontSize: "14px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          color: "var(--muted-foreground)",
+          fontWeight: 500,
+        }}
+      >
+        <Lock style={{ width: 12, height: 12 }} />
+        {data.EventCode}
+      </span>
+    )}
+  </div>
+)}
+
                 <FieldRow label="Year" value={data.Yr} />
                 <FieldRow label="EventName" value={data.EventName}><span className="font-medium text-right break-words">{data.EventName}</span></FieldRow>
                 <Separator />
@@ -1131,13 +1186,24 @@ export function DetailsSidebar({
               <CardContent className="space-y-4 p-4">
                 <FieldRow label="EventCode" value={data.fkEventCode} />
 
-              <div className="flex justify-between items-center">
-  <span className="text-muted-foreground">Recording Code</span>
-  {data.RecordingCode ? (
-    hasAccess("Events", 'read') || hasAccess("Media Log", 'read') ? (
-      <Button
-        variant="link"
-        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
+            {data.RecordingCode && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "8px 12px",
+      background: "rgba(59,130,246,0.08)", // soft blue highlight
+      borderRadius: "10px",
+      marginTop: "10px",
+    }}
+  >
+    {/* Label */}
+    <span style={{ color: "var(--muted-foreground)" }}>Recording Code</span>
+
+    {/* Value */}
+    {hasAccess("Events", "read") || hasAccess("Media Log", "read") ? (
+      <button
         onClick={() =>
           onPushSidebar({
             type: "digitalrecording_related_data",
@@ -1148,19 +1214,40 @@ export function DetailsSidebar({
             title: `Recording ${data.RecordingCode}`,
           })
         }
+        style={{
+          padding: "4px 10px",
+          fontSize: "14px",
+          fontWeight: 600,
+          background: "#1e40af",
+          color: "#fff",
+          borderRadius: "6px",
+          display: "inline-flex",
+          alignItems: "center",
+          border: "none",
+          cursor: "pointer",
+        }}
       >
         {data.RecordingCode}
-        <ChevronRight className="w-4 h-4 ml-1" />
-      </Button>
+        <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+      </button>
     ) : (
-      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-        <Lock className="w-3 h-3" /> {data.RecordingCode}
+      <span
+        style={{
+          fontSize: "14px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          color: "var(--muted-foreground)",
+          fontWeight: 500,
+        }}
+      >
+        <Lock style={{ width: 12, height: 12 }} />
+        {data.RecordingCode}
       </span>
-    )
-  ) : (
-    <span className="font-medium text-muted-foreground">N/A</span>
-  )}
-</div>
+    )}
+  </div>
+)}
+
                 <FieldRow label="RecordingName" value={data.RecordingName} />
                 <FieldRow label="Duration" value={data.Duration}><Badge variant="secondary">{data.Duration}</Badge></FieldRow>
                 <FieldRow label="File Size" value={data.FilesizeInBytes}><span className="font-medium">{data.FilesizeInBytes ? `${(data.FilesizeInBytes / 1024 / 1024).toFixed(2)} MB` : undefined}</span></FieldRow>
@@ -1210,68 +1297,144 @@ export function DetailsSidebar({
   </div>
 )}
 
-                    {data.fkDigitalRecordingCode && (
-                      <div className="flex justify-between items-center">
-  <span className="text-muted-foreground">Recording Code</span>
-  {data.fkDigitalRecordingCode ? (
-    hasAccess("Digital Recordings", 'read') ? (
-      <Button
-        variant="link"
-        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-        onClick={() =>
-          onPushSidebar({
-            type: 'medialog_related_data',
-            data: {
-              eventCode: data.EventCode,
-              recordingCode: data.fkDigitalRecordingCode,
-              mlid: data.MLUniqueID
-            },
-            title: `Related Data for ML ${data.MLUniqueID}`
-          })
-        }
-      >
-        {data.fkDigitalRecordingCode} <ChevronRight className="w-4 h-4 ml-1" />
-      </Button>
+                  {data.fkDigitalRecordingCode && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "8px 12px",
+      background: "rgba(59,130,246,0.08)",      // soft highlight
+      borderRadius: "10px",
+      marginTop: "10px",
+    }}
+  >
+    <span style={{ color: "var(--muted-foreground)" }}>
+      Recording Code
+    </span>
+
+    {data.fkDigitalRecordingCode ? (
+      hasAccess("Digital Recordings", "read") ? (
+        <button
+          onClick={() =>
+            onPushSidebar({
+              type: "medialog_related_data",
+              data: {
+                eventCode: data.EventCode,
+                recordingCode: data.fkDigitalRecordingCode,
+                mlid: data.MLUniqueID,
+              },
+              title: `Related Data for ML ${data.MLUniqueID}`,
+            })
+          }
+          style={{
+            padding: "4px 10px",
+            fontSize: "14px",
+            fontWeight: 600,
+            background: "#1e40af",
+            color: "#fff",
+            borderRadius: "6px",
+            display: "inline-flex",
+            alignItems: "center",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          {data.fkDigitalRecordingCode}
+          <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+        </button>
+      ) : (
+        <span
+          style={{
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            color: "var(--muted-foreground)",
+            fontWeight: 500,
+          }}
+        >
+          <Lock style={{ width: 12, height: 12 }} />
+          {data.fkDigitalRecordingCode}
+        </span>
+      )
     ) : (
-      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-        <Lock className="w-3 h-3" /> {data.fkDigitalRecordingCode}
+      <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
+        N/A
       </span>
-    )
-  ) : (
-    <span className="font-medium text-muted-foreground">N/A</span>
-  )}
-</div>
-                    )}
-              <div className="flex justify-between items-center">
-  <span className="text-muted-foreground">MLID</span>
-  {data.MLUniqueID ? (
-    hasAccess("Aux Files", 'read') ? (
-      <Button
-        variant="link"
-        className="p-0 h-auto font-medium text-base text-blue-400 hover:text-blue-300"
-        onClick={() =>
-          onPushSidebar({
-            type: "aux_related_data",
-            data: {
-              mlid: data.MLUniqueID,
-              eventCode: data.EventCode,
-              recordingCode: data.fkDigitalRecordingCode,
-            },
-            title: `Related Data for ML ${data.MLUniqueID}`,
-          })
-        }
-      >
-        {data.MLUniqueID} <ChevronRight className="w-4 h-4 ml-1" />
-      </Button>
+    )}
+  </div>
+)}
+
+             {data.MLUniqueID && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "8px 12px",
+      background: "rgba(59,130,246,0.08)",   // soft blue highlight
+      borderRadius: "10px",
+      marginTop: "10px",
+    }}
+  >
+    {/* Label */}
+    <span style={{ color: "var(--muted-foreground)" }}>MLID</span>
+
+    {/* Value */}
+    {data.MLUniqueID ? (
+      hasAccess("Aux Files", "read") ? (
+        <button
+          onClick={() =>
+            onPushSidebar({
+              type: "aux_related_data",
+              data: {
+                mlid: data.MLUniqueID,
+                eventCode: data.EventCode,
+                recordingCode: data.fkDigitalRecordingCode,
+              },
+              title: `Related Data for ML ${data.MLUniqueID}`,
+            })
+          }
+          style={{
+            padding: "4px 10px",
+            fontSize: "14px",
+            fontWeight: 600,
+            background: "#1e40af",
+            color: "#fff",
+            borderRadius: "6px",
+            display: "inline-flex",
+            alignItems: "center",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          {data.MLUniqueID}
+          <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+        </button>
+      ) : (
+        <span
+          style={{
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            color: "var(--muted-foreground)",
+            fontWeight: 500,
+          }}
+        >
+          <Lock style={{ width: 12, height: 12 }} />
+          {data.MLUniqueID}
+        </span>
+      )
     ) : (
-      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-        <Lock className="w-3 h-3" /> {data.MLUniqueID}
+      <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
+        N/A
       </span>
-    )
-  ) : (
-    <span className="font-medium text-muted-foreground">N/A</span>
-  )}
-</div>
+    )}
+  </div>
+)}
+
 <FieldRow label="FootageSrNo" value={data.FootageSrNo} /><FieldRow label="LogSerialNo" value={data.LogSerialNo} /><FieldRow label="CounterFrom" value={data.CounterFrom} /><FieldRow label="CounterTo" value={data.CounterTo} /><FieldRow label="SubDuration" value={data.SubDuration} /><FieldRow label="TotalDuration" value={data.TotalDuration} />
                   </CardContent>
                 </Card>
@@ -1344,24 +1507,73 @@ export function DetailsSidebar({
                 <CardTitle className="text-lg px-2">File Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4">
-                <div className="flex justify-between items-start gap-4">
-                  <span className="text-muted-foreground flex-shrink-0">fkMLID</span>
-                   {data.fkMLID && hasAccess("Media Log") ? (
-                    <DrilldownButton
-                       id={data.fkMLID}
-                       apiEndpoint="/newmedialog"
-                       targetType="medialog"
-                       titlePrefix="Media Log"
-                       onPushSidebar={onPushSidebar}
-                     >
-                      {data.fkMLID}
-                    </DrilldownButton>
-                  ) : (
-                    <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm">
-                      {data.fkMLID ? <><Lock className="w-3 h-3" /> {data.fkMLID}</> : "N/A"}
-                    </span>
-                  )}
-                </div>
+               {data.fkMLID && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "10px 14px",
+      background: "rgba(59,130,246,0.12)",   // soft blue highlight
+      borderRadius: "10px",
+      marginTop: "10px",
+    }}
+  >
+    {/* Label */}
+    <span
+      style={{
+        color: "var(--muted-foreground)",
+        fontWeight: 500,
+        fontSize: "14px",
+      }}
+    >
+      fkMLID
+    </span>
+
+    {/* Value */}
+    {data.fkMLID && hasAccess("Media Log") ? (
+      <button
+        onClick={() =>
+          onPushSidebar({
+            type: "aux_related_data",
+            data: { mlid: data.fkMLID },
+            title: `Related AUX Files for MLID ${data.fkMLID}`,
+          })
+        }
+        style={{
+          padding: "4px 10px",
+          fontSize: "14px",
+          fontWeight: 600,
+          background: "#1e40af",
+          color: "#fff",
+          borderRadius: "6px",
+          display: "inline-flex",
+          alignItems: "center",
+          border: "none",
+          cursor: "pointer",
+        }}
+      >
+        {data.fkMLID}
+        <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+      </button>
+    ) : (
+      <span
+        style={{
+          fontSize: "14px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          color: "var(--muted-foreground)",
+          fontWeight: 500,
+        }}
+      >
+        <Lock style={{ width: 12, height: 12 }} />
+        {data.fkMLID}
+      </span>
+    )}
+  </div>
+)}
+
                 <FieldRow label="Language" value={data.AuxLanguage}>
                   <Badge variant="secondary">{data.AuxLanguage}</Badge>
                 </FieldRow>
@@ -2385,33 +2597,59 @@ export function DetailsSidebar({
     EventName-Code
   </span>
 
-  <div className="flex-1 text-right break-words overflow-hidden text-ellipsis">
-    {data.EventCode && hasAccess("Events", 'read') ? (
-      <DrilldownButton
-        id={data.EventCode}
-        apiEndpoint="/events"
-        targetType="event"
-        titlePrefix="Event"
-        onPushSidebar={onPushSidebar}
+  <div
+  style={{
+    flex: 1,
+    textAlign: "right",
+    overflow: "hidden",
+    wordBreak: "break-word",
+    textOverflow: "ellipsis",
+  }}
+>
+  {data.EventCode && hasAccess("Events", "read") ? (
+    <DrilldownButton
+      id={data.EventCode}
+      apiEndpoint="/events"
+      targetType="event"
+      titlePrefix="Event"
+      onPushSidebar={onPushSidebar}
+    >
+      <span
+        style={{
+          whiteSpace: "normal",
+          wordBreak: "break-word",
+        }}
       >
-        <span className="break-words whitespace-normal">
-          {data.EventName
-            ? `${data.EventName} (${data.EventCode})`
-            : data.EventCode}
-        </span>
-      </DrilldownButton>
-    ) : (
-      <span className="font-medium text-muted-foreground flex items-center gap-1 text-sm justify-end break-words whitespace-normal">
-        {data.EventCode ? (
-          <>
-            <Lock className="w-3 h-3" /> {data.EventCode}
-          </>
-        ) : (
-          "N/A"
-        )}
+        {data.EventName
+          ? `${data.EventName} (${data.EventCode})`
+          : data.EventCode}
       </span>
-    )}
-  </div>
+    </DrilldownButton>
+  ) : (
+    <span
+      style={{
+        fontWeight: 500,
+        color: "var(--muted-foreground)",
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        fontSize: "0.875rem",
+        justifyContent: "flex-end",
+        whiteSpace: "normal",
+        wordBreak: "break-word",
+      }}
+    >
+      {data.EventCode ? (
+        <>
+          <Lock style={{ width: "12px", height: "12px" }} /> {data.EventCode}
+        </>
+      ) : (
+        "N/A"
+      )}
+    </span>
+  )}
+</div>
+
 </div>
 
                 <FieldRow label="Recording Name" value={data.RecordingName} />

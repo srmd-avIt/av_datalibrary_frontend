@@ -43,7 +43,7 @@ import { useAuth } from "../contexts/AuthContext"; // For permission checks
 import { useQueryClient } from "@tanstack/react-query"; // To invalidate cache
 import { toast } from "sonner"; // For notifications
 import'../styles/globals.css';
-
+import { useDebounce } from "../hooks/useDebounce";
 // --- Vite env types for TypeScript ---
 /// <reference types="vite/client" />
 
@@ -423,6 +423,7 @@ export function ClickUpListViewUpdated({
 
   // --- USER-SPECIFIC STATE (persisted for the current user/browser) ---
    const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [advancedFilters, setAdvancedFilters] = useState<FilterGroup[]>([]);
   const [activeView, setActiveView] = useState(views[0]?.id || "");
 
@@ -795,6 +796,7 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
   queryKey: [
     effectiveApiEndpoint,
     currentPage,
+     debouncedSearchTerm,
     searchTerm,
     JSON.stringify(activeViewFilters),
     JSON.stringify(advancedFilters),
@@ -807,7 +809,7 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
       apiEndpoint: effectiveApiEndpoint,
       page: currentPage,
       limit: itemsPerPage,
-      searchTerm,
+       searchTerm: debouncedSearchTerm,
       // ✅ FIX: Merge initialFilters here so they go as standard params
       filters: { ...activeViewFilters, ...initialFilters }, 
       advancedFilters,
@@ -815,7 +817,8 @@ const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>(
       sortDirection: activeSortDirection as "asc" | "desc", 
     }),
   enabled: !shouldFetchAllForGrouping,
-  staleTime: 60 * 1000, // 1 minute
+  staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
+refetchOnWindowFocus: false,// 1 minute
   placeholderData: previous => previous, // <-- This keeps previous data while fetching
 });
 
@@ -843,7 +846,8 @@ const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<
       sortDirection: activeSortDirection as "asc" | "desc", 
     }),
   enabled: shouldFetchAllForGrouping,
-  staleTime: 60 * 1000,
+ staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
+refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
   placeholderData: previous => previous,
 });
 
