@@ -1018,7 +1018,632 @@ const [recordings, setRecordings] = useState<any[]>([]);
 }
 
 
+function AuxMediaLogDataTableView({
+  mlid,
+  onPushSidebar,
+}: {
+  mlid: string;
+  onPushSidebar: (item: SidebarStackItem) => void;
+}) {
+  const [mediaLogs, setMediaLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // -----------------------------
+  // 🔥 Column Renderers (Same Logic From Parent Table)
+  // -----------------------------
+  const mediaLogColumnRenderers: {
+    [key: string]: (v: any, row: any) => React.ReactNode;
+  } = {
+    EventDisplay: (_v, row) =>
+      `${row.EventName || ""}${
+        row.EventName && row.EventCode ? " - " : ""
+      }${row.EventCode || row.fkEventCode || ""}`,
+
+    DetailSub: (_v, row) =>
+      `${row.Detail || ""}${
+        row.Detail && row.SubDetail ? " - " : ""
+      }${row.SubDetail || ""}`,
+
+    ContentFromDetailCity: (_v, row) =>
+      row.ContentFromDetailCity
+        ? row.ContentFromDetailCity
+        : !row.EventRefMLID
+        ? ""
+        : [row.ContentFrom, row.Detail, row.fkCity]
+            .filter(Boolean)
+            .join(" - "),
+
+    RecordingName: (v, row) =>
+      row.RecordingName ||
+      row.Recording_Name ||
+      row.recordingName ||
+      "-",
+
+    // CATEGORY MAPPINGS
+    EditingStatus: (v) => categoryTagRenderer(v),
+    FootageType: (v) => categoryTagRenderer(v),
+    fkOccasion: (v) => categoryTagRenderer(v),
+    "Segment Category": (v) => categoryTagRenderer(v),
+    Language: (v) => categoryTagRenderer(v),
+    fkOrganization: (v) => categoryTagRenderer(v),
+    fkCountry: (v) => categoryTagRenderer(v),
+    fkState: (v) => categoryTagRenderer(v),
+    fkCity: (v) => categoryTagRenderer(v),
+    IsAudioRecorded: (v) => categoryTagRenderer(v),
+    SubTitlesLanguage: (v) => categoryTagRenderer(v),
+    EditingType: (v) => categoryTagRenderer(v),
+    BhajanType: (v) => categoryTagRenderer(v),
+    NumberSource: (v) => categoryTagRenderer(v),
+    TopicSource: (v) => categoryTagRenderer(v),
+    Keywords: (v) => categoryTagRenderer(v),
+    Masterquality: (v) => categoryTagRenderer(v),
+  };
+
+  // -----------------------------
+  // 🧾 TABLE COLUMNS
+  // -----------------------------
+  const columns = [
+    { key: "Yr", label: "Year" },
+    { key: "EventDisplay", label: "Event Name - EventCode" },
+    { key: "EventCode", label: "Event Code" },
+    { key: "fkDigitalRecordingCode", label: "DR Code" },
+    { key: "ContentFrom", label: "Content From" },
+    { key: "ContentTo", label: "Content To" },
+    { key: "DetailSub", label: "Detail - SubDetail" },
+    { key: "EditingStatus", label: "Editing Status" },
+    { key: "FootageType", label: "Footage Type" },
+    { key: "fkOccasion", label: "Occasion" },
+    { key: "Segment Category", label: "Segment Category" },
+    { key: "CounterFrom", label: "Counter From" },
+    { key: "CounterTo", label: "Counter To" },
+    { key: "SubDuration", label: "Sub Duration" },
+    { key: "Language", label: "Language" },
+    { key: "SpeakerSinger", label: "Speaker / Singer" },
+    { key: "fkOrganization", label: "Organization" },
+    { key: "Designation", label: "Designation" },
+    { key: "fkCountry", label: "Country" },
+    { key: "fkState", label: "State" },
+    { key: "fkCity", label: "City" },
+    { key: "Venue", label: "Venue" },
+    { key: "MLUniqueID", label: "MLUniqueID" },
+    { key: "FootageSrNo", label: "FootageSrNo" },
+    { key: "LogSerialNo", label: "LogSerialNo" },
+    { key: "IsAudioRecorded", label: "IsAudioRecorded" },
+    { key: "AudioMP3Distribution", label: "AudioMP3Distribution" },
+    { key: "AudioWAVDistribution", label: "AudioWAVDistribution" },
+    { key: "AudioMP3DRCode", label: "AudioMP3DRCode" },
+    { key: "AudioWAVDRCode", label: "AudioWAVDRCode" },
+    { key: "FullWAVDRCode", label: "FullWAVDRCode" },
+    { key: "Remarks", label: "Remarks" },
+    { key: "IsStartPage", label: "IsStartPage" },
+    { key: "EndPage", label: "EndPage" },
+    { key: "IsInformal", label: "IsInformal" },
+    { key: "IsPPGNotPresent", label: "IsPPGNotPresent" },
+    { key: "Guidance", label: "Guidance" },
+    { key: "DiskMasterDuration", label: "DiskMasterDuration" },
+    { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters" },
+    { key: "EventRefMLID", label: "EventRefMLID" },
+    { key: "ContentFromDetailCity", label: "Content - Detail - City" },
+    { key: "EventRefMLID2", label: "EventRefMLID2" },
+    { key: "DubbedLanguage", label: "DubbedLanguage" },
+    { key: "DubbingArtist", label: "DubbingArtist" },
+    { key: "HasSubtitle", label: "HasSubtitle" },
+    { key: "SubTitlesLanguage", label: "SubTitlesLanguage" },
+    { key: "EditingDeptRemarks", label: "EditingDeptRemarks" },
+    { key: "EditingType", label: "EditingType" },
+    { key: "BhajanType", label: "BhajanType" },
+    { key: "IsDubbed", label: "IsDubbed" },
+    { key: "NumberSource", label: "NumberSource" },
+    { key: "TopicSource", label: "TopicSource" },
+    { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp" },
+    { key: "LastModifiedBy", label: "LastModifiedBy" },
+    { key: "Synopsis", label: "Synopsis" },
+    { key: "LocationWithinAshram", label: "LocationWithinAshram" },
+    { key: "Keywords", label: "Keywords" },
+    { key: "Grading", label: "Grading" },
+    { key: "Segment Duration", label: "Segment Duration" },
+    { key: "TopicGivenBy", label: "TopicGivenBy" },
+    { key: "RecordingName", label: "Recording Name" },
+    { key: "Masterquality", label: "DR Master Quality" },
+  ];
+
+  // -----------------------------
+  // 📡 FETCH DATA
+  // -----------------------------
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Step 1: Fetch the specific media log by MLID to get fkDigitalRecordingCode and fkEventCode
+        const mediaLogResponse = await fetch(
+          `${API_BASE_URL}/newmedialog/${encodeURIComponent(mlid)}`
+        );
+
+        if (!mediaLogResponse.ok) {
+          throw new Error(
+            `Failed to fetch media log (Status: ${mediaLogResponse.status})`
+          );
+        }
+
+        const mediaLogResult = await mediaLogResponse.json();
+        const mediaLog = Array.isArray(mediaLogResult)
+          ? mediaLogResult[0]
+          : mediaLogResult.data
+          ? mediaLogResult.data[0]
+          : mediaLogResult;
+
+        if (!mediaLog) {
+          throw new Error("Media log not found");
+        }
+
+        const recordingCode = mediaLog.fkDigitalRecordingCode;
+        const eventCode = mediaLog.fkEventCode || mediaLog.EventCode;
+
+        // Step 2: Fetch all media logs for the recording code (same as parent logic)
+        const mediaLogsResponse = await fetch(
+          `${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`
+        );
+
+        if (!mediaLogsResponse.ok) {
+          throw new Error(
+            `Failed to fetch media logs (Status: ${mediaLogsResponse.status})`
+          );
+        }
+
+        const mediaLogsResult = await mediaLogsResponse.json();
+        const allMediaLogs = mediaLogsResult.data || [];
+
+        // Step 3: Filter to get the specific media log by MLID
+        const filteredMediaLog = allMediaLogs.find(
+          (log: any) => log.MLUniqueID === mlid
+        );
+
+        if (!filteredMediaLog) {
+          throw new Error("Media log not found in recording");
+        }
+
+        // Step 4: Fetch the event if eventCode exists (same as parent logic)
+        let eventData = {};
+        if (eventCode) {
+          const eventResponse = await fetch(
+            `${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`
+          );
+          if (eventResponse.ok) {
+            const eventResult = await eventResponse.json();
+            eventData = eventResult; // Merge Yr, EventName, etc.
+          }
+        }
+
+        // Step 5: Merge the filtered media log with event data
+        const mergedMediaLog = { ...filteredMediaLog, ...eventData };
+        setMediaLogs([mergedMediaLog]);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (mlid) fetchData();
+  }, [mlid]);
+
+  // -----------------------------
+  // LOADING
+  // -----------------------------
+  if (loading)
+    return (
+      <>
+      {/* Inline keyframes */}
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      {/* Loader UI */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "16px",
+          color: "white",
+        }}
+      >
+        <div
+          style={{
+            marginRight: "8px",
+            width: "20px",
+            height: "20px",
+            border: "2px solid white",
+            borderTopColor: "transparent",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }}
+        ></div>
+
+        Loading media log data...
+      </div>
+    </>
+    );
+
+  // -----------------------------
+  // ERROR
+  // -----------------------------
+  if (error)
+    return (
+      <div className="flex items-center gap-2 text-destructive p-4">
+        <AlertTriangle className="w-4 h-4" /> {error}
+      </div>
+    );
+
+  // -----------------------------
+  // TABLE RENDER
+  // -----------------------------
+ return (
+  <Tabs defaultValue="medialogs" className="w-full">
+    {/* Only one tab */}
+    <TabsList className=" mb-4">
+      <TabsTrigger value="medialogs">Media Logs</TabsTrigger>
+    </TabsList>
+
+    <TabsContent value="medialogs" className="p-0">
+      {mediaLogs.length > 0 ? (
+        <>
+          <div className="flex justify-end items-center mb-4 px-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}
+            >
+              Export CSV
+            </Button>
+          </div>
+
+          <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+            <Table className="border">
+              <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
+                <TableRow className="border text-white">
+                  {columns.map((col) => (
+                    <TableHead
+                      key={col.key}
+                      className="border text-white whitespace-nowrap px-3 py-2 font-semibold"
+                    >
+                      {col.label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {mediaLogs.map((row, idx) => (
+                  <TableRow key={row.MLUniqueID || idx} className="border">
+                    {columns.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        className="border whitespace-nowrap max-w-[250px] truncate px-3 py-2"
+                      >
+                        {mediaLogColumnRenderers[col.key]
+                          ? mediaLogColumnRenderers[col.key](row[col.key], row)
+                          : row[col.key] ?? " "}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center p-4">
+          No media log data found for this MLID.
+        </p>
+      )}
+    </TabsContent>
+  </Tabs>
+);
+}
+
+
+// 1. EXTRACTED COMPONENT
+function AuxDetailsView({
+  data,
+  hasAccess,
+  onPushSidebar,
+}: {
+  data: any;
+  hasAccess: (resource: string, access?: 'read' | 'write') => boolean;
+  onPushSidebar: (item: SidebarStackItem) => void;
+}) {
+  // Hooks are now safe here because this is a valid Component
+  const [isEditingSRT, setIsEditingSRT] = useState(false);
+  const [srtLink, setSrtLink] = useState(data.SRTLink || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const renderIcon = (icon: React.ReactNode, gradient: string) => (
+    <div
+      className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${gradient} flex items-center justify-center`}
+    >
+      {icon}
+    </div>
+  );
+
+  const handleSaveSRTLink = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving SRT Link...");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/aux/${encodeURIComponent(data.new_auxid)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ SRTLink: srtLink }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update SRT Link");
+      }
+
+      data.SRTLink = srtLink;
+
+      toast.success("SRT Link updated successfully!", { id: savingToast });
+      setIsEditingSRT(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating SRT Link:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingSRT(false);
+    setSrtLink(data.SRTLink || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(
+          <FileText className="w-8 h-8 text-white" />,
+          "from-purple-500 to-red-600"
+        )}
+        <h3 className="text-xl font-bold">
+          {data.AuxTopic || "Auxiliary File"}
+        </h3>
+        <p className="text-muted-foreground">ID: {data.new_auxid}</p>
+        <Badge className="mt-2">{data.AuxFileType}</Badge>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">File Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          {data.fkMLID && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px 14px",
+                background: "rgba(59,130,246,0.12)",
+                borderRadius: "10px",
+                marginTop: "10px",
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--muted-foreground)",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                }}
+              >
+                fkMLID
+              </span>
+
+           
+{data.fkMLID && hasAccess("Media Log", "read") ? (
+  <Button
+    size="sm"
+    variant="ghost"
+    onClick={() =>
+      onPushSidebar({
+        type: "aux_data",
+        data: { mlid: data.fkMLID },
+        title: `Media Log Table for MLID ${data.fkMLID}`,
+      })
+    }
+    style={{
+      padding: "4px 10px",
+      fontSize: "14px",
+      fontWeight: 600,
+      background: "#1e40af",
+      color: "#fff",
+      borderRadius: "6px",
+      display: "inline-flex",
+      alignItems: "center",
+      border: "none",
+      cursor: "pointer",
+    }}
+  >
+    {data.fkMLID}
+    <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+  </Button>
+) : (
+  <span
+    style={{
+      fontSize: "14px",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      color: "var(--muted-foreground)",
+      fontWeight: 500,
+    }}
+  >
+    <Lock style={{ width: 12, height: 12 }} />
+    {data.fkMLID}
+  </span>
+)}
+            </div>
+          )}
+
+          {/* Simple reusable row for read-only fields */}
+          <div className="flex justify-between items-start gap-4">
+            <span className="text-muted-foreground flex-shrink-0">
+              Language
+            </span>
+            <Badge variant="secondary">{data.AuxLanguage}</Badge>
+          </div>
+
+          <div className="flex justify-between items-start gap-4">
+            <span className="text-muted-foreground flex-shrink-0">
+              File Name
+            </span>
+            <span className="font-medium text-right break-words">
+              {data.ProjFileName}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-start gap-4">
+            <span className="text-muted-foreground flex-shrink-0">
+              File Size
+            </span>
+            <span className="font-medium">
+              {data.FilesizeBytes
+                ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB`
+                : undefined}
+            </span>
+          </div>
+
+          <Separator />
+          {data.GoogleDriveLink && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Google Drive</span>
+              <Button size="sm" variant="ghost" asChild>
+                <a
+                  href={data.GoogleDriveLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Link <ExternalLink className="w-3 h-3 ml-2" />
+                </a>
+              </Button>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">
+              SRT Link
+            </span>
+
+            {isEditingSRT ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={srtLink}
+                  onChange={(e) => setSrtLink(e.target.value)}
+                  placeholder="Enter URL..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveSRTLink}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {srtLink ? (
+                  <Button size="sm" variant="ghost" asChild>
+                    <a
+                      href={srtLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open Link <ExternalLink className="w-3 h-3 ml-2" />
+                    </a>
+                  </Button>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Not set
+                  </span>
+                )}
+                {hasAccess("Aux Files", "write") && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingSRT(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {data.NotesRemarks && (
+            <div>
+              <span className="text-muted-foreground">Remarks</span>
+              <p className="mt-1 text-sm bg-muted p-3 rounded-lg">
+                {data.NotesRemarks}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Metadata</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-start gap-4">
+            <span className="text-muted-foreground flex-shrink-0">
+              Modified By
+            </span>
+            <Badge variant="secondary">{data.ModifiedBy}</Badge>
+          </div>
+          <div className="flex justify-between items-start gap-4">
+            <span className="text-muted-foreground flex-shrink-0">
+              Modified On
+            </span>
+            <span className="font-medium text-right break-words">
+              {data.ModifiedOn}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 // =================================================================
 // MAIN SIDEBAR COMPONENT
 // =================================================================
@@ -1452,215 +2077,22 @@ export function DetailsSidebar({
             recordingCode={data.recordingCode} // <<< PASS THE recordingCode PROP
             />
         );
-   case "aux": {
-        const [isEditingSRT, setIsEditingSRT] = useState(false);
-        const [srtLink, setSrtLink] = useState(data.SRTLink || "");
-        const [isSaving, setIsSaving] = useState(false);
 
-        const handleSaveSRTLink = async () => {
-          setIsSaving(true);
-          const savingToast = toast.loading("Saving SRT Link...");
-
-          try {
-            const response = await fetch(
-              `${API_BASE_URL}/aux/${encodeURIComponent(data.new_auxid)}`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ SRTLink: srtLink }),
-              }
-            );
-
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              throw new Error(errorData.message || "Failed to update SRT Link");
-            }
-            
-            data.SRTLink = srtLink;
-
-            toast.success("SRT Link updated successfully!", { id: savingToast });
-            setIsEditingSRT(false);
-          } catch (error: any) {
-            toast.error(`Error: ${error.message}`, { id: savingToast });
-            console.error("Error updating SRT Link:", error);
-          } finally {
-            setIsSaving(false);
-          }
-        };
-
-        const handleCancel = () => {
-          setIsEditingSRT(false);
-          setSrtLink(data.SRTLink || "");
-        };
-
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-purple-500 to-red-600")}
-              <h3 className="text-xl font-bold">{data.AuxTopic || "Auxiliary File"}</h3>
-              <p className="text-muted-foreground">ID: {data.new_auxid}</p>
-              <Badge className="mt-2">{data.AuxFileType}</Badge>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg px-2">File Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 p-4">
-               {data.fkMLID && (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "10px 14px",
-      background: "rgba(59,130,246,0.12)",   // soft blue highlight
-      borderRadius: "10px",
-      marginTop: "10px",
-    }}
-  >
-    {/* Label */}
-    <span
-      style={{
-        color: "var(--muted-foreground)",
-        fontWeight: 500,
-        fontSize: "14px",
-      }}
-    >
-      fkMLID
-    </span>
-
-    {/* Value */}
-    {data.fkMLID && hasAccess("Media Log") ? (
-      <button
-        onClick={() =>
-          onPushSidebar({
-            type: "aux_related_data",
-            data: { mlid: data.fkMLID },
-            title: `Related AUX Files for MLID ${data.fkMLID}`,
-          })
-        }
-        style={{
-          padding: "4px 10px",
-          fontSize: "14px",
-          fontWeight: 600,
-          background: "#1e40af",
-          color: "#fff",
-          borderRadius: "6px",
-          display: "inline-flex",
-          alignItems: "center",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        {data.fkMLID}
-        <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
-      </button>
-    ) : (
-      <span
-        style={{
-          fontSize: "14px",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          color: "var(--muted-foreground)",
-          fontWeight: 500,
-        }}
-      >
-        <Lock style={{ width: 12, height: 12 }} />
-        {data.fkMLID}
-      </span>
-    )}
-  </div>
-)}
-
-                <FieldRow label="Language" value={data.AuxLanguage}>
-                  <Badge variant="secondary">{data.AuxLanguage}</Badge>
-                </FieldRow>
-                <FieldRow label="File Name" value={data.ProjFileName}>
-                  <span className="font-medium text-right break-words">{data.ProjFileName}</span>
-                </FieldRow>
-                <FieldRow
-                  label="File Size"
-                  value={data.FilesizeBytes}
-                >
-                  <span className="font-medium">
-                    {data.FilesizeBytes ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB` : undefined}
-                  </span>
-                </FieldRow>
-                <Separator />
-                {data.GoogleDriveLink && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Google Drive</span>
-                    <Button size="sm" variant="ghost" asChild>
-                      <a href={data.GoogleDriveLink} target="_blank" rel="noopener noreferrer">
-                        Open Link <ExternalLink className="w-3 h-3 ml-2" />
-                      </a>
-                    </Button>
-                  </div>
-                )}
-                
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-muted-foreground flex-shrink-0">SRT Link</span>
-                  
-                  {isEditingSRT ? (
-                    <div className="flex items-center gap-2 w-full max-w-[220px]">
-                      <Input
-                        type="text"
-                        value={srtLink}
-                        onChange={(e) => setSrtLink(e.target.value)}
-                        placeholder="Enter URL..."
-                        className="h-8 text-sm"
-                        disabled={isSaving}
-                      />
-                      <Button size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleSaveSRTLink} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-8 w-8 flex-shrink-0" onClick={handleCancel} disabled={isSaving}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {srtLink ? (
-                        <Button size="sm" variant="ghost" asChild>
-                          <a href={srtLink} target="_blank" rel="noopener noreferrer">
-                            Open Link <ExternalLink className="w-3 h-3 ml-2" />
-                          </a>
-                        </Button>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Not set</span>
-                      )}
-                      {hasAccess("Aux Files", 'write') && (
-                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setIsEditingSRT(true)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {data.NotesRemarks && (
-                  <div>
-                    <span className="text-muted-foreground">Remarks</span>
-                    <p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.NotesRemarks}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
-              <CardContent className="space-y-4 p-4">
-                 <FieldRow label="Modified By" value={data.ModifiedBy}>
-                   <Badge variant="secondary">{data.ModifiedBy}</Badge>
-                 </FieldRow>
-                 <FieldRow label="Modified On" value={data.ModifiedOn} />
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
+        case "aux_data":
+      return (
+        <AuxMediaLogDataTableView 
+            mlid={data.mlid} 
+            onPushSidebar={onPushSidebar} 
+        />
+      );
+   case "aux":
+      return (
+        <AuxDetailsView
+          data={data}
+          hasAccess={hasAccess}
+          onPushSidebar={onPushSidebar}
+        />
+      );
      case "audio": {
       const [isEditingAudioList, setIsEditingAudioList] = useState(false);
       const [audioList, setAudioList] = useState(data.AudioList || "");
@@ -2591,78 +3023,29 @@ export function DetailsSidebar({
               <CardHeader>
                 <CardTitle className="text-lg px-2">Highlight Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4">
-                <div className="flex justify-between items-start gap-3">
-  <span className="text-sm text-muted-foreground whitespace-nowrap">
-    EventName-Code
-  </span>
+             <CardContent className="space-y-4 p-4">
+  {/* EventName–Code Plain Display */}
+  <FieldRow
+    label="EventName-Code"
+    value={
+      data.EventName
+        ? `${data.EventName} (${data.EventCode})`
+        : data.EventCode || "N/A"
+    }
+  />
 
-  <div
-  style={{
-    flex: 1,
-    textAlign: "right",
-    overflow: "hidden",
-    wordBreak: "break-word",
-    textOverflow: "ellipsis",
-  }}
->
-  {data.EventCode && hasAccess("Events", "read") ? (
-    <DrilldownButton
-      id={data.EventCode}
-      apiEndpoint="/events"
-      targetType="event"
-      titlePrefix="Event"
-      onPushSidebar={onPushSidebar}
-    >
-      <span
-        style={{
-          whiteSpace: "normal",
-          wordBreak: "break-word",
-        }}
-      >
-        {data.EventName
-          ? `${data.EventName} (${data.EventCode})`
-          : data.EventCode}
-      </span>
-    </DrilldownButton>
-  ) : (
-    <span
-      style={{
-        fontWeight: 500,
-        color: "var(--muted-foreground)",
-        display: "flex",
-        alignItems: "center",
-        gap: "4px",
-        fontSize: "0.875rem",
-        justifyContent: "flex-end",
-        whiteSpace: "normal",
-        wordBreak: "break-word",
-      }}
-    >
-      {data.EventCode ? (
-        <>
-          <Lock style={{ width: "12px", height: "12px" }} /> {data.EventCode}
-        </>
-      ) : (
-        "N/A"
-      )}
-    </span>
-  )}
-</div>
+  <FieldRow label="Recording Name" value={data.RecordingName} />
+  <FieldRow label="Recording Code" value={data.RecordingCode} />
+  <FieldRow label="Duration" value={data.Duration}>
+    <Badge variant="secondary">{data.Duration}</Badge>
+  </FieldRow>
+  <FieldRow label="Teams" value={data.Teams} />
+  <Separator />
+  <FieldRow label="From Date" value={data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined} />
+  <FieldRow label="To Date" value={data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined} />
+  <FieldRow label="Year" value={data.Yr} />
+</CardContent>
 
-</div>
-
-                <FieldRow label="Recording Name" value={data.RecordingName} />
-                <FieldRow label="Recording Code" value={data.RecordingCode} />
-                <FieldRow label="Duration" value={data.Duration}>
-                  <Badge variant="secondary">{data.Duration}</Badge>
-                </FieldRow>
-                <FieldRow label="Teams" value={data.Teams} />
-                <Separator />
-                <FieldRow label="From Date" value={data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined} />
-                <FieldRow label="To Date" value={data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined} />
-                <FieldRow label="Year" value={data.Yr} />
-              </CardContent>
             </Card>
           </div>
         );
