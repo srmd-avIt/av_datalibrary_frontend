@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "./ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
+import { Download } from "lucide-react";
 
 // TypeScript fix for Vite's import.meta.env
 interface ImportMetaEnv {
@@ -365,7 +366,7 @@ const categoryTagRenderer = (value: string | null | undefined) => {
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.7 ? "#f7f9fcff" : "#f1f5f9";
     };
-    const values = value.split(',').map(v => v.trim()).filter(Boolean);
+     const values = String(value).split(',').map(v => v.trim()).filter(Boolean);
     return (
         <div className="flex flex-wrap justify-center gap-1.5">
             {values.map((val, index) => {
@@ -582,10 +583,75 @@ function EventDataTableView({
           <CardContent className="p-0">
             {recordings.length > 0 ? (
               <>
-                 <div className="flex justify-between items-center mb-4 px-2">
-                    <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
-                    <Button variant="outline" size="sm" onClick={() => exportToCSV(recordings, [ { key: "Yr", label: "Year" }, { key: "EventName", label: "Event Name" }, { key: "fkEventCategory", label: "Event Category" }, { key: "fkEventCode", label: "fkEventCode" }, { key: "RecordingName", label: "Recording Name" }, { key: "RecordingCode", label: "Recording Code" }, { key: "Duration", label: "Duration" }, { key: "DistributionDriveLink", label: "Distribution Drive Link" }, { key: "BitRate", label: "Bit Rate" }, { key: "Dimension", label: "Dimension" }, { key: "Masterquality", label: "Masterquality" }, { key: "fkMediaName", label: "fkMediaName" }, { key: "Filesize", label: "Filesize" }, { key: "FilesizeInBytes", label: "FilesizeInBytes" }, { key: "NoOfFiles", label: "No Of Files" }, { key: "RecordingRemarks", label: "Recording Remarks" }, { key: "CounterError", label: "Counter Error" }, { key: "ReasonError", label: "Reason Error" }, { key: "MasterProductTitle", label: "Master Product Title" }, { key: "fkDistributionLabel", label: "fkDistributionLabel" }, { key: "ProductionBucket", label: "Production Bucket" }, { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" }, { key: "AudioBitrate", label: "Audio Bitrate" }, { key: "AudioTotalDuration", label: "Audio Total Duration" }, { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" }, { key: "PreservationStatus", label: "Preservation Status" }, { key: "QCSevak", label: "QC Sevak" }, { key: "QcStatus", label: "Qc Status" }, { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" }, { key: "SubmittedDate", label: "Submitted Date" }, { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" }, { key: "InfoOnCassette", label: "Info On Cassette" }, { key: "IsInformal", label: "Is Informal" }, { key: "AssociatedDR", label: "Associated DR" }, { key: "Teams", label: "Teams" }, ], "digital_recordings.csv")}>Export CSV</Button>
-                </div>
+                
+<div className="flex justify-between items-center mb-4 px-2">
+  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
+
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() =>
+      exportToCSV(
+        recordings,
+        [
+          { key: "Yr", label: "Year" },
+          { key: "EventName", label: "Event Name" },
+          { key: "fkEventCategory", label: "Event Category" },
+          { key: "fkEventCode", label: "fkEventCode" },
+          { key: "RecordingName", label: "Recording Name" },
+          { key: "RecordingCode", label: "Recording Code" },
+          { key: "Duration", label: "Duration" },
+          { key: "DistributionDriveLink", label: "Distribution Drive Link" },
+          { key: "BitRate", label: "Bit Rate" },
+          { key: "Dimension", label: "Dimension" },
+          { key: "Masterquality", label: "Masterquality" },
+          { key: "fkMediaName", label: "fkMediaName" },
+          { key: "Filesize", label: "Filesize" },
+          { key: "FilesizeInBytes", label: "FilesizeInBytes" },
+          { key: "NoOfFiles", label: "No Of Files" },
+          { key: "RecordingRemarks", label: "Recording Remarks" },
+          { key: "CounterError", label: "Counter Error" },
+          { key: "ReasonError", label: "Reason Error" },
+          { key: "MasterProductTitle", label: "Master Product Title" },
+          { key: "fkDistributionLabel", label: "fkDistributionLabel" },
+          { key: "ProductionBucket", label: "Production Bucket" },
+          { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" },
+          { key: "AudioBitrate", label: "Audio Bitrate" },
+          { key: "AudioTotalDuration", label: "Audio Total Duration" },
+          { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" },
+          { key: "PreservationStatus", label: "Preservation Status" },
+          { key: "QCSevak", label: "QC Sevak" },
+          { key: "QcStatus", label: "Qc Status" },
+          { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" },
+          { key: "SubmittedDate", label: "Submitted Date" },
+          { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" },
+          { key: "InfoOnCassette", label: "Info On Cassette" },
+          { key: "IsInformal", label: "Is Informal" },
+          { key: "AssociatedDR", label: "Associated DR" },
+          { key: "Teams", label: "Teams" },
+        ],
+        "digital_recordings.csv"
+      )
+    }
+    style={{
+      background: "rgba(0, 0, 0, 0.35)",         // translucent black
+      color: "white",
+      border: "1px solid rgba(255, 255, 255, 0.15)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      padding: "6px 14px",
+      fontWeight: 600,
+      borderRadius: "8px",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+    }}
+  >
+    <Download size={16} />
+    Export CSV
+  </Button>
+</div>
                 <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
                   <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
@@ -606,10 +672,32 @@ function EventDataTableView({
           <CardContent className="p-0">
             {mediaLogs.length > 0 ? (
               <>
-                <div className="flex justify-between items-center mb-4 px-2">
-                    <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
-                    <Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}>Export CSV</Button>
-                </div>
+               <div className="flex justify-between items-center mb-4 px-2">
+  <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
+
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}
+    style={{
+      background: "rgba(0, 0, 0, 0.35)",          // translucent black
+      color: "white",
+      border: "1px solid rgba(255, 255, 255, 0.15)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      padding: "6px 14px",
+      fontWeight: 600,
+      borderRadius: "8px",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+    }}
+  >
+    <Download size={16} />
+    Export CSV
+  </Button>
+</div>
                 <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
                   <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
@@ -737,14 +825,140 @@ function DigitalRecordingDataTableView({
       <Tabs defaultValue="events" className="w-full">
         <TabsList className="mb-4"><TabsTrigger value="medialogs">Media Log</TabsTrigger><TabsTrigger value="events">Event</TabsTrigger></TabsList>
         <TabsContent value="events">
-          <CardContent className="p-0">
-            {event ? (<> <div className="flex justify-between items-center mb-4 px-2"><h2 className="text-xl font-semibold px-2 text-white">Event Details</h2><Button variant="outline" size="sm" onClick={() => exportToCSV([event], eventColumns, "event.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{eventColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody><TableRow className="border">{eventColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">{col.key === 'NewEventCategory' ? categoryTagRenderer(event[col.key]) : event[col.key] ?? " "}</TableCell>))}</TableRow></TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No event found for this recording.</p>)}
-          </CardContent>
+         <CardContent className="p-0">
+  {event ? (
+    <>
+      <div className="flex justify-between items-center mb-4 px-2">
+        <h2 className="text-xl font-semibold px-2 text-white">Event Details</h2>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportToCSV([event], eventColumns, "event.csv")}
+          style={{
+            background: "rgba(0, 0, 0, 0.35)",            // translucent black
+            color: "white",
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            padding: "6px 14px",
+            fontWeight: 600,
+            borderRadius: "8px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <Download size={16} />
+          Export CSV
+        </Button>
+      </div>
+
+      <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+        <Table className="border">
+          <TableHeader className="sticky top-0 bg-background z-10 shadow">
+            <TableRow className="border">
+              {eventColumns.map((col) => (
+                <TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">
+                  {col.label}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            <TableRow className="border">
+              {eventColumns.map((col) => (
+                <TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">
+                  {col.key === "NewEventCategory"
+                    ? categoryTagRenderer(event[col.key])
+                    : event[col.key] ?? " "}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  ) : (
+    <p className="text-sm text-muted-foreground text-center p-4">
+      No event found for this recording.
+    </p>
+  )}
+</CardContent>
         </TabsContent>
         <TabsContent value="medialogs">
-          <CardContent className="p-0">
-            {mediaLogs.length > 0 ? (<> <div className="flex justify-between items-center mb-4 px-2"><h2 className="text-xl font-semibold px-2 text-white">Media Log</h2><Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")}>Export CSV</Button></div> <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white"><Table className="border"><TableHeader className="sticky top-0 bg-background z-10 shadow"><TableRow className="border">{mediaLogColumns.map((col) => (<TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">{col.label}</TableHead>))}</TableRow></TableHeader><TableBody>{mediaLogs.map((log, idx) => (<TableRow key={log.MLUniqueID || idx} className="border">{mediaLogColumns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate">{mediaLogColumnRenderers[col.key] ? mediaLogColumnRenderers[col.key](log[col.key], log) : log[col.key] ?? " "}</TableCell>))}</TableRow>))}</TableBody></Table></div> </>) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this recording.</p>)}
-          </CardContent>
+         <CardContent className="p-0">
+  {mediaLogs.length > 0 ? (
+    <>
+      <div className="flex justify-between items-center mb-4 px-2">
+        <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")}
+          style={{
+            background: "rgba(0, 0, 0, 0.35)",        // translucent black
+            color: "white",
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            padding: "6px 14px",
+            fontWeight: 600,
+            borderRadius: "8px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <Download size={16} />
+          Export CSV
+        </Button>
+      </div>
+
+      <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+        <Table className="border">
+          <TableHeader className="sticky top-0 bg-background z-10 shadow">
+            <TableRow className="border">
+              {mediaLogColumns.map((col) => (
+                <TableHead
+                  key={col.key}
+                  className="border whitespace-nowrap text-white px-3 py-2"
+                >
+                  {col.label}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {mediaLogs.map((log, idx) => (
+              <TableRow key={log.MLUniqueID || idx} className="border">
+                {mediaLogColumns.map((col) => (
+                  <TableCell
+                    key={col.key}
+                    className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate"
+                  >
+                    {mediaLogColumnRenderers[col.key]
+                      ? mediaLogColumnRenderers[col.key](log[col.key], log)
+                      : log[col.key] ?? " "}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  ) : (
+    <p className="text-sm text-muted-foreground text-center p-4">
+      No media logs found for this recording.
+    </p>
+  )}
+</CardContent>
         </TabsContent>
       </Tabs>
     </div>
@@ -944,10 +1158,74 @@ const [recordings, setRecordings] = useState<any[]>([]);
           <CardContent className="p-0">
             {recordings.length > 0 ? (
               <>
-                 <div className="flex justify-between items-center mb-4 px-2">
-                    <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
-                    <Button variant="outline" size="sm" onClick={() => exportToCSV(recordings, [ { key: "Yr", label: "Year" }, { key: "EventName", label: "Event Name" }, { key: "fkEventCategory", label: "Event Category" }, { key: "fkEventCode", label: "fkEventCode" }, { key: "RecordingName", label: "Recording Name" }, { key: "RecordingCode", label: "Recording Code" }, { key: "Duration", label: "Duration" }, { key: "DistributionDriveLink", label: "Distribution Drive Link" }, { key: "BitRate", label: "Bit Rate" }, { key: "Dimension", label: "Dimension" }, { key: "Masterquality", label: "Masterquality" }, { key: "fkMediaName", label: "fkMediaName" }, { key: "Filesize", label: "Filesize" }, { key: "FilesizeInBytes", label: "FilesizeInBytes" }, { key: "NoOfFiles", label: "No Of Files" }, { key: "RecordingRemarks", label: "Recording Remarks" }, { key: "CounterError", label: "Counter Error" }, { key: "ReasonError", label: "Reason Error" }, { key: "MasterProductTitle", label: "Master Product Title" }, { key: "fkDistributionLabel", label: "fkDistributionLabel" }, { key: "ProductionBucket", label: "Production Bucket" }, { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" }, { key: "AudioBitrate", label: "Audio Bitrate" }, { key: "AudioTotalDuration", label: "Audio Total Duration" }, { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" }, { key: "PreservationStatus", label: "Preservation Status" }, { key: "QCSevak", label: "QC Sevak" }, { key: "QcStatus", label: "Qc Status" }, { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" }, { key: "SubmittedDate", label: "Submitted Date" }, { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" }, { key: "InfoOnCassette", label: "Info On Cassette" }, { key: "IsInformal", label: "Is Informal" }, { key: "AssociatedDR", label: "Associated DR" }, { key: "Teams", label: "Teams" }, ], "digital_recordings.csv")}>Export CSV</Button>
-                </div>
+                <div className="flex justify-between items-center mb-4 px-2">
+  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
+
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() =>
+      exportToCSV(
+        recordings,
+        [
+          { key: "Yr", label: "Year" },
+          { key: "EventName", label: "Event Name" },
+          { key: "fkEventCategory", label: "Event Category" },
+          { key: "fkEventCode", label: "fkEventCode" },
+          { key: "RecordingName", label: "Recording Name" },
+          { key: "RecordingCode", label: "Recording Code" },
+          { key: "Duration", label: "Duration" },
+          { key: "DistributionDriveLink", label: "Distribution Drive Link" },
+          { key: "BitRate", label: "Bit Rate" },
+          { key: "Dimension", label: "Dimension" },
+          { key: "Masterquality", label: "Masterquality" },
+          { key: "fkMediaName", label: "fkMediaName" },
+          { key: "Filesize", label: "Filesize" },
+          { key: "FilesizeInBytes", label: "FilesizeInBytes" },
+          { key: "NoOfFiles", label: "No Of Files" },
+          { key: "RecordingRemarks", label: "Recording Remarks" },
+          { key: "CounterError", label: "Counter Error" },
+          { key: "ReasonError", label: "Reason Error" },
+          { key: "MasterProductTitle", label: "Master Product Title" },
+          { key: "fkDistributionLabel", label: "fkDistributionLabel" },
+          { key: "ProductionBucket", label: "Production Bucket" },
+          { key: "fkDigitalMasterCategory", label: "fkDigitalMasterCategory" },
+          { key: "AudioBitrate", label: "Audio Bitrate" },
+          { key: "AudioTotalDuration", label: "Audio Total Duration" },
+          { key: "QcRemarksCheckedOn", label: "Qc Remarks Checked On" },
+          { key: "PreservationStatus", label: "Preservation Status" },
+          { key: "QCSevak", label: "QC Sevak" },
+          { key: "QcStatus", label: "Qc Status" },
+          { key: "LastModifiedTimestamp", label: "Last Modified Timestamp" },
+          { key: "SubmittedDate", label: "Submitted Date" },
+          { key: "PresStatGuidDt", label: "Pres Stat Guid Dt" },
+          { key: "InfoOnCassette", label: "Info On Cassette" },
+          { key: "IsInformal", label: "Is Informal" },
+          { key: "AssociatedDR", label: "Associated DR" },
+          { key: "Teams", label: "Teams" },
+        ],
+        "digital_recordings.csv"
+      )
+    }
+    style={{
+      background: "rgba(0, 0, 0, 0.35)",        // translucent black
+      color: "white",
+      border: "1px solid rgba(255, 255, 255, 0.15)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      padding: "6px 14px",
+      fontWeight: 600,
+      borderRadius: "8px",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+    }}
+  >
+    <Download size={16} />
+    Export CSV
+  </Button>
+</div>
                 <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
                   <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
@@ -971,16 +1249,19 @@ const [recordings, setRecordings] = useState<any[]>([]);
   <CardContent className="p-0">
     {auxList.length > 0 ? (
       <>
-        <div className="flex justify-between items-center mb-4 px-2">
-          <h2 className="text-xl font-semibold px-2 text-white">AUX Files</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => exportToCSV(auxList, auxColumns, "aux_files.csv")}
-          >
-            Export CSV
-          </Button>
-        </div>
+       <div className="flex justify-between items-center mb-4 px-2">
+  <h2 className="text-xl font-semibold px-2 text-white">AUX Files</h2>
+
+  <Button
+    variant="outline"
+    size="sm"
+    className="bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-black/60 transition-all duration-300 flex items-center gap-2"
+    onClick={() => exportToCSV(auxList, auxColumns, "aux_files.csv")}
+  >
+    <Download size={15} />
+    Export CSV
+  </Button>
+</div>
         <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
         <Table className="text-white pd-2 py-3">
           <TableHeader className=" text-white">
@@ -1296,15 +1577,30 @@ function AuxMediaLogDataTableView({
     <TabsContent value="medialogs" className="p-0">
       {mediaLogs.length > 0 ? (
         <>
-          <div className="flex justify-end items-center mb-4 px-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}
-            >
-              Export CSV
-            </Button>
-          </div>
+         <div className="flex justify-end items-center mb-4 px-2 mt-4">
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}
+    style={{
+      background: "rgba(0, 0, 0, 0.35)",        // translucent black
+      color: "white",
+      border: "1px solid rgba(255, 255, 255, 0.15)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      padding: "6px 14px",
+      fontWeight: 600,
+      borderRadius: "8px",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px", // spacing between icon & text
+    }}
+  >
+    <Download size={16} />
+    Export CSV
+  </Button>
+</div>
 
           <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
             <Table className="border">
@@ -1417,11 +1713,7 @@ function AuxDetailsView({
           <FileText className="w-8 h-8 text-white" />,
           "from-purple-500 to-red-600"
         )}
-        <h3 className="text-xl font-bold">
-          {data.AuxTopic || "Auxiliary File"}
-        </h3>
-        <p className="text-muted-foreground">ID: {data.new_auxid}</p>
-        <Badge className="mt-2">{data.AuxFileType}</Badge>
+       
       </div>
 
       <Card>
@@ -1432,18 +1724,21 @@ function AuxDetailsView({
           {data.fkMLID && (
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "10px 14px",
-                background: "rgba(59,130,246,0.12)",
-                borderRadius: "10px",
-                marginTop: "10px",
-              }}
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 12px",
+  background: "rgba(59, 130, 246, 0.15)",  // blue glass
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  borderRadius: "10px",
+  border: "1px solid rgba(255, 255, 255, 0.22)",
+  marginTop: "10px",
+}}
             >
               <span
                 style={{
-                  color: "var(--muted-foreground)",
+                  color: "#FFFFFF",
                   fontWeight: 500,
                   fontSize: "14px",
                 }}
@@ -1463,18 +1758,20 @@ function AuxDetailsView({
         title: `Media Log Table for MLID ${data.fkMLID}`,
       })
     }
-    style={{
-      padding: "4px 10px",
-      fontSize: "14px",
-      fontWeight: 600,
-      background: "#1e40af",
-      color: "#fff",
-      borderRadius: "6px",
-      display: "inline-flex",
-      alignItems: "center",
-      border: "none",
-      cursor: "pointer",
-    }}
+     style={{
+  padding: "4px 10px",
+  fontSize: "14px",
+  fontWeight: 600,
+  background: "rgba(255, 255, 255, 0.15)",   // translucent
+  backdropFilter: "blur(8px)",               // glass blur
+  WebkitBackdropFilter: "blur(8px)",         // Safari support
+  color: "#fff",
+  borderRadius: "6px",
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
+  cursor: "pointer",
+}}
   >
     {data.fkMLID}
     <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
@@ -1498,32 +1795,20 @@ function AuxDetailsView({
           )}
 
           {/* Simple reusable row for read-only fields */}
-          <div className="flex justify-between items-start gap-4">
-            <span className="text-muted-foreground flex-shrink-0">
-              Language
-            </span>
-            <Badge variant="secondary">{data.AuxLanguage}</Badge>
-          </div>
 
-          <div className="flex justify-between items-start gap-4">
-            <span className="text-muted-foreground flex-shrink-0">
-              File Name
-            </span>
-            <span className="font-medium text-right break-words">
-              {data.ProjFileName}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-start gap-4">
-            <span className="text-muted-foreground flex-shrink-0">
-              File Size
-            </span>
-            <span className="font-medium">
-              {data.FilesizeBytes
-                ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB`
-                : undefined}
-            </span>
-          </div>
+           <FieldRow label="Aux ID" value={data.new_auxid} />
+  <FieldRow label="AuxFile Type" value={data.AuxFileType} />
+  <FieldRow label="Language" value={data.AuxLanguage}>
+    <Badge variant="secondary">{data.AuxLanguage}</Badge>
+  </FieldRow>
+  <FieldRow label="File Name" value={data.ProjFileName} />
+  <FieldRow label="File Size" value={data.FilesizeBytes}>
+    <span className="font-medium">
+      {data.FilesizeBytes
+        ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB`
+        : undefined}
+    </span>
+  </FieldRow>
 
           <Separator />
           {data.GoogleDriveLink && (
@@ -1620,33 +1905,36 @@ function AuxDetailsView({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg px-2">Metadata</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 p-4">
-          <div className="flex justify-between items-start gap-4">
-            <span className="text-muted-foreground flex-shrink-0">
-              Modified By
-            </span>
-            <Badge variant="secondary">{data.ModifiedBy}</Badge>
-          </div>
-          <div className="flex justify-between items-start gap-4">
-            <span className="text-muted-foreground flex-shrink-0">
-              Modified On
-            </span>
-            <span className="font-medium text-right break-words">
-              {data.ModifiedOn}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+    <Card>
+  <CardHeader>
+    <CardTitle className="text-lg px-2">Metadata</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4 p-4">
+    <FieldRow label="Modified By" value={data.ModifiedBy}>
+      <Badge variant="secondary">{data.ModifiedBy}</Badge>
+    </FieldRow>
+    <FieldRow label="Modified On" value={data.ModifiedOn}>
+      <span className="font-medium text-right break-words">{data.ModifiedOn}</span>
+    </FieldRow>
+  </CardContent>
+</Card>
     </div>
   );
 }
 // =================================================================
 // MAIN SIDEBAR COMPONENT
 // =================================================================
+// Move FieldRow to top-level so it's available everywhere
+export const FieldRow = ({ label, value, children }: { label: string; value?: any; children?: React.ReactNode }) => {
+  if (value === undefined || value === null || String(value).trim() === "" || String(value).toUpperCase() === "N/A") return null;
+  return (
+    <div className="flex justify-between items-start gap-4">
+      <span className="text-muted-foreground flex-shrink-0">{label}</span>
+      <span className="font-medium text-right break-words">{children ?? value}</span>
+    </div>
+  );
+};
+
 export function DetailsSidebar({
   onClose,
   onPopSidebar,
@@ -1667,16 +1955,6 @@ export function DetailsSidebar({
     if (!permission) return false;
     return permission.actions.includes(accessLevel);
   }, [user]);
-
-  const FieldRow = ({ label, value, children }: { label: string; value?: any; children?: React.ReactNode }) => {
-    if (value === undefined || value === null || String(value).trim() === "" || String(value).toUpperCase() === "N/A") return null;
-    return (
-      <div className="flex justify-between items-start gap-4">
-        <span className="text-muted-foreground flex-shrink-0">{label}</span>
-        <span className="font-medium text-right break-words">{children ?? value}</span>
-      </div>
-    );
-  };
   
   if (!data) return null;
   
@@ -1701,17 +1979,20 @@ export function DetailsSidebar({
                {data.EventCode && (
   <div
     style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "8px 12px",
-      background: "rgba(59,130,246,0.08)", // soft blue highlight
-      borderRadius: "10px",
-      marginTop: "10px",
-    }}
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 12px",
+  background: "rgba(59, 130, 246, 0.15)",  // blue glass
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  borderRadius: "10px",
+  border: "1px solid rgba(255, 255, 255, 0.22)",
+  marginTop: "10px",
+}}
   >
     {/* Label */}
-    <span style={{ color: "var(--muted-foreground)" }}>Event Code</span>
+    <span style={{ color: "#fff" }}>Event Code</span>
 
     {/* Value */}
     {hasAccess("Digital Recordings", "read") || hasAccess("Media Log", "read") ? (
@@ -1724,17 +2005,19 @@ export function DetailsSidebar({
           })
         }
         style={{
-          padding: "4px 10px",
-          fontSize: "14px",
-          fontWeight: 600,
-          background: "#1e40af",
-          color: "#fff",
-          border: "none",
-          borderRadius: "6px",
-          display: "inline-flex",
-          alignItems: "center",
-          cursor: "pointer",
-        }}
+  padding: "4px 10px",
+  fontSize: "14px",
+  fontWeight: 600,
+  background: "rgba(255, 255, 255, 0.15)",   // translucent
+  backdropFilter: "blur(8px)",               // glass blur
+  WebkitBackdropFilter: "blur(8px)",         // Safari support
+  color: "#fff",
+  borderRadius: "6px",
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
+  cursor: "pointer",
+}}
       >
         {data.EventCode}
         <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
@@ -1814,17 +2097,20 @@ export function DetailsSidebar({
             {data.RecordingCode && (
   <div
     style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "8px 12px",
-      background: "rgba(59,130,246,0.08)", // soft blue highlight
-      borderRadius: "10px",
-      marginTop: "10px",
-    }}
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 12px",
+  background: "rgba(59, 130, 246, 0.15)",  // blue glass
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  borderRadius: "10px",
+  border: "1px solid rgba(255, 255, 255, 0.22)",
+  marginTop: "10px",
+}}
   >
     {/* Label */}
-    <span style={{ color: "var(--muted-foreground)" }}>Recording Code</span>
+    <span style={{ color: "#fff" }}>Recording Code</span>
 
     {/* Value */}
     {hasAccess("Events", "read") || hasAccess("Media Log", "read") ? (
@@ -1840,17 +2126,19 @@ export function DetailsSidebar({
           })
         }
         style={{
-          padding: "4px 10px",
-          fontSize: "14px",
-          fontWeight: 600,
-          background: "#1e40af",
-          color: "#fff",
-          borderRadius: "6px",
-          display: "inline-flex",
-          alignItems: "center",
-          border: "none",
-          cursor: "pointer",
-        }}
+  padding: "4px 10px",
+  fontSize: "14px",
+  fontWeight: 600,
+  background: "rgba(255, 255, 255, 0.15)",   // translucent
+  backdropFilter: "blur(8px)",               // glass blur
+  WebkitBackdropFilter: "blur(8px)",         // Safari support
+  color: "#fff",
+  borderRadius: "6px",
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
+  cursor: "pointer",
+}}
       >
         {data.RecordingCode}
         <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
@@ -1925,16 +2213,20 @@ export function DetailsSidebar({
                   {data.fkDigitalRecordingCode && (
   <div
     style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "8px 12px",
-      background: "rgba(59,130,246,0.08)",      // soft highlight
-      borderRadius: "10px",
-      marginTop: "10px",
-    }}
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 12px",
+  background: "rgba(59, 130, 246, 0.15)",  // blue glass
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  borderRadius: "10px",
+  border: "1px solid rgba(255, 255, 255, 0.22)",
+  marginTop: "10px",
+}}
+
   >
-    <span style={{ color: "var(--muted-foreground)" }}>
+    <span style={{ color: "#ffff" }}>
       Recording Code
     </span>
 
@@ -1952,18 +2244,21 @@ export function DetailsSidebar({
               title: `Related Data for ML ${data.MLUniqueID}`,
             })
           }
-          style={{
-            padding: "4px 10px",
-            fontSize: "14px",
-            fontWeight: 600,
-            background: "#1e40af",
-            color: "#fff",
-            borderRadius: "6px",
-            display: "inline-flex",
-            alignItems: "center",
-            border: "none",
-            cursor: "pointer",
-          }}
+         style={{
+  padding: "4px 10px",
+  fontSize: "14px",
+  fontWeight: 600,
+  background: "rgba(255, 255, 255, 0.15)",   // translucent
+  backdropFilter: "blur(8px)",               // glass blur
+  WebkitBackdropFilter: "blur(8px)",         // Safari support
+  color: "#fff",
+  borderRadius: "6px",
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
+  cursor: "pointer",
+}}
+
         >
           {data.fkDigitalRecordingCode}
           <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
@@ -1994,17 +2289,20 @@ export function DetailsSidebar({
              {data.MLUniqueID && (
   <div
     style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "8px 12px",
-      background: "rgba(59,130,246,0.08)",   // soft blue highlight
-      borderRadius: "10px",
-      marginTop: "10px",
-    }}
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 12px",
+  background: " rgba(59, 130, 246, 0.15)",  // blue glass
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  borderRadius: "10px",
+  border: "1px solid rgba(255, 255, 255, 0.22)",
+  marginTop: "10px",
+}}
   >
     {/* Label */}
-    <span style={{ color: "var(--muted-foreground)" }}>MLID</span>
+    <span style={{ color: "#ffff" }}>MLID</span>
 
     {/* Value */}
     {data.MLUniqueID ? (
@@ -2021,18 +2319,20 @@ export function DetailsSidebar({
               title: `Related Data for ML ${data.MLUniqueID}`,
             })
           }
-          style={{
-            padding: "4px 10px",
-            fontSize: "14px",
-            fontWeight: 600,
-            background: "#1e40af",
-            color: "#fff",
-            borderRadius: "6px",
-            display: "inline-flex",
-            alignItems: "center",
-            border: "none",
-            cursor: "pointer",
-          }}
+           style={{
+  padding: "4px 10px",
+  fontSize: "14px",
+  fontWeight: 600,
+  background: "rgba(255, 255, 255, 0.15)",   // translucent
+  backdropFilter: "blur(8px)",               // glass blur
+  WebkitBackdropFilter: "blur(8px)",         // Safari support
+  color: "#fff",
+  borderRadius: "6px",
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
+  cursor: "pointer",
+}}
         >
           {data.MLUniqueID}
           <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
@@ -3039,7 +3339,7 @@ export function DetailsSidebar({
   <FieldRow label="Duration" value={data.Duration}>
     <Badge variant="secondary">{data.Duration}</Badge>
   </FieldRow>
-  <FieldRow label="Teams" value={data.Teams} />
+  
   <Separator />
   <FieldRow label="From Date" value={data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined} />
   <FieldRow label="To Date" value={data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined} />

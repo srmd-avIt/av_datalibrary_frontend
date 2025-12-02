@@ -463,9 +463,10 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           }}
         >
           <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => handleToggleUser(user.id)}
-          />
+  checked={isSelected}
+  onCheckedChange={() => handleToggleUser(user.id)}
+  onClick={e => e.stopPropagation()}
+/>
 
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: "14px" }}>

@@ -1030,7 +1030,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "RecordingCode", label: "Recording Code", sortable: true, editable: true },
        { key: "FromDate", label: "Event From Date", sortable: true, editable: true },
       { key: "ToDate", label: "Event To Date", sortable: true, editable: true },
-      { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
+      
     ],
   },
 };

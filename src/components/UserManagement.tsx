@@ -433,7 +433,10 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
   };
   
   const UserProfile = ({ user }: { user: User }) => (
-    <div className="space-y-6"><div className="flex items-center gap-4"><Avatar style={{ width: "4rem", height: "4rem" }}><AvatarImage src={user.avatar}/><AvatarFallback style={{ background: "linear-gradient(to right, #3b82f6, #8b5cf6)", color: "#ffffff", fontSize: "1.125rem", fontWeight: 500 }}>{user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar><div><h3 className="text-xl font-semibold text-slate-100">{user.name}</h3><p className="text-slate-400">{user.title || "No title"}</p><div className="flex items-center gap-2 mt-1">{getRoleIcon(user.role)}<span className="text-sm text-slate-300">{user.role}</span></div></div></div></div>
+    <div className="space-y-6"><div className="flex items-center gap-4"><Avatar style={{ width: "4rem", height: "4rem" }}><AvatarImage src={user.avatar}/>
+    <AvatarFallback style={{ background: "linear-gradient(to right, #3b82f6, #9333ea)", color: "#ffffff" }}>
+  {(user.name ?? "").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+</AvatarFallback></Avatar><div><h3 className="text-xl font-semibold text-slate-100">{user.name}</h3><p className="text-slate-400">{user.title || "No title"}</p><div className="flex items-center gap-2 mt-1">{getRoleIcon(user.role)}<span className="text-sm text-slate-300">{user.role}</span></div></div></div></div>
   );
 
   const renderMobileUserCard = (user: User) => {
@@ -454,9 +457,9 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
               />
               <Avatar className="w-10 h-10 flex-shrink-0">
                 <AvatarImage src={user.avatar} />
-                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium">
-                  {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                </AvatarFallback>
+               <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium">
+  {(user.name ?? "").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-slate-100 truncate">{user.name}</div>
@@ -694,7 +697,10 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
             {(() => {
               switch (col.key) {
                 case "select": return <div><Checkbox checked={selectedUsers.includes(user.id)} onCheckedChange={(c) => setSelectedUsers(p => c ? [...p, user.id] : p.filter(id => id !== user.id))}/></div>;
-                case "name": return <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}><Avatar style={{ width: "36px", height: "36px" }}><AvatarImage src={user.avatar} /><AvatarFallback style={{ background: "linear-gradient(to right, #3b82f6, #9333ea)", color: "#ffffff" }}>{user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar><div><div style={{ fontWeight: 500, color: "#f1f5f9" }}>{user.name}</div><div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{user.title}</div></div></div>;
+                case "name": return <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}><Avatar style={{ width: "36px", height: "36px" }}><AvatarImage src={user.avatar} />
+               <AvatarFallback style={{ background: "linear-gradient(to right, #3b82f6, #9333ea)", color: "#ffffff" }}>
+  {(user.name ?? "").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+</AvatarFallback></Avatar><div><div style={{ fontWeight: 500, color: "#f1f5f9" }}>{user.name}</div><div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{user.title}</div></div></div>;
                 case "email": return <span>{user.email}</span>;
                 case "role": return <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>{getRoleIcon(user.role)}<span>{user.role}</span></div>;
                 case "status": return <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>{getStatusIcon(user.status)}<span style={{ color: user.status === "Active" ? "#4ade80" : user.status === "Inactive" ? "#9ca3af" : user.status === "Pending" ? "#facc15" : "#60a5fa" }}>{user.status}</span></div>;
