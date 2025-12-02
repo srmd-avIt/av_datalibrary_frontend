@@ -2210,81 +2210,14 @@ export function DetailsSidebar({
   </div>
 )}
 
-                  {data.fkDigitalRecordingCode && (
-  <div
-    style={{
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "8px 12px",
-  background: "rgba(59, 130, 246, 0.15)",  // blue glass
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  borderRadius: "10px",
-  border: "1px solid rgba(255, 255, 255, 0.22)",
-  marginTop: "10px",
-}}
-
-  >
-    <span style={{ color: "#ffff" }}>
-      Recording Code
-    </span>
-
-    {data.fkDigitalRecordingCode ? (
-      hasAccess("Digital Recordings", "read") ? (
-        <button
-          onClick={() =>
-            onPushSidebar({
-              type: "medialog_related_data",
-              data: {
-                eventCode: data.EventCode,
-                recordingCode: data.fkDigitalRecordingCode,
-                mlid: data.MLUniqueID,
-              },
-              title: `Related Data for ML ${data.MLUniqueID}`,
-            })
-          }
-         style={{
-  padding: "4px 10px",
-  fontSize: "14px",
-  fontWeight: 600,
-  background: "rgba(255, 255, 255, 0.15)",   // translucent
-  backdropFilter: "blur(8px)",               // glass blur
-  WebkitBackdropFilter: "blur(8px)",         // Safari support
-  color: "#fff",
-  borderRadius: "6px",
-  display: "inline-flex",
-  alignItems: "center",
-  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
-  cursor: "pointer",
-}}
-
-        >
-          {data.fkDigitalRecordingCode}
-          <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
-        </button>
-      ) : (
-        <span
-          style={{
-            fontSize: "14px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            color: "var(--muted-foreground)",
-            fontWeight: 500,
-          }}
-        >
-          <Lock style={{ width: 12, height: 12 }} />
-          {data.fkDigitalRecordingCode}
-        </span>
-      )
-    ) : (
-      <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>
-        N/A
-      </span>
-    )}
+                 {data.fkDigitalRecordingCode && (
+  <div className="flex justify-between items-center py-2">
+    <span className="text-muted-foreground">Recording Code</span>
+    <span className="font-medium text-white">{data.fkDigitalRecordingCode}</span>
+    
   </div>
 )}
+   
 
              {data.MLUniqueID && (
   <div

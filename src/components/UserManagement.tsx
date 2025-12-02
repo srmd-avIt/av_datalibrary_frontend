@@ -853,9 +853,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                             {user.status === "Active" ? (<UserX className="mr-2 h-4 w-4" />) : (<UserCheck className="mr-2 h-4 w-4" />)}
                             {user.status === "Active" ? "Deactivate" : "Activate"}
                         </DropdownMenuItem>
-                        <DropdownMenuItem disabled={disableAllActions} title={actionTooltip} className="text-red-500 focus:text-red-500" onClick={(e) => { e.stopPropagation(); if (disableAllActions) return; handleDeleteConfirmation(user);}}>
-                            <Trash2 className="mr-2 h-4 w-4" />Delete
-                        </DropdownMenuItem>
+                        
                     </DropdownMenuContent></DropdownMenu></div>);
                 default: return String((user as any)[col.key] || "");
               }
