@@ -18,6 +18,8 @@ import {
   Edit,
   Save,
   Users,
+  Headphones,
+  AudioLines,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -585,7 +587,7 @@ function EventDataTableView({
               <>
                 
 <div className="flex justify-between items-center mb-4 px-2">
-  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
+  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings Details</h2>
 
   <Button
     variant="outline"
@@ -673,7 +675,7 @@ function EventDataTableView({
             {mediaLogs.length > 0 ? (
               <>
                <div className="flex justify-between items-center mb-4 px-2">
-  <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
+  <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
 
   <Button
     variant="outline"
@@ -893,7 +895,7 @@ function DigitalRecordingDataTableView({
   {mediaLogs.length > 0 ? (
     <>
       <div className="flex justify-between items-center mb-4 px-2">
-        <h2 className="text-xl font-semibold px-2 text-white">Media Log</h2>
+        <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
 
         <Button
           variant="outline"
@@ -1159,7 +1161,7 @@ const [recordings, setRecordings] = useState<any[]>([]);
             {recordings.length > 0 ? (
               <>
                 <div className="flex justify-between items-center mb-4 px-2">
-  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings</h2>
+  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings Details</h2>
 
   <Button
     variant="outline"
@@ -1250,7 +1252,7 @@ const [recordings, setRecordings] = useState<any[]>([]);
     {auxList.length > 0 ? (
       <>
        <div className="flex justify-between items-center mb-4 px-2">
-  <h2 className="text-xl font-semibold px-2 text-white">AUX Files</h2>
+  <h2 className="text-xl font-semibold px-2 text-white">AUX Files Details</h2>
 
   <Button
     variant="outline"
@@ -1577,7 +1579,9 @@ function AuxMediaLogDataTableView({
     <TabsContent value="medialogs" className="p-0">
       {mediaLogs.length > 0 ? (
         <>
-         <div className="flex justify-end items-center mb-4 px-2 mt-4">
+        <div className="flex justify-between items-center mb-4 px-2">
+           <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
+
   <Button
     variant="outline"
     size="sm"
@@ -1710,9 +1714,9 @@ function AuxDetailsView({
     <div className="space-y-6">
       <div className="text-center">
         {renderIcon(
-          <FileText className="w-8 h-8 text-white" />,
-          "from-purple-500 to-red-600"
-        )}
+  <Headphones className="w-8 h-8 text-white" />,
+  "from-purple-500 to-red-600"
+)}
        
       </div>
 
@@ -1969,9 +1973,8 @@ export function DetailsSidebar({
           <div className="space-y-6">
             <div className="text-center">
               {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
-              <h3 className="text-xl font-bold">{data.EventName}</h3>
-              <p className="text-muted-foreground">Event ID: {data.EventID}</p>
-              <Badge className="mt-2">{data.NewEventCategory || "N/A"}</Badge>
+              
+             
             </div>
             <Card>
               <CardHeader><CardTitle className="text-lg px-2">Event Details</CardTitle></CardHeader>
@@ -2043,8 +2046,9 @@ export function DetailsSidebar({
                 <FieldRow label="Year" value={data.Yr} />
                 <FieldRow label="EventName" value={data.EventName}><span className="font-medium text-right break-words">{data.EventName}</span></FieldRow>
                 <Separator />
-                <FieldRow label="From Date" value={data.FromDate}><span className="font-medium">{data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined}</span></FieldRow>
-                <FieldRow label="To Date" value={data.ToDate}><span className="font-medium">{data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined}</span></FieldRow>
+                <FieldRow label="From Date" value={data.FromDate}><span className="font-medium">{data.FromDate}</span></FieldRow>
+                <FieldRow label="To Date" value={data.ToDate}><span className="font-medium">{data.ToDate }</span></FieldRow>
+                <FieldRow label="NewEventCategory" value={data.NewEventCategory}><span className="font-medium">{data.NewEventCategory}</span></FieldRow>
                 <Separator />
                 <div><span className="text-muted-foreground">Remarks</span><p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.EventRemarks || "No remarks provided."}</p></div>
               </CardContent>
@@ -2167,7 +2171,7 @@ export function DetailsSidebar({
                 <FieldRow label="Preservation" value={data.PreservationStatus}><span className="font-medium">{data.PreservationStatus}</span></FieldRow>
                 {data.DistributionDriveLink && (
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Link</span>
+                    <span className="text-muted-foreground">DistributionDriveLink</span>
                     <Button size="sm" variant="ghost" asChild><a href={data.DistributionDriveLink} target="_blank" rel="noopener noreferrer">Open Link <ExternalLink className="w-3 h-3 ml-2" /></a></Button>
                   </div>
                 )}
@@ -2176,9 +2180,12 @@ export function DetailsSidebar({
             <Card>
               <CardHeader><CardTitle className="text-lg px-2">Metadata</CardTitle></CardHeader>
               <CardContent className="space-y-4 p-4">
+                <FieldRow label="MasterQuality" value={data.Masterquality} />
+                <FieldRow label="MediaName" value={data.fkMediaName} />
                 <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
                 <FieldRow label="Last Modified By" value={data.LastModifiedBy} />
                 <FieldRow label="QcStatus" value={data.QcStatus} />
+
                 </CardContent>
             </Card>
           
@@ -2370,7 +2377,7 @@ export function DetailsSidebar({
       return (
         <div className="space-y-6">
           <div className="text-center">
-            {renderIcon(<FileAudio className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
+           {renderIcon(<AudioLines className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
             <h3 className="text-xl font-bold">{data.AudioList || "Audio"}</h3>
             <p className="text-muted-foreground">Audio ID: {data.AID}</p>
             <Badge className="mt-2">{data.Distribution || "N/A"}</Badge>

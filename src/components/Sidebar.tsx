@@ -1,6 +1,6 @@
 // src/components/Sidebar.js
 import React, { useState, useMemo, ElementType, useEffect } from "react";
-import { Home, Database, LayoutDashboard, Map, Users, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, ListFilter, Scissors, ListTree, FolderKanban, X, Columns } from "lucide-react";
+import { Home, Database, LayoutDashboard, Map, Users,Grid3x3,Wand2,  Stamp,Building, BadgeCheck, AudioLines, Calendar, FileText, Bot, LogOut, User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, ListFilter, Scissors, ListTree, FolderKanban, X, Columns, HardDrive, } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
@@ -53,7 +53,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     { id: "satsang_dashboard", label: "Satsang Dashboard", icon: LayoutDashboard },
     { id: "events", label: "Events", icon: Map },
     { id: "eventtimeline", label: "Event Timeline", icon: Calendar },
-    { id: "digitalrecordings", label: "Digital Recordings", icon: Calendar },
+    { id: "digitalrecordings", label: "Digital Recordings", icon: HardDrive},
      {
       id: "medialog-parent",
       label: "Media Log",
@@ -62,7 +62,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         { id: "medialog_all", label: "ML formal & Informal", icon: List },
          
         { id: "medialog_formal", label: "ML Formal", icon: Folder },
-       { id: "medialog_pending_gsheet", label: "MLFormal (Pending Push to DB)", icon: FileText },
+       { id: "medialog_pending_gsheet", label: "MLFormal (Pending Push to DB)", icon: Building },
         { id: "medialog_all_except_satsang", label: "All Except Satsang", icon: ListFilter },
         { id: "medialog_satsang_extracted_clips", label: "Satsang Extracted Clips", icon: Scissors },
         { id: "medialog_satsang_category", label: "Satsang Category", icon: ListTree },
@@ -76,18 +76,18 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
       children:  [
         { id: "audio", label: "Audio", icon: Music },
         { id: "auxfiletype", label: "Aux File Type", icon: FileText },
-        { id: "bhajanType", label: "Bhajan Type", icon: Music },
+        { id: "bhajanType", label: "Bhajan Type", icon: AudioLines },
         { id: "digitalMasterCategory", label: "Digital Master Category", icon: Database },
-        { id: "distributionLabel", label: "Distribution Label", icon: Tag },
+        { id: "distributionLabel", label: "Distribution Label", icon:  Stamp },
         { id: "editingstatus", label: "Editing Status", icon: Edit },
-        { id: "editingType", label: "Editing Type", icon: Edit },
-        { id: "eventCategory", label: "Event Category", icon: Calendar },
+        { id: "editingType", label: "Editing Type", icon: Wand2 },
+        { id: "eventCategory", label: "Event Category", icon: Grid3x3 },
         { id: "footageType", label: "Footage Type", icon: Film },
         { id: "formatType", label: "Format Type", icon: Layers },
         { id: "granths", label: "Granths", icon: Book },
         
         { id: "language", label: "Language", icon: Globe },
-        { id: "masterquality", label: "Master Quality", icon: Layers },
+        { id: "masterquality", label: "Master Quality", icon: BadgeCheck },
         { id: "newEventCategory", label: "New Event Category", icon: Tag },
         { id: "newCities", label: "New Cities", icon: MapPin },
         { id: "newCountries", label: "New Countries", icon: Flag },
@@ -96,7 +96,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         { id: "organization", label: "Organization", icon: Users },
         { id: "timeOfDay", label: "Time Of Day", icon: Calendar },
         { id: "topicNumberSource", label: "Topic Number Source", icon: Hash },
-        { id: "topicgivenby", label: "TopicGivenBy", icon: Tag },
+        { id: "topicgivenby", label: "TopicGivenBy", icon: ListTree},
         { id: "segmentcategory", label: "Segment Category", icon: List },
 
       ],

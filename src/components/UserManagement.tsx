@@ -96,7 +96,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: "Owner" | "Admin" | "Member" | "Guest";
+  role: "Owner" | "Admin" | "Guest";
   status: "Active" | "Inactive" | "Pending" | "Invited";
   avatar?: string;
   joinedDate: string;
@@ -315,36 +315,38 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
   const handleSelectAll = (selected: boolean) => {
     setSelectedUsers(selected ? sortedAndFilteredUsers.map(user => user.id) : []);
   };
+  // ...existing code...
+const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 
-  const executeBulkAction = (action: string) => {
-    if (!canManageUsers) { toast.error("You do not have permission to perform bulk actions."); return; }
-    const usersById = new Map(users.map(u => [u.id, u]));
-    const safeSelection = selectedUsers.filter(id => {
-      const user = usersById.get(id);
-      return user && user.role !== 'Owner' && user.id !== loggedInUser?.id;
-    });
-    if (safeSelection.length !== selectedUsers.length) toast.info("Owners and your own account were excluded from the bulk action.");
-    if (safeSelection.length === 0) { toast.warning("No valid users selected for the action."); setSelectedUsers([]); setIsBulkActionOpen(false); return; }
-    let message = "";
-    setUsers(currentUsers => {
-      let updatedUsers = [...currentUsers];
-      switch (action) {
-        case "activate":
-          updatedUsers = updatedUsers.map(u => safeSelection.includes(u.id) ? { ...u, status: "Active" } : u);
-          message = `Activated ${safeSelection.length} users`; break;
-        case "deactivate":
-          updatedUsers = updatedUsers.map(u => safeSelection.includes(u.id) ? { ...u, status: "Inactive" } : u);
-          message = `Deactivated ${safeSelection.length} users`; break;
-        case "delete":
-          updatedUsers = updatedUsers.filter(u => !safeSelection.includes(u.id));
-          message = `Removed ${safeSelection.length} users from view.`; break;
-      }
+ const executeBulkAction = async (action: string) => {
+  if (!canManageUsers) { toast.error("You do not have permission to perform bulk actions."); return; }
+  const usersById = new Map(users.map(u => [u.id, u]));
+  const safeSelection = selectedUsers.filter(id => {
+    const user = usersById.get(id);
+    return user && user.role !== 'Owner' && user.id !== loggedInUser?.id;
+  });
+  if (safeSelection.length !== selectedUsers.length) toast.info("Owners and your own account were excluded from the bulk action.");
+  if (safeSelection.length === 0) { toast.warning("No valid users selected for the action."); setSelectedUsers([]); setIsBulkActionOpen(false); return; }
+  let message = "";
+
+  if (action === "delete") {
+    // Bulk delete API calls
+    try {
+      await Promise.all(
+        safeSelection.map(id =>
+          fetch(`${import.meta.env.VITE_API_URL}/users/${id}`, { method: "DELETE" })
+        )
+      );
+      setUsers(currentUsers => currentUsers.filter(u => !safeSelection.includes(u.id)));
+      message = `Removed ${safeSelection.length} users from view.`;
       toast.success(message);
-      return updatedUsers;
-    });
-    setSelectedUsers([]);
-    setIsBulkActionOpen(false);
-  };
+    } catch (error) {
+      toast.error("Failed to delete some users.");
+    }
+  } 
+  setSelectedUsers([]);
+  setIsBulkActionOpen(false);
+};
   
   const requestSort = (key: keyof User) => {
     const direction = (sortConfig?.key === key && sortConfig.direction === 'asc') ? 'desc' : 'asc';
@@ -361,8 +363,8 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     { key: "email", label: "Email", sortable: true }, { key: "role", label: "Role", sortable: true },
     { key: "viewAccess", label: "View Access" }, { key: "status", label: "Status", sortable: true },
     { key: "department", label: "Department", sortable: true }, { key: "location", label: "Location", sortable: true },
-    { key: "teams", label: "Teams" }, { key: "joinedDate", label: "Joined Date", sortable: true },
-    { key: "lastActive", label: "Last Active", sortable: true }, { key: "actions", label: "Actions" },
+    { key: "joinedDate", label: "Joined Date", sortable: true },
+    { key: "lastActive", label: "Last Active", sortable: true },
   ];
 
   const handleAddUser = async (newUserData: Omit<User, 'id' | 'joinedDate' | 'lastActive' | 'status'>) => {
@@ -424,8 +426,29 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
           <div className="space-y-2"><Label htmlFor="location" className="text-white">Location</Label><Input id="location" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="e.g., San Francisco, CA"/></div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2"><Label htmlFor="role" className="text-white">Role *</Label><Select value={formData.role} onValueChange={value => setFormData({ ...formData, role: value as any })}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="Guest">Guest</SelectItem><SelectItem value="Member">Member</SelectItem><SelectItem value="Admin">Admin</SelectItem></SelectContent></Select></div>
-          <div className="space-y-2"><Label className="text-white">Teams</Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between"><span>{formData.teams.length > 0 ? `${formData.teams.length} selected` : "Select Teams"}</span><ChevronDown className="h-4 w-4 opacity-50"/></Button></DropdownMenuTrigger><DropdownMenuContent className="w-56" side="bottom" align="start" sideOffset={4} avoidCollisions={false}><DropdownMenuLabel>Available Teams</DropdownMenuLabel><DropdownMenuSeparator/>{availableTeams.map(team => <DropdownMenuCheckboxItem key={team} checked={formData.teams.includes(team)} onCheckedChange={checked => handleTeamChange(team, !!checked)}>{team}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></div>
+         <div className="space-y-2">
+  <Label htmlFor="role" className="text-white">Role *</Label>
+
+  <Select
+    value={formData.role || undefined}  // <-- IMPORTANT for placeholder
+    onValueChange={(value) =>
+      setFormData({ ...formData, role: value as any })
+    }
+  >
+    <SelectTrigger
+      className={formData.role ? "text-black" : "text-gray-400"} // placeholder gray
+    >
+      <SelectValue placeholder="Select Role" />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value="Guest">Guest</SelectItem>
+      <SelectItem value="Admin">Admin</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
+         
         </div>
         <div className="flex gap-3 pt-2"><Button onClick={handleSubmit} className="flex-1">Add User</Button><Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)} className="flex items-center gap-2"><XCircle className="h-4 w-4"/>Cancel</Button></div>
       </div>
@@ -486,26 +509,8 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Mail className="mr-2 h-4 w-4" />Send Message
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  disabled={disableAllActions}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (disableAllActions) return; 
-                    setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" } : u)); 
-                    toast.success(`User ${user.status === "Active" ? "deactivated" : "activated"}`);
-                  }}
-                >
-                  {user.status === "Active" ? (
-                    <UserX className="mr-2 h-4 w-4" />
-                  ) : (
-                    <UserCheck className="mr-2 h-4 w-4" />
-                  )}
-                  {user.status === "Active" ? "Deactivate" : "Activate"}
-                </DropdownMenuItem>
+                
+          
                 <DropdownMenuItem 
                   disabled={disableAllActions}
                   className="text-red-500 focus:text-red-500" 
@@ -544,23 +549,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
             </div>
           </div>
 
-          {user.teams.length > 0 && (
-            <div className="mt-3">
-              <span className="text-xs text-slate-500 mb-1 block">Teams:</span>
-              <div className="flex flex-wrap gap-1">
-                {user.teams.slice(0, 3).map((team) => (
-                  <Badge key={team} variant="secondary" className="text-xs">
-                    {team}
-                  </Badge>
-                ))}
-                {user.teams.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{user.teams.length - 3}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
+         
 
           <div className="mt-3 pt-3 border-t border-slate-700/50">
             <DropdownMenu>
@@ -690,6 +679,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
   const renderUserRow = (user: User) => {
     const isTargetOwner = user.role === 'Owner';
     const isTargetSelf = loggedInUser?.id === user.id;
+    
     return (
       <tr key={user.id} style={{ borderBottom: "1px solid rgba(51,65,85,0.5)" }} className="hover:bg-slate-800/20">
         {columns.map((col) => (
@@ -841,20 +831,9 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                 case "department": return <span>{user.department || "—"}</span>;
                 case "location": return <span>{user.location || "—"}</span>;
                 case "joinedDate": return <span>{user.joinedDate}</span>;
-                case "teams": return <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>{user.teams.slice(0, 2).map((t) => (<Badge key={t} variant="secondary" className="text-xs">{t}</Badge>))}{user.teams.length > 2 && (<Badge variant="outline" className="text-xs">+{user.teams.length - 2}</Badge>)}</div>;
+                
                 case "lastActive": return <span style={{ color: "#94a3b8" }}>{user.lastActive}</span>;
-                case "actions":
-                    const disableAllActions = !canManageUsers || isTargetSelf || isTargetOwner;
-                    const actionTooltip = isTargetOwner ? "Cannot modify an Owner." : isTargetSelf ? "You cannot modify yourself." : !canManageUsers ? "Only Admins/Owners can perform actions." : "More actions";
-                    return (<div><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
-                        <DropdownMenuItem><Mail className="mr-2 h-4 w-4" />Send Message</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem disabled={disableAllActions} title={actionTooltip} onClick={(e) => { e.stopPropagation(); if (disableAllActions) return; setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" } : u)); toast.success(`User ${user.status === "Active" ? "deactivated" : "activated"}`);}}>
-                            {user.status === "Active" ? (<UserX className="mr-2 h-4 w-4" />) : (<UserCheck className="mr-2 h-4 w-4" />)}
-                            {user.status === "Active" ? "Deactivate" : "Activate"}
-                        </DropdownMenuItem>
-                        
-                    </DropdownMenuContent></DropdownMenu></div>);
+                
                 default: return String((user as any)[col.key] || "");
               }
             })()}
@@ -895,13 +874,7 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
-                  <DropdownMenuItem onSelect={() => executeBulkAction("activate")}>
-                    <UserCheck className="mr-2 h-4 w-4"/>Activate
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => executeBulkAction("deactivate")}>
-                    <UserX className="mr-2 h-4 w-4"/>Deactivate
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                 
                   <DropdownMenuItem onSelect={() => executeBulkAction("delete")} className="text-red-500 focus:text-red-500">
                     <Trash2 className="mr-2 h-4 w-4"/>Delete
                   </DropdownMenuItem>
@@ -1114,7 +1087,13 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div><h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "#f8fafc" }}>User Management</h1><p style={{ color: "#94a3b8", marginTop: "0.25rem" }}>Manage team members, roles, and permissions</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {canManageUsers && selectedUsers.length > 0 && (<DropdownMenu open={isBulkActionOpen} onOpenChange={setIsBulkActionOpen}><DropdownMenuTrigger asChild><Button variant="outline" size="sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users className="h-4 w-4" /> {selectedUsers.length} selected <ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => executeBulkAction("activate")}><UserCheck className="mr-2 h-4 w-4"/>Activate</DropdownMenuItem><DropdownMenuItem onSelect={() => executeBulkAction("deactivate")}><UserX className="mr-2 h-4 w-4"/>Deactivate</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => executeBulkAction("delete")} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}
+          {canManageUsers && selectedUsers.length > 0 && (<DropdownMenu open={isBulkActionOpen} onOpenChange={setIsBulkActionOpen}><DropdownMenuTrigger asChild><Button variant="outline" size="sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users className="h-4 w-4" /> {selectedUsers.length} selected <ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+           <DropdownMenuItem
+  onSelect={() => setIsBulkDeleteDialogOpen(true)}
+  className="text-red-500 focus:text-red-500"
+>
+  <Trash2 className="mr-2 h-4 w-4"/>Delete
+</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}
           <Button onClick={() => setIsAddUserDialogOpen(true)} disabled={!canManageUsers} title={!canManageUsers ? "Only Admins/Owners can add users." : "Add a new user"}><UserPlus className="h-4 w-4 mr-2" /> Add User</Button>
         </div>
       </div>
@@ -1171,7 +1150,96 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
       </div>
       <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}><DialogContent className="sm:max-w-sm border border-white/20 shadow-xl" style={{ backgroundColor: "rgba(30, 72, 110, 0.6)", backdropFilter: "blur(1px) saturate(100%)", WebkitBackdropFilter: "blur(10px) saturate(100%)", borderRadius: "1rem" }}><DialogHeader><DialogTitle className="flex items-center gap-2 text-white"><UserPlus /> Add New User</DialogTitle></DialogHeader><AddUserForm onAddUser={handleAddUser} /></DialogContent></Dialog>
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>User Profile</DialogTitle></DialogHeader>{selectedUser && <UserProfile user={selectedUser} />}</DialogContent></Dialog>
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}><DialogContent className="sm:max-w-sm backdrop-blur-md" style={{ backgroundColor: "rgba(0, 29, 57, 0.6)", borderRadius: "0.5rem" }}><DialogHeader><DialogTitle className="flex items-center gap-2 text-white"><AlertTriangle className="text-red-500" />Confirm Deletion</DialogTitle><DialogDescription className="pt-2 text-white">Are you sure you want to delete the user "{userToDelete?.name}"?</DialogDescription></DialogHeader><DialogFooter className="gap-2"><Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="text-black flex items-center gap-2"><XCircle className="h-4 w-4" />Cancel</Button><Button variant="destructive" onClick={handleDeleteUser} className="flex items-center gap-2"><Trash2 className="h-4 w-4" />Confirm Delete</Button></DialogFooter></DialogContent></Dialog>
+     <Dialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+  <DialogContent
+    className="sm:max-w-sm"
+    style={{
+      backdropFilter: "blur(12px)",
+      backgroundColor: "rgba(0, 29, 57, 0.6)",
+      borderRadius: "8px",
+      padding: "24px",
+      border: "1px solid rgba(255,255,255,0.15)",
+    }}
+  >
+    <DialogHeader>
+      <DialogTitle
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: "white",
+          fontSize: "18px",
+          fontWeight: "600",
+        }}
+      >
+        <AlertTriangle style={{ color: "#ef4444" }} />
+        Confirm  Delete
+      </DialogTitle>
+
+     <DialogDescription
+  style={{
+    paddingTop: "8px",
+    color: "white",
+    fontSize: "14px",
+  }}
+>
+  Are you sure you want to delete the following users?
+  <ul style={{ marginTop: "8px", paddingLeft: "18px" }}>
+    {users
+      .filter(u => selectedUsers.includes(u.id))
+      .map(u => (
+        <li key={u.id} style={{ color: "#f87171" }}>
+          {u.name}
+        </li>
+      ))}
+  </ul>
+</DialogDescription>
+    </DialogHeader>
+
+    <DialogFooter
+      style={{
+        display: "flex",
+        gap: "8px",
+        marginTop: "16px",
+      }}
+    >
+      <Button
+        variant="outline"
+        onClick={() => setIsBulkDeleteDialogOpen(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          color: "black",
+          backgroundColor: "white",
+          border: "1px solid #d1d5db",
+        }}
+      >
+        <XCircle style={{ width: "16px", height: "16px" }} />
+        Cancel
+      </Button>
+
+      <Button
+        variant="destructive"
+        onClick={() => {
+          setIsBulkDeleteDialogOpen(false);
+          executeBulkAction("delete");
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          backgroundColor: "#dc2626",
+          color: "white",
+        }}
+      >
+        <Trash2 style={{ width: "16px", height: "16px" }} />
+        Confirm Delete
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
     </div>
   );
 }
