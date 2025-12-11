@@ -51,7 +51,7 @@ declare global {
 // ===================================================================================
 
 const APP_RESOURCES = [
-  "Dashboard",
+  "Home",
   "Satsang Dashboard",
   "Events",
   "Event Timeline",
@@ -86,6 +86,7 @@ const APP_RESOURCES = [
   "Topic Number Source",
   "TopicGivenBy",
   "Segment Category",
+  "List of Edited Highlights",
   "User Management",
   "Column Management"
 ];
@@ -119,7 +120,7 @@ interface UserPermission {
   actions: ("read" | "write")[];
 }
 
-const availableTeams = [ "Engineering", "Design", "Product", "Marketing", "Sales", "Support", "Leadership", "DevOps" ];
+
 
 const groupableFields: (keyof User)[] = ['role', 'status', 'department', 'location'];
 
