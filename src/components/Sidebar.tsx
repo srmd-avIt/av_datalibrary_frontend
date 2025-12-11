@@ -50,7 +50,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
 
   const allMenuItems: MenuItem[] = [
     { id: "dashboard", label: "Home", icon: Home },
-    { id: "satsang_dashboard", label: "Satsang Dashboard", icon: LayoutDashboard },
+    { id: "satsang_dashboard", label: "Satsang Search", icon: LayoutDashboard },
     { id: "events", label: "Events", icon: Map },
     { id: "eventtimeline", label: "Event Timeline", icon: Calendar },
     { id: "digitalrecordings", label: "Digital Recordings", icon: HardDrive},

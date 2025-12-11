@@ -52,7 +52,7 @@ declare global {
 
 const APP_RESOURCES = [
   "Home",
-  "Satsang Dashboard",
+  "Satsang Search",
   "Events",
   "Event Timeline",
   "Digital Recordings",
