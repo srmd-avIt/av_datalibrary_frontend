@@ -419,15 +419,15 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     };
     return (
       <div className="space-y-4 pt-4">
-        <div className="space-y-2"><Label htmlFor="name" className="text-white">Full Name *</Label><Input id="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Jane Doe"/></div>
-        <div className="space-y-2"><Label htmlFor="email" className="text-white">Email Address *</Label><Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="name@company.com"/></div>
+        <div className="space-y-2"><Label htmlFor="name" className="text-white">Full Name </Label><Input id="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Jane Doe"/></div>
+        <div className="space-y-2"><Label htmlFor="email" className="text-white">Email Address </Label><Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="name@company.com"/></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2"><Label htmlFor="department" className="text-white">Department</Label><Input id="department" value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} placeholder="e.g., Engineering"/></div>
           <div className="space-y-2"><Label htmlFor="location" className="text-white">Location</Label><Input id="location" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="e.g., San Francisco, CA"/></div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
          <div className="space-y-2">
-  <Label htmlFor="role" className="text-white">Role *</Label>
+  <Label htmlFor="role" className="text-white">Role</Label>
 
   <Select
     value={formData.role || undefined}  // <-- IMPORTANT for placeholder
@@ -902,8 +902,8 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
           <Card className="bg-slate-800/30 border-slate-700/50">
             <CardContent className="p-3 text-center">
               <Mail className="h-5 w-5 mx-auto mb-1" style={{ color: "#facc15" }} />
-              <p className="text-lg font-bold text-white">{users.filter(u => u.status === "Invited" || u.status === "Pending").length}</p>
-              <p className="text-xs text-slate-400">Pending</p>
+              <p className="text-lg font-bold text-white">{users.filter(u => u.role === "Guest" ).length}</p>
+              <p className="text-xs text-slate-400">Guest</p>
             </CardContent>
           </Card>
           <Card className="bg-slate-800/30 border-slate-700/50">
@@ -1100,7 +1100,8 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
         <Card style={{ backgroundColor: "rgba(30,41,59,0.3)", border: "1px solid rgba(51,65,85,0.5)" }}><CardContent style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><p style={{ fontSize: "0.875rem", color: "#94a3b8" }}>Total Users</p><p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{users.length}</p></div><Users style={{ height: "2rem", width: "2rem", color: "#60a5fa" }} /></CardContent></Card>
         <Card style={{ backgroundColor: "rgba(30,41,59,0.3)", border: "1px solid rgba(51,65,85,0.5)" }}><CardContent style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><p style={{ fontSize: "0.875rem", color: "#94a3b8" }}>Active</p><p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{users.filter(u => u.status === "Active").length}</p></div><UserCheck style={{ height: "2rem", width: "2rem", color: "#34d399" }} /></CardContent></Card>
-        <Card style={{ backgroundColor: "rgba(30,41,59,0.3)", border: "1px solid rgba(51,65,85,0.5)" }}><CardContent style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><p style={{ fontSize: "0.875rem", color: "#94a3b8" }}>Pending</p><p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{users.filter(u => u.status === "Invited" || u.status === "Pending").length}</p></div><Mail style={{ height: "2rem", width: "2rem", color: "#facc15" }} /></CardContent></Card>
+        <Card style={{ backgroundColor: "rgba(30,41,59,0.3)", border: "1px solid rgba(51,65,85,0.5)" }}><CardContent style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><p style={{ fontSize: "0.875rem", color: "#94a3b8" }}>Guest</p>
+        <p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{users.filter(u => u.role === "Guest" ).length}</p></div><Eye style={{ height: "2rem", width: "2rem", color: "#facc15" }} /></CardContent></Card>
         <Card style={{ backgroundColor: "rgba(30,41,59,0.3)", border: "1px solid rgba(51,65,85,0.5)" }}><CardContent style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><p style={{ fontSize: "0.875rem", color: "#94a3b8" }}>Admins</p><p style={{ fontSize: "1.5rem", fontWeight: "bold" }}>{users.filter(u => u.role === "Admin" || u.role === "Owner").length}</p></div><Shield style={{ height: "2rem", width: "2rem", color: "#a78bfa" }} /></CardContent></Card>
       </div>
       <div className="flex items-center gap-4">
@@ -1108,7 +1109,7 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="outline" style={{ display: 'flex', gap: '0.5rem' }}><Filter className="h-4 w-4" />Filter</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>View Options</DropdownMenuLabel>
+            <DropdownMenuLabel>View Options</DropdownMenuLabel> 
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Group by</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
