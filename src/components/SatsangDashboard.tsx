@@ -35,6 +35,7 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
   maxVisibleBadges = 2,
 }) => {
   const [open, setOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState(''); // <-- Add this line
 
   const toggle = (val: string) => {
     if (value.includes(val)) {
@@ -152,31 +153,41 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)', maxHeight: 320, overflow: 'auto' }}>
-        <Command>
-          <CommandInput placeholder="Search..." />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup>
-              {options.map(opt => {
-                const isSelected = value.includes(opt.value);
-                return (
-                  <CommandItem
-                    key={opt.value}
-                    value={opt.label} // Value used for searching
-                    onSelect={() => toggle(opt.value)}
-                  >
-                    <Check
-                      className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`}
-                    />
-                    <span>{opt.label}</span>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
+     <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)', maxHeight: 320, overflow: 'auto' }}>
+  <Command>
+    <CommandInput
+      placeholder="Search..."
+      value={searchInput}
+      onValueChange={setSearchInput}
+    />
+    <CommandList>
+      <CommandEmpty>No results found.</CommandEmpty>
+      <CommandGroup>
+        {options
+          .filter(opt =>
+            !searchInput
+              ? true
+              : opt.label.toLowerCase() === searchInput.toLowerCase()
+          )
+          .map(opt => {
+            const isSelected = value.includes(opt.value);
+            return (
+              <CommandItem
+                key={opt.value}
+                value={opt.label}
+                onSelect={() => toggle(opt.value)}
+              >
+                <Check
+                  className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`}
+                />
+                <span>{opt.label}</span>
+              </CommandItem>
+            );
+          })}
+      </CommandGroup>
+    </CommandList>
+  </Command>
+</PopoverContent>
     </Popover>
   );
 };
