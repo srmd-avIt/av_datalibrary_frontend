@@ -394,12 +394,33 @@ function EventDataTableView({
   eventCode: string;
   onPushSidebar: (item: SidebarStackItem) => void;
 }) {
+  const { user } = useAuth();
+
+  // 1. FIXED: Permission Check matches your actual DB resource name
+  const hasMediaLogAccess = useMemo(() => {
+    if (!user) return false;
+
+    // Admin/Owner always has access
+    const role = (user.role || "").toLowerCase();
+    if (role === 'admin' || role === 'owner') return true;
+
+    const perms = user.permissions || [];
+    
+    // 🔥 FIX HERE: Check for "ML formal & Informal" OR "Media Log"
+    const permission = perms.find((p: any) => 
+      p.resource === "Media Log" || p.resource === "ML formal & Informal" || p.resource === "ML Formal" || p.resource === "All Except Satsang" || p.resource === "Satsang Extracted Clips" || p.resource === "Satsang Category"
+    );
+
+    return permission?.actions.includes('read') || false;
+  }, [user]);
+
   const [recordings, setRecordings] = useState<any[]>([]);
   const [mediaLogs, setMediaLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const columns = [   { key: "Yr", label: "Year", sortable: true, editable: true },
+  const columns = [
+      { key: "Yr", label: "Year", sortable: true, editable: true },
       {
         key: "EventDisplay",
         label: "Event Name - EventCode",
@@ -411,10 +432,8 @@ function EventDataTableView({
           return `${en}${en && ec ? " - " : ""}${ec}`;
         },
       },
-        { key: "EventCode", label: "Event Code", sortable: true, editable: true },
+      { key: "EventCode", label: "Event Code", sortable: true, editable: true },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-       
-      // Core ML columns requested
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       {
@@ -428,15 +447,10 @@ function EventDataTableView({
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-      
- 
-
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-
-      // Counters / durations / language / speaker / org / designation
       { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
       { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
@@ -444,18 +458,13 @@ function EventDataTableView({
       { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
       { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Designation", label: "Designation", sortable: true, editable: true },
-
-      // 4 location fields
       { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-
-      // keep existing/other ML fields (preserve original keys)
       { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
       { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-      
       { key: "IsAudioRecorded", label: "IsAudioRecorded", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
       { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
@@ -472,27 +481,17 @@ function EventDataTableView({
       { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
       { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
      {
-  key: "ContentFromDetailCity",
-  label: "Content - Detail - City",
-  sortable: true,
-  editable: false,
-  render: (_v: any, row: any) => {
-    // Use backend-computed field if available
-    if (row.ContentFromDetailCity) {
-      return row.ContentFromDetailCity;
-    }
-
-    // ✅ Prevent fallback when EventRefMLID is empty
-    if (!row.EventRefMLID) {
-      return ""; // or return null;
-    }
-
-    // Fallback: build value manually if needed
-    const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
-    return parts.join(" - ");
-  },
-}
-,
+        key: "ContentFromDetailCity",
+        label: "Content - Detail - City",
+        sortable: true,
+        editable: false,
+        render: (_v: any, row: any) => {
+            if (row.ContentFromDetailCity) return row.ContentFromDetailCity;
+            if (!row.EventRefMLID) return "";
+            const parts = [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean);
+            return parts.join(" - ");
+        },
+    },
       { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
       { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
       { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
@@ -510,11 +509,8 @@ function EventDataTableView({
       { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
       { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Grading", label: "Grading", sortable: true, editable: true },
-      
       { key: "Segment Duration", label: "Segment Duration", sortable: true, editable: true },
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
-
-      // DR specific and then rest of existing ML fields
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
  ];
@@ -524,13 +520,34 @@ function EventDataTableView({
       try {
         setLoading(true);
         setError(null);
-        const [recordingsResponse, mediaLogsResponse] = await Promise.all([ fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`), fetch(`${API_BASE_URL}/newmedialog?EventCode=${encodeURIComponent(eventCode)}`), ]);
-        if (!recordingsResponse.ok) throw new Error(`Failed to fetch recordings (Status: ${recordingsResponse.status})`);
-        if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`);
+        
+        // Prepare requests
+        const requests = [
+            fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`)
+        ];
+
+        // 2. Only fetch logs if allowed
+        if (hasMediaLogAccess) {
+            requests.push(fetch(`${API_BASE_URL}/newmedialog?EventCode=${encodeURIComponent(eventCode)}`));
+        }
+
+        const responses = await Promise.all(requests);
+        
+        const recordingsResponse = responses[0];
+        if (!recordingsResponse.ok) throw new Error(`Failed to fetch recordings`);
+        
         const recordingsResult = await recordingsResponse.json();
-        const mediaLogsResult = await mediaLogsResponse.json();
         setRecordings(recordingsResult.data || []);
-        setMediaLogs(mediaLogsResult.data || []);
+
+        if (hasMediaLogAccess && responses[1]) {
+            const mediaLogsResponse = responses[1];
+            if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs`);
+            const mediaLogsResult = await mediaLogsResponse.json();
+            setMediaLogs(mediaLogsResult.data || []);
+        } else {
+            setMediaLogs([]);
+        }
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -538,40 +555,16 @@ function EventDataTableView({
       }
     };
     fetchData();
-  }, [eventCode]);
+  }, [eventCode, hasMediaLogAccess]);
 
-  if (loading) return <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "16px",
-    color: "white",
-    fontSize: "14px",
-  }}
->
-  <Loader2
-    style={{
-      marginRight: "8px",
-      width: "20px",
-      height: "20px",
-      animation: "spin 1s linear infinite",
-    }}
-  />
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", color: "white", fontSize: "14px" }}>
+        <Loader2 style={{ marginRight: "8px", width: "20px", height: "20px", animation: "spin 1s linear infinite" }} />
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        Loading event data...
+    </div>
+  );
 
-  {/* Inline keyframes for spin */}
-  <style>
-    {`
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `}
-  </style>
-
-  Loading event data...
-</div>
-;
   if (error) return <div className="text-destructive p-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{error}</div>;
 
   return (
@@ -579,22 +572,20 @@ function EventDataTableView({
       <Tabs defaultValue="recordings" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="recordings">Digital Recordings</TabsTrigger>
-          <TabsTrigger value="medialogs">Media Log</TabsTrigger>
+          {/* 3. Render Tab if access granted */}
+          {hasMediaLogAccess && <TabsTrigger value="medialogs">Media Log</TabsTrigger>}
         </TabsList>
+        
         <TabsContent value="recordings">
           <CardContent className="p-0">
             {recordings.length > 0 ? (
               <>
-                
-<div className="flex justify-between items-center mb-4 px-2">
-  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings Details</h2>
-
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() =>
-      exportToCSV(
-        recordings,
+                <div className="flex justify-between items-center mb-4 px-2">
+                  <h2 className="text-xl font-semibold px-2 text-white">Digital Recordings Details</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportToCSV( recordings,
         [
           { key: "Yr", label: "Year" },
           { key: "EventName", label: "Event Name" },
@@ -632,33 +623,16 @@ function EventDataTableView({
           { key: "AssociatedDR", label: "Associated DR" },
           { key: "Teams", label: "Teams" },
         ],
-        "digital_recordings.csv"
-      )
-    }
-    style={{
-      background: "rgba(0, 0, 0, 0.35)",         // translucent black
-      color: "white",
-      border: "1px solid rgba(255, 255, 255, 0.15)",
-      backdropFilter: "blur(10px)",
-      WebkitBackdropFilter: "blur(10px)",
-      padding: "6px 14px",
-      fontWeight: 600,
-      borderRadius: "8px",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-    }}
-  >
-    <Download size={16} />
-    Export CSV
-  </Button>
-</div>
+        "digital_recordings.csv")}
+                    style={{ background: "rgba(0, 0, 0, 0.35)", color: "white", border: "1px solid rgba(255, 255, 255, 0.15)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: "6px 14px", fontWeight: 600, borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <Download size={16} /> Export CSV
+                  </Button>
+                </div>
                 <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
                   <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
-                      <TableRow className="border"><TableHead className="border whitespace-nowrap text-white px-3 py-2">Year</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Category</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkEventCode</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Code</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Distribution Drive Link</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Bit Rate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Dimension</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Masterquality</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkMediaName</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Filesize</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">FilesizeInBytes</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">No Of Files</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Remarks</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Counter Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Reason Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Master Product Title</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDistributionLabel</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Production Bucket</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDigitalMasterCategory</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Bitrate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Total Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Remarks Checked On</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Preservation Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">QC Sevak</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Last Modified Timestamp</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Submitted Date</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Pres Stat Guid Dt</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Info On Cassette</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Is Informal</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Associated DR</TableHead>
-                      </TableRow>
+                      <TableRow className="border"><TableHead className="border whitespace-nowrap text-white px-3 py-2">Year</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Event Category</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkEventCode</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Name</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Code</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Distribution Drive Link</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Bit Rate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Dimension</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Masterquality</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkMediaName</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Filesize</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">FilesizeInBytes</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">No Of Files</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Recording Remarks</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Counter Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Reason Error</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Master Product Title</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDistributionLabel</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Production Bucket</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">fkDigitalMasterCategory</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Bitrate</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Audio Total Duration</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Remarks Checked On</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Preservation Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">QC Sevak</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Qc Status</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Last Modified Timestamp</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Submitted Date</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Pres Stat Guid Dt</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Info On Cassette</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Is Informal</TableHead><TableHead className="border whitespace-nowrap text-white px-3 py-2">Associated DR</TableHead></TableRow>
                     </TableHeader>
                     <TableBody>
                       {recordings.map((rec) => (<TableRow key={rec.RecordingCode} className="border"><TableCell className="border px-3 py-2">{rec.Yr}</TableCell><TableCell className="border px-3 py-2">{rec.EventName}</TableCell><TableCell className="border px-3 py-2">{categoryTagRenderer(rec.fkEventCategory)}</TableCell><TableCell className="border px-3 py-2">{rec.fkEventCode}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingName}</TableCell><TableCell className="border px-3 py-2">{rec.RecordingCode}</TableCell><TableCell className="border px-3 py-2">{rec.Duration}</TableCell>
@@ -667,55 +641,38 @@ function EventDataTableView({
                   </Table>
                 </div>
               </>
-            ) : (<p className="text-sm text-muted-foreground text-center p-4">No recordings found for this event.</p>)}
+            ) : (<p className="text-sm text-muted-foreground text-center p-4">No recordings found.</p>)}
           </CardContent>
         </TabsContent>
-        <TabsContent value="medialogs">
-          <CardContent className="p-0">
-            {mediaLogs.length > 0 ? (
-              <>
-               <div className="flex justify-between items-center mb-4 px-2">
-  <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
 
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")}
-    style={{
-      background: "rgba(0, 0, 0, 0.35)",          // translucent black
-      color: "white",
-      border: "1px solid rgba(255, 255, 255, 0.15)",
-      backdropFilter: "blur(10px)",
-      WebkitBackdropFilter: "blur(10px)",
-      padding: "6px 14px",
-      fontWeight: 600,
-      borderRadius: "8px",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-    }}
-  >
-    <Download size={16} />
-    Export CSV
-  </Button>
-</div>
+        {hasMediaLogAccess && (
+            <TabsContent value="medialogs">
+            <CardContent className="p-0">
+                {mediaLogs.length > 0 ? (
+                <>
+                <div className="flex justify-between items-center mb-4 px-2">
+                    <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
+                    <Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, columns, "media_logs.csv")} style={{ background: "rgba(0, 0, 0, 0.35)", color: "white", border: "1px solid rgba(255, 255, 255, 0.15)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: "6px 14px", fontWeight: 600, borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Download size={16} /> Export CSV
+                    </Button>
+                </div>
                 <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
-                  <Table className="border">
+                    <Table className="border">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow text-white">
-                      <TableRow className="border text-white">
+                        <TableRow className="border text-white">
                         {columns.map((col) => (<TableHead key={col.key} className="border font-semibold whitespace-nowrap text-white px-3 py-2">{col.label}</TableHead>))}
-                      </TableRow>
+                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mediaLogs.map((row) => (<TableRow key={row.MLUniqueID} className="border">{columns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap max-w-[250px] truncate  px-3 py-2 ">{row[col.key] ?? " "}</TableCell>))}</TableRow>))}
+                        {mediaLogs.map((row) => (<TableRow key={row.MLUniqueID} className="border">{columns.map((col) => (<TableCell key={col.key} className="border whitespace-nowrap max-w-[250px] truncate  px-3 py-2 ">{row[col.key] ?? " "}</TableCell>))}</TableRow>))}
                     </TableBody>
-                  </Table>
+                    </Table>
                 </div>
-              </>
-            ) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this event.</p>)}
-          </CardContent>
-        </TabsContent>
+                </>
+                ) : (<p className="text-sm text-muted-foreground text-center p-4">No media logs found for this event.</p>)}
+            </CardContent>
+            </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -730,238 +687,227 @@ function DigitalRecordingDataTableView({
   eventCode: string;
   onPushSidebar: (item: SidebarStackItem) => void;
 }) {
+  const { user } = useAuth();
+
+  // 1. PERMISSION CHECK
+  const hasMediaLogAccess = useMemo(() => {
+    if (!user) return false;
+    // Admin/Owner always has access
+    const role = (user.role || "").toLowerCase();
+    if (role === 'admin' || role === 'owner') return true;
+
+    const perms = user.permissions || [];
+    // Check for either resource name
+    const permission = perms.find((p: any) => 
+      p.resource === "Media Log" || p.resource === "ML formal & Informal" || p.resource === "ML Formal" || p.resource === "All Except Satsang" || p.resource === "Satsang Extracted Clips" || p.resource === "Satsang Category"
+    );
+
+    return permission?.actions.includes('read') || false;
+  }, [user]);
+
   const [event, setEvent] = useState<any | null>(null);
   const [mediaLogs, setMediaLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Columns Definitions (kept same as original) ---
   const eventColumns = [ { key: "Yr", label: "Year" }, { key: "NewEventCategory", label: "New Event Category" }, { key: "FromDate", label: "From Date" }, { key: "ToDate", label: "To Date" }, { key: "EventName", label: "Event Name" }, { key: "EventCode", label: "Event Code" }, { key: "EventRemarks", label: "Event Remarks" }, ];
   const mediaLogColumns = [ { key: "Yr", label: "Year" }, { key: "EventDisplay", label: "Event Name - EventCode" }, { key: "EventCode", label: "Event Code" }, { key: "fkDigitalRecordingCode", label: "DR Code" }, { key: "ContentFrom", label: "Content From" }, { key: "ContentTo", label: "Content To" }, { key: "DetailSub", label: "Detail - SubDetail" }, { key: "EditingStatus", label: "Editing Status" }, { key: "FootageType", label: "Footage Type" }, { key: "fkOccasion", label: "Occasion" }, { key: "Segment Category", label: "Segment Category" }, { key: "CounterFrom", label: "Counter From" }, { key: "CounterTo", label: "Counter To" }, { key: "SubDuration", label: "Sub Duration" }, { key: "Language", label: "Language" }, { key: "SpeakerSinger", label: "Speaker / Singer" }, { key: "fkOrganization", label: "Organization" }, { key: "Designation", label: "Designation" }, { key: "fkCountry", label: "Country" }, { key: "fkState", label: "State" }, { key: "fkCity", label: "City" }, { key: "Venue", label: "Venue" }, { key: "MLUniqueID", label: "MLUniqueID" }, { key: "FootageSrNo", label: "FootageSrNo" }, { key: "LogSerialNo", label: "LogSerialNo" }, { key: "IsAudioRecorded", label: "IsAudioRecorded" }, { key: "AudioMP3Distribution", label: "AudioMP3Distribution" }, { key: "AudioWAVDistribution", label: "AudioWAVDistribution" }, { key: "AudioMP3DRCode", label: "AudioMP3DRCode" }, { key: "AudioWAVDRCode", label: "AudioWAVDRCode" }, { key: "FullWAVDRCode", label: "FullWAVDRCode" }, { key: "Remarks", label: "Remarks" }, { key: "IsStartPage", label: "IsStartPage" }, { key: "EndPage", label: "EndPage" }, { key: "IsInformal", label: "IsInformal" }, { key: "IsPPGNotPresent", label: "IsPPGNotPresent" }, { key: "Guidance", label: "Guidance" }, { key: "DiskMasterDuration", label: "DiskMasterDuration" }, { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters" }, { key: "EventRefMLID", label: "EventRefMLID" }, { key: "ContentFromDetailCity", label: "Content - Detail - City" }, { key: "EventRefMLID2", label: "EventRefMLID2" }, { key: "DubbedLanguage", label: "DubbedLanguage" }, { key: "DubbingArtist", label: "DubbingArtist" }, { key: "HasSubtitle", label: "HasSubtitle" }, { key: "SubTitlesLanguage", label: "SubTitlesLanguage" }, { key: "EditingDeptRemarks", label: "EditingDeptRemarks" }, { key: "EditingType", label: "EditingType" }, { key: "BhajanType", label: "BhajanType" }, { key: "IsDubbed", label: "IsDubbed" }, { key: "NumberSource", label: "NumberSource" }, { key: "TopicSource", label: "TopicSource" }, { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp" }, { key: "LastModifiedBy", label: "LastModifiedBy" }, { key: "Synopsis", label: "Synopsis" }, { key: "LocationWithinAshram", label: "LocationWithinAshram" }, { key: "Keywords", label: "Keywords" }, { key: "Grading", label: "Grading" }, { key: "Segment Duration", label: "Segment Duration" }, { key: "TopicGivenBy", label: "TopicGivenBy" }, { key: "RecordingName", label: "Recording Name" }, { key: "Masterquality", label: "DR Master Quality" }, ];
- const mediaLogColumnRenderers: { [key: string]: (v: any, row: any) => React.ReactNode } = {
-  'EventDisplay': (_v, row) => `${row.EventName||""}${row.EventName&&row.EventCode?" - ":""}${row.EventCode||row.fkEventCode||""}`,
-  'DetailSub': (_v, row) => `${row.Detail||""}${row.Detail&&row.SubDetail?" - ":""}${row.SubDetail||""}`,
-  'ContentFromDetailCity': (_v, row) =>
-      row.ContentFromDetailCity
-        ? row.ContentFromDetailCity
-        : !row.EventRefMLID
-        ? ""
-        : [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean).join(" - "),
+  const mediaLogColumnRenderers: { [key: string]: (v: any, row: any) => React.ReactNode } = {
+    'EventDisplay': (_v, row) => `${row.EventName||""}${row.EventName&&row.EventCode?" - ":""}${row.EventCode||row.fkEventCode||""}`,
+    'DetailSub': (_v, row) => `${row.Detail||""}${row.Detail&&row.SubDetail?" - ":""}${row.SubDetail||""}`,
+    'ContentFromDetailCity': (_v, row) =>
+        row.ContentFromDetailCity
+          ? row.ContentFromDetailCity
+          : !row.EventRefMLID
+          ? ""
+          : [row.ContentFrom, row.Detail, row.fkCity].filter(Boolean).join(" - "),
+    'RecordingName': (v, row) => row.RecordingName || row.Recording_Name || row.recordingName || "-",
+    'EditingStatus': (v) => categoryTagRenderer(v),
+    'FootageType': (v) => categoryTagRenderer(v),
+    'fkOccasion': (v) => categoryTagRenderer(v),
+    'Segment Category': (v) => categoryTagRenderer(v),
+    'Language': (v) => categoryTagRenderer(v),
+    'fkOrganization': (v) => categoryTagRenderer(v),
+    'fkCountry': (v) => categoryTagRenderer(v),
+    'fkState': (v) => categoryTagRenderer(v),
+    'fkCity': (v) => categoryTagRenderer(v),
+    'IsAudioRecorded': (v) => categoryTagRenderer(v),
+    'SubTitlesLanguage': (v) => categoryTagRenderer(v),
+    'EditingType': (v) => categoryTagRenderer(v),
+    'BhajanType': (v) => categoryTagRenderer(v),
+    'NumberSource': (v) => categoryTagRenderer(v),
+    'TopicSource': (v) => categoryTagRenderer(v),
+    'Keywords': (v) => categoryTagRenderer(v),
+    'Masterquality': (v) => categoryTagRenderer(v),
+  };
 
-  // 🔥 FIX: RecordingName renderer
-  'RecordingName': (v, row) =>
-      row.RecordingName ||
-      row.Recording_Name ||
-      row.recordingName ||
-      "-",
-
-  // existing category mappings…
-  'EditingStatus': (v) => categoryTagRenderer(v),
-  'FootageType': (v) => categoryTagRenderer(v),
-  'fkOccasion': (v) => categoryTagRenderer(v),
-  'Segment Category': (v) => categoryTagRenderer(v),
-  'Language': (v) => categoryTagRenderer(v),
-  'fkOrganization': (v) => categoryTagRenderer(v),
-  'fkCountry': (v) => categoryTagRenderer(v),
-  'fkState': (v) => categoryTagRenderer(v),
-  'fkCity': (v) => categoryTagRenderer(v),
-  'IsAudioRecorded': (v) => categoryTagRenderer(v),
-  'SubTitlesLanguage': (v) => categoryTagRenderer(v),
-  'EditingType': (v) => categoryTagRenderer(v),
-  'BhajanType': (v) => categoryTagRenderer(v),
-  'NumberSource': (v) => categoryTagRenderer(v),
-  'TopicSource': (v) => categoryTagRenderer(v),
-  'Keywords': (v) => categoryTagRenderer(v),
-  'Masterquality': (v) => categoryTagRenderer(v),
-};
-
+  // 2. CONDITIONAL FETCH
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const requests = [ eventCode ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`) : Promise.resolve(null), recordingCode ? fetch(`${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`) : Promise.resolve(null), ];
-        const [eventResponse, mediaLogsResponse] = await Promise.all(requests);
-        if (eventResponse) { if (!eventResponse.ok) throw new Error(`Failed to fetch event (Status: ${eventResponse.status})`); const eventResult = await eventResponse.json(); setEvent(eventResult); }
-        if (mediaLogsResponse) { if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`); const mediaLogsResult = await mediaLogsResponse.json(); setMediaLogs(mediaLogsResult.data || []); }
-      } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+
+        // Build request array
+        const requests = [
+            eventCode ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`) : Promise.resolve(null)
+        ];
+
+        // Only fetch Media Logs if user has access
+        if (hasMediaLogAccess && recordingCode) {
+            requests.push(fetch(`${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`));
+        }
+
+        const responses = await Promise.all(requests);
+        
+        // Handle Event Response (Index 0)
+        const eventResponse = responses[0];
+        if (eventResponse) { 
+            if (!eventResponse.ok) throw new Error(`Failed to fetch event (Status: ${eventResponse.status})`); 
+            const eventResult = await eventResponse.json(); 
+            setEvent(eventResult); 
+        }
+
+        // Handle Media Log Response (Index 1, if it exists)
+        if (hasMediaLogAccess && responses[1]) {
+            const mediaLogsResponse = responses[1];
+            if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`); 
+            const mediaLogsResult = await mediaLogsResponse.json(); 
+            setMediaLogs(mediaLogsResult.data || []); 
+        } else {
+            setMediaLogs([]); // Clear logs if no access
+        }
+
+      } catch (err: any) { 
+          setError(err.message); 
+      } finally { 
+          setLoading(false); 
+      }
     };
     fetchData();
-  }, [recordingCode, eventCode]);
+  }, [recordingCode, eventCode, hasMediaLogAccess]);
 
-  if (loading) return <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "16px",
-    color: "white",
-    fontSize: "14px",
-  }}
->
-  <Loader2
-    style={{
-      marginRight: "8px",
-      width: "20px",
-      height: "20px",
-      animation: "spin 1s linear infinite",
-    }}
-  />
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", color: "white", fontSize: "14px" }}>
+        <Loader2 style={{ marginRight: "8px", width: "20px", height: "20px", animation: "spin 1s linear infinite" }} />
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        Loading data...
+    </div>
+  );
 
-  {/* Inline keyframe animation */}
-  <style>
-    {`
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `}
-  </style>
-
-  Loading data...
-</div>
-;
   if (error) return <div className="text-destructive p-4 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {error}</div>;
 
   return (
     <div className="space-y-6">
+      {/* 
+        Note: defaultValue="events" ensures that if Media Logs is hidden, 
+        the Events tab opens by default.
+      */}
       <Tabs defaultValue="events" className="w-full">
-        <TabsList className="mb-4"><TabsTrigger value="medialogs">Media Log</TabsTrigger><TabsTrigger value="events">Event</TabsTrigger></TabsList>
+        <TabsList className="mb-4">
+            {/* 3. Conditional Trigger Render */}
+            {hasMediaLogAccess && <TabsTrigger value="medialogs">Media Log</TabsTrigger>}
+            <TabsTrigger value="events">Event</TabsTrigger>
+        </TabsList>
+        
         <TabsContent value="events">
          <CardContent className="p-0">
-  {event ? (
-    <>
-      <div className="flex justify-between items-center mb-4 px-2">
-        <h2 className="text-xl font-semibold px-2 text-white">Event Details</h2>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => exportToCSV([event], eventColumns, "event.csv")}
-          style={{
-            background: "rgba(0, 0, 0, 0.35)",            // translucent black
-            color: "white",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            padding: "6px 14px",
-            fontWeight: 600,
-            borderRadius: "8px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <Download size={16} />
-          Export CSV
-        </Button>
-      </div>
-
-      <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
-        <Table className="border">
-          <TableHeader className="sticky top-0 bg-background z-10 shadow">
-            <TableRow className="border">
-              {eventColumns.map((col) => (
-                <TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">
-                  {col.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <TableRow className="border">
-              {eventColumns.map((col) => (
-                <TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">
-                  {col.key === "NewEventCategory"
-                    ? categoryTagRenderer(event[col.key])
-                    : event[col.key] ?? " "}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </>
-  ) : (
-    <p className="text-sm text-muted-foreground text-center p-4">
-      No event found for this recording.
-    </p>
-  )}
-</CardContent>
-        </TabsContent>
-        <TabsContent value="medialogs">
-         <CardContent className="p-0">
-  {mediaLogs.length > 0 ? (
-    <>
-      <div className="flex justify-between items-center mb-4 px-2">
-        <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")}
-          style={{
-            background: "rgba(0, 0, 0, 0.35)",        // translucent black
-            color: "white",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            padding: "6px 14px",
-            fontWeight: 600,
-            borderRadius: "8px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <Download size={16} />
-          Export CSV
-        </Button>
-      </div>
-
-      <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
-        <Table className="border">
-          <TableHeader className="sticky top-0 bg-background z-10 shadow">
-            <TableRow className="border">
-              {mediaLogColumns.map((col) => (
-                <TableHead
-                  key={col.key}
-                  className="border whitespace-nowrap text-white px-3 py-2"
+          {event ? (
+            <>
+              <div className="flex justify-between items-center mb-4 px-2">
+                <h2 className="text-xl font-semibold px-2 text-white">Event Details</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportToCSV([event], eventColumns, "event.csv")}
+                  style={{ background: "rgba(0, 0, 0, 0.35)", color: "white", border: "1px solid rgba(255, 255, 255, 0.15)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: "6px 14px", fontWeight: 600, borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
                 >
-                  {col.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+                  <Download size={16} /> Export CSV
+                </Button>
+              </div>
 
-          <TableBody>
-            {mediaLogs.map((log, idx) => (
-              <TableRow key={log.MLUniqueID || idx} className="border">
-                {mediaLogColumns.map((col) => (
-                  <TableCell
-                    key={col.key}
-                    className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate"
-                  >
-                    {mediaLogColumnRenderers[col.key]
-                      ? mediaLogColumnRenderers[col.key](log[col.key], log)
-                      : log[col.key] ?? " "}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </>
-  ) : (
-    <p className="text-sm text-muted-foreground text-center p-4">
-      No media logs found for this recording.
-    </p>
-  )}
-</CardContent>
+              <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+                <Table className="border">
+                  <TableHeader className="sticky top-0 bg-background z-10 shadow">
+                    <TableRow className="border">
+                      {eventColumns.map((col) => (
+                        <TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">
+                          {col.label}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="border">
+                      {eventColumns.map((col) => (
+                        <TableCell key={col.key} className="border whitespace-nowrap px-3 py-2">
+                          {col.key === "NewEventCategory"
+                            ? categoryTagRenderer(event[col.key])
+                            : event[col.key] ?? " "}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center p-4">
+              No event found for this recording.
+            </p>
+          )}
+        </CardContent>
         </TabsContent>
+
+        {/* 4. Conditional Content Render */}
+        {hasMediaLogAccess && (
+            <TabsContent value="medialogs">
+            <CardContent className="p-0">
+            {mediaLogs.length > 0 ? (
+                <>
+                <div className="flex justify-between items-center mb-4 px-2">
+                    <h2 className="text-xl font-semibold px-2 text-white">Media Log Details</h2>
+                    <Button variant="outline" size="sm" onClick={() => exportToCSV(mediaLogs, mediaLogColumns, "media_logs.csv")} style={{ background: "rgba(0, 0, 0, 0.35)", color: "white", border: "1px solid rgba(255, 255, 255, 0.15)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: "6px 14px", fontWeight: 600, borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Download size={16} /> Export CSV
+                    </Button>
+                </div>
+
+                <div className="w-full overflow-x-auto max-h-[600px] overflow-y-auto text-white">
+                    <Table className="border">
+                    <TableHeader className="sticky top-0 bg-background z-10 shadow">
+                        <TableRow className="border">
+                        {mediaLogColumns.map((col) => (
+                            <TableHead key={col.key} className="border whitespace-nowrap text-white px-3 py-2">
+                            {col.label}
+                            </TableHead>
+                        ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {mediaLogs.map((log, idx) => (
+                        <TableRow key={log.MLUniqueID || idx} className="border">
+                            {mediaLogColumns.map((col) => (
+                            <TableCell key={col.key} className="border whitespace-nowrap px-3 py-2 max-w-[250px] truncate">
+                                {mediaLogColumnRenderers[col.key]
+                                ? mediaLogColumnRenderers[col.key](log[col.key], log)
+                                : log[col.key] ?? " "}
+                            </TableCell>
+                            ))}
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </div>
+                </>
+            ) : (
+                <p className="text-sm text-muted-foreground text-center p-4">
+                No media logs found for this recording.
+                </p>
+            )}
+            </CardContent>
+            </TabsContent>
+        )}
       </Tabs>
     </div>
   );
