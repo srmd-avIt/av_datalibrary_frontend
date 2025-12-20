@@ -1,6 +1,6 @@
 // GOOGLE LOGIN COMPONENT: Modern login button with Google OAuth integration
 import { useGoogleLogin } from '@react-oauth/google';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // GOOGLE AUTH INTEGRATION: Import the useAuth hook
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button'; // Assuming you have a ui folder
@@ -8,19 +8,50 @@ import { Mail } from 'lucide-react';
 
 export const GoogleLoginButton = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  // GOOGLE AUTH INTEGRATION: Get the login function from our context
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
+
+  /**
+   * 1. FIXED: Used useRef to persist the timer across re-renders.
+   * 2. FIXED: Used ReturnType<typeof setTimeout> to resolve the 'NodeJS' namespace error.
+   */
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+ // SET TO 3 HOURS: (3 hours * 60 minutes * 60 seconds * 1000 milliseconds)
+const INACTIVITY_TIMEOUT = 3 * 60 * 60 * 1000;
+
+  const startInactivityTimer = () => {
+    // Clear any existing timer before starting a new one
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    inactivityTimerRef.current = setTimeout(() => {
+      console.log('User inactive for 2 minutes. Logging out...');
+      logout(); 
+    }, INACTIVITY_TIMEOUT);
+  };
+
+  const resetInactivityTimer = () => {
+    // Only reset the timer if the user is actually logged in/actively using the session
+    // This function is called by event listeners
+    startInactivityTimer();
+  };
 
   const handleLoginSuccess = async (tokenResponse: { access_token: string }) => {
-    console.log('Login successful:', tokenResponse);
-    // GOOGLE AUTH INTEGRATION: Call the context login function with the access token
-    await login(tokenResponse.access_token);
-    setIsLoggingIn(false); // Stop loading indicator on success
+    console.log('Login successful');
+    try {
+      await login(tokenResponse.access_token);
+      setIsLoggingIn(false);
+      startInactivityTimer(); // Start the 2-minute countdown immediately after login
+    } catch (error) {
+      console.error('Login processing failed:', error);
+      setIsLoggingIn(false);
+    }
   };
 
   const handleLoginError = (error: unknown) => {
-    console.error('Login failed:', error);
-    setIsLoggingIn(false); // Stop loading indicator on error
+    console.error('Google Login failed:', error);
+    setIsLoggingIn(false);
   };
 
   const googleLogin = useGoogleLogin({
@@ -32,8 +63,27 @@ export const GoogleLoginButton = () => {
     setIsLoggingIn(true);
     googleLogin();
   };
-  
-  // The rest of your JSX remains the same, but here is the Button with the updated onClick
+
+  useEffect(() => {
+    // Listen for these events to detect user activity
+    const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetInactivityTimer);
+    });
+
+    return () => {
+      // Clean up event listeners and timers on component unmount
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetInactivityTimer);
+      });
+      
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div
       style={{
@@ -59,84 +109,85 @@ export const GoogleLoginButton = () => {
         }}
       >
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          {/* ... Header JSX from your original code ... */}
           <div
             style={{
-                width: "4rem",
-                height: "4rem",
-                backgroundImage: "linear-gradient(to bottom right, #3b82f6, #9333ea)",
-                borderRadius: "1rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "1rem",
-                marginLeft: "auto",
-                marginRight: "auto",
+              width: "4rem",
+              height: "4rem",
+              backgroundImage: "linear-gradient(to bottom right, #3b82f6, #9333ea)",
+              borderRadius: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "1rem",
+              marginLeft: "auto",
+              marginRight: "auto",
             }}
-            >
-            <Mail style={{ width: "2rem", height: "2rem", color: "white" }} /> 
-            </div>
+          >
+            <Mail style={{ width: "2rem", height: "2rem", color: "white" }} />
+          </div>
 
-            <h1
+          <h1
             style={{
-                fontSize: "1.5rem",
-                lineHeight: "2rem",
-                color: "white",
-                marginBottom: "0.5rem",
+              fontSize: "1.5rem",
+              lineHeight: "2rem",
+              color: "white",
+              marginBottom: "0.5rem",
             }}
-            >
+          >
             Data Library App
-            </h1>
+          </h1>
 
-            <p
-            style={{
-                color: "rgb(148, 163, 184)",
-            }}
-            >
+          <p style={{ color: "rgb(148, 163, 184)" }}>
             Sign in with your Google account to access the dashboard
-            </p>
+          </p>
         </div>
 
         <div className="space-y-4">
           <Button
             onClick={handleButtonClick}
             disabled={isLoggingIn}
-            // ... Styling from your original code ...
             style={{
-                width: "100%",                 
-                backgroundColor: "white",     
-                color: "black",               
-                border: "0",                  
-                height: "3rem",               
-                borderRadius: "0.5rem",      
-                transition: "all 0.2s ease",   
-                display: "flex",               
-                alignItems: "center",         
-                justifyContent: "center",     
-                gap: "0.75rem",              
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                cursor: isLoggingIn ? "not-allowed" : "pointer",
+              width: "100%",
+              backgroundColor: "white",
+              color: "black",
+              border: "0",
+              height: "3rem",
+              borderRadius: "0.5rem",
+              transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.75rem",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+              cursor: isLoggingIn ? "not-allowed" : "pointer",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f3f4f6"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "white"; }}
+            onMouseEnter={(e) => { if(!isLoggingIn) e.currentTarget.style.backgroundColor = "#f3f4f6"; }}
+            onMouseLeave={(e) => { if(!isLoggingIn) e.currentTarget.style.backgroundColor = "white"; }}
           >
             {isLoggingIn ? (
               <>
-                 <div
-                    style={{
-                        height: "1.25rem",
-                        width: "1.25rem",
-                        borderRadius: "9999px",
-                        borderBottom: "2px solid rgb(75 85 99)",
-                        animation: "spin 1s linear infinite",
-                    }}
-                    />
-                Signing in...
+                <div
+                  style={{
+                    height: "1.25rem",
+                    width: "1.25rem",
+                    borderRadius: "9999px",
+                    border: "2px solid #e5e7eb",
+                    borderTopColor: "#3b82f6",
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+                <style>
+                  {`
+                    @keyframes spin {
+                      to { transform: rotate(360deg); }
+                    }
+                  `}
+                </style>
+                <span>Signing in...</span>
               </>
             ) : (
               <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  {/* ... SVG paths ... */}
+                <svg style={{ width: "1.25rem", height: "1.25rem" }} viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
