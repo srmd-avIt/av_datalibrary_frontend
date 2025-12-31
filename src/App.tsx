@@ -1033,6 +1033,35 @@ const VIEW_CONFIGS: Record<string, any> = {
       
     ],
   },
+
+  non_event_production: {
+    title: "Non Event Production",
+    apiEndpoint: "/non-event-production",
+    idKey: "SMCode",
+    detailsType: "non_event_production",
+    columns: [
+      { key: "SMCode", label: "SMCode", sortable: true, editable: true },
+      { key: "PostingDate", label: "Posting Date", sortable: true, editable: true },
+      { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "DistributionPlatforms", label: "Distribution Platforms", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Bucket", label: "Bucket", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SpecialDay", label: "Special Day", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Duration", label: "Duration", sortable: true, editable: true },
+      { key: "First3Words", label: "First 3 Words", sortable: true, editable: true },
+      { key: "Last3Words", label: "Last 3 Words", sortable: true, editable: true },
+      { key: "PostingMonth", label: "Posting Month", sortable: true, editable: true },
+      { key: "SMSubtitle?", label: "SM Subtitle?", sortable: true, editable: true },
+      { key: "PostedLink", label: "Posted Link", sortable: true, editable: true },
+      { key: "Asset", label: "Asset", sortable: true, editable: true },
+      { key: "PostName", label: "Post Name", sortable: true, editable: true },
+      { key: "CreatedTimestamp", label: "Created Timestamp", sortable: true, editable: true },
+      { key: "AuxFiles", label: "Aux Files", sortable: true, editable: true },
+      { key: "SMFilesize", label: "SM Filesize", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+    ],
+  },
+
 };
 type SidebarStackItem = {
   type: string;
@@ -1083,20 +1112,39 @@ export default function App() {
     localStorage.removeItem('columnChangesSummary');
   };
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsersForColumnMgmt'],
-    queryFn: async () => {
-      const resp = await fetch(`${API_BASE_URL}/users`);
-      if (!resp.ok) throw new Error('Failed to fetch users');
-      const users = await resp.json();
-      return users.map((u: any) => ({ 
-        id: u.id, 
-        name: u.name || u.email, 
-        email: u.email 
-      }));
-    },
-    enabled: !!user && (user.role === 'Admin' || user.role === 'Owner'),
-  });
+ const { data: allUsers } = useQuery({
+  queryKey: ['allUsersForColumnMgmt'],
+  queryFn: async () => {
+    // 1. Get the JWT token from localStorage
+    const token = localStorage.getItem('app-token');
+
+    // 2. Add the token to the fetch headers
+    const resp = await fetch(`${API_BASE_URL}/users`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // ✅ Added this line
+      }
+    });
+
+    if (resp.status === 401) {
+      // If the token is missing or expired, the backend sends 401
+      console.error("Session expired or unauthorized");
+      throw new Error('Unauthorized');
+    }
+
+    if (!resp.ok) throw new Error('Failed to fetch users');
+    
+    const users = await resp.json();
+    return users.map((u: any) => ({ 
+      id: u.id, 
+      name: u.name || u.email, 
+      email: u.email 
+    }));
+  },
+  // Ensure this only runs if a user is logged in and is an Admin
+  enabled: !!user && (user.role === 'Admin' || user.role === 'Owner'),
+});
 
   useEffect(() => {
     if (isMobile) {

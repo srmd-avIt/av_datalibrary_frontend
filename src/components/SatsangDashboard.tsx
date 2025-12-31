@@ -368,14 +368,8 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 // ...existing code...
 const handleSearch = () => {
   const activeFilters = Object.entries(searchFilters).reduce((acc, [key, value]) => {
-    // Check if value exists. 
-    // If it's an array, ensure it has items. If it's a string, ensure it's not empty.
     if (value && (Array.isArray(value) ? value.length > 0 : true)) {
-      
-      // ✅ FIX: Do NOT join arrays with commas. Pass the raw array.
-      // This allows the API/Backend to treat it as multiple values (OR logic) 
-      // instead of one long string.
-      acc[key] = value; 
+      acc[key] = value; // Pass raw array or string
     }
     return acc;
   }, {} as Record<string, any>);

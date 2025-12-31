@@ -82,27 +82,52 @@ function DigitalRecordingsList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRecordings = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(
-            eventCode
-          )}`
-        );
-        if (!response.ok)
-          throw new Error(`Failed to fetch recordings (Status: ${response.status})`);
-        const result = await response.json();
-        setRecordings(result.data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  const fetchRecordings = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Add headers with Authorization token
+      const response = await fetch(
+        `${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          }
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session (consistent with your bulk update)
+      if (response.status === 401 || response.status === 403) {
+        console.error("Fetch Recordings: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        window.location.href = '/'; 
+        return;
       }
-    };
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch recordings (Status: ${response.status})`);
+      }
+
+      const result = await response.json();
+      setRecordings(result.data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (eventCode) {
     fetchRecordings();
-  }, [eventCode]);
+  }
+}, [eventCode]);
 
   if (loading)
     return (
@@ -165,27 +190,53 @@ function MediaLogsList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(
-            recordingCode
-          )}`
-        );
-        if (!response.ok)
-          throw new Error(`Failed to fetch media logs (Status: ${response.status})`);
-        const result = await response.json();
-        setLogs(result.data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  const fetchLogs = async () => {
+    // Prevent fetching if recordingCode is not yet available
+    if (!recordingCode) return;
+
+    try {
+      setLoading(true);
+
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          }
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Fetch Logs: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        window.location.href = '/'; 
+        return;
       }
-    };
-    fetchLogs();
-  }, [recordingCode]);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch media logs (Status: ${response.status})`);
+      }
+
+      const result = await response.json();
+      setLogs(result.data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchLogs();
+}, [recordingCode]);
 
   if (loading)
     return (
@@ -516,46 +567,71 @@ function EventDataTableView({
  ];
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Prepare requests
-        const requests = [
-            fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`)
-        ];
+  const fetchData = async () => {
+    // Prevent fetching if eventCode is missing
+    if (!eventCode) return;
 
-        // 2. Only fetch logs if allowed
-        if (hasMediaLogAccess) {
-            requests.push(fetch(`${API_BASE_URL}/newmedialog?EventCode=${encodeURIComponent(eventCode)}`));
-        }
+    try {
+      setLoading(true);
+      setError(null);
 
-        const responses = await Promise.all(requests);
-        
-        const recordingsResponse = responses[0];
-        if (!recordingsResponse.ok) throw new Error(`Failed to fetch recordings`);
-        
-        const recordingsResult = await recordingsResponse.json();
-        setRecordings(recordingsResult.data || []);
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header
+      };
 
-        if (hasMediaLogAccess && responses[1]) {
-            const mediaLogsResponse = responses[1];
-            if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs`);
-            const mediaLogsResult = await mediaLogsResponse.json();
-            setMediaLogs(mediaLogsResult.data || []);
-        } else {
-            setMediaLogs([]);
-        }
+      // 2. Prepare requests with Authorization Headers
+      const requests = [
+        fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`, { headers })
+      ];
 
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (hasMediaLogAccess) {
+        requests.push(
+          fetch(`${API_BASE_URL}/newmedialog?EventCode=${encodeURIComponent(eventCode)}`, { headers })
+        );
       }
-    };
-    fetchData();
-  }, [eventCode, hasMediaLogAccess]);
+
+      const responses = await Promise.all(requests);
+
+      // 3. Check for Unauthorized/Expired session in ANY of the responses
+      const unauthorizedResponse = responses.find(res => res.status === 401 || res.status === 403);
+      if (unauthorizedResponse) {
+        console.error("Fetch Data: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle Recordings Result
+      const recordingsResponse = responses[0];
+      if (!recordingsResponse.ok) throw new Error(`Failed to fetch recordings (Status: ${recordingsResponse.status})`);
+      
+      const recordingsResult = await recordingsResponse.json();
+      setRecordings(recordingsResult.data || []);
+
+      // 5. Handle Media Logs Result (Conditional)
+      if (hasMediaLogAccess && responses[1]) {
+        const mediaLogsResponse = responses[1];
+        if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`);
+        
+        const mediaLogsResult = await mediaLogsResponse.json();
+        setMediaLogs(mediaLogsResult.data || []);
+      } else {
+        setMediaLogs([]);
+      }
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [eventCode, hasMediaLogAccess]);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", color: "white", fontSize: "14px" }}>
@@ -743,50 +819,77 @@ function DigitalRecordingDataTableView({
   };
 
   // 2. CONDITIONAL FETCH
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // Build request array
-        const requests = [
-            eventCode ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`) : Promise.resolve(null)
-        ];
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header
+      };
 
-        // Only fetch Media Logs if user has access
-        if (hasMediaLogAccess && recordingCode) {
-            requests.push(fetch(`${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`));
-        }
+      // 2. Build request array with headers
+      const requests = [
+        eventCode 
+          ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`, { headers }) 
+          : Promise.resolve(null)
+      ];
 
-        const responses = await Promise.all(requests);
-        
-        // Handle Event Response (Index 0)
-        const eventResponse = responses[0];
-        if (eventResponse) { 
-            if (!eventResponse.ok) throw new Error(`Failed to fetch event (Status: ${eventResponse.status})`); 
-            const eventResult = await eventResponse.json(); 
-            setEvent(eventResult); 
-        }
-
-        // Handle Media Log Response (Index 1, if it exists)
-        if (hasMediaLogAccess && responses[1]) {
-            const mediaLogsResponse = responses[1];
-            if (!mediaLogsResponse.ok) throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`); 
-            const mediaLogsResult = await mediaLogsResponse.json(); 
-            setMediaLogs(mediaLogsResult.data || []); 
-        } else {
-            setMediaLogs([]); // Clear logs if no access
-        }
-
-      } catch (err: any) { 
-          setError(err.message); 
-      } finally { 
-          setLoading(false); 
+      // Only fetch Media Logs if user has access
+      if (hasMediaLogAccess && recordingCode) {
+        requests.push(
+          fetch(`${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`, { headers })
+        );
       }
-    };
-    fetchData();
-  }, [recordingCode, eventCode, hasMediaLogAccess]);
+
+      const responses = await Promise.all(requests);
+
+      // 3. Check for Unauthorized/Expired session in ANY valid response
+      for (const res of responses) {
+        if (res && (res.status === 401 || res.status === 403)) {
+          console.error("Fetch Data: Unauthorized. Redirecting...");
+          localStorage.removeItem('app-token');
+          localStorage.removeItem('google-token');
+          window.location.href = '/'; 
+          return;
+        }
+      }
+
+      // 4. Handle Event Response (Index 0)
+      const eventResponse = responses[0];
+      if (eventResponse) { 
+        if (!eventResponse.ok) {
+          throw new Error(`Failed to fetch event (Status: ${eventResponse.status})`); 
+        }
+        const eventResult = await eventResponse.json(); 
+        setEvent(eventResult); 
+      }
+
+      // 5. Handle Media Log Response (Index 1, if it exists)
+      if (hasMediaLogAccess && responses[1]) {
+        const mediaLogsResponse = responses[1];
+        if (!mediaLogsResponse.ok) {
+          throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`); 
+        }
+        const mediaLogsResult = await mediaLogsResponse.json(); 
+        setMediaLogs(mediaLogsResult.data || []); 
+      } else {
+        setMediaLogs([]); // Clear logs if no access or no recordingCode
+      }
+
+    } catch (err: any) { 
+      setError(err.message); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  fetchData();
+}, [recordingCode, eventCode, hasMediaLogAccess]);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", color: "white", fontSize: "14px" }}>
@@ -994,61 +1097,84 @@ const [recordings, setRecordings] = useState<any[]>([]);
 
 
   // ---------------- FETCH DATA ----------------
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+ useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-       const recordingRequest = recordingCode
-  ? fetch(`${API_BASE_URL}/digitalrecording?RecordingCode=${encodeURIComponent(recordingCode)}`)
-  : eventCode
-  ? fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`)
-  : Promise.resolve(null);
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header
+      };
 
+      // 2. Define Requests with Headers
+      const recordingRequest = recordingCode
+        ? fetch(`${API_BASE_URL}/digitalrecording?RecordingCode=${encodeURIComponent(recordingCode)}`, { headers })
+        : eventCode
+        ? fetch(`${API_BASE_URL}/digitalrecording?fkEventCode=${encodeURIComponent(eventCode)}`, { headers })
+        : Promise.resolve(null);
 
-        const eventRequest = eventCode
-          ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`)
-          : Promise.resolve(null);
+      const eventRequest = eventCode
+        ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`, { headers })
+        : Promise.resolve(null);
 
       const auxRequest = mlid
-  ? fetch(`${API_BASE_URL}/auxfiles?fkMLID=${encodeURIComponent(mlid)}`)
-  : Promise.resolve(null);
+        ? fetch(`${API_BASE_URL}/auxfiles?fkMLID=${encodeURIComponent(mlid)}`, { headers })
+        : Promise.resolve(null);
 
+      // 3. Execute all requests concurrently
+      const responses = await Promise.all([
+        recordingRequest,
+        eventRequest,
+        auxRequest,
+      ]);
 
-
-        const [recordingResponse, eventResponse, auxResponse] = await Promise.all([
-          recordingRequest,
-          eventRequest,
-          auxRequest,
-        ]);
-
-        if (recordingResponse) {
-          if (!recordingResponse.ok) throw new Error(`Failed to fetch recordings`);
-          const result = await recordingResponse.json();
-          setRecordings(result.data || []);
+      // 4. Check for Unauthorized/Expired session in ANY of the responses
+      for (const res of responses) {
+        if (res && (res.status === 401 || res.status === 403)) {
+          console.error("Fetch Data: Unauthorized. Redirecting...");
+          localStorage.removeItem('app-token');
+          localStorage.removeItem('google-token');
+          window.location.href = '/'; 
+          return;
         }
-
-        if (eventResponse) {
-          if (!eventResponse.ok) throw new Error(`Failed to fetch event`);
-          const eventData = await eventResponse.json();
-          setEvent(eventData || null);
-        }
-
-        if (auxResponse) {
-          if (!auxResponse.ok) throw new Error(`Failed to fetch aux data`);
-          const auxData = await auxResponse.json();
-          setAuxList(auxData.data || []);
-        }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchData();
-  }, [eventCode, recordingCode, mlid]);
+      const [recordingResponse, eventResponse, auxResponse] = responses;
+
+      // 5. Handle Recording Response
+      if (recordingResponse) {
+        if (!recordingResponse.ok) throw new Error(`Failed to fetch recordings (Status: ${recordingResponse.status})`);
+        const result = await recordingResponse.json();
+        setRecordings(result.data || []);
+      }
+
+      // 6. Handle Event Response
+      if (eventResponse) {
+        if (!eventResponse.ok) throw new Error(`Failed to fetch event (Status: ${eventResponse.status})`);
+        const eventData = await eventResponse.json();
+        setEvent(eventData || null);
+      }
+
+      // 7. Handle Aux Data Response
+      if (auxResponse) {
+        if (!auxResponse.ok) throw new Error(`Failed to fetch aux data (Status: ${auxResponse.status})`);
+        const auxData = await auxResponse.json();
+        setAuxList(auxData.data || []);
+      }
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [eventCode, recordingCode, mlid]);
 
   if (loading)
     return (
@@ -1380,84 +1506,102 @@ function AuxMediaLogDataTableView({
   // -----------------------------
   // 📡 FETCH DATA
   // -----------------------------
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+ useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // Step 1: Fetch the specific media log by MLID to get fkDigitalRecordingCode and fkEventCode
-        const mediaLogResponse = await fetch(
-          `${API_BASE_URL}/newmedialog/${encodeURIComponent(mlid)}`
-        );
+      // 1. Get the token and prepare headers
+      const token = localStorage.getItem('app-token');
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header
+      };
 
-        if (!mediaLogResponse.ok) {
-          throw new Error(
-            `Failed to fetch media log (Status: ${mediaLogResponse.status})`
-          );
+      // Helper for auth redirection
+      const handleAuthError = (res: Response) => {
+        if (res.status === 401 || res.status === 403) {
+          console.error("Fetch Data: Unauthorized. Redirecting...");
+          localStorage.removeItem('app-token');
+          localStorage.removeItem('google-token');
+          window.location.href = '/';
+          return true;
         }
+        return false;
+      };
 
-        const mediaLogResult = await mediaLogResponse.json();
-        const mediaLog = Array.isArray(mediaLogResult)
-          ? mediaLogResult[0]
-          : mediaLogResult.data
-          ? mediaLogResult.data[0]
-          : mediaLogResult;
+      // Step 1: Fetch specific media log
+      const mediaLogResponse = await fetch(
+        `${API_BASE_URL}/newmedialog/${encodeURIComponent(mlid)}`,
+        { headers }
+      );
 
-        if (!mediaLog) {
-          throw new Error("Media log not found");
-        }
+      if (handleAuthError(mediaLogResponse)) return;
 
-        const recordingCode = mediaLog.fkDigitalRecordingCode;
-        const eventCode = mediaLog.fkEventCode || mediaLog.EventCode;
-
-        // Step 2: Fetch all media logs for the recording code (same as parent logic)
-        const mediaLogsResponse = await fetch(
-          `${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`
-        );
-
-        if (!mediaLogsResponse.ok) {
-          throw new Error(
-            `Failed to fetch media logs (Status: ${mediaLogsResponse.status})`
-          );
-        }
-
-        const mediaLogsResult = await mediaLogsResponse.json();
-        const allMediaLogs = mediaLogsResult.data || [];
-
-        // Step 3: Filter to get the specific media log by MLID
-        const filteredMediaLog = allMediaLogs.find(
-          (log: any) => log.MLUniqueID === mlid
-        );
-
-        if (!filteredMediaLog) {
-          throw new Error("Media log not found in recording");
-        }
-
-        // Step 4: Fetch the event if eventCode exists (same as parent logic)
-        let eventData = {};
-        if (eventCode) {
-          const eventResponse = await fetch(
-            `${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`
-          );
-          if (eventResponse.ok) {
-            const eventResult = await eventResponse.json();
-            eventData = eventResult; // Merge Yr, EventName, etc.
-          }
-        }
-
-        // Step 5: Merge the filtered media log with event data
-        const mergedMediaLog = { ...filteredMediaLog, ...eventData };
-        setMediaLogs([mergedMediaLog]);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      if (!mediaLogResponse.ok) {
+        throw new Error(`Failed to fetch media log (Status: ${mediaLogResponse.status})`);
       }
-    };
 
-    if (mlid) fetchData();
-  }, [mlid]);
+      const mediaLogResult = await mediaLogResponse.json();
+      const mediaLog = Array.isArray(mediaLogResult)
+        ? mediaLogResult[0]
+        : mediaLogResult.data
+        ? mediaLogResult.data[0]
+        : mediaLogResult;
+
+      if (!mediaLog) throw new Error("Media log not found");
+
+      const recordingCode = mediaLog.fkDigitalRecordingCode;
+      const eventCode = mediaLog.fkEventCode || mediaLog.EventCode;
+
+      // Step 2: Fetch all media logs for the recording code
+      const mediaLogsResponse = await fetch(
+        `${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`,
+        { headers }
+      );
+
+      if (handleAuthError(mediaLogsResponse)) return;
+
+      if (!mediaLogsResponse.ok) {
+        throw new Error(`Failed to fetch media logs (Status: ${mediaLogsResponse.status})`);
+      }
+
+      const mediaLogsResult = await mediaLogsResponse.json();
+      const allMediaLogs = mediaLogsResult.data || [];
+
+      // Step 3: Filter for the specific MLID
+      const filteredMediaLog = allMediaLogs.find((log: any) => log.MLUniqueID === mlid);
+      if (!filteredMediaLog) throw new Error("Media log not found in recording");
+
+      // Step 4: Fetch the event if eventCode exists
+      let eventData = {};
+      if (eventCode) {
+        const eventResponse = await fetch(
+          `${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`,
+          { headers }
+        );
+
+        if (handleAuthError(eventResponse)) return;
+
+        if (eventResponse.ok) {
+          eventData = await eventResponse.json();
+        }
+      }
+
+      // Step 5: Merge and set state
+      const mergedMediaLog = { ...filteredMediaLog, ...eventData };
+      setMediaLogs([mergedMediaLog]);
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (mlid) fetchData();
+}, [mlid]);
 
   // -----------------------------
   // LOADING
@@ -1607,7 +1751,6 @@ function AuxDetailsView({
   hasAccess: (resource: string, access?: 'read' | 'write') => boolean;
   onPushSidebar: (item: SidebarStackItem) => void;
 }) {
-  // Hooks are now safe here because this is a valid Component
   const [isEditingSRT, setIsEditingSRT] = useState(false);
   const [srtLink, setSrtLink] = useState(data.SRTLink || "");
   const [isSaving, setIsSaving] = useState(false);
@@ -1625,14 +1768,31 @@ function AuxDetailsView({
     const savingToast = toast.loading("Saving SRT Link...");
 
     try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
       const response = await fetch(
         `${API_BASE_URL}/aux/${encodeURIComponent(data.new_auxid)}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
           body: JSON.stringify({ SRTLink: srtLink }),
         }
       );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update SRT Link: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -1640,7 +1800,6 @@ function AuxDetailsView({
       }
 
       data.SRTLink = srtLink;
-
       toast.success("SRT Link updated successfully!", { id: savingToast });
       setIsEditingSRT(false);
     } catch (error: any) {
@@ -1658,12 +1817,12 @@ function AuxDetailsView({
 
   return (
     <div className="space-y-6">
+      {/* Rest of the component remains exactly the same */}
       <div className="text-center">
         {renderIcon(
-  <Headphones className="w-8 h-8 text-white" />,
-  "from-purple-500 to-red-600"
-)}
-       
+          <Headphones className="w-8 h-8 text-white" />,
+          "from-purple-500 to-red-600"
+        )}
       </div>
 
       <Card>
@@ -1674,102 +1833,89 @@ function AuxDetailsView({
           {data.fkMLID && (
             <div
               style={{
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "8px 12px",
-  background: "rgba(59, 130, 246, 0.15)",  // blue glass
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  borderRadius: "10px",
-  border: "1px solid rgba(255, 255, 255, 0.22)",
-  marginTop: "10px",
-}}
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "8px 12px",
+                background: "rgba(59, 130, 246, 0.15)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                borderRadius: "10px",
+                border: "1px solid rgba(255, 255, 255, 0.22)",
+                marginTop: "10px",
+              }}
             >
-              <span
-                style={{
-                  color: "#FFFFFF",
-                  fontWeight: 500,
-                  fontSize: "14px",
-                }}
-              >
+              <span style={{ color: "#FFFFFF", fontWeight: 500, fontSize: "14px" }}>
                 fkMLID
               </span>
 
-           
-{data.fkMLID && hasAccess("Media Log", "read") ? (
-  <Button
-    size="sm"
-    variant="ghost"
-    onClick={() =>
-      onPushSidebar({
-        type: "aux_data",
-        data: { mlid: data.fkMLID },
-        title: `Media Log Table for MLID ${data.fkMLID}`,
-      })
-    }
-     style={{
-  padding: "4px 10px",
-  fontSize: "14px",
-  fontWeight: 600,
-  background: "rgba(255, 255, 255, 0.15)",   // translucent
-  backdropFilter: "blur(8px)",               // glass blur
-  WebkitBackdropFilter: "blur(8px)",         // Safari support
-  color: "#fff",
-  borderRadius: "6px",
-  display: "inline-flex",
-  alignItems: "center",
-  border: "1px solid rgba(255, 255, 255, 0.2)", // soft border
-  cursor: "pointer",
-}}
-  >
-    {data.fkMLID}
-    <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
-  </Button>
-) : (
-  <span
-    style={{
-      fontSize: "14px",
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-      color: "var(--muted-foreground)",
-      fontWeight: 500,
-    }}
-  >
-    <Lock style={{ width: 12, height: 12 }} />
-    {data.fkMLID}
-  </span>
-)}
+              {data.fkMLID && hasAccess("Media Log", "read") ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    onPushSidebar({
+                      type: "aux_data",
+                      data: { mlid: data.fkMLID },
+                      title: `Media Log Table for MLID ${data.fkMLID}`,
+                    })
+                  }
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: "rgba(255, 255, 255, 0.15)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    color: "#fff",
+                    borderRadius: "6px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {data.fkMLID}
+                  <ChevronRight style={{ width: 16, height: 16, marginLeft: 6 }} />
+                </Button>
+              ) : (
+                <span
+                  style={{
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    color: "var(--muted-foreground)",
+                    fontWeight: 500,
+                  }}
+                >
+                  <Lock style={{ width: 12, height: 12 }} />
+                  {data.fkMLID}
+                </span>
+              )}
             </div>
           )}
 
-          {/* Simple reusable row for read-only fields */}
-
-           <FieldRow label="Aux ID" value={data.new_auxid} />
-  <FieldRow label="AuxFile Type" value={data.AuxFileType} />
-  <FieldRow label="Language" value={data.AuxLanguage}>
-    <Badge variant="secondary">{data.AuxLanguage}</Badge>
-  </FieldRow>
-  <FieldRow label="File Name" value={data.ProjFileName} />
-  <FieldRow label="File Size" value={data.FilesizeBytes}>
-    <span className="font-medium">
-      {data.FilesizeBytes
-        ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB`
-        : undefined}
-    </span>
-  </FieldRow>
+          <FieldRow label="Aux ID" value={data.new_auxid} />
+          <FieldRow label="AuxFile Type" value={data.AuxFileType} />
+          <FieldRow label="Language" value={data.AuxLanguage}>
+            <Badge variant="secondary">{data.AuxLanguage}</Badge>
+          </FieldRow>
+          <FieldRow label="File Name" value={data.ProjFileName} />
+          <FieldRow label="File Size" value={data.FilesizeBytes}>
+            <span className="font-medium">
+              {data.FilesizeBytes
+                ? `${(data.FilesizeBytes / 1024 / 1024).toFixed(2)} MB`
+                : undefined}
+            </span>
+          </FieldRow>
 
           <Separator />
           {data.GoogleDriveLink && (
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Google Drive</span>
               <Button size="sm" variant="ghost" asChild>
-                <a
-                  href={data.GoogleDriveLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={data.GoogleDriveLink} target="_blank" rel="noopener noreferrer">
                   Open Link <ExternalLink className="w-3 h-3 ml-2" />
                 </a>
               </Button>
@@ -1777,9 +1923,7 @@ function AuxDetailsView({
           )}
 
           <div className="flex justify-between items-center gap-2">
-            <span className="text-muted-foreground flex-shrink-0">
-              SRT Link
-            </span>
+            <span className="text-muted-foreground flex-shrink-0">SRT Link</span>
 
             {isEditingSRT ? (
               <div className="flex items-center gap-2 w-full max-w-[220px]">
@@ -1817,18 +1961,12 @@ function AuxDetailsView({
               <div className="flex items-center gap-2">
                 {srtLink ? (
                   <Button size="sm" variant="ghost" asChild>
-                    <a
-                      href={srtLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <a href={srtLink} target="_blank" rel="noopener noreferrer">
                       Open Link <ExternalLink className="w-3 h-3 ml-2" />
                     </a>
                   </Button>
                 ) : (
-                  <span className="text-sm text-muted-foreground">
-                    Not set
-                  </span>
+                  <span className="text-sm text-muted-foreground">Not set</span>
                 )}
                 {hasAccess("Aux Files", "write") && (
                   <Button
@@ -1855,19 +1993,19 @@ function AuxDetailsView({
         </CardContent>
       </Card>
 
-    <Card>
-  <CardHeader>
-    <CardTitle className="text-lg px-2">Metadata</CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-4 p-4">
-    <FieldRow label="Modified By" value={data.ModifiedBy}>
-      <Badge variant="secondary">{data.ModifiedBy}</Badge>
-    </FieldRow>
-    <FieldRow label="Modified On" value={data.ModifiedOn}>
-      <span className="font-medium text-right break-words">{data.ModifiedOn}</span>
-    </FieldRow>
-  </CardContent>
-</Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Metadata</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <FieldRow label="Modified By" value={data.ModifiedBy}>
+            <Badge variant="secondary">{data.ModifiedBy}</Badge>
+          </FieldRow>
+          <FieldRow label="Modified On" value={data.ModifiedOn}>
+            <span className="font-medium text-right break-words">{data.ModifiedOn}</span>
+          </FieldRow>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -2255,6 +2393,107 @@ export function DetailsSidebar({
 
       }
 
+
+      // ...existing code...
+
+case "non_event_production": {
+  const hasValue = (v: any): boolean =>
+    v !== undefined && v !== null && String(v).trim() !== "" && String(v).toUpperCase() !== "N/A";
+
+  const hasMainDetails = [
+    data.SMCode, data.PostingDate, data.Teams, data.DistributionPlatforms, data.Bucket, data.Language, data.SpecialDay, data.Duration
+  ].some(hasValue);
+
+  const hasTextDetails = [
+    data.First3Words, data.Last3Words, data.PostingMonth, data.SMSubtitle, data.PostedLink, data.Asset, data.PostName
+  ].some(hasValue);
+
+  const hasFileDetails = [
+    data.CreatedTimestamp, data.AuxFiles, data.SMFilesize
+  ].some(hasValue);
+
+  const hasRemarks = hasValue(data.Remarks);
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
+      </div>
+      {hasMainDetails && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg px-2">Main Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4">
+            <FieldRow label="SMCode" value={data.SMCode} />
+            <FieldRow label="Posting Date" value={data.PostingDate} />
+            <FieldRow label="Teams" value={data.Teams}>{categoryTagRenderer(data.Teams)}</FieldRow>
+            <FieldRow label="Distribution Platforms" value={data.DistributionPlatforms}>{categoryTagRenderer(data.DistributionPlatforms)}</FieldRow>
+            <FieldRow label="Bucket" value={data.Bucket}>{categoryTagRenderer(data.Bucket)}</FieldRow>
+            <FieldRow label="Language" value={data.Language}>{categoryTagRenderer(data.Language)}</FieldRow>
+            <FieldRow label="Special Day" value={data.SpecialDay} />
+            <FieldRow label="Duration" value={data.Duration} />
+          </CardContent>
+        </Card>
+      )}
+      {hasTextDetails && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg px-2">Text Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4">
+            <FieldRow label="First 3 Words" value={data.First3Words} />
+            <FieldRow label="Last 3 Words" value={data.Last3Words} />
+            <FieldRow label="Posting Month" value={data.PostingMonth} />
+            <FieldRow label="SM Subtitle" value={data.SMSubtitle} />
+            {data.PostedLink && (
+    <div className="flex justify-between items-center">
+      <span className="text-muted-foreground">Posted Link</span>
+      <Button size="sm" variant="ghost" asChild>
+        <a
+          href={data.PostedLink}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open Link <ExternalLink className="w-3 h-3 ml-2" />
+        </a>
+      </Button>
+    </div>
+  )}
+            <FieldRow label="Asset" value={data.Asset} />
+            <FieldRow label="Post Name" value={data.PostName} />
+          </CardContent>
+        </Card>
+      )}
+      {hasFileDetails && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg px-2">File Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4">
+            <FieldRow label="Created Timestamp" value={data.CreatedTimestamp} />
+            <FieldRow label="Aux Files" value={data.AuxFiles} />
+            <FieldRow label="SM Filesize" value={data.SMFilesize} />
+          </CardContent>
+        </Card>
+      )}
+      {hasRemarks && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg px-2">Remarks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4">
+            <FieldRow label="Remarks" value={data.Remarks} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ...existing code...
+
+
        case "aux_related_data":
         return (
             <MediaLogDataTableView
@@ -2279,921 +2518,1065 @@ export function DetailsSidebar({
           onPushSidebar={onPushSidebar}
         />
       );
-     case "audio": {
-      const [isEditingAudioList, setIsEditingAudioList] = useState(false);
-      const [audioList, setAudioList] = useState(data.AudioList || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveAudioList = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Audio List...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/audio/${encodeURIComponent(data.AID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ AudioList: audioList }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Audio List");
-          }
-    
-          data.AudioList = audioList;
-    
-          toast.success("Audio List updated successfully!", { id: savingToast });
-          setIsEditingAudioList(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Audio List:", error);
-        } finally {
-          setIsSaving(false);
+    case "audio": {
+  const [isEditingAudioList, setIsEditingAudioList] = useState(false);
+  const [audioList, setAudioList] = useState(data.AudioList || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveAudioList = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Audio List...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/audio/${encodeURIComponent(data.AID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ AudioList: audioList }),
         }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingAudioList(false);
-        setAudioList(data.AudioList || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-           {renderIcon(<AudioLines className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
-            <h3 className="text-xl font-bold">{data.AudioList || "Audio"}</h3>
-            <p className="text-muted-foreground">Audio ID: {data.AID}</p>
-            <Badge className="mt-2">{data.Distribution || "N/A"}</Badge>
-          </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Audio Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Audio List</span>
-    
-                {isEditingAudioList ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={audioList}
-                      onChange={(e) => setAudioList(e.target.value)}
-                      placeholder="Enter Audio List..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveAudioList}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Audio: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Audio List");
+      }
+
+      // 5. Success Logic
+      data.AudioList = audioList;
+      toast.success("Audio List updated successfully!", { id: savingToast });
+      setIsEditingAudioList(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Audio List:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingAudioList(false);
+    setAudioList(data.AudioList || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<AudioLines className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.AudioList || "Audio"}</h3>
+        <p className="text-muted-foreground">Audio ID: {data.AID}</p>
+        <Badge className="mt-2">{data.Distribution || "N/A"}</Badge>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Audio Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Audio List</span>
+
+            {isEditingAudioList ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={audioList}
+                  onChange={(e) => setAudioList(e.target.value)}
+                  placeholder="Enter Audio List..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveAudioList}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {audioList ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {audioList}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {audioList ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {audioList}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Audio", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingAudioList(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Audio", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingAudioList(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "auxfiletype": {
-      const [isEditingAuxFileType, setIsEditingAuxFileType] = useState(false);
-      const [auxFileType, setAuxFileType] = useState(data.AuxFileType || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveAuxFileType = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Aux File Type...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/aux-file-type/${encodeURIComponent(data.AuxTypeID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ AuxFileType: auxFileType }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Aux File Type");
-          }
-    
-          data.AuxFileType = auxFileType;
-    
-          toast.success("Aux File Type updated successfully!", { id: savingToast });
-          setIsEditingAuxFileType(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Aux File Type:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingAuxFileType(false);
-        setAuxFileType(data.AuxFileType || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
-            <h3 className="text-xl font-bold">{data.AuxFileType || "Aux File Type"}</h3>
-            <p className="text-muted-foreground">ID: {data.AuxTypeID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Aux File Type Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">File Type Name</span>
-    
-                {isEditingAuxFileType ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={auxFileType}
-                      onChange={(e) => setAuxFileType(e.target.value)}
-                      placeholder="Enter file type..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveAuxFileType}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+  case "auxfiletype": {
+  const [isEditingAuxFileType, setIsEditingAuxFileType] = useState(false);
+  const [auxFileType, setAuxFileType] = useState(data.AuxFileType || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveAuxFileType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Aux File Type...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/aux-file-type/${encodeURIComponent(data.AuxTypeID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ AuxFileType: auxFileType }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Aux File Type: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Aux File Type");
+      }
+
+      // 5. Success Logic
+      data.AuxFileType = auxFileType;
+      toast.success("Aux File Type updated successfully!", { id: savingToast });
+      setIsEditingAuxFileType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Aux File Type:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingAuxFileType(false);
+    setAuxFileType(data.AuxFileType || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.AuxFileType || "Aux File Type"}</h3>
+        <p className="text-muted-foreground">ID: {data.AuxTypeID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Aux File Type Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">File Type Name</span>
+
+            {isEditingAuxFileType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={auxFileType}
+                  onChange={(e) => setAuxFileType(e.target.value)}
+                  placeholder="Enter file type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveAuxFileType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {auxFileType ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {auxFileType}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {auxFileType ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {auxFileType}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Aux File Type", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingAuxFileType(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Aux File Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingAuxFileType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "bhajanType": {
-      const [isEditingBhajanName, setIsEditingBhajanName] = useState(false);
-      const [bhajanName, setBhajanName] = useState(data.BhajanName || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveBhajanName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Bhajan Name...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/bhajantype/${encodeURIComponent(data.BTID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ BhajanName: bhajanName }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Bhajan Name");
-          }
-    
-          data.BhajanName = bhajanName;
-    
-          toast.success("Bhajan Name updated successfully!", { id: savingToast });
-          setIsEditingBhajanName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Bhajan Name:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingBhajanName(false);
-        setBhajanName(data.BhajanName || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-green-500 to-blue-600")}
-            <h3 className="text-xl font-bold">{data.BhajanName || "Bhajan Type"}</h3>
-            <p className="text-muted-foreground">BTID: {data.BTID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Bhajan Type Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Bhajan Name</span>
-    
-                {isEditingBhajanName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={bhajanName}
-                      onChange={(e) => setBhajanName(e.target.value)}
-                      placeholder="Enter Bhajan Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveBhajanName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "bhajanType": {
+  const [isEditingBhajanName, setIsEditingBhajanName] = useState(false);
+  const [bhajanName, setBhajanName] = useState(data.BhajanName || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveBhajanName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Bhajan Name...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/bhajantype/${encodeURIComponent(data.BTID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ BhajanName: bhajanName }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Bhajan Type: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Bhajan Name");
+      }
+
+      // 5. Success Logic
+      data.BhajanName = bhajanName;
+      toast.success("Bhajan Name updated successfully!", { id: savingToast });
+      setIsEditingBhajanName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Bhajan Name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingBhajanName(false);
+    setBhajanName(data.BhajanName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-green-500 to-blue-600")}
+        <h3 className="text-xl font-bold">{data.BhajanName || "Bhajan Type"}</h3>
+        <p className="text-muted-foreground">BTID: {data.BTID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Bhajan Type Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Bhajan Name</span>
+
+            {isEditingBhajanName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={bhajanName}
+                  onChange={(e) => setBhajanName(e.target.value)}
+                  placeholder="Enter Bhajan Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveBhajanName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {bhajanName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {bhajanName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {bhajanName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {bhajanName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Bhajan Type", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingBhajanName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Bhajan Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingBhajanName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "digitalMasterCategory": {
-      const [isEditingDMCategoryName, setIsEditingDMCategoryName] = useState(false);
-      const [dmCategoryName, setDMCategoryName] = useState(data.DMCategory_name || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveDMCategoryName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving DM Category Name...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/digitalmastercategory/${encodeURIComponent(data.DMCID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ DMCategory_name: dmCategoryName }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update DM Category Name");
-          }
-    
-          data.DMCategory_name = dmCategoryName;
-    
-          toast.success("DM Category Name updated successfully!", { id: savingToast });
-          setIsEditingDMCategoryName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating DM Category Name:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingDMCategoryName(false);
-        setDMCategoryName(data.DMCategory_name || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-blue-500 to-red-600")}
-            <h3 className="text-xl font-bold">{data.DMCategory_name || "Digital Master Category"}</h3>
-            <p className="text-muted-foreground">DMCID: {data.DMCID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Digital Master Category Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">DM Category Name</span>
-    
-                {isEditingDMCategoryName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={dmCategoryName}
-                      onChange={(e) => setDMCategoryName(e.target.value)}
-                      placeholder="Enter DM Category Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveDMCategoryName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "digitalMasterCategory": {
+  const [isEditingDMCategoryName, setIsEditingDMCategoryName] = useState(false);
+  const [dmCategoryName, setDMCategoryName] = useState(data.DMCategory_name || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveDMCategoryName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving DM Category Name...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/digitalmastercategory/${encodeURIComponent(data.DMCID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ DMCategory_name: dmCategoryName }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update DM Category: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update DM Category Name");
+      }
+
+      // 5. Success Logic
+      data.DMCategory_name = dmCategoryName;
+      toast.success("DM Category Name updated successfully!", { id: savingToast });
+      setIsEditingDMCategoryName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating DM Category Name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingDMCategoryName(false);
+    setDMCategoryName(data.DMCategory_name || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-blue-500 to-red-600")}
+        <h3 className="text-xl font-bold">{data.DMCategory_name || "Digital Master Category"}</h3>
+        <p className="text-muted-foreground">DMCID: {data.DMCID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Digital Master Category Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">DM Category Name</span>
+
+            {isEditingDMCategoryName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={dmCategoryName}
+                  onChange={(e) => setDMCategoryName(e.target.value)}
+                  placeholder="Enter DM Category Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveDMCategoryName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {dmCategoryName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {dmCategoryName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {dmCategoryName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {dmCategoryName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Digital Master Category", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingDMCategoryName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Digital Master Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingDMCategoryName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "distributionLabel": {
-      const [isEditingLabelName, setIsEditingLabelName] = useState(false);
-      const [labelName, setLabelName] = useState(data.LabelName || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveLabelName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Label Name...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/distributionlabel/${encodeURIComponent(data.LabelID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ LabelName: labelName }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Label Name");
-          }
-    
-          data.LabelName = labelName;
-    
-          toast.success("Label Name updated successfully!", { id: savingToast });
-          setIsEditingLabelName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Label Name:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingLabelName(false);
-        setLabelName(data.LabelName || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Mail className="w-8 h-8 text-white" />, "from-teal-500 to-cyan-600")}
-            <h3 className="text-xl font-bold">{data.LabelName || "Distribution Label"}</h3>
-            <p className="text-muted-foreground">Label ID: {data.LabelID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Distribution Label Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Label Name</span>
-    
-                {isEditingLabelName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={labelName}
-                      onChange={(e) => setLabelName(e.target.value)}
-                      placeholder="Enter Label Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveLabelName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+  case "distributionLabel": {
+  const [isEditingLabelName, setIsEditingLabelName] = useState(false);
+  const [labelName, setLabelName] = useState(data.LabelName || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveLabelName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Label Name...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/distributionlabel/${encodeURIComponent(data.LabelID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ LabelName: labelName }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Distribution Label: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Label Name");
+      }
+
+      // 5. Success Logic
+      data.LabelName = labelName;
+      toast.success("Label Name updated successfully!", { id: savingToast });
+      setIsEditingLabelName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Label Name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingLabelName(false);
+    setLabelName(data.LabelName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Mail className="w-8 h-8 text-white" />, "from-teal-500 to-cyan-600")}
+        <h3 className="text-xl font-bold">{data.LabelName || "Distribution Label"}</h3>
+        <p className="text-muted-foreground">Label ID: {data.LabelID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Distribution Label Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Label Name</span>
+
+            {isEditingLabelName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={labelName}
+                  onChange={(e) => setLabelName(e.target.value)}
+                  placeholder="Enter Label Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveLabelName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {labelName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {labelName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {labelName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {labelName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Distribution Label", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingLabelName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Distribution Label", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingLabelName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "editingType": {
-      const [isEditingEdType, setIsEditingEdType] = useState(false);
-      const [edType, setEdType] = useState(data.EdType || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveEdType = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Editing Type...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/editingtype/${encodeURIComponent(data.EdID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ EdType: edType }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Editing Type");
-          }
-    
-          data.EdType = edType;
-    
-          toast.success("Editing Type updated successfully!", { id: savingToast });
-          setIsEditingEdType(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Editing Type:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingEdType(false);
-        setEdType(data.EdType || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-blue-600")}
-            <h3 className="text-xl font-bold">{data.EdType || "Editing Type"}</h3>
-            <p className="text-muted-foreground">EdID: {data.EdID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Editing Type Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Editing Type</span>
-    
-                {isEditingEdType ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={edType}
-                      onChange={(e) => setEdType(e.target.value)}
-                      placeholder="Enter Editing Type..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveEdType}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "editingType": {
+  const [isEditingEdType, setIsEditingEdType] = useState(false);
+  const [edType, setEdType] = useState(data.EdType || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveEdType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Editing Type...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/editingtype/${encodeURIComponent(data.EdID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ EdType: edType }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Editing Type: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Editing Type");
+      }
+
+      // 5. Success Logic
+      data.EdType = edType;
+      toast.success("Editing Type updated successfully!", { id: savingToast });
+      setIsEditingEdType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Editing Type:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingEdType(false);
+    setEdType(data.EdType || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-blue-600")}
+        <h3 className="text-xl font-bold">{data.EdType || "Editing Type"}</h3>
+        <p className="text-muted-foreground">EdID: {data.EdID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Editing Type Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Editing Type</span>
+
+            {isEditingEdType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={edType}
+                  onChange={(e) => setEdType(e.target.value)}
+                  placeholder="Enter Editing Type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveEdType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {edType ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {edType}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {edType ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {edType}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Editing Type", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingEdType(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Editing Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingEdType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Audio/Video" value={data.AudioVideo} />
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "editingStatus": {
-      const [isEditingEdType, setIsEditingEdType] = useState(false);
-      const [edType, setEdType] = useState(data.EdType || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveEdType = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Editing Status...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/editingstatus/${encodeURIComponent(data.EdID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ EdType: edType }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Editing Status");
-          }
-    
-          data.EdType = edType;
-    
-          toast.success("Editing Status updated successfully!", { id: savingToast });
-          setIsEditingEdType(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Editing Status:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingEdType(false);
-        setEdType(data.EdType || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-blue-600")}
-            <h3 className="text-xl font-bold">{data.EdType || "Editing Type"}</h3>
-            <p className="text-muted-foreground">EdID: {data.EdID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Editing Status Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Editing Type</span>
-    
-                {isEditingEdType ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={edType}
-                      onChange={(e) => setEdType(e.target.value)}
-                      placeholder="Enter Editing Type..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveEdType}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Audio/Video" value={data.AudioVideo} />
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "editingStatus": {
+  const [isEditingEdType, setIsEditingEdType] = useState(false);
+  const [edType, setEdType] = useState(data.EdType || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveEdType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Editing Status...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/editingstatus/${encodeURIComponent(data.EdID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ EdType: edType }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Editing Status: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Editing Status");
+      }
+
+      // 5. Success Logic
+      data.EdType = edType;
+      toast.success("Editing Status updated successfully!", { id: savingToast });
+      setIsEditingEdType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Editing Status:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingEdType(false);
+    setEdType(data.EdType || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-blue-600")}
+        <h3 className="text-xl font-bold">{data.EdType || "Editing Type"}</h3>
+        <p className="text-muted-foreground">EdID: {data.EdID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Editing Status Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Editing Type</span>
+
+            {isEditingEdType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={edType}
+                  onChange={(e) => setEdType(e.target.value)}
+                  placeholder="Enter Editing Type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveEdType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {edType ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {edType}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {edType ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {edType}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Editing Type", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingEdType(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Editing Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingEdType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Audio/Video" value={data.AudioVideo} />
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "eventCategory": {
-      const [isEditingEventCategory, setIsEditingEventCategory] = useState(false);
-      const [eventCategory, setEventCategory] = useState(data.EventCategory || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveEventCategory = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Event Category...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/eventcategory/${encodeURIComponent(data.EventCategoryID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ EventCategory: eventCategory }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Event Category");
-          }
-    
-          data.EventCategory = eventCategory;
-    
-          toast.success("Event Category updated successfully!", { id: savingToast });
-          setIsEditingEventCategory(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Event Category:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingEventCategory(false);
-        setEventCategory(data.EventCategory || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-blue-500 to-pink-600")}
-            <h3 className="text-xl font-bold">{data.EventCategory || "Event Category"}</h3>
-            <p className="text-muted-foreground">Event Category ID: {data.EventCategoryID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Event Category Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Event Category</span>
-    
-                {isEditingEventCategory ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={eventCategory}
-                      onChange={(e) => setEventCategory(e.target.value)}
-                      placeholder="Enter Event Category..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveEventCategory}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Audio/Video" value={data.AudioVideo} />
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "eventCategory": {
+  const [isEditingEventCategory, setIsEditingEventCategory] = useState(false);
+  const [eventCategory, setEventCategory] = useState(data.EventCategory || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveEventCategory = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Event Category...");
+
+    try {
+      // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/eventcategory/${encodeURIComponent(data.EventCategoryID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ EventCategory: eventCategory }),
+        }
+      );
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Event Category: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Event Category");
+      }
+
+      // 5. Success Logic
+      data.EventCategory = eventCategory;
+      toast.success("Event Category updated successfully!", { id: savingToast });
+      setIsEditingEventCategory(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Event Category:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingEventCategory(false);
+    setEventCategory(data.EventCategory || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-blue-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.EventCategory || "Event Category"}</h3>
+        <p className="text-muted-foreground">Event Category ID: {data.EventCategoryID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Event Category Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Event Category</span>
+
+            {isEditingEventCategory ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={eventCategory}
+                  onChange={(e) => setEventCategory(e.target.value)}
+                  placeholder="Enter Event Category..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveEventCategory}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {eventCategory ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {eventCategory}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {eventCategory ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {eventCategory}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Event Category", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingEventCategory(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Event Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingEventCategory(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            )}
+          </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
        case "highlight":
         return (
@@ -3236,1593 +3619,1848 @@ export function DetailsSidebar({
           </div>
         );
 
-    case "footageType": {
-      const [isEditingFootageType, setIsEditingFootageType] = useState(false);
-      const [footageType, setFootageType] = useState(data.FootageTypeList || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveFootageType = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Footage Type...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/footagetype/${encodeURIComponent(data.FootageID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ FootageTypeList: footageType }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Footage Type");
-          }
-    
-          data.FootageTypeList = footageType;
-    
-          toast.success("Footage Type updated successfully!", { id: savingToast });
-          setIsEditingFootageType(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Footage Type:", error);
-        } finally {
-          setIsSaving(false);
+   case "footageType": {
+  const [isEditingFootageType, setIsEditingFootageType] = useState(false);
+  const [footageType, setFootageType] = useState(data.FootageTypeList || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveFootageType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Footage Type...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/footagetype/${encodeURIComponent(data.FootageID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ FootageTypeList: footageType }),
         }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingFootageType(false);
-        setFootageType(data.FootageTypeList || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-pink-600")}
-            <h3 className="text-xl font-bold">{data.FootageTypeList || "Footage Type"}</h3>
-            <p className="text-muted-foreground">Footage ID: {data.FootageID}</p>
-          </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Footage Type Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Footage Type</span>
-    
-                {isEditingFootageType ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={footageType}
-                      onChange={(e) => setFootageType(e.target.value)}
-                      placeholder="Enter Footage Type..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveFootageType}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Footage Type: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Footage Type");
+      }
+
+      // 5. Success Logic
+      data.FootageTypeList = footageType;
+      toast.success("Footage Type updated successfully!", { id: savingToast });
+      setIsEditingFootageType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Footage Type:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingFootageType(false);
+    setFootageType(data.FootageTypeList || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-orange-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.FootageTypeList || "Footage Type"}</h3>
+        <p className="text-muted-foreground">Footage ID: {data.FootageID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Footage Type Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Footage Type</span>
+
+            {isEditingFootageType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={footageType}
+                  onChange={(e) => setFootageType(e.target.value)}
+                  placeholder="Enter Footage Type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveFootageType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {footageType ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {footageType}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {footageType ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {footageType}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Footage Type", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingFootageType(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Footage Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingFootageType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            )}
+          </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
     case "formatType": {
-      const [isEditingType, setIsEditingType] = useState(false);
-      const [type, setType] = useState(data.Type || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveType = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Format Type...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/formattype/${encodeURIComponent(data.FTID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ Type: type }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Format Type");
-          }
-    
-          data.Type = type;
-    
-          toast.success("Format Type updated successfully!", { id: savingToast });
-          setIsEditingType(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Format Type:", error);
-        } finally {
-          setIsSaving(false);
+  const [isEditingType, setIsEditingType] = useState(false);
+  const [type, setType] = useState(data.Type || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveType = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Format Type...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/formattype/${encodeURIComponent(data.FTID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ Type: type }),
         }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingType(false);
-        setType(data.Type || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
-            <h3 className="text-xl font-bold">{data.Type || "Format Type"}</h3>
-            <p className="text-muted-foreground">FTID: {data.FTID}</p>
-          </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Format Type Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Format Type</span>
-    
-                {isEditingType ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={type}
-                      onChange={(e) => setType(e.target.value)}
-                      placeholder="Enter Format Type..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveType}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Format Type: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Format Type");
+      }
+
+      // 5. Success Logic
+      data.Type = type;
+      toast.success("Format Type updated successfully!", { id: savingToast });
+      setIsEditingType(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Format Type:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingType(false);
+    setType(data.Type || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
+        <h3 className="text-xl font-bold">{data.Type || "Format Type"}</h3>
+        <p className="text-muted-foreground">FTID: {data.FTID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Format Type Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Format Type</span>
+
+            {isEditingType ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  placeholder="Enter Format Type..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveType}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {type ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {type}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {type ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {type}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Format Type", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingType(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Format Type", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingType(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "granths": {
-      const [isEditingName, setIsEditingName] = useState(false);
-      const [name, setName] = useState(data.Name || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Granth Name...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/granths/${encodeURIComponent(data.ID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ Name: name }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Granth Name");
-          }
-    
-          data.Name = name;
-    
-          toast.success("Granth Name updated successfully!", { id: savingToast });
-          setIsEditingName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Granth Name:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingName(false);
-        setName(data.Name || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<BookOpen className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
-            <h3 className="text-xl font-bold">{data.Name || "Granths"}</h3>
-            <p className="text-muted-foreground">ID: {data.ID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Granths Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Name</span>
-    
-                {isEditingName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter Granth Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+  case "granths": {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [name, setName] = useState(data.Name || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Granth Name...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/granths/${encodeURIComponent(data.ID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ Name: name }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Granth: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Granth Name");
+      }
+
+      // 5. Success Logic
+      data.Name = name;
+      toast.success("Granth Name updated successfully!", { id: savingToast });
+      setIsEditingName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Granth Name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingName(false);
+    setName(data.Name || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<BookOpen className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.Name || "Granths"}</h3>
+        <p className="text-muted-foreground">ID: {data.ID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Granths Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Name</span>
+
+            {isEditingName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter Granth Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {name ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {name}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {name ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {name}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Granths", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Granths", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-              <FieldRow label="ID" value={data.ID} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "language": {
-      const [isEditingTitleLanguage, setIsEditingTitleLanguage] = useState(false);
-      const [titleLanguage, setTitleLanguage] = useState(data.TitleLanguage || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveTitleLanguage = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Title Language...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/language/${encodeURIComponent(data.STID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ TitleLanguage: titleLanguage }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Title Language");
-          }
-    
-          data.TitleLanguage = titleLanguage;
-    
-          toast.success("Title Language updated successfully!", { id: savingToast });
-          setIsEditingTitleLanguage(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Title Language:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingTitleLanguage(false);
-        setTitleLanguage(data.TitleLanguage || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
-            <h3 className="text-xl font-bold">{data.TitleLanguage || "Language"}</h3>
-            <p className="text-muted-foreground">STID: {data.STID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Language Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Title Language</span>
-    
-                {isEditingTitleLanguage ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={titleLanguage}
-                      onChange={(e) => setTitleLanguage(e.target.value)}
-                      placeholder="Enter Title Language..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveTitleLanguage}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+          <FieldRow label="ID" value={data.ID} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+  case "language": {
+  const [isEditingTitleLanguage, setIsEditingTitleLanguage] = useState(false);
+  const [titleLanguage, setTitleLanguage] = useState(data.TitleLanguage || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveTitleLanguage = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Title Language...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/language/${encodeURIComponent(data.STID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ TitleLanguage: titleLanguage }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Language: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Title Language");
+      }
+
+      // 5. Success Logic
+      data.TitleLanguage = titleLanguage;
+      toast.success("Title Language updated successfully!", { id: savingToast });
+      setIsEditingTitleLanguage(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Title Language:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingTitleLanguage(false);
+    setTitleLanguage(data.TitleLanguage || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
+        <h3 className="text-xl font-bold">{data.TitleLanguage || "Language"}</h3>
+        <p className="text-muted-foreground">STID: {data.STID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Language Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Title Language</span>
+
+            {isEditingTitleLanguage ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={titleLanguage}
+                  onChange={(e) => setTitleLanguage(e.target.value)}
+                  placeholder="Enter Title Language..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveTitleLanguage}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {titleLanguage ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {titleLanguage}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {titleLanguage ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {titleLanguage}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Language", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingTitleLanguage(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Language", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTitleLanguage(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="STID" value={data.STID} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            )}
+          </div>
+
+          <FieldRow label="STID" value={data.STID} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
     case "masterquality": {
-      const [isEditingMQName, setIsEditingMQName] = useState(false);
-      const [mqName, setMQName] = useState(data.MQName || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveMQName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Master Quality...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/master-quality/${encodeURIComponent(data.MQID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ MQName: mqName }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Master Quality");
-          }
-    
-          data.MQName = mqName;
-    
-          toast.success("Master Quality updated successfully!", { id: savingToast });
-          setIsEditingMQName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Master Quality:", error);
-        } finally {
-          setIsSaving(false);
+  const [isEditingMQName, setIsEditingMQName] = useState(false);
+  const [mqName, setMQName] = useState(data.MQName || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveMQName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Master Quality...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/master-quality/${encodeURIComponent(data.MQID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ MQName: mqName }),
         }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingMQName(false);
-        setMQName(data.MQName || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
-            <h3 className="text-xl font-bold">{data.MQName || "Master Quality"}</h3>
-            <p className="text-muted-foreground">MQID: {data.MQID}</p>
-          </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Master Quality Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Quality Name</span>
-    
-                {isEditingMQName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={mqName}
-                      onChange={(e) => setMQName(e.target.value)}
-                      placeholder="Enter Quality Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveMQName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Master Quality: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Master Quality");
+      }
+
+      // 5. Success Logic
+      data.MQName = mqName;
+      toast.success("Master Quality updated successfully!", { id: savingToast });
+      setIsEditingMQName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Master Quality:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingMQName(false);
+    setMQName(data.MQName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<ListChecks className="w-8 h-8 text-white" />, "from-green-500 to-red-600")}
+        <h3 className="text-xl font-bold">{data.MQName || "Master Quality"}</h3>
+        <p className="text-muted-foreground">MQID: {data.MQID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Master Quality Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Quality Name</span>
+
+            {isEditingMQName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={mqName}
+                  onChange={(e) => setMQName(e.target.value)}
+                  placeholder="Enter Quality Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveMQName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {mqName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {mqName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {mqName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {mqName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Master Quality", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingMQName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Master Quality", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingMQName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "newEventCategory": {
-      const [isEditingNewEventCategoryName, setIsEditingNewEventCategoryName] = useState(false);
-      const [newEventCategoryName, setNewEventCategoryName] = useState(data.NewEventCategoryName || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveNewEventCategoryName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Event Category Name...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/neweventcategory/${encodeURIComponent(data.CategoryID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ NewEventCategoryName: newEventCategoryName }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Event Category Name");
-          }
-    
-          data.NewEventCategoryName = newEventCategoryName;
-    
-          toast.success("Event Category Name updated successfully!", { id: savingToast });
-          setIsEditingNewEventCategoryName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Event Category Name:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingNewEventCategoryName(false);
-        setNewEventCategoryName(data.NewEventCategoryName || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-orange-500 to-purple-600")}
-            <h3 className="text-xl font-bold">{data.NewEventCategoryName || "New Event Category"}</h3>
-            <p className="text-muted-foreground">Category ID: {data.CategoryID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">New Event Category Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Event Category Name</span>
-    
-                {isEditingNewEventCategoryName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={newEventCategoryName}
-                      onChange={(e) => setNewEventCategoryName(e.target.value)}
-                      placeholder="Enter Event Category Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveNewEventCategoryName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "newEventCategory": {
+  const [isEditingNewEventCategoryName, setIsEditingNewEventCategoryName] = useState(false);
+  const [newEventCategoryName, setNewEventCategoryName] = useState(data.NewEventCategoryName || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveNewEventCategoryName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Event Category Name...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/neweventcategory/${encodeURIComponent(data.CategoryID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ NewEventCategoryName: newEventCategoryName }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Event Category: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Event Category Name");
+      }
+
+      // 5. Success Logic
+      data.NewEventCategoryName = newEventCategoryName;
+      toast.success("Event Category Name updated successfully!", { id: savingToast });
+      setIsEditingNewEventCategoryName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Event Category Name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingNewEventCategoryName(false);
+    setNewEventCategoryName(data.NewEventCategoryName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-orange-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.NewEventCategoryName || "New Event Category"}</h3>
+        <p className="text-muted-foreground">Category ID: {data.CategoryID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">New Event Category Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Event Category Name</span>
+
+            {isEditingNewEventCategoryName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={newEventCategoryName}
+                  onChange={(e) => setNewEventCategoryName(e.target.value)}
+                  placeholder="Enter Event Category Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveNewEventCategoryName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {newEventCategoryName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {newEventCategoryName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {newEventCategoryName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {newEventCategoryName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("New Event Category", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingNewEventCategoryName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("New Event Category", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingNewEventCategoryName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-              <FieldRow label="MARKDISCARD" value={data.MARK_DISCARD} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "newCities": {
-      const [isEditingCity, setIsEditingCity] = useState(false);
-      const [city, setCity] = useState(data.City || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveCity = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving City...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/newcities/${encodeURIComponent(data.CityID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ City: city }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update City");
-          }
-    
-          data.City = city;
-    
-          toast.success("City updated successfully!", { id: savingToast });
-          setIsEditingCity(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating City:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingCity(false);
-        setCity(data.City || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-orange-500 to-pink-600")}
-            <h3 className="text-xl font-bold">{data.City || "New Cities"}</h3>
-            <p className="text-muted-foreground">City ID: {data.CityID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">New Cities Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">City</span>
-    
-                {isEditingCity ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="Enter City..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveCity}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+          <FieldRow label="MARKDISCARD" value={data.MARK_DISCARD} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "newCities": {
+  const [isEditingCity, setIsEditingCity] = useState(false);
+  const [city, setCity] = useState(data.City || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveCity = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving City...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/newcities/${encodeURIComponent(data.CityID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ City: city }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update City: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update City");
+      }
+
+      // 5. Success Logic
+      data.City = city;
+      toast.success("City updated successfully!", { id: savingToast });
+      setIsEditingCity(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating City:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingCity(false);
+    setCity(data.City || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-orange-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.City || "New Cities"}</h3>
+        <p className="text-muted-foreground">City ID: {data.CityID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">New Cities Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">City</span>
+
+            {isEditingCity ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Enter City..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveCity}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {city ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {city}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {city ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {city}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("New Cities", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingCity(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("New Cities", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingCity(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "newCountries": {
-      const [isEditingCountry, setIsEditingCountry] = useState(false);
-      const [country, setCountry] = useState(data.Country || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveCountry = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Country...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/newcountries/${encodeURIComponent(data.CountryID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ Country: country }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Country");
-          }
-    
-          data.Country = country;
-    
-          toast.success("Country updated successfully!", { id: savingToast });
-          setIsEditingCountry(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Country:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingCountry(false);
-        setCountry(data.Country || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
-            <h3 className="text-xl font-bold">{data.Country || "New Countries"}</h3>
-            <p className="text-muted-foreground">Country ID: {data.CountryID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">New Countries Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Country</span>
-    
-                {isEditingCountry ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      placeholder="Enter Country..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveCountry}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "newCountries": {
+  const [isEditingCountry, setIsEditingCountry] = useState(false);
+  const [country, setCountry] = useState(data.Country || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveCountry = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Country...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/newcountries/${encodeURIComponent(data.CountryID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ Country: country }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Country: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Country");
+      }
+
+      // 5. Success Logic
+      data.Country = country;
+      toast.success("Country updated successfully!", { id: savingToast });
+      setIsEditingCountry(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Country:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingCountry(false);
+    setCountry(data.Country || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.Country || "New Countries"}</h3>
+        <p className="text-muted-foreground">Country ID: {data.CountryID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">New Countries Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Country</span>
+
+            {isEditingCountry ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  placeholder="Enter Country..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveCountry}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {country ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {country}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {country ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {country}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("New Countries", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingCountry(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("New Countries", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingCountry(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "newStates": {
-      const [isEditingState, setIsEditingState] = useState(false);
-      const [state, setState] = useState(data.State || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveState = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving State...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/newstates/${encodeURIComponent(data.StateID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ State: state }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update State");
-          }
-    
-          data.State = state;
-    
-          toast.success("State updated successfully!", { id: savingToast });
-          setIsEditingState(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating State:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingState(false);
-        setState(data.State || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
-            <h3 className="text-xl font-bold">{data.State || "New States"}</h3>
-            <p className="text-muted-foreground">State ID: {data.StateID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">New States Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">State</span>
-    
-                {isEditingState ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      placeholder="Enter State..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveState}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "newStates": {
+  const [isEditingState, setIsEditingState] = useState(false);
+  const [state, setState] = useState(data.State || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveState = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving State...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/newstates/${encodeURIComponent(data.StateID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ State: state }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update State: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update State");
+      }
+
+      // 5. Success Logic
+      data.State = state;
+      toast.success("State updated successfully!", { id: savingToast });
+      setIsEditingState(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating State:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingState(false);
+    setState(data.State || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Globe className="w-8 h-8 text-white" />, "from-purple-500 to-pink-600")}
+        <h3 className="text-xl font-bold">{data.State || "New States"}</h3>
+        <p className="text-muted-foreground">State ID: {data.StateID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">New States Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">State</span>
+
+            {isEditingState ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="Enter State..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveState}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {state ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {state}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {state ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {state}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("New States", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingState(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("New States", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingState(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            )}
+          </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
     case "organization": {
-      const [isEditingOrg, setIsEditingOrg] = useState(false);
-      const [organization, setOrganization] = useState(data.Organization || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveOrganization = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Organization...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/organizations/${encodeURIComponent(data.OrganizationID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ Organization: organization }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Organization");
-          }
-    
-          data.Organization = organization;
-    
-          toast.success("Organization updated successfully!", { id: savingToast });
-          setIsEditingOrg(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Organization:", error);
-        } finally {
-          setIsSaving(false);
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
+  const [organization, setOrganization] = useState(data.Organization || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveOrganization = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Organization...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/organizations/${encodeURIComponent(data.OrganizationID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ Organization: organization }),
         }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingOrg(false);
-        setOrganization(data.Organization || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Users className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
-            <h3 className="text-xl font-bold">{data.Organization || "Organization"}</h3>
-            <p className="text-muted-foreground">ID: {data.OrganizationID}</p>
-          </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Organization Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Organization Name</span>
-    
-                {isEditingOrg ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={organization}
-                      onChange={(e) => setOrganization(e.target.value)}
-                      placeholder="Enter Organization Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveOrganization}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Organization: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Organization");
+      }
+
+      // 5. Success Logic
+      data.Organization = organization;
+      toast.success("Organization updated successfully!", { id: savingToast });
+      setIsEditingOrg(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Organization:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingOrg(false);
+    setOrganization(data.Organization || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Users className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.Organization || "Organization"}</h3>
+        <p className="text-muted-foreground">ID: {data.OrganizationID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Organization Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Organization Name</span>
+
+            {isEditingOrg ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  placeholder="Enter Organization Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveOrganization}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {organization ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {organization}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {organization ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {organization}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Organizations", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingOrg(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Organizations", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingOrg(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "occasions": {
-      const [isEditingOccasion, setIsEditingOccasion] = useState(false);
-      const [occasion, setOccasion] = useState(data.Occasion || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveOccasion = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Occasion...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/occasions/${encodeURIComponent(data.OccasionID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ Occasion: occasion }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Occasion");
-          }
-    
-          data.Occasion = occasion;
-    
-          toast.success("Occasion updated successfully!", { id: savingToast });
-          setIsEditingOccasion(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Occasion:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingOccasion(false);
-        setOccasion(data.Occasion || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-purple-500 to-red-600")}
-            <h3 className="text-xl font-bold">{data.Occasion || "Occasions"}</h3>
-            <p className="text-muted-foreground">Occasion ID: {data.OccasionID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Occasions Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Occasion</span>
-    
-                {isEditingOccasion ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={occasion}
-                      onChange={(e) => setOccasion(e.target.value)}
-                      placeholder="Enter Occasion..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveOccasion}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "occasions": {
+  const [isEditingOccasion, setIsEditingOccasion] = useState(false);
+  const [occasion, setOccasion] = useState(data.Occasion || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveOccasion = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Occasion...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/occasions/${encodeURIComponent(data.OccasionID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ Occasion: occasion }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Occasion: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Occasion");
+      }
+
+      // 5. Success Logic
+      data.Occasion = occasion;
+      toast.success("Occasion updated successfully!", { id: savingToast });
+      setIsEditingOccasion(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Occasion:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingOccasion(false);
+    setOccasion(data.Occasion || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-purple-500 to-red-600")}
+        <h3 className="text-xl font-bold">{data.Occasion || "Occasions"}</h3>
+        <p className="text-muted-foreground">Occasion ID: {data.OccasionID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Occasions Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Occasion</span>
+
+            {isEditingOccasion ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={occasion}
+                  onChange={(e) => setOccasion(e.target.value)}
+                  placeholder="Enter Occasion..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveOccasion}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {occasion ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {occasion}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {occasion ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {occasion}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Occasions", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingOccasion(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Occasions", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingOccasion(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            )}
+          </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
     case "topicNumberSource": {
-      const [isEditingTNName, setIsEditingTNName] = useState(false);
-      const [tnName, setTNName] = useState(data.TNName || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveTNName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Topic Name...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/topicnumbersource/${encodeURIComponent(data.TNID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ TNName: tnName }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Topic Name");
-          }
-    
-          data.TNName = tnName;
-    
-          toast.success("Topic Name updated successfully!", { id: savingToast });
-          setIsEditingTNName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Topic Name:", error);
-        } finally {
-          setIsSaving(false);
+  const [isEditingTNName, setIsEditingTNName] = useState(false);
+  const [tnName, setTNName] = useState(data.TNName || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveTNName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Topic Name...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/topicnumbersource/${encodeURIComponent(data.TNID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ TNName: tnName }),
         }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingTNName(false);
-        setTNName(data.TNName || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-teal-500 to-blue-600")}
-            <h3 className="text-xl font-bold">{data.TNName || "Topic Number Source"}</h3>
-            <p className="text-muted-foreground">Topic ID: {data.TNID}</p>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Topic Number Source Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Topic Name</span>
-    
-                {isEditingTNName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={tnName}
-                      onChange={(e) => setTNName(e.target.value)}
-                      placeholder="Enter Topic Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveTNName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Topic Source: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Topic Name");
+      }
+
+      // 5. Success Logic
+      data.TNName = tnName;
+      toast.success("Topic Name updated successfully!", { id: savingToast });
+      setIsEditingTNName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Topic Name:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingTNName(false);
+    setTNName(data.TNName || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<FileText className="w-8 h-8 text-white" />, "from-teal-500 to-blue-600")}
+        <h3 className="text-xl font-bold">{data.TNName || "Topic Number Source"}</h3>
+        <p className="text-muted-foreground">Topic ID: {data.TNID}</p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Topic Number Source Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Topic Name</span>
+
+            {isEditingTNName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={tnName}
+                  onChange={(e) => setTNName(e.target.value)}
+                  placeholder="Enter Topic Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveTNName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {tnName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {tnName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {tnName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {tnName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Topic Number Source", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingTNName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Topic Number Source", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTNName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-    
-              <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "timeOfDay": {
-      const [isEditingTimeList, setIsEditingTimeList] = useState(false);
-      const [timeList, setTimeList] = useState(data.TimeList || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveTimeList = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Time of Day...");
-    
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/time-of-day/${encodeURIComponent(data.TimeID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ TimeList: timeList }),
-            }
-          );
-    
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Time of Day");
-          }
-    
-          data.TimeList = timeList;
-    
-          toast.success("Time of Day updated successfully!", { id: savingToast });
-          setIsEditingTimeList(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Time of Day:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingTimeList(false);
-        setTimeList(data.TimeList || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
-            <h3 className="text-xl font-bold">{data.TimeList || "Time of Day"}</h3>
-            <p className="text-muted-foreground">Time ID: {data.TimeID}</p>
+            )}
           </div>
-    
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Time of Day Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Time List</span>
-    
-                {isEditingTimeList ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={timeList}
-                      onChange={(e) => setTimeList(e.target.value)}
-                      placeholder="Enter Time List..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveTimeList}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+
+          <FieldRow label="Last Modified" value={data.LastModifiedTimestamp} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "timeOfDay": {
+  const [isEditingTimeList, setIsEditingTimeList] = useState(false);
+  const [timeList, setTimeList] = useState(data.TimeList || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveTimeList = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Time of Day...");
+
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/time-of-day/${encodeURIComponent(data.TimeID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ TimeList: timeList }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update Time of Day: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Time of Day");
+      }
+
+      // 4. Success Logic
+      data.TimeList = timeList;
+      toast.success("Time of Day updated successfully!", { id: savingToast });
+      setIsEditingTimeList(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Time of Day:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingTimeList(false);
+    setTimeList(data.TimeList || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Calendar className="w-8 h-8 text-white" />, "from-green-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.TimeList || "Time of Day"}</h3>
+        <p className="text-muted-foreground">Time ID: {data.TimeID}</p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Time of Day Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Time List</span>
+
+            {isEditingTimeList ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={timeList}
+                  onChange={(e) => setTimeList(e.target.value)}
+                  placeholder="Enter Time List..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveTimeList}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {timeList ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {timeList}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {timeList ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {timeList}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Time of Day", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingTimeList(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Time of Day", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTimeList(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    case "topicgivenby": {
-      const [isEditingTGBName, setIsEditingTGBName] = useState(false);
-      const [tgbName, setTGBName] = useState(data.TGB_Name || "");
-      const [isSaving, setIsSaving] = useState(false);
-    
-      const handleSaveTGBName = async () => {
-        setIsSaving(true);
-        const savingToast = toast.loading("Saving Topic Given By...");
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/topic-given-by/${encodeURIComponent(data.TGBID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ TGB_Name: tgbName }),
-            }
-          );
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Topic Given By");
-          }
-          data.TGB_Name = tgbName;
-          toast.success("Topic Given By updated successfully!", { id: savingToast });
-          setIsEditingTGBName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Topic Given By:", error);
-        } finally {
-          setIsSaving(false);
-        }
-      };
-    
-      const handleCancel = () => {
-        setIsEditingTGBName(false);
-        setTGBName(data.TGB_Name || "");
-      };
-    
-      return (
-        <div className="space-y-6">
-          <div className="text-center">
-            {renderIcon(<Users className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
-            <h3 className="text-xl font-bold">{data.TGB_Name || "Topic Given By"}</h3>
-            <p className="text-muted-foreground">TGBID: {data.TGBID}</p>
+            )}
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg px-2">Topic Given By Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-muted-foreground flex-shrink-0">Name</span>
-                {isEditingTGBName ? (
-                  <div className="flex items-center gap-2 w-full max-w-[220px]">
-                    <Input
-                      type="text"
-                      value={tgbName}
-                      onChange={(e) => setTGBName(e.target.value)}
-                      placeholder="Enter Name..."
-                      className="h-8 text-sm"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleSaveTGBName}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 flex-shrink-0"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+   case "topicgivenby": {
+  const [isEditingTGBName, setIsEditingTGBName] = useState(false);
+  const [tgbName, setTGBName] = useState(data.TGB_Name || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveTGBName = async () => {
+    setIsSaving(true);
+    const savingToast = toast.loading("Saving Topic Given By...");
+    
+    try {
+      // 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // 2. Execute fetch with Authorization Header
+      const response = await fetch(
+        `${API_BASE_URL}/topic-given-by/${encodeURIComponent(data.TGBID)}`,
+        {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+          },
+          body: JSON.stringify({ TGB_Name: tgbName }),
+        }
+      );
+
+      // 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Update TGB: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        toast.error("Session expired. Redirecting to login...", { id: savingToast });
+        window.location.href = '/'; 
+        return;
+      }
+
+      // 4. Handle other server errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update Topic Given By");
+      }
+
+      // 5. Success Logic
+      data.TGB_Name = tgbName;
+      toast.success("Topic Given By updated successfully!", { id: savingToast });
+      setIsEditingTGBName(false);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+      console.error("Error updating Topic Given By:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditingTGBName(false);
+    setTGBName(data.TGB_Name || "");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {renderIcon(<Users className="w-8 h-8 text-white" />, "from-blue-500 to-purple-600")}
+        <h3 className="text-xl font-bold">{data.TGB_Name || "Topic Given By"}</h3>
+        <p className="text-muted-foreground">TGBID: {data.TGBID}</p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg px-2">Topic Given By Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-muted-foreground flex-shrink-0">Name</span>
+            {isEditingTGBName ? (
+              <div className="flex items-center gap-2 w-full max-w-[220px]">
+                <Input
+                  type="text"
+                  value={tgbName}
+                  onChange={(e) => setTGBName(e.target.value)}
+                  placeholder="Enter Name..."
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleSaveTGBName}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {tgbName ? (
+                  <span className="font-medium text-right break-words max-w-[180px]">
+                    {tgbName}
+                  </span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {tgbName ? (
-                      <span className="font-medium text-right break-words max-w-[180px]">
-                        {tgbName}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set</span>
-                    )}
-                    {hasAccess("Topic Given By", 'write') && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={() => setIsEditingTGBName(true)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <span className="text-sm text-muted-foreground">Not set</span>
+                )}
+                {hasAccess("Topic Given By", 'write') && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setIsEditingTGBName(true)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-              <FieldRow label="Last Modified By" value={data.LastModifiedBy} />
-              <FieldRow label="Last Modified" value={data.LastModifiedTs} />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            )}
+          </div>
+          <FieldRow label="Last Modified By" value={data.LastModifiedBy} />
+          <FieldRow label="Last Modified" value={data.LastModifiedTs} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
     case "segmentcategory": {
       const [isEditingSegCatName, setIsEditingSegCatName] = React.useState(false);
       const [segCatName, setSegCatName] = React.useState(data.SegCatName || "");
@@ -4831,28 +5469,51 @@ export function DetailsSidebar({
       const handleSaveSegCatName = async () => {
         setIsSaving(true);
         const savingToast = toast.loading("Saving Segment Category...");
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/segment-category/${encodeURIComponent(data.SegCatID)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ SegCatName: segCatName }),
-            }
-          );
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || "Failed to update Segment Category");
-          }
-          data.SegCatName = segCatName;
-          toast.success("Segment Category updated successfully!", { id: savingToast });
-          setIsEditingSegCatName(false);
-        } catch (error: any) {
-          toast.error(`Error: ${error.message}`, { id: savingToast });
-          console.error("Error updating Segment Category:", error);
-        } finally {
-          setIsSaving(false);
-        }
+       try {
+  setIsSaving(true);
+  
+  // 1. Get the token from localStorage
+  const token = localStorage.getItem('app-token');
+
+  // 2. Execute fetch with Authorization Header
+  const response = await fetch(
+    `${API_BASE_URL}/segment-category/${encodeURIComponent(data.SegCatID)}`,
+    {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+      },
+      body: JSON.stringify({ SegCatName: segCatName }),
+    }
+  );
+
+  // 3. Handle Unauthorized/Expired session
+  if (response.status === 401 || response.status === 403) {
+    console.error("Update Segment Category: Unauthorized. Redirecting...");
+    localStorage.removeItem('app-token');
+    localStorage.removeItem('google-token');
+    window.location.href = '/'; 
+    return;
+  }
+
+  // 4. Handle other errors
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update Segment Category");
+  }
+
+  // 5. Success Logic
+  data.SegCatName = segCatName;
+  toast.success("Segment Category updated successfully!", { id: savingToast });
+  setIsEditingSegCatName(false);
+
+} catch (error: any) {
+  toast.error(`Error: ${error.message}`, { id: savingToast });
+  console.error("Error updating Segment Category:", error);
+} finally {
+  setIsSaving(false);
+}
       };
     
       const handleCancel = () => {

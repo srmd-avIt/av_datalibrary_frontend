@@ -54,6 +54,7 @@ const APP_RESOURCES = [
   "Home",
   "Satsang Search",
   "Events",
+  "Non Event Production",
   "Event Timeline",
   "Digital Recordings",
   "ML formal & Informal",
@@ -232,33 +233,55 @@ export function UserManagement({ onRowSelect }: UserManagementProps) {
     });
   };
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/users`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
+ useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      // ✅ 1. Get the JWT token from localStorage
+      const token = localStorage.getItem('app-token');
 
-        const processedUsers: User[] = data.map((user: any) => {
-          const lastActiveDate = new Date(user.lastActive);
-          return {
-            ...user,
-            lastActive: getRelativeTime(lastActiveDate),
-            lastActiveDate,
-            permissions: user.permissions || [],
-            twoFactorEnabled: false,
-            title: user.title || user.role,
-          };
-        });
+      // ✅ 2. Include the Authorization header in the fetch call
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        }
+      });
 
-        setUsers(processedUsers);
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
-        toast.error("Failed to load users. Please try again.");
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("User Management: Unauthorized. Redirecting to login...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        window.location.href = '/'; 
+        return;
       }
-    };
-    fetchUsers();
-  }, []);
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
+
+      const processedUsers: User[] = data.map((user: any) => {
+        const lastActiveDate = new Date(user.lastActive);
+        return {
+          ...user,
+          lastActive: getRelativeTime(lastActiveDate),
+          lastActiveDate,
+          permissions: user.permissions || [],
+          twoFactorEnabled: false,
+          title: user.title || user.role,
+        };
+      });
+
+      setUsers(processedUsers);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      toast.error("Failed to load users. Please check your permissions.");
+    }
+  };
+
+  fetchUsers();
+}, []);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -371,19 +394,58 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const handleAddUser = async (newUserData: Omit<User, 'id' | 'joinedDate' | 'lastActive' | 'status'>) => {
     if (!canManageUsers) { toast.error("You do not have permission to add users."); return; }
     const now = new Date();
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...newUserData, lastActive: now.toISOString() }) });
-      if (!response.ok) throw new Error(await response.text());
-      const createdUser = await response.json();
-      const processedUser = { ...createdUser, lastActive: "just now", lastActiveDate: now, title: createdUser.role };
-      setUsers((prevUsers) => [processedUser, ...prevUsers]);
-      setIsAddUserDialogOpen(false);
-      toast.success(`User "${createdUser.name}" added successfully.`);
-    } catch (error) { 
-      console.error("Error adding user:", error); 
-      const message = error instanceof Error ? error.message : "An unexpected error occurred.";
-      toast.error(message); 
-    }
+   try {
+  // ✅ 1. Get the JWT token from localStorage
+  const token = localStorage.getItem('app-token');
+  const now = new Date();
+
+  // ✅ 2. Execute fetch with Authorization Header
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, { 
+    method: "POST", 
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": token ? `Bearer ${token}` : '', // ✅ JWT Header added
+    }, 
+    body: JSON.stringify({ ...newUserData, lastActive: now.toISOString() }) 
+  });
+
+  // ✅ 3. Handle Unauthorized/Expired session
+  if (response.status === 401 || response.status === 403) {
+    console.error("Session expired or unauthorized. Redirecting...");
+    localStorage.removeItem('app-token');
+    localStorage.removeItem('google-token');
+    toast.error("Session expired. Please log in again.");
+    
+    setTimeout(() => {
+      window.location.href = '/'; 
+    }, 1500);
+    return;
+  }
+
+  // ✅ 4. Error Handling for Bad Requests
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to add user");
+  }
+
+  // ✅ 5. Process Success
+  const createdUser = await response.json();
+  const processedUser = { 
+    ...createdUser, 
+    lastActive: "just now", 
+    lastActiveDate: now, 
+    title: createdUser.role 
+  };
+
+  setUsers((prevUsers) => [processedUser, ...prevUsers]);
+  setIsAddUserDialogOpen(false);
+  toast.success(`User "${createdUser.name}" added successfully.`);
+
+} catch (error) { 
+  console.error("Error adding user:", error); 
+  const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+  toast.error(message); 
+}
   };
 
   const handleDeleteConfirmation = (user: User) => {
@@ -1123,7 +1185,13 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div style={{ borderRadius: '0.5rem', border: '1px solid rgba(51, 65, 85, 0.5)', overflow: 'hidden' }}>
+     <div style={{
+  borderRadius: '0.5rem',
+  border: '1px solid rgba(51, 65, 85, 0.5)',
+  overflow: 'hidden',
+  maxHeight: '600px', // You can adjust height as needed
+  overflowY: 'auto',  // <-- Add vertical scroll
+}}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: '1600px', fontSize: '0.875rem', textAlign: 'left', color: '#d1d5db' }}>
             <thead style={{ fontSize: '0.75rem', color: '#9ca3b8', textTransform: 'uppercase', backgroundColor: 'rgba(30, 41, 59, 0.5)' }}>

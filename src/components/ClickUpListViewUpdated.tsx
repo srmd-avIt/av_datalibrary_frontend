@@ -178,16 +178,34 @@ async function fetchDataFromApi({
     throw new Error("API URL not configured. Set VITE_API_URL in .env");
 
   // Build full API URL
-  const url = new URL(API_BASE_URL);
+   const url = new URL(API_BASE_URL);
   url.pathname += apiEndpoint.startsWith("/") ? apiEndpoint : `/${apiEndpoint}`;
   url.search = params.toString();
 
-  // Fetch data from API
-  const response = await fetch(url.href);
+  // ✅ 1. Get the token we saved in AuthProvider
+  const token = localStorage.getItem('app-token');
+
+  // ✅ 2. Add the Authorization header to the fetch call
+  const response = await fetch(url.href, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '', 
+    }
+  });
+
+  // ✅ 3. If the backend says 401 (Denied), clear the local session and redirect
+  if (response.status === 401 || response.status === 403) {
+    console.error("JWT Token is invalid or missing. Redirecting to login...");
+    localStorage.removeItem('app-token');
+    localStorage.removeItem('google-token');
+    window.location.href = '/'; // Redirect to home/login
+    throw new Error("Session expired. Please log in again.");
+  }
+
   if (!response.ok)
-    throw new Error(
-      `API error: ${response.statusText} for URL: ${url.href}`
-    );
+    throw new Error(`API error: ${response.statusText}`);
+    
   return response.json();
 }
 // --- SimplePagination ---
@@ -534,11 +552,32 @@ const handleUpdateCell = async () => {
   const savingToast = toast.loading(`Updating ${columnKey}...`);
 
   try {
+      const token = localStorage.getItem('app-token');
+
+    // ✅ 2. Pass the token in the headers
     const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '', // ✅ JWT Header added
+      },
       body: JSON.stringify({ [columnKey]: editValue }),
     });
+
+    // ✅ 3. Handle Unauthorized/Expired session (Logic from useEffect)
+    if (response.status === 401 || response.status === 403) {
+      console.error("Session expired or unauthorized. Redirecting...");
+      toast.error("Session expired. Please log in again.", { id: savingToast });
+      
+      localStorage.removeItem('app-token');
+      localStorage.removeItem('google-token');
+      
+      // Delay redirect slightly so user can read the toast message
+      setTimeout(() => {
+        window.location.href = '/'; 
+      }, 1500);
+      return;
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -671,13 +710,31 @@ if (effectiveApiEndpoint.includes("digitalrecording")) {
   endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`;
   rowId = updatedRow[idKey];
 }
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}/${rowId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedRow),
-    });
+try {
+    const token = localStorage.getItem('app-token');
 
+  // ✅ 2. Pass the token in the headers
+  const response = await fetch(`${API_BASE_URL}${endpoint}/${rowId}`, {
+    method: "PUT",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": token ? `Bearer ${token}` : '', // ✅ JWT Header added
+    },
+    body: JSON.stringify(updatedRow),
+  });
+
+  // ✅ 3. Handle Unauthorized access (Logic from useEffect)
+  if (response.status === 401 || response.status === 403) {
+    console.error("Session expired or unauthorized. Redirecting...");
+    
+    // Clear storage to force a clean login
+    localStorage.removeItem('app-token');
+    localStorage.removeItem('google-token');
+    
+    // Redirect to login page
+    window.location.href = '/'; 
+    return;
+  }
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       // Extract the most detailed error message
@@ -1254,15 +1311,23 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       return;
     }
     try {
-      let response;
-      // Get user email if available
-      const userEmail = user?.email || "";
+     // ✅ 1. Get the token from localStorage
+    const token = localStorage.getItem('app-token');
+    const userEmail = user?.email || "";
+
+    // ✅ 2. Define standard headers for all requests
+    const requestHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": token ? `Bearer ${token}` : '', // ✅ JWT Header added
+    };
+
+    let response: Response;
 
       // Segment Category
       if (apiEndpoint === "/segment-category") {
         response = await fetch(`${API_BASE_URL}/segment-category`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+         headers: requestHeaders,
           body: JSON.stringify({
             SegCatName: addForm.SegCatName || "",
             LastModifiedBy: userEmail
@@ -1273,7 +1338,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/topic-given-by") {
         response = await fetch(`${API_BASE_URL}/topic-given-by`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             TGB_Name: addForm.TGB_Name || "",
             LastModifiedBy: userEmail
@@ -1284,7 +1349,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/aux-file-type") {
         response = await fetch(`${API_BASE_URL}/aux-file-type`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+           headers: requestHeaders,
           body: JSON.stringify({
             AuxFileType: addForm.AuxFileType || "",
             LastModifiedBy: userEmail
@@ -1295,7 +1360,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/audio") {
         response = await fetch(`${API_BASE_URL}/audio`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             AudioList: addForm.AudioList || "",
             Distribution: addForm.Distribution || "",
@@ -1307,7 +1372,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/bhajan-type") {
         response = await fetch(`${API_BASE_URL}/bhajan-type`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             BhajanName: addForm.BhajanName || "",
             LastModifiedBy: userEmail
@@ -1318,7 +1383,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/digital-master-category") {
         response = await fetch(`${API_BASE_URL}/digital-master-category`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             DMCategory_name: addForm.DMCategory_name || "",
             LastModifiedBy: userEmail
@@ -1329,7 +1394,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/distribution-label") {
         response = await fetch(`${API_BASE_URL}/distribution-label`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             LabelName: addForm.LabelName || "",
             LastModifiedBy: userEmail
@@ -1340,7 +1405,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/editing-type") {
         response = await fetch(`${API_BASE_URL}/editing-type`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             EdType: addForm.EdType || "",
             AudioVideo: addForm.AudioVideo || "",
@@ -1352,7 +1417,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/editing-status") {
         response = await fetch(`${API_BASE_URL}/editing-status`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             EdType: addForm.EdType || "",
             AudioVideo: addForm.AudioVideo || "",
@@ -1364,7 +1429,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/event-category") {
         response = await fetch(`${API_BASE_URL}/event-category`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             EventCategory: addForm.EventCategory || "",
             LastModifiedBy: userEmail
@@ -1375,7 +1440,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/footage-type") {
         response = await fetch(`${API_BASE_URL}/footage-type`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             FootageTypeList: addForm.FootageTypeList || "",
             LastModifiedBy: userEmail
@@ -1386,7 +1451,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/format-type") {
         response = await fetch(`${API_BASE_URL}/format-type`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             Type: addForm.Type || "",
             LastModifiedBy: userEmail
@@ -1397,7 +1462,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/granths") {
         response = await fetch(`${API_BASE_URL}/granths`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             Name: addForm.Name || "",
             LastModifiedBy: userEmail
@@ -1408,7 +1473,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/language") {
         response = await fetch(`${API_BASE_URL}/language`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             TitleLanguage: addForm.TitleLanguage || "",
             LastModifiedBy: userEmail
@@ -1419,7 +1484,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/new-event-category") {
         response = await fetch(`${API_BASE_URL}/new-event-category`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             NewEventCategoryName: addForm.NewEventCategoryName || "",
             MARK_DISCARD: addForm.MARK_DISCARD || "0",
@@ -1431,7 +1496,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/new-cities") {
         response = await fetch(`${API_BASE_URL}/new-cities`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             City: addForm.City || "",
             LastModifiedBy: userEmail
@@ -1442,7 +1507,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/new-countries") {
         response = await fetch(`${API_BASE_URL}/new-countries`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             Country: addForm.Country || "",
             LastModifiedBy: userEmail
@@ -1453,7 +1518,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/new-states") {
         response = await fetch(`${API_BASE_URL}/new-states`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             State: addForm.State || "",
             LastModifiedBy: userEmail
@@ -1464,7 +1529,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/master-quality") {
         response = await fetch(`${API_BASE_URL}/master-quality`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             MQName: addForm.MQName || "",
             LastModifiedBy: userEmail
@@ -1475,7 +1540,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/organizations") {
         response = await fetch(`${API_BASE_URL}/organizations`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             Organization: addForm.Organization || "",
             LastModifiedBy: userEmail
@@ -1486,7 +1551,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/occasions") {
         response = await fetch(`${API_BASE_URL}/occasions`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             Occasion: addForm.Occasion || "",
             LastModifiedBy: userEmail
@@ -1497,7 +1562,7 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/topic-number-source") {
         response = await fetch(`${API_BASE_URL}/topic-number-source`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             TNName: addForm.TNName || "",
             LastModifiedBy: userEmail
@@ -1508,42 +1573,64 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       else if (apiEndpoint === "/time-of-day") {
         response = await fetch(`${API_BASE_URL}/time-of-day`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: requestHeaders,
           body: JSON.stringify({
             TimeList: addForm.TimeList || "",
             LastModifiedBy: userEmail
           }),
         });
       }
-      // Default: fallback to generic
       else {
-        response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...addForm, LastModifiedBy: userEmail }),
-        });
-      }
+      response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify({ ...addForm, LastModifiedBy: userEmail }),
+      });
+    }
+
+       // ✅ 3. GLOBAL AUTH CHECK (Handles all cases above)
+    if (response.status === 401 || response.status === 403) {
+      console.error("Session expired or unauthorized. Redirecting...");
+      toast.error("Session expired. Please log in again.");
+      
+      localStorage.removeItem('app-token');
+      localStorage.removeItem('google-token');
+      
+      setTimeout(() => { window.location.href = '/'; }, 1500);
+      return;
+    }
 
       if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-  // Extract the most detailed error message
-  const errorMsg =
-    errorData.sqlMessage ||
-    errorData.message ||
-    errorData.error ||
-    errorData.toString() ||
-    "Failed to add entry";
-  toast.error(`Error: ${errorMsg}`);
-  return;
-}
-      toast.success("Entry added!");
-      setAddOpen(false);
-      setAddForm({});
-      await queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
-    } catch (e) {
+      const errorData = await response.json().catch(() => ({}));
+      // --- BEGIN: DETAILED ERROR POPUP LOGIC (copied from handleBulkUpdate) ---
+      let errorMsg = '';
+      if (typeof errorData === 'object' && errorData !== null) {
+        if (errorData.sqlMessage) errorMsg += `❌ ${errorData.sqlMessage}\n`;
+        if (errorData.message) errorMsg += `Message: ${errorData.message}\n`;
+        if (errorData.sql) errorMsg += `SQL:\n${errorData.sql}\n`;
+        if (errorData.stack) errorMsg += `Stack:\n${errorData.stack}\n`;
+        if (errorData.code) errorMsg += `Code: ${errorData.code}\n`;
+        if (errorData.errno) errorMsg += `Errno: ${errorData.errno}\n`;
+        if (errorData.sqlState) errorMsg += `SQLState: ${errorData.sqlState}\n`;
+        if (!errorMsg) errorMsg = JSON.stringify(errorData, null, 2);
+      } else {
+        errorMsg = String(errorData) || "Failed to add entry";
+      }
+      // Show error dialog (same as bulk update)
+      showErrorDialog(errorMsg, "Add Entry Error");
       toast.error("Failed to add entry");
+      return;
     }
-  };
+      toast.success("Entry added!");
+    setAddOpen(false);
+    setAddForm({});
+    await queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
+  } catch (e: any) {
+    // Show error dialog for unexpected errors
+    showErrorDialog(e?.message || String(e), "Add Entry Error");
+    toast.error("Failed to add entry");
+  }
+};
 
   // --- Cell editing: always use sortedData ---
   const handleCellChange = (rowIndex: number, columnKey: string, newValue: any) => {
@@ -1622,8 +1709,11 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       } else if (effectiveApiEndpoint.includes("events")) {
         endpoint = "/events";
         resolvedRowId = updatedRow.EventID;
+      } else if (effectiveApiEndpoint.includes("non-event-production")) {
+        endpoint = "/non-event-production";
+        resolvedRowId = updatedRow.SMCode;
       } else if (effectiveApiEndpoint.includes("audio")) {
-        endpoint = "/audio";
+        endpoint = "/audio"; 
         resolvedRowId = updatedRow.AID;
       } else if (effectiveApiEndpoint.includes("bhajantype")) {
         endpoint = "/bhajantype";
@@ -1694,11 +1784,28 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}/${resolvedRowId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedRow),
-        });
+        // ✅ 1. Get the token from localStorage
+      const token = localStorage.getItem('app-token');
+
+      // ✅ 2. Execute fetch with Authorization Header
+      const response = await fetch(`${API_BASE_URL}${endpoint}/${resolvedRowId}`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
+        },
+        body: JSON.stringify(updatedRow),
+      });
+
+      // ✅ 3. Handle Unauthorized/Expired session
+      if (response.status === 401 || response.status === 403) {
+        console.error("Bulk Update: Unauthorized. Redirecting...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        window.location.href = '/'; 
+        return { status: 'rejected', reason: "Session expired", rowId };
+      }
+
 if (!response.ok) {
   const errorData = await response.json().catch(() => ({}));
   // Build a detailed error message from all fields

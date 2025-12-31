@@ -158,43 +158,68 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
       let mergedColumns = [...allColumns];
 
       // 2. Fetch from backend if endpoint provided
-      if (apiEndpoint) {
-        setIsLoadingBackend(true);
-        try {
-          const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
-          const response = await fetch(fetchUrl);
-          
-          if (response.ok) {
-            const data = await response.json();
-            const rows = Array.isArray(data) ? data : (data.data || []);
-            
-            if (rows.length > 0) {
-              const sampleRow = rows[0];
-              const backendKeys = Object.keys(sampleRow);
-              const existingKeys = new Set(mergedColumns.map(c => c.key));
-              
-              const newDiscoveredColumns: Column[] = backendKeys
-                .filter(key => !existingKeys.has(key))
-                .map(key => ({
-                  key: key,
-                  label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
-                  sortable: true,
-                  editable: false, 
-                  isCustom: false
-                }));
+     if (apiEndpoint) {
+  setIsLoadingBackend(true);
+  try {
+    const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
 
-              if (newDiscoveredColumns.length > 0) {
-                mergedColumns = [...mergedColumns, ...newDiscoveredColumns];
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Failed to fetch backend columns", error);
-          toast.error("Could not fetch full column list from database.");
-        } finally {
-          setIsLoadingBackend(false);
+    // ✅ 1. Get the JWT token from localStorage
+    const token = localStorage.getItem('app-token');
+
+    // ✅ 2. Pass the token in the headers
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '', // ✅ JWT Header added
+      }
+    });
+
+    // ✅ 3. Handle Unauthorized/Expired session
+    if (response.status === 401 || response.status === 403) {
+      console.error("Column Discovery: Session expired or unauthorized. Redirecting...");
+      
+      localStorage.removeItem('app-token');
+      localStorage.removeItem('google-token');
+      
+      // Redirect to login
+      window.location.href = '/'; 
+      return;
+    }
+
+    if (response.ok) {
+      const data = await response.json();
+      const rows = Array.isArray(data) ? data : (data.data || []);
+      
+      if (rows.length > 0) {
+        const sampleRow = rows[0];
+        const backendKeys = Object.keys(sampleRow);
+        const existingKeys = new Set(mergedColumns.map(c => c.key));
+        
+        const newDiscoveredColumns: Column[] = backendKeys
+          .filter(key => !existingKeys.has(key))
+          .map(key => ({
+            key: key,
+            label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
+            sortable: true,
+            editable: false, 
+            isCustom: false
+          }));
+
+        if (newDiscoveredColumns.length > 0) {
+          mergedColumns = [...mergedColumns, ...newDiscoveredColumns];
         }
       }
+    } else {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Failed to fetch backend columns", error);
+    toast.error("Could not fetch full column list from database.");
+  } finally {
+    setIsLoadingBackend(false);
+  }
+}
 
       setInternalColumns(mergedColumns);
 

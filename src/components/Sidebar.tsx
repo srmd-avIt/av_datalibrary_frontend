@@ -52,6 +52,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     { id: "dashboard", label: "Home", icon: Home },
     { id: "satsang_dashboard", label: "Satsang Search", icon: LayoutDashboard },
     { id: "events", label: "Events", icon: Map },
+     { id: "non_event_production", label: "Non Event Production", icon: Database },
     { id: "eventtimeline", label: "Event Timeline", icon: Calendar },
     { id: "digitalrecordings", label: "Digital Recordings", icon: HardDrive},
      {

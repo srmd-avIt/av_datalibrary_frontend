@@ -129,11 +129,33 @@ export const EventTimeline: React.FC<EventTimelineProps> = ({
         const url = `${base}${apiEndpoint}${
           base || apiEndpoint.startsWith("/") ? "?limit=100000" : "?limit=100000"
         }`;
-        const res = await fetch(url);
+
+        // ✅ 1. Get the token from localStorage
+        const token = localStorage.getItem('app-token');
+
+        // ✅ 2. Pass the token in the headers
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        });
+
+        // ✅ 3. Handle Unauthorized access
+        if (res.status === 401 || res.status === 403) {
+          console.error("Timeline: Unauthorized access. Redirecting...");
+          localStorage.removeItem('app-token');
+          localStorage.removeItem('google-token');
+          window.location.href = '/'; // Redirect to login
+          return;
+        }
+
         if (!res.ok) {
           const txt = await res.text();
           throw new Error(`API ${res.status}: ${txt}`);
         }
+
         const json = await res.json();
         const items = json?.data || json || [];
         setAllEvents(Array.isArray(items) ? items : []);
