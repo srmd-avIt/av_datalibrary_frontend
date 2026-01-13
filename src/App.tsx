@@ -588,7 +588,7 @@ const VIEW_CONFIGS: Record<string, any> = {
 }
 ,
      
-     
+     { key: "Remarks", label: "Remarks", sortable: true, editable: true },
    
     ],
   },
