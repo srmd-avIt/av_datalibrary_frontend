@@ -1159,12 +1159,42 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
       const headers = visibleColumns.map(col => col.label);
       const dataKeys = visibleColumns.map(col => col.key);
 
-      const csvRows = [
-        headers.map(escapeCsvValue).join(','), // Create the header row
-        ...itemsToExport.map(row =>
-          dataKeys.map(key => escapeCsvValue(row[key])).join(',')
-        )
-      ];
+      // ...existing code...
+const extractText = (value: any): string => {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (React.isValidElement(value)) {
+    // Recursively extract text from React elements
+    const props = value.props as { children?: React.ReactNode };
+    const children = props && "children" in props ? props.children : undefined;
+    if (children === undefined || children === null) return "";
+    if (Array.isArray(children)) return children.map(extractText).join(" ");
+    return extractText(children);
+  }
+  if (Array.isArray(value)) {
+    // Only join if all elements are string/number
+    if (value.every(v => typeof v === "string" || typeof v === "number")) {
+      return value.join(", ");
+    }
+    // Otherwise, recursively extract text
+    return value.map(extractText).join(" ");
+  }
+  return ""; // For objects or anything else, return empty string
+};
+
+const csvRows = [
+  headers.map(escapeCsvValue).join(','), // Create the header row
+  ...itemsToExport.map(row =>
+    visibleColumns.map(col => {
+      let value = row[col.key];
+      if (typeof col.render === "function") {
+        value = col.render(value, row);
+      }
+      value = extractText(value);
+      return escapeCsvValue(value);
+    }).join(',')
+  )
+];
+// ...existing code...
 
       const csvContent = csvRows.join('\n');
 
