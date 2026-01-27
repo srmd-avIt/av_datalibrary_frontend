@@ -1352,7 +1352,7 @@ const csvRows = [
     };
 
     let response: Response;
-
+    
       // Segment Category
       if (apiEndpoint === "/segment-category") {
         response = await fetch(`${API_BASE_URL}/segment-category`, {
@@ -1588,6 +1588,47 @@ const csvRows = [
           }),
         });
       }
+
+    else if (apiEndpoint === "/google-sheet/digital-recordings") {
+  response = await fetch(`${API_BASE_URL}/google-sheet/digital-recordings`, {
+    method: "POST",
+    headers: requestHeaders,
+    body: JSON.stringify({
+      fkEventCode: addForm.fkEventCode || "",
+      RecordingName: addForm.RecordingName || "",
+      RecordingCode: addForm.RecordingCode || "",
+      Duration: addForm.Duration || "",
+      DistributionDriveLink: addForm.DistributionDriveLink || "",
+      BitRate: addForm.BitRate || "",
+      Dimension: addForm.Dimension || "",
+      Masterquality: addForm.Masterquality || "",
+      fkMediaName: addForm.fkMediaName || "",
+      Filesize: addForm.Filesize || "",
+      FilesizeInBytes: addForm.FilesizeInBytes || "",
+      NoOfFiles: addForm.NoOfFiles || "",
+      RecordingRemarks: addForm.RecordingRemarks || "",
+      CounterError: addForm.CounterError || "",
+      ReasonError: addForm.ReasonError || "",
+      MasterProductTitle: addForm.MasterProductTitle || "",
+      fkDistributionLabel: addForm.fkDistributionLabel || "",
+      ProductionBucket: addForm.ProductionBucket || "",
+      fkDigitalMasterCategory: addForm.fkDigitalMasterCategory || "",
+      AudioBitrate: addForm.AudioBitrate || "",
+      AudioTotalDuration: addForm.AudioTotalDuration || "",
+      QcRemarksCheckedOn: addForm.QcRemarksCheckedOn || "",
+      PreservationStatus: addForm.PreservationStatus || "",
+      QCSevak: addForm.QCSevak || "",
+      QcStatus: addForm.QcStatus || "",
+      SubmittedDate: addForm.SubmittedDate || "",
+      PresStatGuidDt: addForm.PresStatGuidDt || "",
+      InfoOnCassette: addForm.InfoOnCassette || "",
+      IsInformal: addForm.IsInformal || "",
+      AssociatedDR: addForm.AssociatedDR || "",
+      Teams: addForm.Teams || "",
+      LastModifiedBy: userEmail, // Add the current user's email
+    }),
+  });
+}
       // Topic Number Source
       else if (apiEndpoint === "/topic-number-source") {
         response = await fetch(`${API_BASE_URL}/topic-number-source`, {
@@ -2735,76 +2776,83 @@ results.forEach(result => {
 
       {/* Add Entry Modal */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New {title}</DialogTitle>
-          </DialogHeader>
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              handleAddSubmit();
-            }}
-            className="space-y-6"
-          >
-            {formColumns.map(col => (
-              <div key={col.key}>
-                <label className="block text-sm font-medium mb-2">{col.label}</label>
-                <Input
-                  value={addForm[col.key] || ""}
-                  onChange={e => handleAddFormChange(col.key, e.target.value)}
-                  required
-                />
-              </div>
-            ))}
-           <DialogFooter>
-  {isMobile ? (
-    // Mobile: Stack buttons vertically, full width, larger touch targets
-    <div className="flex flex-col gap-2 w-full">
+  <DialogContent
+    style={{
+      maxHeight: "90vh",
+      overflowY: "auto",
+    }}
+  >
+    <DialogHeader>
+      <DialogTitle>Add New {title}</DialogTitle>
+    </DialogHeader>
 
-       <Button
-        type="submit"
-        variant="default"
-        className="w-full h-12 text-base"
-        disabled={!hasAccess(title, 'write')}
-      >
-        Add
-      </Button>
-      
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setAddOpen(false)}
-        className="w-full h-12 text-base"
-      >
-        Cancel
-      </Button>
-     
-    </div>
-  ) : (
-    // Desktop: Side by side, fixed width
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setAddOpen(false)}
-        style={{ width: "120px" }}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="submit"
-        variant="default"
-        style={{ width: "120px" }}
-        disabled={!hasAccess(title, 'write')}
-      >
-        Add
-      </Button>
-    </>
-  )}
-</DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+    <form
+      onSubmit={e => {
+        e.preventDefault();
+        handleAddSubmit();
+      }}
+      className="space-y-6"
+    >
+      {formColumns.map(col => (
+        <div key={col.key}>
+          <label className="block text-sm font-medium mb-2">
+            {col.label}
+          </label>
+          <Input
+            value={addForm[col.key] || ""}
+            onChange={e =>
+              handleAddFormChange(col.key, e.target.value)
+            }
+            required
+          />
+        </div>
+      ))}
+
+      <DialogFooter>
+        {isMobile ? (
+          <div className="flex flex-col gap-2 w-full">
+            <Button
+              type="submit"
+              className="w-full h-12 text-base"
+              disabled={!hasAccess(title, "write")}
+            >
+              Add
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddOpen(false)}
+              className="w-full h-12 text-base"
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddOpen(false)}
+              style={{ width: "120px" }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              style={{ width: "120px" }}
+              disabled={!hasAccess(title, "write")}
+            >
+              Add
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
+
       {/* Error Dialog for showing backend/bulk-update failures */}
 <Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
   <DialogContent>

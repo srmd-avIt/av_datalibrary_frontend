@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 // --- Import the updated dialog ---
 import { ManageColumnsDialog, SaveConfig } from "./components/ManageColumnsDialog";
+import { GoogleSheetForm } from "./components/Googlesheetform";
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
@@ -170,6 +171,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+       { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
     ],
   },
   medialog_formal: {
@@ -270,6 +272,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+       { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
     ],
   },
   medialog_pending_gsheet: {
@@ -451,6 +454,7 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
+       
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
@@ -517,6 +521,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
     ],
   },
 
@@ -545,7 +550,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "TopicSource", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubDuration", label: "Duration", sortable: true, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-
+ 
       // Subtitle fields
       { key: "HasSubtitle", label: "Has Subtitle", sortable: true, editable: true },
       { key: "SubTitlesLanguage", label: "Subtitle Language", sortable: true, render: categoryTagRenderer, editable: true },
@@ -589,6 +594,7 @@ const VIEW_CONFIGS: Record<string, any> = {
 ,
      
      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+     { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
    
     ],
   },
@@ -662,7 +668,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
       { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
-
+ { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
       // DR filename and other ML identifiers
       {
   key: "ContentFromDetailCity",
@@ -735,6 +741,88 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "Teams", label: "Teams", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
+
+digitalrecordings_gsheet: {
+  title: "Digital Recordings (Google Sheet)",
+  apiEndpoint: "/google-sheet/digital-recordings", // Backend endpoint for Google Sheet integration
+  idKey: "RecordingCode", // Unique identifier for rows
+  detailsType: "digitalrecording",
+  disableRowClick: false,
+  showAddButton: true, // Enables the "Add" button
+  keyMap: {
+    "Event Code": "fkEventCode",
+    "Recording Name": "RecordingName",
+    "Recording Code": "RecordingCode",
+    "Duration": "Duration",
+    "Distribution Drive Link": "DistributionDriveLink",
+    "Bit Rate": "BitRate",
+    "Dimension": "Dimension",
+    "Master Quality": "Masterquality",
+    "Media Name": "fkMediaName",
+    "File Size": "Filesize",
+    "File Size (Bytes)": "FilesizeInBytes",
+    "Number of Files": "NoOfFiles",
+    "Recording Remarks": "RecordingRemarks",
+    "Counter Error": "CounterError",
+    "Reason Error": "ReasonError",
+    "Master Product Title": "MasterProductTitle",
+    "Distribution Label": "fkDistributionLabel",
+    "Production Bucket": "ProductionBucket",
+    "Digital Master Category": "fkDigitalMasterCategory",
+    "Audio Bitrate": "AudioBitrate",
+    "Audio Total Duration": "AudioTotalDuration",
+    "QC Remarks Checked On": "QcRemarksCheckedOn",
+    "Preservation Status": "PreservationStatus",
+    "QC Sevak": "QCSevak",
+    "QC Status": "QcStatus",
+    "Last Modified Timestamp": "LastModifiedTimestamp",
+    "Submitted Date": "SubmittedDate",
+    "Preservation Status Guideline Date": "PresStatGuidDt",
+    "Info on Cassette": "InfoOnCassette",
+    "Is Informal": "IsInformal",
+    "Associated DR": "AssociatedDR",
+    "Teams": "Teams",
+    "ML Unique ID": "MLUniqueID", // Added keyMap for MLUniqueID
+    "Audio WAV Code": "AudioWAVDRCode", // Added keyMap for AudioWAVDRCode
+  },
+  columns: [
+    { key: "fkEventCode", label: "Event Code", sortable: true, editable: true },
+    { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
+    { key: "RecordingCode", label: "Recording Code", sortable: true, editable: true },
+    { key: "Duration", label: "Duration", sortable: true, editable: true },
+    { key: "DistributionDriveLink", label: "Distribution Drive Link", sortable: true, editable: true },
+    { key: "BitRate", label: "Bit Rate", sortable: true, editable: true },
+    { key: "Dimension", label: "Dimension", sortable: true, editable: true, render: categoryTagRenderer },
+    { key: "Masterquality", label: "Master Quality", sortable: true, editable: true, render: categoryTagRenderer },
+    { key: "fkMediaName", label: "Media Name", sortable: true, editable: true },
+    { key: "Filesize", label: "File Size", sortable: true, editable: true },
+    { key: "FilesizeInBytes", label: "File Size (Bytes)", sortable: true, editable: true },
+    { key: "NoOfFiles", label: "Number of Files", sortable: true, editable: true },
+    { key: "RecordingRemarks", label: "Recording Remarks", sortable: true, editable: true },
+    { key: "CounterError", label: "Counter Error", sortable: true, editable: true },
+    { key: "ReasonError", label: "Reason Error", sortable: true, editable: true },
+    { key: "MasterProductTitle", label: "Master Product Title", sortable: true, editable: true },
+    { key: "fkDistributionLabel", label: "Distribution Label", sortable: true, editable: true },
+    { key: "ProductionBucket", label: "Production Bucket", sortable: true, editable: true, render: categoryTagRenderer },
+    { key: "fkDigitalMasterCategory", label: "Digital Master Category", sortable: true, editable: true, render: categoryTagRenderer },
+    { key: "AudioBitrate", label: "Audio Bitrate", sortable: true, editable: true },
+    { key: "AudioTotalDuration", label: "Audio Total Duration", sortable: true, editable: true },
+    { key: "QcRemarksCheckedOn", label: "QC Remarks Checked On", sortable: true, editable: true },
+    { key: "PreservationStatus", label: "Preservation Status", sortable: true, editable: true, render: categoryTagRenderer },
+    { key: "QCSevak", label: "QC Sevak", sortable: true, editable: true },
+    { key: "QcStatus", label: "QC Status", sortable: true, editable: true },
+    { key: "LastModifiedTimestamp", label: "Last Modified Timestamp", sortable: true, editable: false },
+    { key: "SubmittedDate", label: "Submitted Date", sortable: true, editable: true },
+    { key: "PresStatGuidDt", label: "Preservation Status Guideline Date", sortable: true, editable: true },
+    { key: "InfoOnCassette", label: "Info on Cassette", sortable: true, editable: true },
+    { key: "IsInformal", label: "Is Informal", sortable: true, editable: true },
+    { key: "AssociatedDR", label: "Associated DR", sortable: true, editable: true },
+    { key: "Teams", label: "Teams", sortable: true, editable: true, render: categoryTagRenderer },
+    { key: "MLUniqueID", label: "ML Unique ID", sortable: true, editable: true }, // Added column for MLUniqueID
+    { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true }, // Added column for AudioWAVDRCode
+  ],
+},
+
   aux: {
     title: "Aux File",
     apiEndpoint: "/auxfiles",
@@ -1408,6 +1496,14 @@ export default function App() {
           <SatsangDashboard />
         </div>
       );
+
+       case "digitalrecordings_gsheet":
+        return (
+           <GoogleSheetForm 
+             config={VIEW_CONFIGS.digitalrecordings_gsheet} 
+             userEmail={user?.email} 
+           />
+        );
   }
 
   const config = VIEW_CONFIGS[activeView];
@@ -1452,7 +1548,7 @@ export default function App() {
         columns={activeColumns}
         views={config.views}
         filterConfigs={[]}
-        showAddButton={!!config.isDropdown}
+        showAddButton={!!config.isDropdown || !!config.showAddButton}
         initialGroupBy={config.groupBy}
         initialSortBy={config.sortBy}
         initialSortDirection={config.sortDirection}

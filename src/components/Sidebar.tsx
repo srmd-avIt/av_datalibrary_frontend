@@ -55,6 +55,11 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
      { id: "non_event_production", label: "Non Event Production", icon: Database },
     { id: "eventtimeline", label: "Event Timeline", icon: Calendar },
     { id: "digitalrecordings", label: "Digital Recordings", icon: HardDrive},
+    { 
+    id: "digitalrecordings_gsheet", 
+    label: "Audio Merge Project", 
+    icon: HardDrive 
+  }, 
      {
       id: "medialog-parent",
       label: "Media Log",
