@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -167,7 +167,7 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
           .filter(opt =>
             !searchInput
               ? true
-              : opt.label.toLowerCase() === searchInput.toLowerCase()
+              : opt.label.toLowerCase().includes(searchInput.toLowerCase())
           )
           .map(opt => {
             const isSelected = value.includes(opt.value);
@@ -321,12 +321,17 @@ const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { type: string; data: any; title: string }) => void }) {
   const [searchFilters, setSearchFilters] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any> | undefined>(undefined);
+  const [showOverridePopup, setShowOverridePopup] = useState(false);
+  const [pendingEventCode, setPendingEventCode] = useState<string | null>(null);
 
   const [countryOptions, setCountryOptions] = useState<Option[]>([]);
   const [stateOptions, setStateOptions] = useState<Option[]>([]);
   const [cityOptions, setCityOptions] = useState<Option[]>([]);
   const [eventCategoryOptions, setEventCategoryOptions] = useState<Option[]>([]);
   const [numberOptions, setNumberOptions] = useState<Option[]>([]);
+
+  const [searchResult, setSearchResult] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     const fetchOptions = async (endpoint: string, dataKey: string, setter: React.Dispatch<React.SetStateAction<Option[]>>) => {
@@ -364,21 +369,47 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     setSearchFilters(prev => ({ ...prev, [field]: value }));
   };
 
- // ...existing code...
-// ...existing code...
-const handleSearch = () => {
-  const activeFilters = Object.entries(searchFilters).reduce((acc, [key, value]) => {
-    if (value && (Array.isArray(value) ? value.length > 0 : true)) {
-      acc[key] = value; // Pass raw array or string
-    }
-    return acc;
-  }, {} as Record<string, any>);
+  const handleSearch = () => {
+    const activeFilters = Object.entries(searchFilters).reduce((acc, [key, value]) => {
+      if (value && (Array.isArray(value) ? value.length > 0 : true)) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
 
-  setAppliedFilters(activeFilters);
-};
-// ...existing code...
-// ...existing code...
- 
+    // If both ContentFrom and ContentTo are present, send as a range filter
+    if (searchFilters.ContentFrom && searchFilters.ContentTo) {
+      activeFilters.ContentFrom = searchFilters.ContentFrom;
+      activeFilters.ContentTo = searchFilters.ContentTo;
+    }
+
+    setAppliedFilters(activeFilters);
+    setSearchResult([]);
+  };
+
+  useEffect(() => {
+    if (!appliedFilters) return;
+    setSearchLoading(true);
+
+    fetch(`${API_BASE_URL}${satsangCategoryConfig.apiEndpoint}?${new URLSearchParams(appliedFilters).toString()}`)
+      .then(res => res.json())
+      .then(data => {
+        setSearchResult(data.data || []);
+        setSearchLoading(false);
+
+        // If EventCode and other filters are present, but no result, show popup and prepare to search by EventCode only
+        if (
+          appliedFilters.EventCode &&
+          Object.keys(appliedFilters).length > 1 &&
+          (!data.data || data.data.length === 0)
+        ) {
+          setShowOverridePopup(true);
+          setPendingEventCode(appliedFilters.EventCode);
+        }
+      })
+      .catch(() => setSearchLoading(false));
+  }, [appliedFilters]);
+
   const handleClear = () => {
     setSearchFilters({});
     setAppliedFilters(undefined);
@@ -559,6 +590,54 @@ const handleSearch = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Popup for Event Code override */}
+      {showOverridePopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.4)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          onClick={() => setShowOverridePopup(false)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: "32px 24px",
+              borderRadius: "12px",
+              minWidth: 320,
+              boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+              textAlign: "center"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#1b1b1b" }}>
+              Event Code Overrides Other Filters
+            </h2>
+            <p style={{ color: "#444", marginBottom: 24 }}>
+              No results found for the combination of Event Code and other filters.<br />
+              Showing results for Event Code only.
+            </p>
+            <Button
+              onClick={() => {
+                setShowOverridePopup(false);
+                if (pendingEventCode) {
+                  setAppliedFilters({ EventCode: pendingEventCode });
+                  setPendingEventCode(null);
+                }
+              }}
+              style={{ padding: "8px 24px", borderRadius: "8px", background: "#161616ff", color: "#fff", fontWeight: 600 }}
+            >
+              OK
+            </Button>
+          </div>
+        </div>
+      )}
 
       {appliedFilters && (
         <div className="mt-6">
