@@ -329,6 +329,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
   const [cityOptions, setCityOptions] = useState<Option[]>([]);
   const [eventCategoryOptions, setEventCategoryOptions] = useState<Option[]>([]);
   const [numberOptions, setNumberOptions] = useState<Option[]>([]);
+  const [segmentCategoryOptions, setSegmentCategoryOptions] = useState<Option[]>([]);
 
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -363,6 +364,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
     fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions);
+     fetchOptions('/segment-category/options', 'Segment Category', setSegmentCategoryOptions); // <-- Add this line
   }, []);
 
   const handleInputChange = (field: string, value: string | string[]) => {
@@ -451,6 +453,19 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
                 style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
               />
             </div>
+
+            <div>
+  <Label htmlFor="SegmentCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
+    Segment Category
+  </Label>
+  <MultiSelectCombobox
+    options={segmentCategoryOptions}
+    value={searchFilters['Segment Category'] || []}
+    onChange={value => handleInputChange('Segment Category', value)}
+    placeholder="Select segment categories..."
+    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
+  />
+</div>
 
             <div>
               <Label htmlFor="fkCity" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
