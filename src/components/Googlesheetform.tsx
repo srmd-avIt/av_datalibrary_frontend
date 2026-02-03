@@ -1,4 +1,3 @@
-// src/components/GoogleSheetForm.tsx
 import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -10,20 +9,22 @@ import {
   AlertCircle, XCircle, ChevronDown, ChevronRight, CheckCircle2, ListFilter, Loader2,
   AtSign, CornerUpLeft, FileSearch, Lock,
   // Hub Icons
-  Layout, Wand2, Video, FileText, ArrowRight, ArrowLeft
+  Layout, Wand2, Video, FileText, ArrowRight, ArrowLeft,
+  // New Icons for Table View
+  TableProperties, LayoutList, Grip, GripVertical
 } from "lucide-react";
 
 // --- STATUS OPTIONS ---
 const STATUS_OPTIONS = [
   {
     id: "incomplete",
-    label: "Submitted",
+    label: "Submitted to MM",
     icon: AlertCircle,
     color: "#f87171"
   },
   {
     id: "revision",
-    label: "Revise",
+    label: "Needs Revision",
     icon: RotateCcw,
     color: "#60a5fa"
   },
@@ -46,6 +47,7 @@ const STATUS_OPTIONS = [
     color: "#34d399"
   }
 ];
+
 import { useAuth } from "../contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import * as mm from 'music-metadata-browser';
@@ -56,6 +58,42 @@ const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 const STORAGE_KEY = "mis_queue_data_v1";
 const PRESERVATION_STATUS_OPTIONS = ["Preserve",  "Pending"];
 const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res","Only Audio"];
+
+// --- TABLE COLUMN DEFINITIONS ---
+const TABLE_COLUMNS = [
+  { id: 'select', label: '', width: 40, frozen: true },
+  { id: 'actions', label: 'Actions', width: 70, frozen: true },
+  { id: 'status', label: 'Status', width: 160 },
+  { id: 'RecordingCode', label: 'Recording Code', width: 130 },
+  { id: 'fkEventCode', label: 'Event Code', width: 100 },
+  { id: 'EventName', label: 'Event Name', width: 250 },
+  { id: 'Yr', label: 'Year', width: 60 },
+  { id: 'NewEventCategory', label: 'Event Category', width: 140 },
+  { id: 'RecordingName', label: 'Recording Name', width: 250 },
+  { id: 'Duration', label: 'Duration', width: 80 },
+  { id: 'Filesize', label: 'File Size', width: 90 },
+  { id: 'FilesizeInBytes', label: 'Bytes', width: 100 },
+  { id: 'fkMediaName', label: 'Media Type', width: 100 },
+  { id: 'BitRate', label: 'Bitrate', width: 80 },
+  { id: 'NoOfFiles', label: 'No. Files', width: 80 },
+  { id: 'AudioBitrate', label: 'Audio Bitrate', width: 100 },
+  { id: 'Masterquality', label: 'Master Quality', width: 120 },
+  { id: 'PreservationStatus', label: 'Preservation', width: 120 },
+  { id: 'RecordingRemarks', label: 'DMS Remarks', width: 200 },
+  { id: 'MLUniqueID', label: 'ML Unique ID', width: 130 },
+  { id: 'AudioWAVCode', label: 'WAV Code', width: 130 },
+  { id: 'AudioMP3Code', label: 'MP3 Code', width: 130 },
+  { id: 'fkGranth', label: 'Granth', width: 120 },
+  { id: 'Number', label: 'Number', width: 80 },
+  { id: 'Topic', label: 'Topic', width: 200 },
+  { id: 'ContentFrom', label: 'Date From', width: 100 },
+  { id: 'SatsangStart', label: 'Satsang Start', width: 80 },
+  { id: 'SatsangEnd', label: 'Satsang End', width: 80 },
+  { id: 'fkCity', label: 'City', width: 120 },
+  { id: 'SubDuration', label: 'Sub Duration', width: 100 },
+  { id: 'Detail', label: 'Detail', width: 200 },
+  { id: 'Remarks', label: 'Remarks', width: 200 },
+];
 
 // --- HELPERS ---
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -96,6 +134,10 @@ const getMediaMetadata = async (file: File): Promise<any> => {
     });
 };
 
+// Format comments for Google Sheet Logchats column
+const formatLogchats = (comments: any[] = []) =>
+  comments.map(c => `[LOGS]: [${c.user}]: ${c.text}`).join('\n');
+
 function useWindowSize() {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   useEffect(() => {
@@ -133,7 +175,7 @@ const styles = {
   mainContainer: { display: "grid", gap: "20px", width: "100%", maxWidth: "1920px", margin: "0 auto", flex: 1, minHeight: 0, transition: "all 0.3s ease" },
   columnScroll: { height: "100%", overflowY: "auto" as "auto", paddingRight: "8px", paddingBottom: "100px" },
   unifiedCard: (isCompact: boolean) => ({ background: "rgba(30, 41, 59, 0.7)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: isCompact ? "16px" : "24px", width: "100%", boxShadow: "0 20px 40px -12px rgba(0, 0, 0, 0.5)", transition: "padding 0.3s ease" }),
-  queueCard: (isCompact: boolean) => ({ background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: isCompact ? "16px" : "20px", width: "100%", transition: "padding 0.3s ease" }),
+  queueCard: (isCompact: boolean) => ({ background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: isCompact ? "16px" : "20px", width: "100%", transition: "padding 0.3s ease", display: "flex", flexDirection: "column" as "column" }),
   commentCard: { background: "#0f172a", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column" as "column", height: "100%", overflow: "hidden", boxShadow: "-10px 0 30px rgba(0,0,0,0.3)" },
   queueItem: (isActive: boolean, isEditing: boolean) => ({ background: isEditing ? "rgba(245, 158, 11, 0.1)" : isActive ? "linear-gradient(90deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05))" : "rgba(30, 41, 59, 0.4)", borderLeft: isEditing ? "4px solid #f59e0b" : isActive ? "4px solid #3b82f6" : "4px solid transparent", border: "1px solid rgba(255,255,255,0.05)", borderLeftWidth: "4px", borderRadius: "8px", padding: "12px 14px", marginBottom: "8px", cursor: "pointer", transition: "all 0.2s ease" }),
   chatHeader: { padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.1)", background: "rgba(30, 41, 59, 0.5)" },
@@ -155,7 +197,7 @@ const styles = {
   addBtn: (isEditing: boolean, isViewing: boolean) => ({ background: isEditing ? `linear-gradient(to right, #f59e0b, #d97706)` : isViewing ? `rgba(255,255,255,0.1)` : `linear-gradient(to right, #6366f1, #a855f7)`, border: isViewing ? "1px solid rgba(255,255,255,0.2)" : "none", borderRadius: "8px", padding: "0 30px", height: "40px", fontSize: "0.9rem", fontWeight: "600", color: "white", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer", flex: 1, whiteSpace: "nowrap" as "nowrap" }),
   resetBtn: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", width: "44px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", cursor: "pointer", transition: "all 0.2s ease" },
   cancelBtn: { background: "transparent", border: `1px solid rgba(255,255,255,0.2)`, borderRadius: "8px", padding: "0 20px", height: "40px", color: "#cbd5e1", cursor: "pointer", fontWeight: "600", fontSize: "0.9rem", whiteSpace: "nowrap" as "nowrap" },
-  queueHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.07)" },
+  queueHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 15, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.07)" },
   statusBadge: (status: string) => {
     let bg, color, border;
     switch(status) {
@@ -168,6 +210,10 @@ const styles = {
     return { display: "flex", alignItems: "center", gap: 5, fontSize: "0.65rem", fontWeight: "700", textTransform: "uppercase" as "uppercase", background: bg, color: color, border: `1px solid ${border}`, padding: "2px 8px", borderRadius: "100px", cursor: "pointer", transition: "all 0.2s" };
   },
   groupTitle: (status: string, isActive: boolean) => ({ color: status === 'complete' ? '#34d399' : status === 'revision' ? '#60a5fa' : status === 'inwarding' ? '#f59e42' : status === 'submission_confirmed' ? '#24fbf0' : '#f87171', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' as 'uppercase', marginTop: 20, marginBottom: 10, padding: "8px 5px", display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isActive ? 1 : 0.7, transition: "opacity 0.2s" }),
+  // Table Specific Styles (Updated to support resizing)
+  tableHeader: { padding: '12px 6px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' as 'uppercase', color: '#94a3b8', background: 'rgba(30, 41, 59, 0.95)', position: 'sticky' as 'sticky', top: 0, zIndex: 10, whiteSpace: 'nowrap' as 'nowrap', borderBottom: '2px solid rgba(255,255,255,0.08)', userSelect: 'none' as 'none' },
+  tableCell: { padding: '8px 10px', fontSize: '0.8rem', color: '#e2e8f0', borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' as 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'ellipsis' },
+  tableRow: (isActive: boolean) => ({ background: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent', cursor: 'pointer', transition: 'background 0.2s' })
 };
 
 // --- COMPONENTS ---
@@ -221,15 +267,18 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const { width: windowWidth, height: windowHeight } = useWindowSize();
   const isCompact = windowWidth < 1440 || windowHeight < 800; 
   const fileInputRef = useRef<HTMLInputElement>(null);
- const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   // --- VIEW MODE STATE ---
   const [viewMode, setViewMode] = useState<'hub' | 'form'>('hub');
+  
+  // --- QUEUE VIEW MODE (List/Card vs Table) ---
+  const [isTableView, setIsTableView] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   
   // --- HEADER NAV STATE ---
   const [activeNav, setActiveNav] = useState("Dashboard");
 
   // --- PERMISSION CHECK: AUDIO MERGE PROJECT ---
-  // This variable determines if the user can interact with Audio Merge features
   const canViewAudioMerge = 
       loggedInUser?.role === "Admin" || 
       loggedInUser?.role === "Owner" || 
@@ -239,14 +288,29 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       );
 
   const hasEditAccess = (loggedInUser?.role === "Admin" || loggedInUser?.role === "Owner") || !!loggedInUser?.permissions?.some((p: any) => (p.resource === "Digital Recordings" || p.resource === "Audio Merge Project") && p.actions.includes("write"));
-  const hasViewOnlyAccess = !!loggedInUser?.permissions?.some((p: any) => (p.resource === "Digital Recordings" || p.resource === "Audio Merge Project") && p.actions.length === 1 && p.actions.includes("read"));
   const canApprove = hasEditAccess;
+
+  // --- ENTRY EDITING LOGIC ---
+  const canEditEntry = (item: any) => {
+    const status = item._status || 'incomplete';
+    return hasEditAccess && status === 'revision';
+  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isGrouped, setIsGrouped] = useState(false); 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['incomplete', 'revision', 'complete']));
+  const [groupByField, setGroupByField] = useState<string>('_status'); // Default group by Status in Table View
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 }); // Stores position for status dropdown in table view
+
+  // --- COLUMN RESIZING STATE ---
+  const [colWidths, setColWidths] = useState<{[key: string]: number}>(() => {
+    const initial: any = {};
+    TABLE_COLUMNS.forEach(col => initial[col.id] = col.width);
+    return initial;
+  });
+
   const [eventCodeOptions, setEventCodeOptions] = useState<{ EventCode: string, EventName: string, Yr?: string, NewEventCategory?: string }[]>([]);
   const [mlIdOptions, setMlIdOptions] = useState<any[]>([]);
   const [userList, setUserList] = useState<{name: string, email: string}[]>([]); 
@@ -268,16 +332,65 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(queue)); }, [queue]);
+  
   useEffect(() => { if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: "smooth" }); }, [activeEntry?.comments, activeCommentId]);
+
+  // Close status dropdown on scroll in table view and when switching views
+  useEffect(() => {
+    const handleScroll = () => {
+        if (openStatusDropdown) setOpenStatusDropdown(null);
+    };
+    const div = tableContainerRef.current;
+    if (div) div.addEventListener('scroll', handleScroll);
+    return () => { if (div) div.removeEventListener('scroll', handleScroll); };
+  }, [openStatusDropdown]);
+  
+  // Close open dropdowns when switching views to prevent overlap
+  useEffect(() => {
+    setOpenStatusDropdown(null);
+  }, [isTableView]);
+
+  // Initial Data Fetch
   useEffect(() => {
       const fetchData = async () => {
           try {
-              const ecRes = await fetch(`${cleanBaseUrl}/api/event-code/options`); if (ecRes.ok) setEventCodeOptions(await ecRes.json());
-              const mlRes = await fetch(`${cleanBaseUrl}/api/ml-unique-id/options`); if (mlRes.ok) setMlIdOptions(await mlRes.json());
-              const sheetId = "1GaCTwU_LUFF2B9NbBVzenwRjrW8sPvUJMkKzDUOdme0"; const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`; const res = await fetch(url); const text = await res.text(); const rows = text.split('\n').slice(1); const users = rows.map(row => { const cols = row.split(',').map(c => c.trim().replace(/^"|"$/g, '')); if (cols.length < 2) return null; return { name: cols[0], email: cols[1] }; }).filter(u => u && u.email && u.email.includes('@')); setUserList(users as {name: string, email: string}[]);
-          } catch (e) { console.error(e); }
-      }; fetchData();
+              // Fetch Dropdowns
+              const ecRes = await fetch(`${cleanBaseUrl}/api/event-code/options`); 
+              if (ecRes.ok) setEventCodeOptions(await ecRes.json());
+              
+              const mlRes = await fetch(`${cleanBaseUrl}/api/ml-unique-id/options`); 
+              if (mlRes.ok) setMlIdOptions(await mlRes.json());
+          } catch (e) { 
+              console.error(e); 
+          }
+      }; 
+      fetchData();
   }, []);
+
+  // --- COLUMN RESIZING LOGIC ---
+  const handleResizeStart = (e: React.MouseEvent, columnId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const startX = e.clientX;
+    const startWidth = colWidths[columnId] || 100;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+        const deltaX = moveEvent.clientX - startX;
+        setColWidths(prev => ({
+            ...prev,
+            [columnId]: Math.max(50, startWidth + deltaX) // Min width 50px
+        }));
+    };
+
+    const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   const handleFileScan = async (e: any) => {
     const files = Array.from(e.target.files || []) as File[];
@@ -293,7 +406,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
         const mediaFiles = files.filter(f => f.name !== ".DS_Store" && f.size > 0);
 
-        // Get file extensions
         mediaFiles.forEach(f => {
             const parts = f.name.split('.');
             if(parts.length > 1) {
@@ -325,16 +437,12 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             }
         });
 
-        // Use the first file's bitrate if available, else fallback to calculated
-       // ...inside handleFileScan...
-let bitrateKbps = filesMetadata.length > 0 ? filesMetadata[0].bitrate : null;
-if (!bitrateKbps) {
-    const totalBits = totalBytes * 8;
-    bitrateKbps = totalDuration > 0 ? (totalBits / totalDuration) / 1000 : 0;
-}
-// Truncate to integer kbps (e.g., 64.89 -> 64)
-const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
-
+        let bitrateKbps = filesMetadata.length > 0 ? filesMetadata[0].bitrate : null;
+        if (!bitrateKbps) {
+            const totalBits = totalBytes * 8;
+            bitrateKbps = totalDuration > 0 ? (totalBits / totalDuration) / 1000 : 0;
+        }
+        const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
         const dimensionStr = maxRes.w > 0 ? `${maxRes.w}x${maxRes.h}` : "";
 
         let quality = "";
@@ -352,10 +460,10 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
             Duration: formatDuration(totalDuration), 
             AudioTotalDuration: formatDuration(totalDuration), 
             BitRate: bitrateString,
-            AudioBitrate: bitrateString, // Set same value as BitRate
+            AudioBitrate: bitrateString, 
             Dimension: dimensionStr || prev.Dimension,
             Masterquality: quality || prev.Masterquality,
-            files: filesMetadata, // Add files property with metadata
+            files: filesMetadata, 
         }));
 
         toast.success("File(s) scanned and fields populated!", { id: toastId });
@@ -366,7 +474,7 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
     }
     
     if(fileInputRef.current) fileInputRef.current.value = "";
-};
+  };
 
   const handleChange = async (e: any) => {
     const { name, value } = e.target;
@@ -404,7 +512,22 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
   };
 
   const handleSelectEntry = (item: any) => { setFormData(item); setActiveCommentId(item._id); setEditingId(null); };
-  const handleEditClick = (item: any, e: any) => { e.stopPropagation(); setFormData(item); setActiveCommentId(item._id); setEditingId(item._id); };
+  
+  const handleEditClick = (item: any, e: any) => { 
+      e.stopPropagation(); 
+      if (!canEditEntry(item)) {
+          if (hasEditAccess) {
+              toast.error("Only entries marked 'Needs Revision' can be edited.");
+          } else {
+              toast.error("You do not have permission to edit.");
+          }
+          return;
+      }
+      setFormData(item); 
+      setActiveCommentId(item._id); 
+      setEditingId(item._id); 
+  };
+  
   const enableEditing = () => { if(activeCommentId) setEditingId(activeCommentId); };
   const handleStatusClick = (id: number, e: any) => { e.stopPropagation(); if (openStatusDropdown === id) setOpenStatusDropdown(null); else setOpenStatusDropdown(id); };
   const updateStatus = (id: number, newStatus: string, e: any) => { e.stopPropagation(); setQueue(prev => prev.map(item => item._id === id ? { ...item, _status: newStatus } : item)); setOpenStatusDropdown(null); };
@@ -450,6 +573,7 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
     return errors;
   }
 
+  // --- SAVE / UPDATE HANDLER ---
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors = validateForm(formData);
@@ -460,7 +584,7 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
       return;
     }
     
-    // Duplicate checks from original logic
+    // Validations
     if (!formData.RecordingCode || formData.RecordingCode.length !== 11) {
         toast.error("Recording Code (DR code) must be exactly 11 characters.");
         return;
@@ -469,38 +593,56 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
         toast.error("First 7 characters of DR code must match the Event Code.");
         return;
     }
-    if (formData.MLUniqueID && formData.fkEventCode && formData.MLUniqueID.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
-        toast.error("First 7 characters of ML Unique ID must match the Event Code.");
-        return;
-    }
-    if (formData.Duration && !isValidDurationFormat(formData.Duration)) {
-        toast.error("Duration must be in hh:mm:ss format.");
-        return;
-    }
-    if (formData.Duration && formData.SubDuration) {
-        const dur1 = parseDurationToSeconds(formData.Duration);
-        const dur2 = parseDurationToSeconds(formData.SubDuration);
-        if (Math.abs(dur1 - dur2) > 60) {
-        toast.warning("Difference between Duration and MLID's SubDuration is more than 60 seconds.");
-        }
-    }
     if (!formData.fkEventCode || !formData.RecordingCode) {
         toast.error("Event Code and Recording Code are required.");
         return;
     }
 
     if (editingId) {
+        // UPDATE EXISTING ENTRY
+        const existingItem = queue.find(item => item._id === editingId);
+        
+        const updatedItem = { 
+            ...formData, 
+            _id: editingId, 
+            comments: existingItem?.comments || [], 
+            _status: existingItem?._status || 'incomplete' 
+        };
+
         setQueue(prev => prev.map(item => {
             if (item._id === editingId) {
-                return { ...formData, _id: editingId, comments: item.comments, _status: item._status || 'incomplete' }; 
+                return updatedItem;
             }
             return item;
         }));
+
+        try {
+            const token = localStorage.getItem('app-token');
+            const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+                method: "PUT",
+                headers: { 
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    ...updatedItem,
+                    Logchats: formatLogchats(updatedItem.comments)
+                }),
+            });
+
+            if (!res.ok) throw new Error("Failed to sync update to Sheet");
+            toast.success("Entry Updated in Google Sheet");
+        } catch (error) {
+            console.error(error);
+            toast.error("Updated locally, but failed to sync with Google Sheet");
+        }
+
         setEditingId(null); 
         setFormData(initialFormState); 
         setActiveCommentId(null); 
-        toast.success("Entry Updated");
+        
     } else {
+        // CREATE NEW ENTRY
         const newItem = { ...formData, _id: Date.now(), comments: [], _status: 'incomplete' };
         try {
             const token = localStorage.getItem('app-token');
@@ -531,6 +673,37 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
   const handleCancelSelection = () => { setEditingId(null); setActiveCommentId(null); setFormData(initialFormState); };
   const handleCloseComments = () => { setActiveCommentId(null); };
 
+  // --- USER MENTION CLICK HANDLER ---
+  const handleMentionClick = async () => {
+    // 1. Toggle visibility
+    const isOpening = !showUserDropdown;
+    setShowUserDropdown(isOpening);
+
+    // 2. Fetch only if opening
+    if (isOpening) {
+        try {
+            const token = localStorage.getItem('app-token');
+            const res = await fetch(`${cleanBaseUrl}/api/users/mention-list`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                }
+            });
+
+            if (res.ok) {
+                const users = await res.json();
+                setUserList(users);
+            } else {
+                console.error("Failed to fetch users");
+                toast.error("Could not load user list");
+            }
+        } catch (error) {
+            console.error("API Error:", error);
+        }
+    }
+  };
+
   const handleSendComment = async () => {
     if (!commentInput.trim() || !activeCommentId) return;
 
@@ -556,7 +729,7 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
             }
 
             fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                method: "POST",
+                method: "POST", // Chat updates typically use POST logic in your backend to append/update chat column
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...item,
@@ -618,37 +791,34 @@ const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
                 Logchats: formatLogchats(comments || []) 
             };
            await fetch(`${cleanBaseUrl}/api/digitalrecording/approve`, {
-    method: "POST", 
-    headers: { 
-        "Content-Type": "application/json", 
-        "Authorization": token ? `Bearer ${token}` : '' 
-    },
-    body: JSON.stringify(finalPayload),
-}).then(async res => { 
-    if (!res.ok) {
-        let errMsg = "DB Transaction Failed";
-        try {
-            const err = await res.json();
-            // Show full backend error if available
-            errMsg = err.message || err.error || JSON.stringify(err);
-        } catch (e) {
-            errMsg = await res.text();
+                method: "POST", 
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "Authorization": token ? `Bearer ${token}` : '' 
+                },
+                body: JSON.stringify(finalPayload),
+            }).then(async res => { 
+                if (!res.ok) {
+                    let errMsg = "DB Transaction Failed";
+                    try {
+                        const err = await res.json();
+                        errMsg = err.message || err.error || JSON.stringify(err);
+                    } catch (e) {
+                        errMsg = await res.text();
+                    }
+                    throw new Error(errMsg);
+                }
+            });
+        } catch (error: any) {
+            console.error("Approval Error:", error);
+            failedIds.push(item._id);
+            toast.error(
+              <>
+                <b>Approval Error</b>
+                <div style={{whiteSpace: 'pre-wrap'}}>{error.message}</div>
+              </>
+            );
         }
-        throw new Error(errMsg);
-    }
-});
-        }// ...inside handleUploadSelected...
-catch (error: any) {
-    console.error("Approval Error:", error);
-    failedIds.push(item._id);
-    // Show popup with full backend error message
-    toast.error(
-      <>
-        <b>Approval Error</b>
-        <div style={{whiteSpace: 'pre-wrap'}}>{error.message}</div>
-      </>
-    );
-}
     }
     setQueue(prev => prev.filter(item => !selectedIndices.has(item._id) || failedIds.includes(item._id)));
     setSelectedIndices(new Set());
@@ -663,15 +833,46 @@ catch (error: any) {
   
   const isEditing = !!editingId;
   const isViewing = !!activeCommentId && !isEditing;
-  const getGridTemplate = () => { if (isCommentsOpen) { if (windowWidth < 1280) return "1.2fr 1fr 1fr"; if (windowWidth < 1500) return "3fr 1.5fr 2fr"; return "3.5fr 2fr 2fr"; } else { if (windowWidth < 1280) return "1.2fr 0.8fr 0fr"; return "4fr 2fr 0fr"; } };
+  const getGridTemplate = () => { 
+      // --- MODIFIED GRID TEMPLATE LOGIC ---
+      if (isTableView) {
+        // If Comments are open, split roughly 65% Table / 35% Comments. Otherwise Full Table.
+        return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
+      }
+      // List/Card View Logic
+      if (isCommentsOpen) { 
+          if (windowWidth < 1280) return "1.2fr 1fr 1fr"; 
+          if (windowWidth < 1500) return "3fr 1.5fr 2fr"; 
+          return "3.5fr 2fr 2fr"; 
+      } else { 
+          if (windowWidth < 1280) return "1.2fr 0.8fr 0fr"; 
+          return "4fr 2fr 0fr"; 
+      } 
+  };
+  
   const renderField = (label: string, name: string, theme: any, options: any = {}) => ( <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> <Label style={{...styles.label, color: focusedField === name && !options.disabled ? theme.to : styles.label.color }}> {label} {options.required && <span style={{ color: theme.from, fontSize: "1.2em", lineHeight: 0 }}>*</span>} </Label> <Input name={name} type={options.type || "text"} value={(formData as any)[name]} onChange={handleChange} onFocus={() => setFocusedField(name)} onBlur={() => setFocusedField(null)} disabled={options.disabled} style={{ ...styles.input(theme, options.disabled, isCompact), borderColor: formErrors[name] ? "#ef4444" : (focusedField === name && !options.disabled ? theme.to : "rgba(255,255,255,0.1)") }} autoComplete="off" /> {formErrors[name] && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 2 }}>{formErrors[name]}</div>} </div> );
-  const getGroupedQueue = () => { const groups: any = { incomplete: [], revision: [], inwarding: [], submission_confirmed: [], complete: [] }; queue.forEach(item => { const s = item._status || 'incomplete'; if(groups[s]) groups[s].push(item); }); return groups; };
-  const renderQueueItem = (item: any) => { /* ... existing render queue item ... */ 
+  
+  const getGroupedQueue = (data: any[], groupBy: string) => { 
+      const groups: any = {}; 
+      data.forEach(item => { 
+          let key = item[groupBy] || 'Uncategorized';
+          if (groupBy === '_status') key = item._status || 'incomplete';
+          if (!groups[key]) groups[key] = []; 
+          groups[key].push(item); 
+      }); 
+      return groups; 
+  };
+
+  const renderQueueItem = (item: any) => { 
     const isSelected = selectedIndices.has(item._id);
     const isActive = activeCommentId === item._id; 
     const isItemEditing = editingId === item._id;
     const currentStatus = item._status || 'incomplete';
     const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
+    
+    // Determine visual state for edit button
+    const isEditable = canEditEntry(item);
+
     return (
         <div key={item._id} style={styles.queueItem(isActive, isItemEditing)} onClick={() => handleSelectEntry(item)}>
             <div style={{display: "flex", alignItems: "flex-start", gap: "10px"}}>
@@ -686,20 +887,210 @@ catch (error: any) {
                        <div onClick={hasEditAccess ? (e) => handleStatusClick(item._id, e) : undefined} style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, whiteSpace: "nowrap" }} title={hasEditAccess ? "Change Status" : "View Only"}>
                         <statusConfig.icon size={12} strokeWidth={3} /> {!isCompact && (currentStatus === 'revision' ? 'Revise' : currentStatus)}
                        </div>
-                      {openStatusDropdown === item._id && hasEditAccess && (
-                        <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 5, background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 5, zIndex: 50, width: '140px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}>{STATUS_OPTIONS.map(opt => (<div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}><opt.icon size={14} color={opt.color} /> {opt.label}</div>))}</div>
+                      {openStatusDropdown === item._id && hasEditAccess && !isTableView && (
+                        <div className="hide-scrollbar" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 5, background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 5, zIndex: 50, width: '140px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}>{STATUS_OPTIONS.map(opt => (<div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}><opt.icon size={14} color={opt.color} /> {opt.label}</div>))}</div>
                       )}
                     </div>
-                    <button onClick={(e) => handleEditClick(item, e)} style={{ background: 'transparent', border: 'none', color: isItemEditing ? '#f59e0b' : '#64748b', cursor: hasEditAccess ? 'pointer' : 'not-allowed', padding: 5, opacity: hasEditAccess ? 1 : 0.5 }} title="Edit" disabled={!hasEditAccess}><Pencil size={16} /></button>
-                    <button onClick={(e) => handleDelete(item._id, e)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: hasEditAccess ? 'pointer' : 'not-allowed', padding: 5, opacity: hasEditAccess ? 1 : 0.5 }} title="Delete" disabled={!hasEditAccess}><Trash2 size={16} /></button>
+                    {/* EDIT BUTTON with Conditional Styling and Logic */}
+                    <button 
+                        onClick={(e) => {
+                            if (!isEditable) {
+                                e.stopPropagation();
+                                if(hasEditAccess) toast.error("Only entries marked 'Needs Revision' can be edited.");
+                                else toast.error("You do not have permission to edit.");
+                                return;
+                            }
+                            handleEditClick(item, e);
+                        }} 
+                        style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: isItemEditing ? '#f59e0b' : (isEditable ? '#64748b' : 'rgba(100, 116, 139, 0.3)'), 
+                            cursor: isEditable ? 'pointer' : 'not-allowed', 
+                            padding: 5 
+                        }} 
+                        title={isEditable ? "Edit" : "Editing locked (Status must be 'Needs Revision')"} 
+                    >
+                        <Pencil size={16} />
+                    </button>
+                    
+                    
                 </div>
             </div>
+        </div>
+    );
+  };
+  
+  // --- TABLE VIEW RENDERER ---
+  const renderTableView = () => {
+    // Group Data Logic
+    const groups = getGroupedQueue(queue, groupByField);
+    const groupKeys = Object.keys(groups);
+    
+    // Sort keys if grouping by status to match workflow order
+    if (groupByField === '_status') {
+         const order = ['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'];
+         groupKeys.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+    }
+
+    return (
+        <div 
+            ref={tableContainerRef}
+            style={{ height: "100%", width: "100%", overflow: "auto", position: 'relative' }} 
+            className="custom-scrollbar" // Changed from hide-scrollbar to custom-scrollbar
+        >
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; border: 2px solid #0f172a; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+                .custom-scrollbar::-webkit-scrollbar-corner { background: #0f172a; }
+            `}</style>
+            
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, tableLayout: 'fixed' }}>
+                <thead>
+                    <tr>
+                         {TABLE_COLUMNS.map((col) => (
+                             <th 
+                                key={col.id} 
+                                style={{
+                                    ...styles.tableHeader, 
+                                    width: colWidths[col.id], 
+                                    minWidth: colWidths[col.id],
+                                    maxWidth: colWidths[col.id],
+                                    position: 'sticky',
+                                    left: col.frozen ? (col.id === 'select' ? 0 : 40) : 'auto',
+                                    zIndex: col.frozen ? 20 : 10,
+                                    boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none'
+                                }}
+                            >
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                    {col.id === 'select' ? (
+                                        <div onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))} style={{cursor: 'pointer', display: 'flex', justifyContent: 'center', width: '100%'}}>
+                                            {selectedIndices.size === queue.length && queue.length > 0 ? <CheckSquare size={16} color="#10b981"/> : <Square size={16} color="#64748b"/>}
+                                        </div>
+                                    ) : (
+                                        <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>{col.label}</span>
+                                    )}
+                                    
+                                    {/* Column Resizer Grip */}
+                                    {col.id !== 'select' && (
+                                        <div 
+                                            onMouseDown={(e) => handleResizeStart(e, col.id)}
+                                            style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}
+                                            className="hover:opacity-100"
+                                        >
+                                            <GripVertical size={12} />
+                                        </div>
+                                    )}
+                                </div>
+                             </th>
+                         ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {groupKeys.map(groupKey => (
+                        <React.Fragment key={groupKey}>
+                            {/* Group Header Row if grouped */}
+                            {groupByField !== 'none' && (
+                                <tr>
+                                    <td colSpan={TABLE_COLUMNS.length} style={{ background: '#1e293b', padding: '10px 12px', fontSize: '0.75rem', fontWeight: 800, color: '#fff', borderTop: '1px solid rgba(255,255,255,0.1)', position: 'sticky', left: 0 }}>
+                                        {groupByField === '_status' ? STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey : groupKey} ({groups[groupKey].length})
+                                    </td>
+                                </tr>
+                            )}
+                            
+                            {/* Items in group */}
+                            {groups[groupKey].map((item: any) => {
+                                const isSelected = selectedIndices.has(item._id);
+                                const isActive = activeCommentId === item._id;
+                                const currentStatus = item._status || 'incomplete';
+                                const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
+
+                                return (
+                                    <tr key={item._id} onClick={() => handleSelectEntry(item)} style={styles.tableRow(isActive)}>
+                                        {TABLE_COLUMNS.map(col => {
+                                            const commonStyle = {
+                                                ...styles.tableCell,
+                                                width: colWidths[col.id],
+                                                minWidth: colWidths[col.id],
+                                                maxWidth: colWidths[col.id],
+                                                position: col.frozen ? 'sticky' : undefined,
+                                                left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined,
+                                                zIndex: col.frozen ? 5 : undefined,
+                                                background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, // Maintain background for sticky cols
+                                                boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none'
+                                            } as React.CSSProperties;
+
+                                            if (col.id === 'select') {
+                                                return (
+                                                    <td key={col.id} style={{...commonStyle, textAlign: 'center'}} onClick={(e) => toggleSelection(item._id, e)}>
+                                                        {isSelected ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="rgba(255,255,255,0.3)" />}
+                                                    </td>
+                                                );
+                                            }
+                                            if (col.id === 'actions') {
+                                                return (
+                                                    <td key={col.id} style={commonStyle}>
+                                                        <div style={{display: 'flex', gap: 6, justifyContent: 'center'}}>
+                                                            <button onClick={(e) => { e.stopPropagation(); handleSelectEntry(item); }} title="View Comments" style={{background: 'transparent', border: 'none', cursor: 'pointer', color: item.comments?.length > 0 ? '#3b82f6' : '#64748b'}}>
+                                                                <MessageSquare size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+                                            if (col.id === 'status') {
+                                                return (
+                                                    <td key={col.id} style={commonStyle}>
+                                                        <div 
+                                                            onClick={hasEditAccess ? (e) => {
+                                                                e.stopPropagation();
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                                                                setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id);
+                                                            } : undefined} 
+                                                            style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, width: 'fit-content' }}
+                                                        >
+                                                            <statusConfig.icon size={12} strokeWidth={3} /> {statusConfig.label}
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
+
+                                            // Default Text Cell
+                                            return (
+                                                <td key={col.id} style={{...commonStyle, fontWeight: col.id === 'RecordingCode' ? 600 : 400, color: col.id === 'RecordingCode' ? '#fff' : '#e2e8f0'}} title={item[col.id]}>
+                                                    {item[col.id]}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </React.Fragment>
+                    ))}
+                    {queue.length === 0 && (
+                        <tr>
+                            <td colSpan={TABLE_COLUMNS.length} style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}>
+                                <Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} />
+                                <p>Queue is Empty</p>
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
         </div>
     );
   };
 
   // --- PROJECTS HUB VIEW ---
   if (viewMode === 'hub') {
+    // CALCULATE PROGRESS FOR AUDIO MERGE
+    const totalItems = queue.length;
+    const completedItems = queue.filter(i => i._status === 'complete').length;
+    const audioMergeProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
     const allProjects = [
       { 
         id: 'audio_merge', 
@@ -708,10 +1099,10 @@ catch (error: any) {
         icon: Wand2, 
         color: colors.primary, 
         stats: { label: 'In Progress', value: queue.length }, 
-        progress: 65, 
+        progress: audioMergeProgress, // DYNAMIC PROGRESS
         tags: ['Audio', 'Ingest'], 
-        status: "IN_PROGRESS",
-        isVisible: canViewAudioMerge // <-- Visibility controlled by permission
+        
+        isVisible: canViewAudioMerge 
       },
       { 
         id: 'video_archival', 
@@ -723,7 +1114,7 @@ catch (error: any) {
         progress: 30, 
         tags: ['Video', 'Archive'], 
         status: "PENDING_APPROVAL",
-        isVisible: true // Assumed visible
+        isVisible: true 
       },
       { 
         id: 'ai_transcription', 
@@ -735,18 +1126,14 @@ catch (error: any) {
         progress: 88, 
         tags: ['AI', 'Text'], 
         status: "APPROVED",
-        isVisible: true // Assumed visible
+        isVisible: true 
       }
     ];
 
     const visibleProjects = allProjects.filter(p => p.isVisible);
 
-    // Conditionally include "Analytics" only if user has access
-    const tabs = ["Dashboard", "Workspaces", "Workflows", "Records"];
-    if (canViewAudioMerge) {
-        tabs.push("Analytics");
-    }
-
+    const tabs = [];
+   
     return (
       <div className="px-8 py-10 animate-in fade-in duration-1000" style={{...styles.wrapper, display: 'block', overflowY: 'auto'}}>
         <style>{`
@@ -757,39 +1144,12 @@ catch (error: any) {
 
         {/* --- PILL HEADER NAVIGATION --- */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px', width: '100%' }}>
-            {/* Nav Pill */}
             <div style={{ background: '#131b2e', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '9999px', padding: '4px', display: 'flex', gap: '4px' }}>
-                {tabs.map((tab) => (
-           <button
-  key={tab}
-  onClick={() => {
-    setActiveNav(tab);
-    if (tab === "Analytics") setShowAnalytics(true);
-    else setShowAnalytics(false);
-  }}
-  style={{
-    padding: '8px 24px',
-    borderRadius: '9999px',
-    fontSize: '0.85rem',
-    fontWeight: activeNav === tab ? 700 : 500,
-    color: activeNav === tab ? '#fff' : '#94a3b8',
-    background: activeNav === tab ? '#1e293b' : 'transparent',
-    cursor: 'pointer',
-    border: 'none',
-    transition: 'all 0.2s ease',
-    outline: 'none'
-  }}
->
-  {tab}
-</button>
-                ))}
+              
             </div>
 
-            {/* Right Side Tools */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <button style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#131b2e', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', cursor: 'pointer' }}>
-                    <MessageSquare size={18} />
-                </button>
+                
                 {loggedInUser?.picture ? (
                     <div style={{ padding: '2px', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: '50%' }}>
                         <Avatar className="w-9 h-9 border-2 border-background cursor-pointer">
@@ -805,8 +1165,29 @@ catch (error: any) {
             </div>
         </div>
 
-        {/* Top Banner Style Stat Grid - Only visible if user has Audio Merge Access */}
-        {canViewAudioMerge && (
+        {/* Project Hub Title */}
+        <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '-20px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                    width: '48px', height: '48px', borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.3)'
+                }}>
+                    <Layout size={24} color="white" />
+                </div>
+                <h1 style={{
+                    fontSize: '2.5rem', fontWeight: '800',
+                    background: 'linear-gradient(to right, #fff, #94a3b8)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                    margin: 0, letterSpacing: '-1px'
+                }}>
+                    Project Hub
+                </h1>
+            </div>
+        </div>
+
+        {/* {canViewAudioMerge && (
            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
              <StatWidget label="Total DRs" value={queue.length.toString()} trend={4} />
              <StatWidget
@@ -820,9 +1201,7 @@ catch (error: any) {
              />
              <StatWidget label="Project Health" value="97.5%" />
            </div>
-        )}
-
-      
+        )} */}
 
 {showAnalytics && canViewAudioMerge && (
   <div style={{
@@ -836,7 +1215,7 @@ catch (error: any) {
       <button
   onClick={() => {
     setShowAnalytics(false);
-    setActiveNav("Dashboard"); 
+     
   }}
   style={{
     position: "absolute", top: 16, right: 16, background: "transparent",
@@ -848,7 +1227,7 @@ catch (error: any) {
 </button>
      <h2 style={{ color: "#fff", marginBottom: 24, textAlign: "center" }}>Audio Merge Project Analytics</h2>
 <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 300 }}>
-  <StatusPieChart queue={queue} />
+  {/*<StatusPieChart queue={queue} /> */}
 </div>
     </div>
   </div>
@@ -864,7 +1243,6 @@ catch (error: any) {
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              {/* Top Badge */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <span style={{ 
                     padding: '0.35rem 0.85rem', 
@@ -873,20 +1251,18 @@ catch (error: any) {
                     fontWeight: 800, 
                     textTransform: 'uppercase', 
                     letterSpacing: '0.05em', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    backgroundColor: project.status === 'APPROVED' ? 'rgba(16, 185, 129, 0.15)' : project.status === 'PENDING_APPROVAL' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)', 
+                    
+                  
                     color: project.status === 'APPROVED' ? '#34d399' : project.status === 'PENDING_APPROVAL' ? '#fbbf24' : '#94a3b8' 
                 }}>
-                    {project.status.replace('_', ' ')}
+                    
                 </span>
                 <ArrowRight size={20} color="#64748b" />
               </div>
 
-              {/* Title & Desc */}
               <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem', lineHeight: 1.1 }}>{project.title}</h3>
               <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: 'auto', fontWeight: 500 }}>{project.description}</p>
               
-              {/* Bottom Progress */}
               <div style={{ marginTop: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' }}>
                     <span>Completion Status</span>
@@ -901,7 +1277,6 @@ catch (error: any) {
                 </div>
               </div>
 
-              {/* Footer Avatars */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
                  <div style={{ display: 'flex' }}>
                     {[1, 2].map(id => (
@@ -926,8 +1301,6 @@ catch (error: any) {
   }
 
   // --- FORM VIEW (INGEST TOOL) ---
-  
-  // Guard Clause: Prevent direct access via state manipulation or URL
   if (!canViewAudioMerge) {
       return (
           <div style={{ ...styles.wrapper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -946,14 +1319,13 @@ catch (error: any) {
       );
   }
 
+  const isCurrentEntryEditable = activeEntry ? canEditEntry(activeEntry) : false;
+
   return (
     <div style={styles.wrapper}>
-      {/* ... (Existing Form View Return code) ... */}
       <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
       
-      {/* HEADER WITH BACK BUTTON */}
       <div style={styles.header(isCompact)}>
-        {/* Back button logic */}
         <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' }}>
             <button onClick={() => setViewMode('hub')} style={{ background: 'transparent', border: `1px solid rgba(255,255,255,0.2)`, borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color='white'}} onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color='#94a3b8'}}>
                 <ArrowLeft size={20} />
@@ -970,118 +1342,197 @@ catch (error: any) {
 
       <div style={{ ...styles.mainContainer, gridTemplateColumns: getGridTemplate(), gap: isCompact ? "12px" : "20px" }}>
         
-        {/* COLUMN 1: FORM ENTRY */}
-        <div style={styles.columnScroll} className="hide-scrollbar">
-            <div style={styles.unifiedCard(isCompact)}>
-                
-                {isEditing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", borderRadius: 8, color: "#f59e0b", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Pencil size={14}/> Editing Mode - Changes will update the entry</div>}
-                {isViewing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(59, 130, 246, 0.1)", border: "1px solid #3b82f6", borderRadius: 8, color: "#3b82f6", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Eye size={14}/> View Mode - Read Only</div>}
+        {/* COLUMN 1: FORM ENTRY - Hidden in Table View for better space */}
+        {!isTableView && (
+            <div style={styles.columnScroll} className="hide-scrollbar">
+                <div style={styles.unifiedCard(isCompact)}>
+                    
+                    {isEditing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", borderRadius: 8, color: "#f59e0b", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Pencil size={14}/> Editing Mode - Changes will update the entry</div>}
+                    {isViewing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(59, 130, 246, 0.1)", border: "1px solid #3b82f6", borderRadius: 8, color: "#3b82f6", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Eye size={14}/> View Mode - Read Only</div>}
 
-                <div style={styles.sectionBlock}>
-                    <SectionTitle icon={Database} title="Core Identity" theme={colors.core} />
-                    <div style={styles.gridFields}>
-                   
-<SearchableSelect label="Event Code" name="fkEventCode" options={eventCodeOptions.map(opt => opt.EventCode)} value={formData.fkEventCode} onChange={handleChange} theme={colors.core} required={true} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-{renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
-{renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}
-{renderField("Event Category", "NewEventCategory", colors.core, {medium: true,required: true, disabled: !hasEditAccess || isViewing  })}
-{renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
-{renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
+                    <div style={styles.sectionBlock}>
+                        <SectionTitle icon={Database} title="Core Identity" theme={colors.core} />
+                        <div style={styles.gridFields}>
+                    
+    <SearchableSelect label="Event Code" name="fkEventCode" options={eventCodeOptions.map(opt => opt.EventCode)} value={formData.fkEventCode} onChange={handleChange} theme={colors.core} required={true} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+    {renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
+    {renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}
+    {renderField("Event Category", "NewEventCategory", colors.core, {medium: true,required: true, disabled: !hasEditAccess || isViewing  })}
+    {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
+    {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
 
+                        </div>
                     </div>
-                </div>
-                <div style={styles.sectionBlock}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <SectionTitle icon={FileAudio} title="Technical Specs" theme={colors.tech} />
-                        
-                        {/* SCAN BUTTON */}
-                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}>
-                            <FileSearch size={14} /> Scan File(s)
-                        </button>
-                    </div>
+                    <div style={styles.sectionBlock}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <SectionTitle icon={FileAudio} title="Technical Specs" theme={colors.tech} />
+                            
+                            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}>
+                                <FileSearch size={14} /> Scan File(s)
+                            </button>
+                        </div>
 
-                    <div style={styles.gridFields}>
-                       {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                       {renderField("File Size", "Filesize", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                       {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                       {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                       {renderField("Bit Rate", "BitRate", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                       {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
-                       {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        <div style={styles.gridFields}>
+                        {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        {renderField("File Size", "Filesize", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        {renderField("Bit Rate", "BitRate", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
+                        {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        </div>
                     </div>
-                </div>
-                <div style={styles.sectionBlock}>
-                    <SectionTitle icon={Layers} title="Classification" theme={colors.class} />
-                    <div style={styles.gridFields}>
-                       <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                    <div style={styles.sectionBlock}>
+                        <SectionTitle icon={Layers} title="Classification" theme={colors.class} />
+                        <div style={styles.gridFields}>
+                        <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                        </div>
                     </div>
-                </div>
-                <div style={{...styles.sectionBlock, marginBottom: 0}}>
-                    <SectionTitle icon={CheckCircle} title="QC Log" theme={colors.qc} />
-                    <div style={styles.gridFields}>
-                    <SearchableSelect label="PreservationStatus" name="PreservationStatus" options={PRESERVATION_STATUS_OPTIONS} value={formData.PreservationStatus} onChange={handleChange} theme={colors.qc} required disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                    {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
+                    <div style={{...styles.sectionBlock, marginBottom: 0}}>
+                        <SectionTitle icon={CheckCircle} title="QC Log" theme={colors.qc} />
+                        <div style={styles.gridFields}>
+                        <SearchableSelect label="PreservationStatus" name="PreservationStatus" options={PRESERVATION_STATUS_OPTIONS} value={formData.PreservationStatus} onChange={handleChange} theme={colors.qc} required disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                        {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
+                        </div>
                     </div>
-                </div>
-                 <div style={{...styles.sectionBlock, marginBottom: 0}}><br/>
-                    <SectionTitle icon={FileAudio} title="Unique Identifiers" theme={colors.tech} />
-                    <div style={styles.gridFields}>
-                        <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                          {renderField("Audio WAV Code", "AudioWAVDRCode", colors.core, { disabled: !hasEditAccess || isViewing })}
-                          {renderField("Audio MP3 Code", "AudioMP3DRCode", colors.core, { disabled: !hasEditAccess || isViewing })}
-                          {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
-                           {renderField("Patrank", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
-                            {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
-                             {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
-                              {renderField("SatsangStart", "SatsangStart", colors.core, { full: true,disabled: !hasEditAccess || isViewing })}
-                               {renderField("SatsangEnd", "SatsangEnd", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                {renderField("fkCity", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                 {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
-                        {renderField("Detail", "Detail", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                         {renderField("Remarks", "Remarks", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                    <div style={{...styles.sectionBlock, marginBottom: 0}}><br/>
+                        <SectionTitle icon={FileAudio} title="Unique Identifiers" theme={colors.tech} />
+                        <div style={styles.gridFields}>
+                            <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                            {renderField("Audio WAV Code", "AudioWAVDRCode", colors.core, { disabled: !hasEditAccess || isViewing })}
+                            {renderField("Audio MP3 Code", "AudioMP3DRCode", colors.core, { disabled: !hasEditAccess || isViewing })}
+                            {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
+                            {renderField("Patrank", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
+                                {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
+                                {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                {renderField("SatsangStart", "SatsangStart", colors.core, { full: true,disabled: !hasEditAccess || isViewing })}
+                                {renderField("SatsangEnd", "SatsangEnd", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                    {renderField("fkCity", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                    {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
+                            {renderField("Detail", "Detail", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                            {renderField("Remarks", "Remarks", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                        </div>
                     </div>
-                </div>
-                
-                <div style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
-                    {(isEditing || isViewing) && ( <button type="button" onClick={handleCancelSelection} style={styles.cancelBtn}> {isEditing ? "Cancel Edit" : "Close"} </button> )}
-                    {!isEditing && !isViewing && ( <button type="button" onClick={handleResetForm} title="Reset Form" style={styles.resetBtn} disabled={isResetting}> <RotateCcw size={16} className={isResetting ? "animate-spin" : ""} /> </button> )}
-                    {isViewing ? ( <button type="button" onClick={enableEditing} style={styles.addBtn(false, true)}> <Pencil size={18} style={{marginRight:6}}/> Edit This Entry </button> ) : ( <button type="button" onClick={handleSaveDraft} style={styles.addBtn(isEditing, false)} disabled={!hasEditAccess} title={!hasEditAccess ? "Only users with edit access can add or update" : ""}> {isEditing ? (<> <Save size={18} /> Update Entry </>) : (<> <Plus size={18} /> Add to Queue </>)} </button> )}
+                    
+                    <div style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
+                        {(isEditing || isViewing) && ( <button type="button" onClick={handleCancelSelection} style={styles.cancelBtn}> {isEditing ? "Cancel Edit" : "Close"} </button> )}
+                        {!isEditing && !isViewing && ( <button type="button" onClick={handleResetForm} title="Reset Form" style={styles.resetBtn} disabled={isResetting}> <RotateCcw size={16} className={isResetting ? "animate-spin" : ""} /> </button> )}
+                        {isViewing ? ( 
+                            <button 
+                                type="button" 
+                                onClick={enableEditing} 
+                                disabled={!isCurrentEntryEditable}
+                                title={!isCurrentEntryEditable ? "Only entries marked 'Needs Revision' can be edited." : ""}
+                                style={{ ...styles.addBtn(false, true), opacity: isCurrentEntryEditable ? 1 : 0.5, cursor: isCurrentEntryEditable ? 'pointer' : 'not-allowed' }}
+                            > 
+                                <Pencil size={18} style={{marginRight:6}}/> Edit This Entry 
+                            </button> 
+                        ) : ( 
+                            <button type="button" onClick={handleSaveDraft} style={styles.addBtn(isEditing, false)} disabled={!hasEditAccess} title={!hasEditAccess ? "Only users with edit access can add or update" : ""}> {isEditing ? (<> <Save size={18} /> Update Entry </>) : (<> <Plus size={18} /> Add to Queue </>)} </button> 
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+        )}
 
-        {/* COLUMN 2: PENDING QUEUE */}
-        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto" }} className="hide-scrollbar">
-            <div style={{ ...styles.queueCard(isCompact), height: "500px", overflowY: "auto", paddingRight: "8px" }} className="hide-scrollbar">
-                <div style={styles.queueHeader}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: 10}}><ListChecks size={20} color="#10b981" /><span>Queue ({queue.length})</span></div>
+        {/* COLUMN 2: PENDING QUEUE (Swaps between Card View and Table View) */}
+        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto" }} className="hide-scrollbar">
+            <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
+                
+                {/* Header with Tabs and Group By */}
+                <div style={{...styles.queueHeader, marginBottom: 10}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
+                        <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
+                            <button 
+                                onClick={() => setIsTableView(false)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                <LayoutList size={14} /> List
+                            </button>
+                            <button 
+                                onClick={() => setIsTableView(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                <TableProperties size={14} /> Table
+                            </button>
+                        </div>
+                        <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
+                    </div>
+
                     <div style={{display:'flex', alignItems: 'center', gap: 15}}>
-                        {queue.length > 0 && (<span onClick={() => setIsGrouped(!isGrouped)} style={{ fontSize: '0.75rem', color: isGrouped ? '#3b82f6' : '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: isGrouped ? 600 : 400 }}><ListFilter size={14} /> Group by Status</span>)}
-                        {queue.length > 0 && (<span style={{fontSize: '0.8rem', color: '#94a3b8', cursor: 'pointer'}} onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))}>Select All</span>)}
+                         {/* Group By Dropdown for Table View */}
+                         {isTableView && queue.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Group by:</span>
+                                <div style={{ position: 'relative' }}>
+                                   <select
+  value={groupByField}
+  onChange={(e) => setGroupByField(e.target.value)}
+  style={{
+    background: '#202d4b',           // navy blue
+    border: '2px solid #474f5c',
+    color: '#ffffff',
+    fontSize: '0.75rem',
+    padding: '6px 10px',  
+    borderRadius: 6,
+    outline: 'none',
+    cursor: 'pointer',
+    
+  }}
+>
+
+                                        <option value="none">None</option>
+                                        <option value="_status">Status</option>
+                                        <option value="fkEventCode">Event Code</option>
+                                        <option value="EventName">Event Name</option>
+                                        <option value="Yr">Year</option>
+                                        <option value="NewEventCategory">Event Category</option>
+                                        <option value="RecordingName">Recording Name</option>
+                                        <option value="fkMediaName">Media Type</option>
+                                        <option value="Masterquality">Quality</option>
+                                        <option value="MLUniqueID">MLUniqueID</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {queue.length > 0 && !isTableView && (<span onClick={() => setIsGrouped(!isGrouped)} style={{ fontSize: '0.75rem', color: isGrouped ? '#3b82f6' : '#667fa3', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: isGrouped ? 600 : 400 }}><ListFilter size={14} /> Group by Status</span>)}
+                        {queue.length > 0 && !isTableView && (<span style={{fontSize: '0.8rem', color: '#94a3b8', cursor: 'pointer'}} onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))}>Select All</span>)}
                     </div>
                 </div>
 
+                {/* Content Area */}
                 {queue.length === 0 ? (
                     <div style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}><Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} /><p>Empty</p></div>
                 ) : (
-                    isGrouped ? (
-                        <div>
-                            {(() => {
-                                const groups = getGroupedQueue();
-                                const renderGroup = (statusId: string, label: string) => {
-                                    if(groups[statusId].length === 0) return null;
-                                    const isExpanded = expandedGroups.has(statusId);
-                                    return (
-                                        <div key={statusId}>
-                                            <div onClick={() => toggleGroup(statusId)} style={styles.groupTitle(statusId, isExpanded)}>{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} {label} ({groups[statusId].length})</div>
-                                            {isExpanded && groups[statusId].map(renderQueueItem)}
-                                        </div>
-                                    )
-                                };
-                                return ( <>{renderGroup('incomplete', 'Submitted to MM')} {renderGroup('revision', 'Needs Revision')} {renderGroup('inwarding', 'Inwarding')} {renderGroup('submission_confirmed', 'Submission Confirmed')} {renderGroup('complete', 'Complete')}</> );
-                            })()}
+                    isTableView ? (
+                        // --- TABLE VIEW COMPONENT ---
+                        renderTableView()
+                    ) : (
+                        // --- CARD VIEW COMPONENT ---
+                        <div style={{ overflowY: 'auto', flex: 1 }} className="hide-scrollbar">
+                            {isGrouped ? (
+                                <div>
+                                    {(() => {
+                                        // Use the helper to group by status specifically for List view
+                                        const groups = getGroupedQueue(queue, '_status');
+                                        const renderGroup = (statusId: string, label: string) => {
+                                            const groupItems = groups[statusId];
+                                            if(!groupItems || groupItems.length === 0) return null;
+                                            const isExpanded = expandedGroups.has(statusId);
+                                            return (
+                                                <div key={statusId}>
+                                                    <div onClick={() => toggleGroup(statusId)} style={styles.groupTitle(statusId, isExpanded)}>{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} {label} ({groupItems.length})</div>
+                                                    {isExpanded && groupItems.map(renderQueueItem)}
+                                                </div>
+                                            )
+                                        };
+                                        return ( <>{renderGroup('incomplete', 'Submitted to MM')} {renderGroup('revision', 'Needs Revision')} {renderGroup('inwarding', 'Inwarding')} {renderGroup('submission_confirmed', 'Submission Confirmed')} {renderGroup('complete', 'Complete')}</> );
+                                    })()}
+                                </div>
+                            ) : ( queue.map(renderQueueItem) )}
                         </div>
-                    ) : ( queue.map(renderQueueItem) )
+                    )
                 )}
             </div>
         </div>
@@ -1095,7 +1546,10 @@ catch (error: any) {
                         <button onClick={handleCloseComments} style={{background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer'}}><X size={18} /></button>
                     </div>
                     <div style={{marginTop: 15, padding: 10, background: 'rgba(0,0,0,0.2)', borderRadius: 8, fontSize: '0.75rem', color: '#cbd5e1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8}}>
-                            <div><span style={{color:'#64748b'}}>DRCode:</span> {activeEntry.RecordingCode}</div> <div><span style={{color:'#64748b'}}>Dur:</span> {activeEntry.Duration}</div> <div><span style={{color:'#64748b'}}>NoOfFiles:</span> {activeEntry.NoOfFiles}</div> <div><span style={{color:'#64748b'}}>QC:</span> {activeEntry.QcStatus || "Pending"}</div>
+                            <div><span style={{color:'#64748b'}}>DRCode:</span> {activeEntry.RecordingCode}</div> 
+                            <div><span style={{color:'#64748b'}}>EventCategory:</span> {activeEntry.NewEventCategory}</div> 
+                            <div><span style={{color:'#64748b'}}>NoOfFiles:</span> {activeEntry.NoOfFiles}</div> 
+                            <div><span style={{color:'#64748b'}}>MLUniqueID:</span> {activeEntry.MLUniqueID || "Pending"}</div>
                     </div>
                 </div>
                 <div style={styles.chatBody} className="hide-scrollbar">
@@ -1117,11 +1571,52 @@ catch (error: any) {
                     <div ref={chatBottomRef} />
                 </div>
                 <div style={styles.chatFooter}>
-                    {showUserDropdown && ( <div style={{ position: "absolute", bottom: "100%", right: 150, marginBottom: 10, background: "#1e293b", border: "1px solid #3b82f6", borderRadius: 8, zIndex: 100, padding: "8px 0", boxShadow: "0 -4px 20px rgba(0,0,0,0.5)", minWidth: "160px", maxHeight: "200px", overflowY: "auto" }} className="hide-scrollbar"> <div style={{padding: "4px 12px", fontSize: "0.7rem", color: "#94a3b8", textTransform: "uppercase", position: 'sticky', top: 0, background: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>Select User</div> {userList.length > 0 ? ( userList.map((u, idx) => ( <div key={idx} style={{ padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "0.85rem", borderBottom: '1px solid rgba(255,255,255,0.05)' }} onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => { setCommentInput(commentInput + `@${u.name} `); setShowUserDropdown(false); }}> <div style={{fontWeight: 600}}>{u.name}</div> <div style={{fontSize: '0.7rem', color: '#94a3b8'}}>{u.email}</div> </div> )) ) : ( <div style={{padding: "8px 12px", color: "#94a3b8", fontSize: "0.8rem"}}>Loading...</div> )} </div> )}
+                    
+                    {/* RESPONSIVE USER DROPDOWN */}
+                    {showUserDropdown && ( 
+                        <div style={{ 
+                            position: "absolute", 
+                            bottom: "100%", // Pushes it upwards
+                            left: 10,       // Aligns left near the @ button
+                            marginBottom: 10, 
+                            background: "#1e293b", 
+                            border: "1px solid #3b82f6", 
+                            borderRadius: 12, 
+                            zIndex: 100, 
+                            padding: "8px 0", 
+                            boxShadow: "0 -4px 20px rgba(0,0,0,0.5)", 
+                            width: "280px", // WIDER FIXED WIDTH
+                            maxWidth: "90vw", // Responsive constraint
+                            maxHeight: "250px", 
+                            overflowY: "auto",
+                            display: "flex",
+                            flexDirection: "column"
+                        }} className="hide-scrollbar"> 
+                            <div style={{padding: "4px 12px", fontSize: "0.7rem", color: "#94a3b8", textTransform: "uppercase", fontWeight: 700, position: 'sticky', top: 0, background: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
+                                Select User
+                            </div> 
+                            {userList.length > 0 ? ( 
+                                userList.map((u, idx) => ( 
+                                    <div key={idx} 
+                                        style={{ padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "0.85rem", borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 2 }} 
+                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)"} 
+                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} 
+                                        onClick={() => { setCommentInput(commentInput + `@${u.name} `); setShowUserDropdown(false); }}
+                                    > 
+                                        <div style={{fontWeight: 600}}>{u.name}</div> 
+                                        <div style={{fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={u.email}>{u.email}</div> 
+                                    </div> 
+                                )) 
+                            ) : ( 
+                                <div style={{padding: "12px", color: "#94a3b8", fontSize: "0.8rem", textAlign: "center"}}>Loading users...</div> 
+                            )} 
+                        </div> 
+                    )}
+
                     <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
                          {(replyTo || editingCommentId) && ( <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: "4px 10px", marginBottom: 6, borderRadius: 6, background: editingCommentId ? "rgba(245, 158, 11, 0.15)" : "rgba(59, 130, 246, 0.15)", borderLeft: `3px solid ${editingCommentId ? "#f59e0b" : "#3b82f6"}`, fontSize: "0.75rem", color: "#fff" }}> <span> {editingCommentId ? ( <><b>Editing</b> your message...</> ) : ( <>Replying to: <b>{replyTo.user}</b></> )} </span> <button onClick={handleCancelChatAction} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#cbd5e1" }}> <X size={14} /> </button> </div> )}
                         <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
-                            <button type="button" style={{ background: "transparent", border: "none", color: "#3b82f6", cursor: "pointer" }} onClick={() => setShowUserDropdown(!showUserDropdown)} title="Mention user"><AtSign size={18} /></button>
+                            <button type="button" style={{ background: "transparent", border: "none", color: "#3b82f6", cursor: "pointer" }} onClick={handleMentionClick} title="Mention user"><AtSign size={18} /></button>
                             <input id="chat-input-field" style={{ ...styles.input(colors.core, false, isCompact), flex: 1, borderRadius: 20 }} placeholder={editingCommentId ? "Update your message..." : "Write a comment..."} value={commentInput} onChange={(e) => setCommentInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendComment()} autoComplete="off" />
                             <button onClick={handleSendComment} style={{ background: editingCommentId ? "#f59e0b" : "#3b82f6", border: 'none', borderRadius: '50%', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', transition: 'all 0.2s' }}> {editingCommentId ? <CheckCircle size={16} /> : <Send size={16} />} </button>
                         </div>
@@ -1131,16 +1626,37 @@ catch (error: any) {
         ) : ( <div style={{display: 'none'}}></div> )}
       </div>
 
-      {queue.length > 0 && (
-        <div style={styles.actionBar}>
-            <span style={{ color: "#fff", fontSize: "0.9rem", fontWeight: 600 }}>{selectedIndices.size} Selected</span>
-            <button type="button" onClick={handleUploadSelected} disabled={isSubmitting || selectedIndices.size === 0 || !canApprove} style={{ background: `linear-gradient(to right, #10b981, #059669)`, border: "none", borderRadius: "100px", padding: "0 30px", height: "44px", fontSize: "0.9rem", fontWeight: "600", color: "white", display: "flex", alignItems: "center", gap: "8px", cursor: selectedIndices.size === 0 || !canApprove ? 'not-allowed' : 'pointer', opacity: selectedIndices.size === 0 || !canApprove ? 0.5 : 1, boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)", }} title={!canApprove ? "Only users with edit access can approve" : ""}>
-                {isSubmitting ? ( <> <Activity className="animate-spin" size={18} /> Processing... </> ) : ( <> <UploadCloud size={18} /> Approve Selected </> )}
-            </button>
-        </div>
-      )}
-
-     
+      {/* Global Status Dropdown Renderer (Moved outside table to fix positioning issues) */}
+      {openStatusDropdown && isTableView && (() => {
+        const item = queue.find(q => q._id === openStatusDropdown);
+        if (!item) return null;
+        const currentStatus = item._status || 'incomplete';
+        return (
+            <div 
+                className="hide-scrollbar" 
+                style={{ 
+                    position: 'fixed', 
+                    top: dropdownPos.top, 
+                    left: dropdownPos.left, 
+                    background: '#1e293b', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: 8, 
+                    padding: 5, 
+                    zIndex: 9999, 
+                    width: '180px', 
+                    maxHeight: '300px', 
+                    overflowY: 'auto', 
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.8)' 
+                }}
+            >
+                {STATUS_OPTIONS.map(opt => (
+                    <div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}>
+                        <opt.icon size={14} color={opt.color} /> {opt.label}
+                    </div>
+                ))}
+            </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1166,100 +1682,3 @@ const StatWidget = ({ label, value, trend }: { label: string, value: string, tre
     </div>
   </div>
 );
-// Add this helper component in the same file
-const StatusPieChart = ({ queue }: { queue: any[] }) => {
-  const statusList = [
-    { id: "incomplete", label: "incomplete", color: "#f87171" },
-    { id: "revision", label: "revision", color: "#60a5fa" },
-    { id: "inwarding", label: "inwarding", color: "#f59e42" },
-    { id: "submission_confirmed", label: "submission_confirmed", color: "#24fbf0" },
-    { id: "complete", label: "complete", color: "#34d399" }
-  ];
-  const statusCounts = statusList.map(
-    s => ({
-      ...s,
-      count: queue.filter(item => (item._status || "incomplete") === s.id).length
-    })
-  );
-  const total = statusCounts.reduce((sum, s) => sum + s.count, 0);
-  let acc = 0;
-
-  if (total === 0) {
-    return (
-      <div style={{ color: "#94a3b8", textAlign: "center", marginTop: 40 }}>
-        No data to display.
-      </div>
-    );
-  }
-
-  // For text on slices
-  const pieSlices = statusCounts.map((s, i) => {
-    const start = acc;
-    const angle = (s.count / total) * 360;
-    acc += angle;
-    if (s.count === 0) return null;
-    const large = angle > 180 ? 1 : 0;
-    const r = 90, cx = 110, cy = 110;
-    const x1 = cx + r * Math.cos((Math.PI * (start - 90)) / 180);
-    const y1 = cy + r * Math.sin((Math.PI * (start - 90)) / 180);
-    const x2 = cx + r * Math.cos((Math.PI * (start + angle - 90)) / 180);
-    const y2 = cy + r * Math.sin((Math.PI * (start + angle - 90)) / 180);
-
-    // Find the angle bisector for label position
-    const midAngle = start + angle / 2;
-    const labelR = 60; // radius for label (smaller than pie)
-    const labelX = cx + labelR * Math.cos((Math.PI * (midAngle - 90)) / 180);
-    const labelY = cy + labelR * Math.sin((Math.PI * (midAngle - 90)) / 180);
-
-    return (
-      <g key={s.id}>
-        <path
-          d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z`}
-          fill={s.color}
-          stroke="#131b2e"
-          strokeWidth={2}
-        >
-          <title>{`${s.label}: ${s.count}`}</title>
-        </path>
-        <text
-          x={labelX}
-          y={labelY}
-          fill="#fff"
-          fontSize="1.1em"
-          fontWeight="bold"
-          textAnchor="middle"
-          alignmentBaseline="middle"
-          style={{ pointerEvents: "none", userSelect: "none" }}
-        >
-          {s.count}
-        </text>
-      </g>
-    );
-  });
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {/* Legend */}
-      <div style={{ marginRight: 32 }}>
-        {statusCounts.map((s) => (
-          <div key={s.id} style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
-            <div style={{
-              width: 16, height: 16, borderRadius: 4, background: s.color, marginRight: 10
-            }} />
-            <span style={{ color: "#fff", fontSize: 15, fontFamily: "inherit" }}>
-              {s.label} ({s.count})
-            </span>
-          </div>
-        ))}
-      </div>
-      {/* Pie Chart */}
-      <svg width={180} height={180} viewBox="0 0 220 220">
-        {pieSlices}
-      </svg>
-    </div>
-  );
-};
-
-// Helper to format comments for Logchats
-const formatLogchats = (comments: any[] = []) =>
-  comments.map(c => `[LOGS]: [${c.user}]: ${c.text}`).join('\n');

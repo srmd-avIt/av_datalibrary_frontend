@@ -347,7 +347,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
 
   {!collapsed && (
     <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-      Apps
+      Project Hub
     </span>
   )}
 </div>
