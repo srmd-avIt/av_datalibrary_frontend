@@ -62,7 +62,8 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   const isMobile = useMobile();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   
-  // Removed showAppsModal state
+  // Logic to determine if Project Hub is active
+  const isProjectHubActive = activeView === "digitalrecordings_gsheet";
 
   const allMenuItems = [
     { id: "dashboard", label: "Home", icon: Home },
@@ -280,7 +281,12 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
               )}
 
                {/* 3. Mobile Apps Button - Navigates to Hub now */}
-               <div className="flex flex-col items-center justify-center mt-4">
+               <div 
+                  className={`
+                    flex flex-col items-center justify-center mt-4 p-2 rounded-xl transition-all
+                    ${isProjectHubActive ? "bg-gradient-to-r from-blue-500/10 to-purple-600/10 border border-blue-500/30" : "border border-transparent"}
+                  `}
+               >
                   <button 
                     onClick={() => handleMenuClick("digitalrecordings_gsheet")}
                     className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 flex items-center justify-center text-white shadow-lg hover:shadow-pink-500/25 transition-all active:scale-95 border border-white/10"
@@ -288,7 +294,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
                   >
                       <LayoutGrid className="w-5 h-5" />
                   </button>
-                  <span className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">Apps</span>
+                  <span className={`text-[10px] font-semibold mt-1 uppercase tracking-wider ${isProjectHubActive ? "text-white" : "text-slate-400"}`}>Project Hub</span>
               </div>
             </div>
             
@@ -330,30 +336,57 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
             )}
 
             {/* 3. NEW Apps Button Area (Below User Profile) - Navigates to Hub now */}
-        <div className="flex items-center gap-2">
-  <button
-    onClick={() => handleMenuClick("digitalrecordings_gsheet")}
-    title="Launch Apps"
-    className={`
-      rounded-xl bg-gradient-to-br from-pink-500 to-violet-600
-      flex items-center justify-center text-white shadow-lg
-      hover:shadow-pink-500/30 transition-all duration-200
-      hover:scale-105 active:scale-95 border border-white/10
-      ${collapsed ? "w-8 h-8" : "w-10 h-10"}
-    `}
-  >
-    <LayoutGrid className={collapsed ? "w-4 h-4" : "w-5 h-5"} />
-  </button>
+            <div
+              onClick={() => handleMenuClick("digitalrecordings_gsheet")}
+              className={`
+                flex items-center transition-all duration-200 cursor-pointer group
+                ${collapsed ? "justify-center p-1" : "gap-3 p-2"}
+                rounded-xl
+              `}
+              style={{
+                ...(isProjectHubActive
+                  ? {
+                      background: "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))",
+                      border: "1px solid rgba(59,130,246,0.30)",
+                      boxShadow: "0 0 10px rgba(59,130,246,0.25)"
+                    }
+                  : {
+                      border: "1px solid transparent",
+                      background: "transparent"
+                    }
+                )
+              }}
+              onMouseEnter={(e) => {
+                if(!isProjectHubActive) {
+                    e.currentTarget.style.background = "rgba(59,130,246,0.10)";
+                    e.currentTarget.style.borderColor = "rgba(59,130,246,0.15)";
+                    // Text hover color logic handled via group-hover CSS
+                }
+              }}
+              onMouseLeave={(e) => {
+                if(!isProjectHubActive) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.borderColor = "transparent";
+                }
+              }}
+              title="Project Hub"
+            >
+              <div className={`
+                rounded-xl bg-gradient-to-br from-pink-500 to-violet-600
+                flex items-center justify-center text-white shadow-lg
+                transition-all duration-200
+                group-hover:scale-105 group-active:scale-95 border border-white/10
+                ${collapsed ? "w-8 h-8" : "w-10 h-10"}
+              `}>
+                <LayoutGrid className={collapsed ? "w-4 h-4" : "w-5 h-5"} />
+              </div>
 
-  {!collapsed && (
-    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-      Project Hub
-    </span>
-  )}
-</div>
-
-
-
+              {!collapsed && (
+                <span className={`text-sm font-medium transition-colors duration-200 ${isProjectHubActive ? "text-white" : "text-slate-400 group-hover:text-white"}`}>
+                  Project Hub
+                </span>
+              )}
+            </div>
 
           </div>
 

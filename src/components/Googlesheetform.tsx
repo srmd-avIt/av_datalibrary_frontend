@@ -112,6 +112,11 @@ const formatDuration = (seconds: number) => {
     return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
 };
 
+const getInitials = (name: string) => {
+    if (!name) return "U";
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+};
+
 const getMediaMetadata = async (file: File): Promise<any> => {
     try {
         const metadata = await mm.parseBlob(file);
@@ -160,7 +165,8 @@ const colors = {
 
 const styles = {
   wrapper: {
-    height: "100vh", width: "100%", minWidth: "1024px", backgroundColor: "#020617",
+    height: "100vh", width: "100%", minWidth: "320px", 
+    backgroundColor: "#020617",
     backgroundImage: `radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(244, 63, 94, 0.1) 0px, transparent 50%)`,
     padding: "20px", fontFamily: "'Inter', sans-serif", color: colors.text, overflow: "hidden", display: "flex", flexDirection: "column" as "column",
   },
@@ -169,7 +175,8 @@ const styles = {
     display: "flex", alignItems: "center", justifyContent: "center", position: "relative" as "relative", transition: "all 0.3s ease",
   }),
   title: (isCompact: boolean) => ({
-    fontSize: isCompact ? "1.5rem" : "2rem", fontWeight: "800", background: "linear-gradient(to right, #fff, #94a3b8)",
+    fontSize: isCompact ? "1.2rem" : "2rem", 
+    fontWeight: "800", background: "linear-gradient(to right, #fff, #94a3b8)",
     WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: "8px", letterSpacing: "-0.5px", transition: "all 0.3s ease",
   }),
   mainContainer: { display: "grid", gap: "20px", width: "100%", maxWidth: "1920px", margin: "0 auto", flex: 1, minHeight: 0, transition: "all 0.3s ease" },
@@ -265,7 +272,11 @@ const SearchableSelect = ({ label, name, options, value, onChange, theme, requir
 export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?: string }) {
   const { user: loggedInUser } = useAuth();
   const { width: windowWidth, height: windowHeight } = useWindowSize();
+  // Check responsive breakpoints
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1280;
   const isCompact = windowWidth < 1440 || windowHeight < 800; 
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   // --- VIEW MODE STATE ---
@@ -350,7 +361,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     setOpenStatusDropdown(null);
   }, [isTableView]);
 
-  // Initial Data Fetch
+  // Initial Data Fetch & Users
   useEffect(() => {
       const fetchData = async () => {
           try {
@@ -364,7 +375,24 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
               console.error(e); 
           }
       }; 
+      const fetchUsers = async () => {
+        try {
+            const token = localStorage.getItem('app-token');
+            const res = await fetch(`${cleanBaseUrl}/api/users/mention-list`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                }
+            });
+            if (res.ok) {
+                setUserList(await res.json());
+            }
+        } catch (e) {
+            console.error(e);
+        }
+      };
       fetchData();
+      fetchUsers();
   }, []);
 
   // --- COLUMN RESIZING LOGIC ---
@@ -878,8 +906,8 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             <div style={{display: "flex", alignItems: "flex-start", gap: "10px"}}>
                 <div onClick={(e) => toggleSelection(item._id, e)} style={{ paddingTop: 2, flexShrink: 0 }}>{isSelected ? <CheckSquare size={18} color="#10b981" /> : <Square size={18} color="rgba(255,255,255,0.3)" />}</div>
                 <div style={{flex: 1, minWidth: 0 }}>
-                    <div title={item.RecordingCode || "Untitled"} style={{ fontWeight: '600', color: isItemEditing ? '#f59e0b' : isActive ? '#3b82f6' : '#fff', fontSize: '0.9rem', marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.RecordingCode || "Untitled"}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fkEventCode}</div>
+                    <div title={item.fkEventCode || "Untitled"} style={{ fontWeight: '600', color: isItemEditing ? '#f59e0b' : isActive ? '#3b82f6' : '#fff', fontSize: '0.9rem', marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fkEventCode || "Untitled"}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.EventName}</div>
                     <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>{item.comments?.length > 0 && (<span style={{fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '1px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3}}><MessageSquare size={10} /> {item.comments.length}</span>)}</div>
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, marginTop: -2}}>
@@ -1135,7 +1163,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     const tabs = [];
    
     return (
-      <div className="px-8 py-10 animate-in fade-in duration-1000" style={{...styles.wrapper, display: 'block', overflowY: 'auto'}}>
+      <div className="px-8 py-10 animate-in fade-in duration-1000" style={{...styles.wrapper, display: 'block', overflowY: 'auto', padding: isMobile ? "20px 10px" : "20px 40px"}}>
         <style>{`
           .glass-card { background: #131b2e; border-radius: 20px; padding: 24px; position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); }
           .animate-in { animation: fadeIn 0.5s ease-out forwards; }
@@ -1177,7 +1205,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                     <Layout size={24} color="white" />
                 </div>
                 <h1 style={{
-                    fontSize: '2.5rem', fontWeight: '800',
+                    fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: '800',
                     background: 'linear-gradient(to right, #fff, #94a3b8)',
                     WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                     margin: 0, letterSpacing: '-1px'
@@ -1209,7 +1237,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center"
   }}>
     <div style={{
-      background: "#131b2e", borderRadius: 20, padding: 32, minWidth: 600, minHeight: 400,
+      background: "#131b2e", borderRadius: 20, padding: 32, minWidth: isMobile ? "95%" : 600, minHeight: 400,
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)", position: "relative"
     }}>
       <button
@@ -1233,7 +1261,11 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   </div>
 )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2rem' }}>
+        <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', // Auto-fit for responsive cards
+            gap: '2rem' 
+        }}>
           {visibleProjects.length > 0 ? (
             visibleProjects.map((project) => (
             <div 
@@ -1279,12 +1311,28 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
                  <div style={{ display: 'flex' }}>
-                    {[1, 2].map(id => (
-                        <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
-                            {id === 1 ? 'JD' : 'AS'}
-                        </div>
-                    ))}
-                    <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+3</div>
+                    {project.id === 'audio_merge' ? (
+                        <>
+                            {userList.slice(0, 3).map((u, i) => (
+                                <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
+                                    {getInitials(u.name)}
+                                </div>
+                            ))}
+                            {userList.length > 3 && (
+                                <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{userList.length - 3}</div>
+                            )}
+                        </>
+                    ) : (
+                        // Static Demo Users for other cards
+                        <>
+                            {[1, 2].map(id => (
+                                <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
+                                    {id === 1 ? 'JD' : 'AS'}
+                                </div>
+                            ))}
+                            <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+3</div>
+                        </>
+                    )}
                  </div>
                  <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>{project.stats.value} Items</span>
               </div>
@@ -1344,7 +1392,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         
         {/* COLUMN 1: FORM ENTRY - Hidden in Table View for better space */}
         {!isTableView && (
-            <div style={styles.columnScroll} className="hide-scrollbar">
+            <div style={{...styles.columnScroll, display: isMobile && isCommentsOpen ? 'none' : 'block' }} className="hide-scrollbar">
                 <div style={styles.unifiedCard(isCompact)}>
                     
                     {isEditing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", borderRadius: 8, color: "#f59e0b", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Pencil size={14}/> Editing Mode - Changes will update the entry</div>}
@@ -1436,11 +1484,11 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         )}
 
         {/* COLUMN 2: PENDING QUEUE (Swaps between Card View and Table View) */}
-        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto" }} className="hide-scrollbar">
+        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", display: isMobile && isCommentsOpen ? 'none' : 'block' }} className="hide-scrollbar">
             <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
                 
                 {/* Header with Tabs and Group By */}
-                <div style={{...styles.queueHeader, marginBottom: 10}}>
+                <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
                         <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
                             <button 
@@ -1459,7 +1507,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                         <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
                     </div>
 
-                    <div style={{display:'flex', alignItems: 'center', gap: 15}}>
+                    <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
                          {/* Group By Dropdown for Table View */}
                          {isTableView && queue.length > 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1539,7 +1587,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
         {/* COLUMN 3: COMMUNICATION / DETAILS */}
         {isCommentsOpen ? (
-            <div style={styles.commentCard}>
+            <div style={{...styles.commentCard, gridColumn: isMobile ? '1' : isTablet ? '2' : 'auto', zIndex: 50}}>
                 <div style={styles.chatHeader}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
                         <div><h4 style={{margin: 0, color: '#fff', fontSize: '0.95rem', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{activeEntry.EventName}</h4><span style={{fontSize: '0.75rem', color: '#3b82f6'}}>{activeEntry.fkEventCode}</span></div>
@@ -1625,6 +1673,15 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             </div>
         ) : ( <div style={{display: 'none'}}></div> )}
       </div>
+
+      {queue.length > 0 && (
+        <div style={styles.actionBar}>
+            <span style={{ color: "#fff", fontSize: "0.9rem", fontWeight: 600 }}>{selectedIndices.size} Selected</span>
+            <button type="button" onClick={handleUploadSelected} disabled={isSubmitting || selectedIndices.size === 0 || !canApprove} style={{ background: `linear-gradient(to right, #10b981, #059669)`, border: "none", borderRadius: "100px", padding: "0 30px", height: "44px", fontSize: "0.9rem", fontWeight: "600", color: "white", display: "flex", alignItems: "center", gap: "8px", cursor: selectedIndices.size === 0 || !canApprove ? 'not-allowed' : 'pointer', opacity: selectedIndices.size === 0 || !canApprove ? 0.5 : 1, boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)", }} title={!canApprove ? "Only users with edit access can approve" : ""}>
+                {isSubmitting ? ( <> <Activity className="animate-spin" size={18} /> Processing... </> ) : ( <> <UploadCloud size={18} /> Approve Selected </> )}
+            </button>
+        </div>
+      )}
 
       {/* Global Status Dropdown Renderer (Moved outside table to fix positioning issues) */}
       {openStatusDropdown && isTableView && (() => {
