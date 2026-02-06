@@ -58,6 +58,7 @@ const APP_RESOURCES = [
   "Event Timeline",
   "Digital Recordings",
   "Audio Merge Project",
+  "Wisdom Reels Archival",
   "ML formal & Informal",
   "ML Formal",
   "MLFormal (Pending Push to DB)",

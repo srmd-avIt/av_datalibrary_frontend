@@ -14,43 +14,12 @@ import {
   TableProperties, LayoutList, Grip, GripVertical
 } from "lucide-react";
 
-// --- STATUS OPTIONS ---
-const STATUS_OPTIONS = [
-  {
-    id: "incomplete",
-    label: "Submitted to MM",
-    icon: AlertCircle,
-    color: "#f87171"
-  },
-  {
-    id: "revision",
-    label: "Needs Revision",
-    icon: RotateCcw,
-    color: "#60a5fa"
-  },
-  {
-    id: "inwarding",
-    label: "Inwarding",
-    icon: Loader2,
-    color: "#f59e42"
-  },
-  {
-    id: "submission_confirmed",
-    label: "Submission Confirmed",
-    icon: CheckCircle2,
-    color: "#24fbf0"
-  },
-  {
-    id: "complete",
-    label: "Complete",
-    icon: CheckCircle,
-    color: "#34d399"
-  }
-];
-
 import { useAuth } from "../contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import * as mm from 'music-metadata-browser';
+
+// --- IMPORT THE NEW COMPONENT HERE ---
+import { VideoArchivalProject } from "./VideoArchivalProject"; 
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL;
 const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
@@ -59,7 +28,14 @@ const STORAGE_KEY = "mis_queue_data_v1";
 const PRESERVATION_STATUS_OPTIONS = ["Preserve",  "Pending"];
 const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res","Only Audio"];
 
-// --- TABLE COLUMN DEFINITIONS ---
+const STATUS_OPTIONS = [
+  { id: "incomplete", label: "Submitted to MM", icon: AlertCircle, color: "#f87171" },
+  { id: "revision", label: "Needs Revision", icon: RotateCcw, color: "#60a5fa" },
+  { id: "inwarding", label: "Inwarding", icon: Loader2, color: "#f59e42" },
+  { id: "submission_confirmed", label: "Submission Confirmed", icon: CheckCircle2, color: "#24fbf0" },
+  { id: "complete", label: "Complete", icon: CheckCircle, color: "#34d399" }
+];
+
 const TABLE_COLUMNS = [
   { id: 'select', label: '', width: 40, frozen: true },
   { id: 'actions', label: 'Actions', width: 70, frozen: true },
@@ -96,6 +72,7 @@ const TABLE_COLUMNS = [
 ];
 
 // --- HELPERS ---
+
 const formatBytes = (bytes: number, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
     const k = 1024;
@@ -139,9 +116,94 @@ const getMediaMetadata = async (file: File): Promise<any> => {
     });
 };
 
-// Format comments for Google Sheet Logchats column
 const formatLogchats = (comments: any[] = []) =>
   comments.map(c => `[LOGS]: [${c.user}]: ${c.text}`).join('\n');
+
+// NEW: Helper to parse Logchats string back to array for frontend
+const parseLogchats = (logString: string) => {
+    if (!logString) return [];
+    try {
+        return logString.split('\n').map((line, index) => {
+            const match = line.match(/\[LOGS\]: \[(.*?)\]: (.*)/);
+            if (match) {
+                return {
+                    id: Date.now() + index, 
+                    user: match[1],
+                    text: match[2],
+                    timestamp: "",
+                    isEdited: false
+                };
+            }
+            return null;
+        }).filter(Boolean);
+    } catch (e) {
+        return [];
+    }
+};
+
+// NEW: Helper to map API row to Queue Item
+// NEW: Helper to map API row to Queue Item
+const mapSheetRowToQueueItem = (row: any) => {
+    // Attempt to determine status based on string
+    let status = 'incomplete';
+    const qcStatus = (row['QC Status'] || row['QcStatus'] || '').toLowerCase();
+    
+    if(qcStatus.includes('complete')) status = 'complete';
+    else if(qcStatus.includes('revision')) status = 'revision';
+    else if(qcStatus.includes('inwarding')) status = 'inwarding';
+    else if(qcStatus.includes('confirmed')) status = 'submission_confirmed';
+
+    // HELPER: Tries to find value using multiple possible key names
+    const getVal = (keys: string[]) => {
+        for (const k of keys) {
+            if (row[k] !== undefined && row[k] !== null) return row[k];
+        }
+        return "";
+    };
+
+    // Robust ID generation
+    const recCode = getVal(['Recording Code', 'RecordingCode']);
+    const idFromCode = recCode ? parseInt(recCode.replace(/\D/g, '')) : NaN;
+    
+    return {
+        _id: idFromCode || Math.floor(Math.random() * 100000000),
+        _status: status,
+        
+        // Check for both "Event Code" (Sheet Header) and "fkEventCode" (DB Variable)
+        fkEventCode: getVal(['Event Code', 'fkEventCode']), 
+        
+        // Ensure Event Name falls back correctly
+        EventName: getVal(['Event Name', 'EventName', 'Recording Name', 'RecordingName']), 
+        
+        Yr: getVal(['Year', 'Yr']), 
+        NewEventCategory: getVal(['Digital Master Category', 'NewEventCategory', 'fkDigitalMasterCategory']),
+        
+        RecordingName: getVal(['Recording Name', 'RecordingName']),
+        RecordingCode: getVal(['Recording Code', 'RecordingCode']),
+        
+        Duration: getVal(['Duration']),
+        Filesize: getVal(['File Size', 'Filesize']),
+        FilesizeInBytes: getVal(['File Size (Bytes)', 'FilesizeInBytes']),
+        fkMediaName: getVal(['Media Name', 'fkMediaName']),
+        BitRate: getVal(['Bit Rate', 'BitRate']),
+        NoOfFiles: getVal(['Number of Files', 'NoOfFiles']) || "1",
+        AudioBitrate: getVal(['Audio Bitrate', 'AudioBitrate']),
+        Masterquality: getVal(['Master Quality', 'Masterquality']),
+        PreservationStatus: getVal(['Preservation Status', 'PreservationStatus']) || "Pending",
+        RecordingRemarks: getVal(['Recording Remarks', 'RecordingRemarks']),
+        MLUniqueID: getVal(['ML Unique ID', 'MLUniqueID']),
+        AudioWAVDRCode: getVal(['Audio WAV DR Code', 'AudioWAVDRCode']),
+        AudioMP3DRCode: getVal(['Audio MP3 DR Code', 'AudioMP3DRCode']),
+        
+        // Chat History
+        comments: parseLogchats(getVal(['Logchats'])),
+        
+        // Other meta
+        Detail: getVal(['Detail']),
+        Remarks: getVal(['Remarks']),
+        LastModifiedBy: getVal(['Last Modified By', 'LastModifiedBy'])
+    };
+};
 
 function useWindowSize() {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -153,7 +215,6 @@ function useWindowSize() {
   return windowSize;
 }
 
-// --- STYLES ---
 const colors = {
     core: { from: "#f43f5e", to: "#ec4899", shadow: "rgba(244, 63, 94, 0.2)" },
     tech: { from: "#06b6d4", to: "#3b82f6", shadow: "rgba(6, 182, 212, 0.2)" },
@@ -217,14 +278,12 @@ const styles = {
     return { display: "flex", alignItems: "center", gap: 5, fontSize: "0.65rem", fontWeight: "700", textTransform: "uppercase" as "uppercase", background: bg, color: color, border: `1px solid ${border}`, padding: "2px 8px", borderRadius: "100px", cursor: "pointer", transition: "all 0.2s" };
   },
   groupTitle: (status: string, isActive: boolean) => ({ color: status === 'complete' ? '#34d399' : status === 'revision' ? '#60a5fa' : status === 'inwarding' ? '#f59e42' : status === 'submission_confirmed' ? '#24fbf0' : '#f87171', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' as 'uppercase', marginTop: 20, marginBottom: 10, padding: "8px 5px", display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isActive ? 1 : 0.7, transition: "opacity 0.2s" }),
-  // Table Specific Styles (Updated to support resizing)
   tableHeader: { padding: '12px 6px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' as 'uppercase', color: '#94a3b8', background: 'rgba(30, 41, 59, 0.95)', position: 'sticky' as 'sticky', top: 0, zIndex: 10, whiteSpace: 'nowrap' as 'nowrap', borderBottom: '2px solid rgba(255,255,255,0.08)', userSelect: 'none' as 'none' },
   tableCell: { padding: '8px 10px', fontSize: '0.8rem', color: '#e2e8f0', borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' as 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'ellipsis' },
   tableRow: (isActive: boolean) => ({ background: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent', cursor: 'pointer', transition: 'background 0.2s' })
 };
 
-// --- COMPONENTS ---
-
+// --- GENERIC COMPONENTS ---
 const SectionTitle = ({ icon: Icon, title, theme }: any) => (
     <div style={styles.sectionHeader(theme)}>
         <div style={styles.iconBox(theme)}><Icon size={16} /></div>
@@ -269,27 +328,24 @@ const SearchableSelect = ({ label, name, options, value, onChange, theme, requir
     );
 };
 
+// ============================================================================
+// --- MAIN COMPONENT ---
+// ============================================================================
+
 export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?: string }) {
   const { user: loggedInUser } = useAuth();
   const { width: windowWidth, height: windowHeight } = useWindowSize();
-  // Check responsive breakpoints
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth >= 768 && windowWidth < 1280;
   const isCompact = windowWidth < 1440 || windowHeight < 800; 
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  // --- VIEW MODE STATE ---
-  const [viewMode, setViewMode] = useState<'hub' | 'form'>('hub');
+  const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival'>('hub');
   
-  // --- QUEUE VIEW MODE (List/Card vs Table) ---
   const [isTableView, setIsTableView] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
-  // --- HEADER NAV STATE ---
-  const [activeNav, setActiveNav] = useState("Dashboard");
-
-  // --- PERMISSION CHECK: AUDIO MERGE PROJECT ---
   const canViewAudioMerge = 
       loggedInUser?.role === "Admin" || 
       loggedInUser?.role === "Owner" || 
@@ -298,10 +354,17 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         (p.actions.includes("read") || p.actions.includes("write"))
       );
 
+       const canViewWisdomReels = 
+      loggedInUser?.role === "Admin" || 
+      loggedInUser?.role === "Owner" || 
+      !!loggedInUser?.permissions?.some((p: any) => 
+        p.resource === "Wisdom Reels Archival" && 
+        (p.actions.includes("read") || p.actions.includes("write"))
+      );
+
   const hasEditAccess = (loggedInUser?.role === "Admin" || loggedInUser?.role === "Owner") || !!loggedInUser?.permissions?.some((p: any) => (p.resource === "Digital Recordings" || p.resource === "Audio Merge Project") && p.actions.includes("write"));
   const canApprove = hasEditAccess;
 
-  // --- ENTRY EDITING LOGIC ---
   const canEditEntry = (item: any) => {
     const status = item._status || 'incomplete';
     return hasEditAccess && status === 'revision';
@@ -312,10 +375,9 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const [isResetting, setIsResetting] = useState(false);
   const [isGrouped, setIsGrouped] = useState(false); 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['incomplete', 'revision', 'complete']));
-  const [groupByField, setGroupByField] = useState<string>('_status'); // Default group by Status in Table View
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 }); // Stores position for status dropdown in table view
+  const [groupByField, setGroupByField] = useState<string>('_status');
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 }); 
 
-  // --- COLUMN RESIZING STATE ---
   const [colWidths, setColWidths] = useState<{[key: string]: number}>(() => {
     const initial: any = {};
     TABLE_COLUMNS.forEach(col => initial[col.id] = col.width);
@@ -346,7 +408,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   
   useEffect(() => { if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: "smooth" }); }, [activeEntry?.comments, activeCommentId]);
 
-  // Close status dropdown on scroll in table view and when switching views
   useEffect(() => {
     const handleScroll = () => {
         if (openStatusDropdown) setOpenStatusDropdown(null);
@@ -356,7 +417,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     return () => { if (div) div.removeEventListener('scroll', handleScroll); };
   }, [openStatusDropdown]);
   
-  // Close open dropdowns when switching views to prevent overlap
   useEffect(() => {
     setOpenStatusDropdown(null);
   }, [isTableView]);
@@ -394,6 +454,44 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       fetchData();
       fetchUsers();
   }, []);
+
+  // --- SYNC QUEUE WITH GOOGLE SHEET (THE FIX) ---
+  useEffect(() => {
+    const fetchSheetData = async () => {
+      try {
+        const token = localStorage.getItem('app-token');
+        // Fetch data using the limit
+        const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings?limit=500`, { 
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            }
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          if (result.data && Array.isArray(result.data)) {
+            // 1. Map Sheet Data to Frontend Queue Format
+            const freshQueue = result.data.map(mapSheetRowToQueueItem);
+            
+            // 2. Update state - This REPLACES the current queue, so deleted sheet items disappear
+            setQueue(freshQueue);
+            
+            // 3. Update localStorage
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(freshQueue));
+            
+            console.log("Queue synced with Google Sheet");
+          }
+        }
+      } catch (error) {
+        console.error("Error syncing with Google Sheet:", error);
+      }
+    };
+
+    if(canViewAudioMerge) {
+        fetchSheetData();
+    }
+  }, [canViewAudioMerge]);
 
   // --- COLUMN RESIZING LOGIC ---
   const handleResizeStart = (e: React.MouseEvent, columnId: string) => {
@@ -699,15 +797,16 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
   const handleResetForm = () => { setIsResetting(true); setFormData(initialFormState); setTimeout(() => setIsResetting(false), 700); };
   const handleCancelSelection = () => { setEditingId(null); setActiveCommentId(null); setFormData(initialFormState); };
-  const handleCloseComments = () => { setActiveCommentId(null); };
+const handleCloseComments = () => { 
+      setActiveCommentId(null); 
+      setEditingId(null); // Exit edit mode if active
+      setFormData(initialFormState); // Reset form to blank/initial state
+  };
 
-  // --- USER MENTION CLICK HANDLER ---
   const handleMentionClick = async () => {
-    // 1. Toggle visibility
     const isOpening = !showUserDropdown;
     setShowUserDropdown(isOpening);
 
-    // 2. Fetch only if opening
     if (isOpening) {
         try {
             const token = localStorage.getItem('app-token');
@@ -732,9 +831,14 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     }
   };
 
-  const handleSendComment = async () => {
+ // Inside Googlesheetform.tsx
+
+const handleSendComment = async () => {
     if (!commentInput.trim() || !activeCommentId) return;
 
+    // 1. Optimistic UI Update (Update local state immediately)
+    const token = localStorage.getItem('app-token'); // <--- GET TOKEN
+    
     setQueue(prev => prev.map(item => {
         if (item._id === activeCommentId) {
             let updatedComments;
@@ -756,24 +860,32 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                 updatedComments = [...(item.comments || []), newComment];
             }
 
+            // 2. SEND TO BACKEND with Auth Token
             fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                method: "POST", // Chat updates typically use POST logic in your backend to append/update chat column
-                headers: { "Content-Type": "application/json" },
+                method: "POST", 
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}` // <--- CRITICAL FIX
+                },
                 body: JSON.stringify({
                     ...item,
-                    Logchats: formatLogchats(updatedComments)
+                    Logchats: formatLogchats(updatedComments) // Converts array to string for Sheet
                 }),
+            }).catch(err => {
+                toast.error("Failed to sync chat to Sheet");
+                console.error(err);
             });
 
             return { ...item, comments: updatedComments };
         }
         return item;
     }));
+    
     setCommentInput("");
     setReplyTo(null);
     setEditingCommentId(null);
     setShowUserDropdown(false);
-  };
+};
 
   const handleEditCommentAction = (comment: any) => { setCommentInput(comment.text); setEditingCommentId(comment.id); setReplyTo(null); const inputEl = document.getElementById("chat-input-field"); if(inputEl) inputEl.focus(); };
   
@@ -862,12 +974,9 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const isEditing = !!editingId;
   const isViewing = !!activeCommentId && !isEditing;
   const getGridTemplate = () => { 
-      // --- MODIFIED GRID TEMPLATE LOGIC ---
       if (isTableView) {
-        // If Comments are open, split roughly 65% Table / 35% Comments. Otherwise Full Table.
         return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
       }
-      // List/Card View Logic
       if (isCommentsOpen) { 
           if (windowWidth < 1280) return "1.2fr 1fr 1fr"; 
           if (windowWidth < 1500) return "3fr 1.5fr 2fr"; 
@@ -898,7 +1007,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     const currentStatus = item._status || 'incomplete';
     const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
     
-    // Determine visual state for edit button
     const isEditable = canEditEntry(item);
 
     return (
@@ -919,7 +1027,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                         <div className="hide-scrollbar" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 5, background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 5, zIndex: 50, width: '140px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}>{STATUS_OPTIONS.map(opt => (<div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}><opt.icon size={14} color={opt.color} /> {opt.label}</div>))}</div>
                       )}
                     </div>
-                    {/* EDIT BUTTON with Conditional Styling and Logic */}
                     <button 
                         onClick={(e) => {
                             if (!isEditable) {
@@ -941,21 +1048,17 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                     >
                         <Pencil size={16} />
                     </button>
-                    
-                    
                 </div>
             </div>
         </div>
     );
   };
   
-  // --- TABLE VIEW RENDERER ---
   const renderTableView = () => {
-    // Group Data Logic
     const groups = getGroupedQueue(queue, groupByField);
     const groupKeys = Object.keys(groups);
     
-    // Sort keys if grouping by status to match workflow order
+    // Sort logic for status, otherwise default sort
     if (groupByField === '_status') {
          const order = ['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'];
          groupKeys.sort((a,b) => order.indexOf(a) - order.indexOf(b));
@@ -965,7 +1068,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         <div 
             ref={tableContainerRef}
             style={{ height: "100%", width: "100%", overflow: "auto", position: 'relative' }} 
-            className="custom-scrollbar" // Changed from hide-scrollbar to custom-scrollbar
+            className="custom-scrollbar"
         >
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -1001,7 +1104,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                                         <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>{col.label}</span>
                                     )}
                                     
-                                    {/* Column Resizer Grip */}
                                     {col.id !== 'select' && (
                                         <div 
                                             onMouseDown={(e) => handleResizeStart(e, col.id)}
@@ -1017,19 +1119,48 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                     </tr>
                 </thead>
                 <tbody>
-                    {groupKeys.map(groupKey => (
+                    {groupKeys.map(groupKey => {
+                        // Check if this specific group key is currently expanded in the Set
+                        const isExpanded = expandedGroups.has(groupKey);
+
+                        return (
                         <React.Fragment key={groupKey}>
-                            {/* Group Header Row if grouped */}
                             {groupByField !== 'none' && (
-                                <tr>
-                                    <td colSpan={TABLE_COLUMNS.length} style={{ background: '#1e293b', padding: '10px 12px', fontSize: '0.75rem', fontWeight: 800, color: '#fff', borderTop: '1px solid rgba(255,255,255,0.1)', position: 'sticky', left: 0 }}>
-                                        {groupByField === '_status' ? STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey : groupKey} ({groups[groupKey].length})
+                                <tr 
+                                    onClick={() => toggleGroup(groupKey)}
+                                    style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                    <td 
+                                        colSpan={TABLE_COLUMNS.length} 
+                                        style={{ 
+                                            background: '#1e293b', 
+                                            padding: '10px 12px', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 800, 
+                                            color: '#fff', 
+                                            borderTop: '1px solid rgba(255,255,255,0.1)', 
+                                            position: 'sticky', 
+                                            left: 0,
+                                            zIndex: 15 
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            {/* THE ICON TOGGLE */}
+                                            {isExpanded ? <ChevronDown size={16} color="#3b82f6" /> : <ChevronRight size={16} color="#94a3b8" />}
+                                            
+                                            <span>
+                                                {groupByField === '_status' ? STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey : groupKey} 
+                                                <span style={{opacity: 0.5, marginLeft: 6, fontWeight: 400}}>({groups[groupKey].length})</span>
+                                            </span>
+                                        </div>
                                     </td>
                                 </tr>
                             )}
                             
-                            {/* Items in group */}
-                            {groups[groupKey].map((item: any) => {
+                            {/* LOGIC: Show rows if NO grouping is active OR if the group is Expanded */}
+                            {(groupByField === 'none' || isExpanded) && groups[groupKey].map((item: any) => {
                                 const isSelected = selectedIndices.has(item._id);
                                 const isActive = activeCommentId === item._id;
                                 const currentStatus = item._status || 'incomplete';
@@ -1046,7 +1177,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                                                 position: col.frozen ? 'sticky' : undefined,
                                                 left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined,
                                                 zIndex: col.frozen ? 5 : undefined,
-                                                background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, // Maintain background for sticky cols
+                                                background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, 
                                                 boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none'
                                             } as React.CSSProperties;
 
@@ -1086,7 +1217,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                                                 );
                                             }
 
-                                            // Default Text Cell
                                             return (
                                                 <td key={col.id} style={{...commonStyle, fontWeight: col.id === 'RecordingCode' ? 600 : 400, color: col.id === 'RecordingCode' ? '#fff' : '#e2e8f0'}} title={item[col.id]}>
                                                     {item[col.id]}
@@ -1097,7 +1227,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                                 );
                             })}
                         </React.Fragment>
-                    ))}
+                    )})}
                     {queue.length === 0 && (
                         <tr>
                             <td colSpan={TABLE_COLUMNS.length} style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}>
@@ -1112,9 +1242,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     );
   };
 
-  // --- PROJECTS HUB VIEW ---
   if (viewMode === 'hub') {
-    // CALCULATE PROGRESS FOR AUDIO MERGE
     const totalItems = queue.length;
     const completedItems = queue.filter(i => i._status === 'complete').length;
     const audioMergeProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
@@ -1127,22 +1255,24 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         icon: Wand2, 
         color: colors.primary, 
         stats: { label: 'In Progress', value: queue.length }, 
-        progress: audioMergeProgress, // DYNAMIC PROGRESS
+        progress: audioMergeProgress,
         tags: ['Audio', 'Ingest'], 
         
         isVisible: canViewAudioMerge 
       },
       { 
         id: 'video_archival', 
-        title: 'Video Archival', 
-        description: 'Master archival process for raw video footage, proxy generation, and tagging.', 
+        title: 'Wisdom Reels Archival', 
+        description: 'Track satsangs used for reels and manage editing workflow.', 
         icon: Video, 
         color: colors.secondary, 
         stats: { label: 'Pending Approval', value: 5 }, 
         progress: 30, 
         tags: ['Video', 'Archive'], 
         status: "PENDING_APPROVAL",
-        isVisible: true 
+        
+        // --- CHANGE THIS LINE ---
+        isVisible: canViewWisdomReels 
       },
       { 
         id: 'ai_transcription', 
@@ -1160,8 +1290,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
     const visibleProjects = allProjects.filter(p => p.isVisible);
 
-    const tabs = [];
-   
     return (
       <div className="px-8 py-10 animate-in fade-in duration-1000" style={{...styles.wrapper, display: 'block', overflowY: 'auto', padding: isMobile ? "20px 10px" : "20px 40px"}}>
         <style>{`
@@ -1170,14 +1298,10 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
           @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
 
-        {/* --- PILL HEADER NAVIGATION --- */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px', width: '100%' }}>
-            <div style={{ background: '#131b2e', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '9999px', padding: '4px', display: 'flex', gap: '4px' }}>
-              
-            </div>
+            <div style={{ background: '#131b2e', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '9999px', padding: '4px', display: 'flex', gap: '4px' }}></div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                
                 {loggedInUser?.picture ? (
                     <div style={{ padding: '2px', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: '50%' }}>
                         <Avatar className="w-9 h-9 border-2 border-background cursor-pointer">
@@ -1193,7 +1317,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             </div>
         </div>
 
-        {/* Project Hub Title */}
         <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '-20px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
@@ -1215,22 +1338,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             </div>
         </div>
 
-        {/* {canViewAudioMerge && (
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-             <StatWidget label="Total DRs" value={queue.length.toString()} trend={4} />
-             <StatWidget
-                label="Active Tasks"
-                value={queue.filter(item => (item._status || 'incomplete') === 'incomplete').length.toString()}
-                trend={-2}
-             />
-             <StatWidget
-                label="Avg. Waiting"
-                value={queue.filter(item => (item._status || 'incomplete') === 'revision').length.toString()}
-             />
-             <StatWidget label="Project Health" value="97.5%" />
-           </div>
-        )} */}
-
 {showAnalytics && canViewAudioMerge && (
   <div style={{
     position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
@@ -1241,10 +1348,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)", position: "relative"
     }}>
       <button
-  onClick={() => {
-    setShowAnalytics(false);
-     
-  }}
+  onClick={() => { setShowAnalytics(false); }}
   style={{
     position: "absolute", top: 16, right: 16, background: "transparent",
     border: "none", color: "#fff", fontSize: 22, cursor: "pointer"
@@ -1255,7 +1359,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 </button>
      <h2 style={{ color: "#fff", marginBottom: 24, textAlign: "center" }}>Audio Merge Project Analytics</h2>
 <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 300 }}>
-  {/*<StatusPieChart queue={queue} /> */}
 </div>
     </div>
   </div>
@@ -1263,14 +1366,14 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
         <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', // Auto-fit for responsive cards
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
             gap: '2rem' 
         }}>
           {visibleProjects.length > 0 ? (
             visibleProjects.map((project) => (
             <div 
               key={project.id}
-              onClick={() => { if(project.id === 'audio_merge') setViewMode('form'); else toast.info("Project coming soon"); }}
+              onClick={() => { if(project.id === 'audio_merge') setViewMode('form'); else if(project.id === 'video_archival') setViewMode('video_archival'); else toast.info("Project coming soon"); }}
               style={{ background: '#131b2e', borderRadius: '24px', padding: '32px', border: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', cursor: 'pointer', minHeight: '320px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s' }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -1283,11 +1386,8 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                     fontWeight: 800, 
                     textTransform: 'uppercase', 
                     letterSpacing: '0.05em', 
-                    
-                  
                     color: project.status === 'APPROVED' ? '#34d399' : project.status === 'PENDING_APPROVAL' ? '#fbbf24' : '#94a3b8' 
                 }}>
-                    
                 </span>
                 <ArrowRight size={20} color="#64748b" />
               </div>
@@ -1323,7 +1423,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                             )}
                         </>
                     ) : (
-                        // Static Demo Users for other cards
                         <>
                             {[1, 2].map(id => (
                                 <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
@@ -1348,7 +1447,14 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     );
   }
 
-  // --- FORM VIEW (INGEST TOOL) ---
+  if (viewMode === 'video_archival') {
+    return (
+      <div style={styles.wrapper}>
+        <VideoArchivalProject onBack={() => setViewMode('hub')} userEmail={userEmail} />
+      </div>
+    );
+  }
+
   if (!canViewAudioMerge) {
       return (
           <div style={{ ...styles.wrapper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1390,7 +1496,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
       <div style={{ ...styles.mainContainer, gridTemplateColumns: getGridTemplate(), gap: isCompact ? "12px" : "20px" }}>
         
-        {/* COLUMN 1: FORM ENTRY - Hidden in Table View for better space */}
         {!isTableView && (
             <div style={{...styles.columnScroll, display: isMobile && isCommentsOpen ? 'none' : 'block' }} className="hide-scrollbar">
                 <div style={styles.unifiedCard(isCompact)}>
@@ -1483,11 +1588,10 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             </div>
         )}
 
-        {/* COLUMN 2: PENDING QUEUE (Swaps between Card View and Table View) */}
+        {/* COLUMN 2: PENDING QUEUE */}
         <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", display: isMobile && isCommentsOpen ? 'none' : 'block' }} className="hide-scrollbar">
             <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
                 
-                {/* Header with Tabs and Group By */}
                 <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
                         <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
@@ -1508,7 +1612,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                     </div>
 
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
-                         {/* Group By Dropdown for Table View */}
                          {isTableView && queue.length > 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Group by:</span>
@@ -1517,7 +1620,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   value={groupByField}
   onChange={(e) => setGroupByField(e.target.value)}
   style={{
-    background: '#202d4b',           // navy blue
+    background: '#202d4b',           
     border: '2px solid #474f5c',
     color: '#ffffff',
     fontSize: '0.75rem',
@@ -1549,20 +1652,16 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                     </div>
                 </div>
 
-                {/* Content Area */}
                 {queue.length === 0 ? (
                     <div style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}><Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} /><p>Empty</p></div>
                 ) : (
                     isTableView ? (
-                        // --- TABLE VIEW COMPONENT ---
                         renderTableView()
                     ) : (
-                        // --- CARD VIEW COMPONENT ---
                         <div style={{ overflowY: 'auto', flex: 1 }} className="hide-scrollbar">
                             {isGrouped ? (
                                 <div>
                                     {(() => {
-                                        // Use the helper to group by status specifically for List view
                                         const groups = getGroupedQueue(queue, '_status');
                                         const renderGroup = (statusId: string, label: string) => {
                                             const groupItems = groups[statusId];
@@ -1620,12 +1719,11 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                 </div>
                 <div style={styles.chatFooter}>
                     
-                    {/* RESPONSIVE USER DROPDOWN */}
                     {showUserDropdown && ( 
                         <div style={{ 
                             position: "absolute", 
-                            bottom: "100%", // Pushes it upwards
-                            left: 10,       // Aligns left near the @ button
+                            bottom: "100%", 
+                            left: 10,
                             marginBottom: 10, 
                             background: "#1e293b", 
                             border: "1px solid #3b82f6", 
@@ -1633,8 +1731,8 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                             zIndex: 100, 
                             padding: "8px 0", 
                             boxShadow: "0 -4px 20px rgba(0,0,0,0.5)", 
-                            width: "280px", // WIDER FIXED WIDTH
-                            maxWidth: "90vw", // Responsive constraint
+                            width: "280px",
+                            maxWidth: "90vw",
                             maxHeight: "250px", 
                             overflowY: "auto",
                             display: "flex",
@@ -1683,7 +1781,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         </div>
       )}
 
-      {/* Global Status Dropdown Renderer (Moved outside table to fix positioning issues) */}
       {openStatusDropdown && isTableView && (() => {
         const item = queue.find(q => q._id === openStatusDropdown);
         if (!item) return null;
@@ -1717,25 +1814,3 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     </div>
   );
 }
-
-// Helper Widget for Hub View
-const StatWidget = ({ label, value, trend }: { label: string, value: string, trend?: number }) => (
-  <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', overflow: 'hidden' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-      <h4 style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b' }}>{label}</h4>
-      {trend !== undefined && (
-        <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.125rem 0.5rem', borderRadius: '9999px', backgroundColor: trend > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(244, 63, 94, 0.1)', color: trend > 0 ? '#34d399' : '#fb7185' }}>
-          {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
-        </span>
-      )}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-      <span style={{ fontSize: '1.875rem', fontWeight: 700, color: 'white' }}>{value}</span>
-      <div style={{ width: '4rem', height: '2rem', overflow: 'hidden', opacity: 0.3 }}>
-        <svg viewBox="0 0 100 40" style={{ width: '100%', height: '100%' }}>
-           <path d="M0,40 Q25,10 50,30 T100,20" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#f59e0b' }} />
-        </svg>
-      </div>
-    </div>
-  </div>
-);
