@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -119,7 +120,6 @@ const getMediaMetadata = async (file: File): Promise<any> => {
 const formatLogchats = (comments: any[] = []) =>
   comments.map(c => `[LOGS]: [${c.user}]: ${c.text}`).join('\n');
 
-// NEW: Helper to parse Logchats string back to array for frontend
 const parseLogchats = (logString: string) => {
     if (!logString) return [];
     try {
@@ -141,10 +141,7 @@ const parseLogchats = (logString: string) => {
     }
 };
 
-// NEW: Helper to map API row to Queue Item
-// NEW: Helper to map API row to Queue Item
 const mapSheetRowToQueueItem = (row: any) => {
-    // Attempt to determine status based on string
     let status = 'incomplete';
     const qcStatus = (row['QC Status'] || row['QcStatus'] || '').toLowerCase();
     
@@ -153,7 +150,6 @@ const mapSheetRowToQueueItem = (row: any) => {
     else if(qcStatus.includes('inwarding')) status = 'inwarding';
     else if(qcStatus.includes('confirmed')) status = 'submission_confirmed';
 
-    // HELPER: Tries to find value using multiple possible key names
     const getVal = (keys: string[]) => {
         for (const k of keys) {
             if (row[k] !== undefined && row[k] !== null) return row[k];
@@ -161,26 +157,18 @@ const mapSheetRowToQueueItem = (row: any) => {
         return "";
     };
 
-    // Robust ID generation
     const recCode = getVal(['Recording Code', 'RecordingCode']);
     const idFromCode = recCode ? parseInt(recCode.replace(/\D/g, '')) : NaN;
     
     return {
         _id: idFromCode || Math.floor(Math.random() * 100000000),
         _status: status,
-        
-        // Check for both "Event Code" (Sheet Header) and "fkEventCode" (DB Variable)
         fkEventCode: getVal(['Event Code', 'fkEventCode']), 
-        
-        // Ensure Event Name falls back correctly
         EventName: getVal(['Event Name', 'EventName', 'Recording Name', 'RecordingName']), 
-        
         Yr: getVal(['Year', 'Yr']), 
         NewEventCategory: getVal(['Digital Master Category', 'NewEventCategory', 'fkDigitalMasterCategory']),
-        
         RecordingName: getVal(['Recording Name', 'RecordingName']),
         RecordingCode: getVal(['Recording Code', 'RecordingCode']),
-        
         Duration: getVal(['Duration']),
         Filesize: getVal(['File Size', 'Filesize']),
         FilesizeInBytes: getVal(['File Size (Bytes)', 'FilesizeInBytes']),
@@ -194,11 +182,7 @@ const mapSheetRowToQueueItem = (row: any) => {
         MLUniqueID: getVal(['ML Unique ID', 'MLUniqueID']),
         AudioWAVDRCode: getVal(['Audio WAV DR Code', 'AudioWAVDRCode']),
         AudioMP3DRCode: getVal(['Audio MP3 DR Code', 'AudioMP3DRCode']),
-        
-        // Chat History
         comments: parseLogchats(getVal(['Logchats'])),
-        
-        // Other meta
         Detail: getVal(['Detail']),
         Remarks: getVal(['Remarks']),
         LastModifiedBy: getVal(['Last Modified By', 'LastModifiedBy'])
@@ -387,6 +371,12 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const [eventCodeOptions, setEventCodeOptions] = useState<{ EventCode: string, EventName: string, Yr?: string, NewEventCategory?: string }[]>([]);
   const [mlIdOptions, setMlIdOptions] = useState<any[]>([]);
   const [userList, setUserList] = useState<{name: string, email: string}[]>([]); 
+  
+  // NEW: State for Wisdom Users and Picked Count
+  const [wisdomUserList, setWisdomUserList] = useState<{name: string, email: string}[]>([]);
+  const [wisdomPickedCount, setWisdomPickedCount] = useState(0);
+  const [wisdomTotalCount, setWisdomTotalCount] = useState(0); // Add total count state
+
   const [queue, setQueue] = useState<any[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEY); return saved ? JSON.parse(saved) : []; } catch (e) { return []; } });
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [activeCommentId, setActiveCommentId] = useState<number | null>(null); 
@@ -435,6 +425,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
               console.error(e); 
           }
       }; 
+
       const fetchUsers = async () => {
         try {
             const token = localStorage.getItem('app-token');
@@ -451,9 +442,59 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             console.error(e);
         }
       };
+
+      // NEW: Fetch specific users for Wisdom Project
+      const fetchWisdomUsers = async () => {
+        try {
+            const token = localStorage.getItem('app-token');
+            const res = await fetch(`${cleanBaseUrl}/api/users/wisdom-list`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                }
+            });
+            if (res.ok) {
+                setWisdomUserList(await res.json());
+            } else {
+                 setWisdomUserList([]);
+            }
+        } catch (e) {
+            console.error("Error fetching wisdom users", e);
+        }
+      };
+
       fetchData();
       fetchUsers();
+      fetchWisdomUsers();
   }, []);
+
+  // NEW: Fetch Wisdom Picked/Locked Count
+  useEffect(() => {
+    const fetchWisdomPickedCount = async () => {
+        if (!canViewWisdomReels) return;
+        try {
+            const token = localStorage.getItem('app-token');
+            // Fetch unused satsangs (the working queue) to count locks
+            const res = await fetch(`${cleanBaseUrl}/api/video-archival/unused-satsangs?limit=10000`, { 
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                }
+            });
+            if (res.ok) {
+                const result = await res.json();
+                const items = result.data || [];
+                // Calculate count of items that are currently Locked (Picked)
+                const picked = items.filter((i: any) => i.LockStatus === 'Locked').length;
+                setWisdomPickedCount(picked);
+                setWisdomTotalCount(items.length); // Update total count
+            }
+        } catch (e) {
+            console.error("Error fetching wisdom picked count", e);
+        }
+    };
+    fetchWisdomPickedCount();
+  }, [canViewWisdomReels]);
 
   // --- SYNC QUEUE WITH GOOGLE SHEET (THE FIX) ---
   useEffect(() => {
@@ -1266,8 +1307,9 @@ const handleSendComment = async () => {
         description: 'Track satsangs used for reels and manage editing workflow.', 
         icon: Video, 
         color: colors.secondary, 
-        stats: { label: 'Pending Approval', value: 5 }, 
-        progress: 30, 
+        // --- CHANGED TO USE DYNAMIC PICKED COUNT ---
+        stats: { label: 'Picked', value: wisdomPickedCount }, 
+        progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, 
         tags: ['Video', 'Archive'], 
         status: "PENDING_APPROVAL",
         
@@ -1411,6 +1453,7 @@ const handleSendComment = async () => {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
                  <div style={{ display: 'flex' }}>
+                    {/* --- AUDIO MERGE CARD (Uses 'userList') --- */}
                     {project.id === 'audio_merge' ? (
                         <>
                             {userList.slice(0, 3).map((u, i) => (
@@ -1422,7 +1465,29 @@ const handleSendComment = async () => {
                                 <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{userList.length - 3}</div>
                             )}
                         </>
+                    ) : project.id === 'video_archival' ? (
+                        
+                        /* --- WISDOM REELS CARD (Uses 'wisdomUserList') --- */
+                        <>
+                            {wisdomUserList.length > 0 ? (
+                                <>
+                                    {wisdomUserList.slice(0, 3).map((u, i) => (
+                                        <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
+                                            {getInitials(u.name)}
+                                        </div>
+                                    ))}
+                                    {wisdomUserList.length > 3 && (
+                                        <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{wisdomUserList.length - 3}</div>
+                                    )}
+                                </>
+                            ) : (
+                                /* Fallback if wisdom list is empty */
+                                <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div>
+                            )}
+                        </>
+
                     ) : (
+                        /* --- OTHER CARDS (Fallbacks) --- */
                         <>
                             {[1, 2].map(id => (
                                 <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
@@ -1813,4 +1878,4 @@ const handleSendComment = async () => {
       })()}
     </div>
   );
-}
+} 

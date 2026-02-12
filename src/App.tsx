@@ -1118,6 +1118,8 @@ digitalrecordings_gsheet: {
       { key: "RecordingCode", label: "Recording Code", sortable: true, editable: true },
        { key: "FromDate", label: "Event From Date", sortable: true, editable: true },
       { key: "ToDate", label: "Event To Date", sortable: true, editable: true },
+      { key: "RecordingRemarks", label: "Recording Remarks", sortable: true, editable: true },
+      { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: false },
       
     ],
   },
@@ -1586,7 +1588,14 @@ export default function App() {
                 </Button>
               </div>
               <div className="h-full overflow-y-auto pb-20">
-                <Sidebar activeView={activeView} onViewChange={(view) => { setActiveView(view); setMobileSidebarOpen(false); }} collapsed={false} isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+                <Sidebar 
+                    activeView={activeView} 
+                    onViewChange={(view) => { setActiveView(view); setMobileSidebarOpen(false); }} 
+                    collapsed={false} 
+                    onToggleCollapse={() => {}} // Added missing prop
+                    isOpen={mobileSidebarOpen} 
+                    onClose={() => setMobileSidebarOpen(false)} 
+                />
               </div>
             </div>
           </div>
@@ -1623,7 +1632,14 @@ export default function App() {
 
   return (
     <div className="dark flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar 
+        activeView={activeView} 
+        onViewChange={setActiveView} 
+        collapsed={sidebarCollapsed} 
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
+        isOpen={true} // Added missing prop
+        onClose={() => {}} // Added missing prop
+      />
       <div className="flex-1 flex overflow-hidden">
         <main className="flex-1 overflow-auto transition-all duration-300 ease-in-out">
           <DevelopmentBanner />

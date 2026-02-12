@@ -253,7 +253,7 @@ const categoryTagRenderer = (value: string | null | undefined) => {
 
 const VIEW_CONFIGS: Record<string, any> = {
   medialog_satsang_category: {
-    apiEndpoint: "/newmedialog/satsang-category",
+    apiEndpoint: "/newmedialog/satsang-dashboard",
     idKey: "MLUniqueID",
     detailsType: "medialog",
     columns: [
