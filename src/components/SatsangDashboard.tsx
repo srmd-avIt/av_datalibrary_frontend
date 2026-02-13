@@ -364,7 +364,25 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
     fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions);
-     fetchOptions('/segment-category/options', 'Segment Category', setSegmentCategoryOptions); // <-- Add this line
+    
+    // --- UPDATED: Static list for Segment Category instead of fetch ---
+    const specificSegmentCategories = [
+      'Prasangik Udbodhan', 
+      'SU', 
+      'SU - GM', 
+      'SU - Revision', 
+      'Satsang', 
+      'Informal Satsang', 
+      'Pravachan',
+      'Product/Webseries',
+      'SU - Extracted',
+      'Satsang Clips',
+      'SU - Capsule'
+    ].sort(); // Alphabetical sort
+
+    setSegmentCategoryOptions(specificSegmentCategories.map(val => ({ value: val, label: val })));
+    // -----------------------------------------------------------------
+
   }, []);
 
   const handleInputChange = (field: string, value: string | string[]) => {

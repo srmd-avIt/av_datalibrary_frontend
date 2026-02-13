@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo, CSSProperties } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext"; 
@@ -77,13 +79,14 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700, 
     textTransform: 'uppercase', 
     color: '#94a3b8', 
-    background: 'rgba(30, 41, 59, 0.95)', 
+    background: '#1e293b', 
     borderBottom: '2px solid rgba(255,255,255,0.08)',
     cursor: 'pointer', 
     userSelect: 'none',
     whiteSpace: 'nowrap',
     transition: 'background 0.2s',
-    position: 'relative',
+    position: 'sticky', 
+    top: 0,             
     zIndex: 10
   },
   innerTableHeader: {
@@ -92,7 +95,7 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700, 
     textTransform: 'uppercase', 
     color: '#cbd5e1', 
-    background: 'rgba(15, 23, 42, 0.95)', 
+    background: '#0f172a', 
     borderBottom: '1px solid rgba(255,255,255,0.05)',
     cursor: 'pointer', 
     userSelect: 'none',
@@ -110,21 +113,22 @@ const styles: Record<string, CSSProperties> = {
     textOverflow: 'ellipsis',
     background: 'transparent' 
   },
-  // Sticky styles now applied dynamically, but these base properties remain
+  // --- CHANGED SECTION START ---
   stickyBase: {
     position: 'sticky',
-    background: '#1e293b', // Opaque background
-    boxShadow: '2px 0 5px rgba(0,0,0,0.3)', 
-    borderRight: '1px solid rgba(255,255,255,0.1)',
+    background: '#13223a', // Changed to Navy Blue for frozen body cells
+    boxShadow: '4px 0 8px rgba(0,0,0,0.5)', // Increased shadow slightly for depth
+    borderRight: '1px solid rgba(148, 163, 184, 0.2)', // Slightly lighter border to pop
     zIndex: 5
-  },
+  }, 
   stickyHeaderBase: {
     position: 'sticky',
-    background: '#0f172a', 
-    boxShadow: '2px 0 5px rgba(0,0,0,0.3)',
-    borderRight: '1px solid rgba(255,255,255,0.1)',
+    background: '#0a1d3a', // Darker Navy Blue for frozen header cells
+    boxShadow: '4px 0 8px rgba(0,0,0,0.5)',
+    borderRight: '1px solid rgba(148, 163, 184, 0.2)',
     zIndex: 20
   },
+  // --- CHANGED SECTION END ---
   groupRow: {
     background: 'rgba(59, 130, 246, 0.15)', 
     cursor: 'pointer',
@@ -704,7 +708,10 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       ...baseStyle,
       width: col.width,
       minWidth: col.width,
-      maxWidth: col.width
+      maxWidth: col.width,
+      // Ensure stickiness is applied to all headers
+      position: 'sticky',
+      top: 0
     };
 
     if (isFrozen) {
@@ -712,23 +719,14 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
             ...merged,
             ...styles.stickyHeaderBase,
             left: getStickyLeft(index),
-            // If inner header + frozen, it needs VERY high zIndex (Left + Top)
-            // If outer header + frozen, just Left (Top is relative)
+            // Frozen headers (Left + Top) need highest z-index
             zIndex: isInner ? 25 : 20, 
-            position: 'sticky',
-            top: isInner ? 0 : 'auto' // Inner needs top sticky too
         };
     }
     
-    // Normal Columns
-    if (isInner) {
-        merged.position = 'sticky';
-        merged.top = 0;
-        merged.zIndex = 9;
-    } else {
-        merged.position = 'relative';
-        merged.zIndex = 10;
-    }
+    // Normal Columns - Sticky Top Only
+    merged.zIndex = isInner ? 9 : 10;
+    
     return merged;
   };
 

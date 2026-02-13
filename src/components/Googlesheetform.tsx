@@ -474,21 +474,36 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         if (!canViewWisdomReels) return;
         try {
             const token = localStorage.getItem('app-token');
-            // Fetch unused satsangs (the working queue) to count locks
-            const res = await fetch(`${cleanBaseUrl}/api/video-archival/unused-satsangs?limit=10000`, { 
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                }
-            });
-            if (res.ok) {
-                const result = await res.json();
-                const items = result.data || [];
-                // Calculate count of items that are currently Locked (Picked)
-                const picked = items.filter((i: any) => i.LockStatus === 'Locked').length;
-                setWisdomPickedCount(picked);
-                setWisdomTotalCount(items.length); // Update total count
+            
+            // Fetch both lists to get accurate lock count
+            const [usedRes, unusedRes] = await Promise.all([
+                fetch(`${cleanBaseUrl}/api/video-archival/satsang-reels?limit=10000`, { 
+                    headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+                }),
+                fetch(`${cleanBaseUrl}/api/video-archival/unused-satsangs?limit=10000`, { 
+                    headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+                })
+            ]);
+
+            let picked = 0;
+            let total = 0;
+
+            if (usedRes.ok) {
+                const usedData = await usedRes.json();
+                const items = usedData.data || [];
+                picked += items.filter((i: any) => i.LockStatus === 'Locked').length;
+                total += items.length; // Add to total if we want total library size
             }
+
+            if (unusedRes.ok) {
+                const unusedData = await unusedRes.json();
+                const items = unusedData.data || [];
+                picked += items.filter((i: any) => i.LockStatus === 'Locked').length;
+                total += items.length;
+            }
+
+            setWisdomPickedCount(picked);
+            setWisdomTotalCount(total);
         } catch (e) {
             console.error("Error fetching wisdom picked count", e);
         }
@@ -626,7 +641,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             fkMediaName: fileTypeString, 
             Duration: formatDuration(totalDuration), 
             AudioTotalDuration: formatDuration(totalDuration), 
-            BitRate: bitrateString,
+            BitRate: bitrateString, 
             AudioBitrate: bitrateString, 
             Dimension: dimensionStr || prev.Dimension,
             Masterquality: quality || prev.Masterquality,
@@ -1878,4 +1893,4 @@ const handleSendComment = async () => {
       })()}
     </div>
   );
-} 
+}
