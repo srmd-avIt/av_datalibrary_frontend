@@ -64,7 +64,7 @@ const APP_RESOURCES = [
   "MLFormal (Pending Push to DB)",
   "All Except Satsang",
   "Satsang Extracted Clips",
-  "Satsang Category",
+  "Satsang Category (AS IS)",
   "Aux Files",
   "Audio",
   "Aux File Type",

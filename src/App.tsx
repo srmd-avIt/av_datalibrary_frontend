@@ -172,6 +172,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
        { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+       { key: "ProductionBucket", label: "Production Bucket", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
   medialog_formal: {
@@ -273,6 +274,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
        { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+       { key: "ProductionBucket", label: "Production Bucket", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
   medialog_pending_gsheet: {
@@ -522,6 +524,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "RecordingName", label: "Recording Name", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+       { key: "ProductionBucket", label: "Production Bucket", sortable: true, render: categoryTagRenderer, editable: true },
     ],
   },
 
@@ -595,6 +598,7 @@ const VIEW_CONFIGS: Record<string, any> = {
      
      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
      { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+      { key: "ProductionBucket", label: "Production Bucket", sortable: true, render: categoryTagRenderer, editable: true },
    
     ],
   },
@@ -669,6 +673,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
       { key: "fkEventCategory", label: "Event Category", sortable: true, render: categoryTagRenderer, editable: true },
  { key: "DistributionDriveLink", label: "DistributionDriveLink", sortable: true, editable: true },
+  { key: "ProductionBucket", label: "Production Bucket", sortable: true, render: categoryTagRenderer, editable: true },
       // DR filename and other ML identifiers
       {
   key: "ContentFromDetailCity",
@@ -1490,14 +1495,39 @@ export default function App() {
 </div>
   );
 
-    case "satsang_dashboard": return (
-        <div className="p-4 md:p-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-4">
-            {VIEW_CONFIGS.satsang_dashboard.title}
-          </h1>
-          <SatsangDashboard />
-        </div>
-      );
+ case "satsang_dashboard":
+  return (
+    <div style={{ padding: "16px 24px" }}>
+      <h1
+        style={{
+          fontSize: "28px",
+          fontWeight: 700,
+          color: "#ffffff",
+          marginBottom: "8px"
+        }}
+      >
+        {VIEW_CONFIGS.satsang_dashboard.title}
+      </h1>
+
+      <p
+        style={{
+          color: "#94a3b8",
+          marginBottom: "24px",
+          fontSize: "15px",
+          maxWidth: "960px",
+          lineHeight: 1.6
+        }}
+      >
+        Search and explore Satsang media logs using advanced filters such as
+        event category, segment type, location, granth, dates, and identifiers.
+        Refine results to quickly locate recordings and review detailed media
+        information.
+      </p>
+
+      <SatsangDashboard />
+    </div>
+  );
+
 
        case "digitalrecordings_gsheet":
         return (
