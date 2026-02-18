@@ -91,7 +91,9 @@ const APP_RESOURCES = [
   "Segment Category",
   "List of Edited Highlights",
   "User Management",
-  "Column Management"
+  "Column Management",
+  "Check ML Reference",
+  "Search ML by EventCode",
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";

@@ -23,6 +23,8 @@ import { toast } from "sonner";
 // --- Import the updated dialog ---
 import { ManageColumnsDialog, SaveConfig } from "./components/ManageColumnsDialog";
 import { GoogleSheetForm } from "./components/Googlesheetform";
+import { CheckMLReference } from "./components/CheckMLReference";
+import { SearchNewMLEventCode } from "./components/SearchNewMLEventCode";
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
@@ -1528,6 +1530,11 @@ export default function App() {
     </div>
   );
 
+    case "check-ml-reference":
+      return <CheckMLReference />;
+      
+      case "search-new-ml-event-code":
+      return <SearchNewMLEventCode />;
 
        case "digitalrecordings_gsheet":
         return (

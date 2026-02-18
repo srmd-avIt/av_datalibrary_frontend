@@ -27,7 +27,7 @@ const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 const STORAGE_KEY = "mis_queue_data_v1";
 const PRESERVATION_STATUS_OPTIONS = ["Preserve",  "Pending"];
-const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res","Only Audio"];
+const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res"];
 
 const STATUS_OPTIONS = [
   { id: "incomplete", label: "Submitted to MM", icon: AlertCircle, color: "#f87171" },

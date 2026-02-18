@@ -1,14 +1,16 @@
 // src/components/Sidebar.tsx
 import React, { useState, useMemo, useEffect } from "react";
 // Removed createPortal since we no longer need the overlay
+
 import { 
   Home, Database, LayoutDashboard, Map, Users, Grid3x3, Wand2, Stamp, 
   Building, BadgeCheck, AudioLines, Calendar, FileText, Bot, LogOut, 
   User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, 
   MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, 
   ListFilter, Scissors, ListTree, FolderKanban, X, Columns, HardDrive, 
-  LayoutGrid
+  LayoutGrid, CheckSquare, Search, Plus, Eye
 } from "lucide-react";
+
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
@@ -33,6 +35,9 @@ function useSlideshow(trigger: boolean, count: number, delay: number = 200) {
   const [visibleCount, setVisibleCount] = useState(trigger ? 0 : count);
   useEffect(() => {
     if (trigger) {
+      // Only start animation if we aren't already fully visible
+      // However, usually we want to animate from 0 when opening.
+      // Since the component is now stable, this effect runs only when trigger changes false->true.
       setVisibleCount(0);
       let i = 0;
       const interval = setInterval(() => {
@@ -47,6 +52,134 @@ function useSlideshow(trigger: boolean, count: number, delay: number = 200) {
   }, [trigger, count, delay]);
   return visibleCount;
 }
+
+// --- Independent Component: SidebarItem ---
+// This prevents re-mounting (and re-animating) when parent state changes
+interface SidebarItemProps {
+  item: any;
+  activeView: string;
+  collapsed: boolean;
+  isOpen: boolean;
+  onToggle: (id: string) => void;
+  onClick: (id: string) => void;
+}
+
+const SidebarItem = ({ item, activeView, collapsed, isOpen, onToggle, onClick }: SidebarItemProps) => {
+  const Icon = item.icon;
+  const isParentActive = item.children?.some((child: any) => child.id === activeView);
+  const isActive = activeView === item.id || isParentActive;
+
+  // Hook is now inside a stable component. It won't reset unless 'isOpen' changes.
+  const visibleCount = useSlideshow(isOpen, item.children ? item.children.length : 0, 120);
+
+  // Helper for inline window checks (client-side safe)
+  const isSmallScreen = typeof window !== "undefined" && window.innerWidth <= 600;
+  const iconSize = isSmallScreen ? "14px" : "16px";
+
+  if (item.children && item.children.length > 0) {
+    return (
+      <div>
+        <Button
+          variant="ghost"
+          size={collapsed ? "sm" : "default"}
+          style={{
+            display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
+            padding: collapsed ? "0" : isSmallScreen ? "0 8px" : "0 16px",
+            height: collapsed ? "40px" : isSmallScreen ? "38px" : "44px",
+            gap: collapsed ? "0px" : isSmallScreen ? "8px" : "12px",
+            borderRadius: "16px", transition: "all 200ms", fontSize: isSmallScreen ? "14px" : "16px", textAlign: "left",
+          }}
+          className={`w-full ${collapsed ? "justify-center p-0 h-10" : "gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive || isOpen ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`}
+          onClick={() => onToggle(item.id)}
+          title={collapsed ? item.label : undefined}
+        >
+          <Icon className="w-4 h-4" style={{ width: iconSize, height: iconSize }} />
+          {!collapsed && (
+            <><span className="font-medium" style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{item.label}</span>
+            {isOpen ? <ChevronDown className="ml-auto w-4 h-4" /> : <ChevronRight className="ml-auto w-4 h-4" />}</>
+          )}
+        </Button>
+        {!collapsed && isOpen && (
+          <div className="pl-4 pt-1 space-y-1">
+            {item.children?.map((child: any, idx: number) => {
+              if (idx >= visibleCount) return null;
+              const ChildIcon = child.icon;
+              const isChildActive = activeView === child.id;
+              return (
+                <Button key={child.id} variant="ghost" size="default" onClick={() => onClick(child.id)}
+                  style={{
+                    display: "flex", alignItems: "center", width: "100%", gap: isSmallScreen ? "8px" : "12px",
+                    height: isSmallScreen ? "38px" : "44px", borderRadius: "16px", transition: "all 0.2s ease", justifyContent: "flex-start",
+                    paddingLeft: isSmallScreen ? "8px" : "16px", paddingRight: isSmallScreen ? "8px" : "16px", fontSize: isSmallScreen ? "13px" : "15px",
+                    backdropFilter: "blur(8px)",
+                    background: isChildActive ? "linear-gradient(90deg, rgba(51,65,85,0.5) 60%, rgba(59,130,246,0.15) 100%)" : "rgba(30,41,59,0.25)",
+                    border: isChildActive ? "2px solid rgba(59,130,246,0.25)" : "2px solid rgba(51,65,85,0.10)",
+                    color: isChildActive ? "white" : "rgb(148,163,184)", cursor: "pointer", minWidth: 0, overflow: "hidden", textAlign: "left", opacity: 1, transform: "translateY(0)", transitionProperty: "opacity, transform", transitionDuration: "300ms",
+                  }}
+                  onMouseEnter={e => { if (!isChildActive) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f4f6f8ff"; e.currentTarget.style.border = "2px solid rgba(59,130,246,0.15)"; } }}
+                  onMouseLeave={e => { if (!isChildActive) { e.currentTarget.style.background = "rgba(30,41,59,0.25)"; e.currentTarget.style.color = "rgb(148,163,184)"; e.currentTarget.style.border = "2px solid rgba(51,65,85,0.10)"; } }}
+                >
+                  <ChildIcon style={{ width: iconSize, height: iconSize, flexShrink: 0 }} />
+                  <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{child.label}</span>
+                  {isChildActive && (<div style={{ marginLeft: "auto", width: isSmallScreen ? "5px" : "6px", height: isSmallScreen ? "5px" : "6px", borderRadius: "9999px", backgroundColor: "rgb(96,165,250)", boxShadow: "0 0 8px 2px rgba(59,130,246,0.25)", flexShrink: 0 }} />)}
+                </Button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Standard Item
+  return (
+    <Button variant="ghost" size={collapsed ? "sm" : "default"}
+      style={{
+        display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
+        padding: collapsed ? "0" : isSmallScreen ? "0 12px" : "0 16px",
+        height: collapsed ? "40px" : isSmallScreen ? "38px" : "44px",
+        gap: collapsed ? "0px" : isSmallScreen ? "8px" : "12px",
+        borderRadius: "12px", transition: "all 200ms", fontSize: isSmallScreen ? "14px" : "16px",
+        ...(isActive ? { background: "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))", color: "white", border: "1px solid rgba(59,130,246,0.30)", boxShadow: "0 0 10px rgba(59,130,246,0.25)" } : { color: "rgb(203,213,225)", border: "1px solid transparent", cursor: "pointer" }),
+      }}
+      onClick={() => onClick(item.id)}
+      title={collapsed ? item.label : undefined}
+      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f0f3f7ff"; e.currentTarget.style.border = "1px solid rgba(59,130,246,0.15)"; } }}
+      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgb(203,213,225)"; e.currentTarget.style.border = "1px solid transparent"; } }}
+    >
+      <Icon style={{ width: iconSize, height: iconSize }} />
+      {!collapsed && (
+        <>
+          <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{item.label}</span>
+          {isActive && (<div style={{ marginLeft: "auto", width: isSmallScreen ? "6px" : "8px", height: isSmallScreen ? "6px" : "8px", borderRadius: "9999px", backgroundColor: "rgb(96,165,250)" }}></div>)}
+        </>
+      )}
+    </Button>
+  );
+};
+
+// --- Independent Component: SidebarSection ---
+// Replaces the old SidebarContent. Maps items to stable SidebarItems.
+const SidebarSection = ({ items, activeView, collapsed, openMenus, toggleMenu, handleMenuClick }: any) => {
+  return (
+    <div className="space-y-1">
+      {items.map((item: any) => {
+        if (!item) return null;
+        return (
+          <SidebarItem 
+            key={item.id}
+            item={item}
+            activeView={activeView}
+            collapsed={collapsed}
+            isOpen={openMenus[item.id] || false}
+            onToggle={toggleMenu}
+            onClick={handleMenuClick}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 interface SidebarProps {
   activeView: string;
@@ -65,6 +198,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   // Logic to determine if Project Hub is active
   const isProjectHubActive = activeView === "digitalrecordings_gsheet";
 
+  // 1. Main Menu Items (Removed Submitters ML from here)
   const allMenuItems = [
     { id: "dashboard", label: "Home", icon: Home },
     { id: "satsang_dashboard", label: "Satsang Search", icon: LayoutDashboard },
@@ -85,6 +219,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         { id: "medialog_satsang_category", label: "Satsang Category (AS IS)", icon: ListTree },
       ],
     },
+    // Submitters ML removed from here
     { id: "aux", label: "Aux Files", icon: FileText },
     {
       id: "master-data",
@@ -121,6 +256,18 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     { id: "user-management", label: "User Management", icon: User, requiredRoles: ['Admin', 'Owner'] }
   ];
 
+  // 2. Separate definition for Submitters ML
+  const submittersMlConfig = {
+    id: "submitters-ml",
+    label: "Submitters ML",
+    icon: Users,
+    children: [
+      { id: "check-ml-reference", label: "Check ML Reference", icon: CheckSquare },
+      { id: "search-new-ml-event-code", label: "Search ML by EventCode", icon: Search },
+     
+    ],
+  };
+
   // Logic to check if user can see Audio Merge App (Used for visibility if needed, or to disable button)
   const canViewAudioMerge = useMemo(() => {
     if (!user) return false;
@@ -132,7 +279,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     );
   }, [user]);
 
-  // Filter menu items based on permissions
+  // 3. Filter MAIN menu items based on permissions
   const visibleMenuItems = useMemo(() => {
     if (!user) return [];
     if (user.role === "Owner" || user.role === "Admin") return allMenuItems;
@@ -155,6 +302,27 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     return allowed;
   }, [user, allMenuItems]);
 
+  // 4. Calculate visibility for SUBMITTERS ML separately
+  const visibleSubmittersMl = useMemo(() => {
+    if (!user) return null;
+    // Owner/Admin always see it
+    if (user.role === "Owner" || user.role === "Admin") return submittersMlConfig;
+
+    const permMap: { [key: string]: Set<string> } = {};
+    (user.permissions || []).forEach((p) => { permMap[p.resource] = new Set(p.actions); });
+
+    // Check children permissions
+    const visibleChildren = submittersMlConfig.children.filter((child) => {
+      const actions = permMap[child.label];
+      return actions && (actions.has("read") || actions.has("write"));
+    });
+
+    if (visibleChildren.length > 0) {
+      return { ...submittersMlConfig, children: visibleChildren };
+    }
+    return null;
+  }, [user]);
+
   const handleMenuClick = (id: string) => {
     onViewChange(id);
     if (collapsed) onClose?.();
@@ -163,99 +331,6 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   const toggleMenu = (id: string) => {
     setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
   };
-
-  // --- MENU LIST CONTENT ---
-  const SidebarContent = () => (
-    <div className="space-y-1">
-        {visibleMenuItems.map((item) => {
-            if (!item) return null;
-            const Icon = item.icon;
-            const isParentActive = item.children?.some(child => child.id === activeView);
-            const isActive = activeView === item.id || isParentActive;
-            const isOpenState = openMenus[item.id] || false;
-
-            if (item.children && item.children.length > 0) {
-              const visibleCount = useSlideshow(isOpenState, item.children.length, 120);
-              return (
-                <div key={item.id}>
-                  <Button
-                    variant="ghost"
-                    size={collapsed ? "sm" : "default"}
-                    style={{
-                      display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
-                      padding: collapsed ? "0" : window.innerWidth <= 600 ? "0 8px" : "0 16px",
-                      height: collapsed ? "40px" : window.innerWidth <= 600 ? "38px" : "44px",
-                      gap: collapsed ? "0px" : window.innerWidth <= 600 ? "8px" : "12px",
-                      borderRadius: "16px", transition: "all 200ms", fontSize: window.innerWidth <= 600 ? "14px" : "16px", textAlign: "left",
-                    }}
-                    className={`w-full ${collapsed ? "justify-center p-0 h-10" : "gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive || isOpenState ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`}
-                    onClick={() => toggleMenu(item.id)}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <Icon className="w-4 h-4" style={{ width: window.innerWidth <= 600 ? "14px" : "16px", height: window.innerWidth <= 600 ? "14px" : "16px" }} />
-                    {!collapsed && (
-                      <><span className="font-medium" style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{item.label}</span>
-                      {isOpenState ? <ChevronDown className="ml-auto w-4 h-4" /> : <ChevronRight className="ml-auto w-4 h-4" />}</>
-                    )}
-                  </Button>
-                  {!collapsed && isOpenState && (
-                    <div className="pl-4 pt-1 space-y-1">
-                      {item.children?.map((child, idx) => {
-                        if (idx >= visibleCount) return null;
-                        const ChildIcon = child.icon;
-                        const isChildActive = activeView === child.id;
-                        return (
-                          <Button key={child.id} variant="ghost" size="default" onClick={() => handleMenuClick(child.id)}
-                            style={{
-                              display: "flex", alignItems: "center", width: "100%", gap: window.innerWidth <= 600 ? "8px" : "12px",
-                              height: window.innerWidth <= 600 ? "38px" : "44px", borderRadius: "16px", transition: "all 0.2s ease", justifyContent: "flex-start",
-                              paddingLeft: window.innerWidth <= 600 ? "8px" : "16px", paddingRight: window.innerWidth <= 600 ? "8px" : "16px", fontSize: window.innerWidth <= 600 ? "13px" : "15px",
-                              backdropFilter: "blur(8px)",
-                              background: isChildActive ? "linear-gradient(90deg, rgba(51,65,85,0.5) 60%, rgba(59,130,246,0.15) 100%)" : "rgba(30,41,59,0.25)",
-                              border: isChildActive ? "2px solid rgba(59,130,246,0.25)" : "2px solid rgba(51,65,85,0.10)",
-                              color: isChildActive ? "white" : "rgb(148,163,184)", cursor: "pointer", minWidth: 0, overflow: "hidden", textAlign: "left", opacity: 1, transform: "translateY(0)", transitionProperty: "opacity, transform", transitionDuration: "300ms",
-                            }}
-                            onMouseEnter={e => { if (!isChildActive) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f4f6f8ff"; e.currentTarget.style.border = "2px solid rgba(59,130,246,0.15)"; } }}
-                            onMouseLeave={e => { if (!isChildActive) { e.currentTarget.style.background = "rgba(30,41,59,0.25)"; e.currentTarget.style.color = "rgb(148,163,184)"; e.currentTarget.style.border = "2px solid rgba(51,65,85,0.10)"; } }}
-                          >
-                            <ChildIcon style={{ width: window.innerWidth <= 600 ? "14px" : "16px", height: window.innerWidth <= 600 ? "14px" : "16px", flexShrink: 0 }} />
-                            <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{child.label}</span>
-                            {isChildActive && (<div style={{ marginLeft: "auto", width: window.innerWidth <= 600 ? "5px" : "6px", height: window.innerWidth <= 600 ? "5px" : "6px", borderRadius: "9999px", backgroundColor: "rgb(96,165,250)", boxShadow: "0 0 8px 2px rgba(59,130,246,0.25)", flexShrink: 0 }} />)}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <Button key={item.id} variant="ghost" size={collapsed ? "sm" : "default"}
-                style={{
-                  display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
-                  padding: collapsed ? "0" : window.innerWidth <= 600 ? "0 8px" : "0 12px",
-                  height: collapsed ? "40px" : window.innerWidth <= 600 ? "38px" : "44px",
-                  gap: collapsed ? "0px" : window.innerWidth <= 600 ? "8px" : "12px",
-                  borderRadius: "12px", transition: "all 200ms", fontSize: window.innerWidth <= 600 ? "14px" : "16px",
-                  ...(isActive ? { background: "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))", color: "white", border: "1px solid rgba(59,130,246,0.30)", boxShadow: "0 0 10px rgba(59,130,246,0.25)" } : { color: "rgb(203,213,225)", border: "1px solid transparent", cursor: "pointer" }),
-                }}
-                onClick={() => handleMenuClick(item.id)}
-                title={collapsed ? item.label : undefined}
-                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f0f3f7ff"; e.currentTarget.style.border = "1px solid rgba(59,130,246,0.15)"; } }}
-                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgb(203,213,225)"; e.currentTarget.style.border = "1px solid transparent"; } }}
-              >
-                <Icon style={{ width: window.innerWidth <= 600 ? "14px" : "16px", height: window.innerWidth <= 600 ? "14px" : "16px" }} />
-                {!collapsed && (
-                  <>
-                    <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{item.label}</span>
-                    {isActive && (<div style={{ marginLeft: "auto", width: window.innerWidth <= 600 ? "6px" : "8px", height: window.innerWidth <= 600 ? "6px" : "8px", borderRadius: "9999px", backgroundColor: "rgb(96,165,250)" }}></div>)}
-                  </>
-                )}
-              </Button>
-            );
-          })}
-    </div>
-  );
 
   return (
     <>
@@ -267,12 +342,12 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
             <div className="p-6 border-b border-slate-700/50 relative">
               <Button variant="ghost" size="sm" className="absolute top-4 right-4 w-8 h-8 rounded-full p-0" onClick={onClose}><X className="w-4 h-4 text-slate-300" /></Button>
               <div className="flex items-center gap-3 mb-4">
-                {/* 1. Mobile Logo/Title (Restored) */}
+                {/* 1. Mobile Logo/Title */}
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"><Database className="w-5 h-5 text-white" /></div>
                 <div><h2 className="text-xl font-bold text-white">Data Library</h2><p className="text-xs text-slate-400">Analytics Dashboard</p></div>
               </div>
 
-              {/* 2. Mobile User Profile (Restored) */}
+              {/* 2. Mobile User Profile */}
               {user && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
                   <Avatar className="w-8 h-8"><AvatarImage src={user.picture} /><AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">{user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar>
@@ -280,7 +355,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
                 </div>
               )}
 
-               {/* 3. Mobile Apps Button - Navigates to Hub now */}
+               {/* 3. Mobile Apps Button */}
                <div 
                   className={`
                     flex flex-col items-center justify-center mt-4 p-2 rounded-xl transition-all
@@ -299,7 +374,55 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
             </div>
             
             <nav className="flex-1 p-4 overflow-y-auto custom-sidebar-scrollbar">
-              <SidebarContent />
+              <SidebarSection 
+                items={visibleMenuItems} 
+                activeView={activeView} 
+                collapsed={false} 
+                openMenus={openMenus} 
+                toggleMenu={toggleMenu} 
+                handleMenuClick={handleMenuClick} 
+              />
+              
+              {/* Separate Section for Submitters ML */}
+              {visibleSubmittersMl && (
+                <>
+                  <Separator
+                    style={{
+                      marginTop: "12px",
+                      marginBottom: "12px",
+                      backgroundColor: "rgba(51,65,85,0.5)"
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      paddingLeft: "8px",
+                      paddingRight: "8px",
+                      paddingTop: "4px",
+                      paddingBottom: "4px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      marginBottom: "4px"
+                    }}
+                  >
+                    Submitters Area
+                  </div>
+
+                  <SidebarSection 
+                    items={[visibleSubmittersMl]} 
+                    activeView={activeView} 
+                    collapsed={false} 
+                    openMenus={openMenus} 
+                    toggleMenu={toggleMenu} 
+                    handleMenuClick={handleMenuClick} 
+                  />
+                </>
+              )}
+
+
               <div className="space-y-1 mt-6">
                 <Button variant="ghost" size="default" className="w-full justify-start gap-3 h-11 rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => { logout(); onClose?.(); }}>
                   <LogOut className="w-4 h-4" /><span className="font-medium">Logout</span>
@@ -316,13 +439,13 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
           </Button>
 
           <div className={`${collapsed ? "p-3" : "p-6"} border-b border-slate-700/50 transition-all duration-300`}>
-            {/* 1. Header Logo Area (Restored original) */}
+            {/* 1. Header Logo Area */}
            <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} mb-4`}>
           <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"><Database className="w-5 h-5 text-white" /></div>
           {!collapsed && (<div><h2 className="text-xl font-bold text-white">Data Library</h2><p className="text-xs text-slate-400">Analytics Dashboard</p></div>)}
         </div>
 
-            {/* 2. User Profile Area (Restored original) */}
+            {/* 2. User Profile Area */}
             {!collapsed && user && (
               <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 mb-4">
                 <Avatar className="w-8 h-8"><AvatarImage src={user.picture} /><AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">{user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar>
@@ -335,7 +458,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
               </div>
             )}
 
-            {/* 3. NEW Apps Button Area (Below User Profile) - Navigates to Hub now */}
+            {/* 3. Apps Button Area */}
             <div
               onClick={() => handleMenuClick("digitalrecordings_gsheet")}
               className={`
@@ -360,7 +483,6 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
                 if(!isProjectHubActive) {
                     e.currentTarget.style.background = "rgba(59,130,246,0.10)";
                     e.currentTarget.style.borderColor = "rgba(59,130,246,0.15)";
-                    // Text hover color logic handled via group-hover CSS
                 }
               }}
               onMouseLeave={(e) => {
@@ -391,8 +513,39 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
           </div>
 
           <nav className={`flex-1 ${collapsed ? "p-2" : "p-4"} overflow-y-auto transition-all duration-300 custom-sidebar-scrollbar`}>
-            <SidebarContent />
+            {/* Main Menu Items */}
+            <SidebarSection 
+                items={visibleMenuItems} 
+                activeView={activeView} 
+                collapsed={collapsed} 
+                openMenus={openMenus} 
+                toggleMenu={toggleMenu} 
+                handleMenuClick={handleMenuClick} 
+            />
+            
+            {/* Separate Section for Submitters ML */}
+            {visibleSubmittersMl && (
+              <>
+                <Separator className="my-3 bg-slate-700/50" />
+                {!collapsed && (
+                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Submitters To ML
+                  </div>
+                )}
+                <SidebarSection 
+                    items={[visibleSubmittersMl]} 
+                    activeView={activeView} 
+                    collapsed={collapsed} 
+                    openMenus={openMenus} 
+                    toggleMenu={toggleMenu} 
+                    handleMenuClick={handleMenuClick} 
+                />
+              </>
+            )}
+
             <Separator className="my-6 bg-slate-700/50" />
+            
+            {/* Logout Button */}
             <div className="space-y-1">
               <Button variant="ghost" size={collapsed ? "sm" : "default"}
                 style={{
