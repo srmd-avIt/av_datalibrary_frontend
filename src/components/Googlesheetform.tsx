@@ -26,7 +26,7 @@ const API_BASE_URL = (import.meta as any).env.VITE_API_URL;
 const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 const STORAGE_KEY = "mis_queue_data_v1";
-const PRESERVATION_STATUS_OPTIONS = ["Preserve",  "Pending"];
+const PRESERVATION_STATUS_OPTIONS = ["Preserve"];
 const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res"];
 
 const STATUS_OPTIONS = [
@@ -58,8 +58,7 @@ const TABLE_COLUMNS = [
   { id: 'PreservationStatus', label: 'Preservation', width: 120 },
   { id: 'RecordingRemarks', label: 'DMS Remarks', width: 200 },
   { id: 'MLUniqueID', label: 'ML Unique ID', width: 130 },
-  { id: 'AudioWAVCode', label: 'WAV Code', width: 130 },
-  { id: 'AudioMP3Code', label: 'MP3 Code', width: 130 },
+  
   { id: 'fkGranth', label: 'Granth', width: 120 },
   { id: 'Number', label: 'Number', width: 80 },
   { id: 'Topic', label: 'Topic', width: 200 },
@@ -1632,8 +1631,7 @@ const handleSendComment = async () => {
                         <SectionTitle icon={FileAudio} title="Unique Identifiers" theme={colors.tech} />
                         <div style={styles.gridFields}>
                             <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                            {renderField("Audio WAV Code", "AudioWAVDRCode", colors.core, { disabled: !hasEditAccess || isViewing })}
-                            {renderField("Audio MP3 Code", "AudioMP3DRCode", colors.core, { disabled: !hasEditAccess || isViewing })}
+                           
                             {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
                             {renderField("Patrank", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
                                 {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
