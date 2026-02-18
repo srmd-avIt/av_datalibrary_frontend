@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
@@ -48,25 +48,44 @@ interface DraggableColumnProps {
   isVisible: boolean;
   onRemove: () => void;
   isCustom?: boolean;
+  listId: string; // [FIX]: Added to distinguish lists
 }
 
-const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCard, onToggle, isVisible, onRemove, isCustom }) => {
+const DraggableColumn: React.FC<DraggableColumnProps> = ({ 
+  column, 
+  index, 
+  moveCard, 
+  onToggle, 
+  isVisible, 
+  onRemove, 
+  isCustom,
+  listId 
+}) => {
   const ref = React.useRef<HTMLDivElement>(null);
 
   const [, drop] = useDrop({
     accept: ITEM_TYPE,
-    hover(item: { index: number }, monitor) {
+    hover(item: { index: number; listId: string }, monitor) {
       if (!ref.current) return;
+      
       const dragIndex = item.index;
       const hoverIndex = index;
+      const sourceListId = item.listId;
+
+      // [FIX]: Prevent sorting/crashing if dragging across different lists
+      if (sourceListId !== listId) return;
+
       if (dragIndex === hoverIndex) return;
+      
       const hoverBoundingRect = ref.current.getBoundingClientRect();
       const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       const clientOffset = monitor.getClientOffset();
       if (!clientOffset) return;
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
       if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      
       moveCard(dragIndex, hoverIndex);
       item.index = hoverIndex;
     },
@@ -74,8 +93,9 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCa
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: ITEM_TYPE,
-    item: { index },
+    item: { index, listId }, // [FIX]: Pass listId
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    canDrag: isVisible, // Only allow dragging visible columns
   });
 
   preview(drop(ref));
@@ -83,9 +103,12 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({ column, index, moveCa
   return (
     <div ref={ref} className={`flex items-center justify-between p-2 mb-2 rounded-md border bg-muted/30 ${isDragging ? 'opacity-50' : 'opacity-100'}`}>
       <div className="flex items-center gap-2 overflow-hidden">
-        <div ref={(node) => { drag(node as any); }} className="cursor-grab p-1 flex-shrink-0">
-          <GripVertical className="w-4 h-4 text-muted-foreground" />
-        </div>
+        {/* Only show grip if visible/sortable */}
+        {isVisible && (
+          <div ref={(node) => { drag(node as any); }} className="cursor-grab p-1 flex-shrink-0">
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
+          </div>
+        )}
         <span className="text-sm truncate" title={column.label}>{column.label}</span>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -134,7 +157,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   // --- User Selection State ---
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
-  const [showColumnEditor, setShowColumnEditor] = useState(false); // Controls View Switching
+  const [showColumnEditor, setShowColumnEditor] = useState(false); 
   
   const [lastUserSummary, setLastUserSummary] = useState<string | null>(null);
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
@@ -162,27 +185,20 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   setIsLoadingBackend(true);
   try {
     const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
-
-    // ✅ 1. Get the JWT token from localStorage
     const token = localStorage.getItem('app-token');
 
-    // ✅ 2. Pass the token in the headers
     const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '', // ✅ JWT Header added
+        'Authorization': token ? `Bearer ${token}` : '', 
       }
     });
 
-    // ✅ 3. Handle Unauthorized/Expired session
     if (response.status === 401 || response.status === 403) {
       console.error("Column Discovery: Session expired or unauthorized. Redirecting...");
-      
       localStorage.removeItem('app-token');
       localStorage.removeItem('google-token');
-      
-      // Redirect to login
       window.location.href = '/'; 
       return;
     }
@@ -226,20 +242,27 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
       // 3. Determine Visible vs Hidden
       let initialVisibleKeys = visibleColumnKeys;
 
-      // --- SINGLE USER MODE: Check localStorage ---
-      // If only 1 user is selected, we try to load their specific previous config.
-      // If MULTIPLE users are selected, we default to the view's base config (safer than loading User A's config for User B).
-      if (selectedUserIds.length === 1) {
-        const savedConfigStr = localStorage.getItem(`columnConfig-${viewId}-${selectedUserIds[0]}`);
+      // --- [FIX START] Single/Bulk User Mode Logic ---
+      // We check if at least one user is selected. If so, we use the FIRST selected user
+      // as the "Reference" to load the config. This fixes the issue where bulk editing
+      // defaulted to empty instead of the user's saved preference.
+      const referenceUserId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
+
+      if (referenceUserId) {
+        const savedConfigStr = localStorage.getItem(`columnConfig-${viewId}-${referenceUserId}`);
         if (savedConfigStr) {
           try {
             const savedConfig = JSON.parse(savedConfigStr);
             if (savedConfig && Array.isArray(savedConfig.visible)) {
               initialVisibleKeys = savedConfig.visible;
               
-              // Load summary for the UI
-              const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${selectedUserIds[0]}`);
-              setLastUserSummary(summary || null);
+              // Only show the text summary if exactly 1 user (to prevent confusion in bulk mode)
+              if (selectedUserIds.length === 1) {
+                const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${referenceUserId}`);
+                setLastUserSummary(summary || null);
+              } else {
+                setLastUserSummary(null);
+              }
             }
           } catch (e) {
             console.error("Error parsing saved config", e);
@@ -248,9 +271,9 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             setLastUserSummary(null);
         }
       } else {
-        // Multi-user mode: Clear summary, start fresh from default
         setLastUserSummary(null);
       }
+      // --- [FIX END] ---
 
       // A. Visible
       const visibleOrdered = initialVisibleKeys
@@ -280,16 +303,13 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   };
 
   const handleSelectAllUsers = () => {
-    // If all filtered users are selected, deselect them. Otherwise, select all filtered.
     const filtered = getFilteredUsers();
     const filteredIds = filtered.map(u => u.id);
     const allSelected = filteredIds.every(id => selectedUserIds.includes(id));
 
     if (allSelected) {
-      // Remove filtered IDs from selection
       setSelectedUserIds(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      // Add missing filtered IDs
       const newIds = [...selectedUserIds];
       filteredIds.forEach(id => {
         if (!newIds.includes(id)) newIds.push(id);
@@ -307,15 +327,22 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         );
   };
 
-  const moveVisibleCard = (dragIndex: number, hoverIndex: number) => {
-    const dragCard = currentVisible[dragIndex];
+  // [FIX]: Use useCallback and safe state update to prevent drag crashes
+  const moveVisibleCard = useCallback((dragIndex: number, hoverIndex: number) => {
     setCurrentVisible(prev => {
       const newCards = [...prev];
+      
+      // Bounds check for safety
+      if (dragIndex < 0 || dragIndex >= newCards.length || hoverIndex < 0 || hoverIndex >= newCards.length) {
+          return prev;
+      }
+      
+      const dragCard = newCards[dragIndex];
       newCards.splice(dragIndex, 1);
       newCards.splice(hoverIndex, 0, dragCard);
       return newCards;
     });
-  };
+  }, []);
 
   const toggleColumn = (columnKey: string, isVisible: boolean) => {
     if (isVisible) {
@@ -645,6 +672,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             isVisible={true}
             onRemove={() => handleRemoveColumn(col.key)}
             isCustom={col.isCustom}
+            listId="VISIBLE" // [FIX]: Added ID
           />
         ))}
 
@@ -707,11 +735,12 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             key={col.key}
             index={i}
             column={col}
-            moveCard={() => {}}
+            moveCard={() => {}} // No sort for hidden
             onToggle={() => toggleColumn(col.key, false)}
             isVisible={false}
             onRemove={() => handleRemoveColumn(col.key)}
             isCustom={col.isCustom}
+            listId="HIDDEN" // [FIX]: Added ID
           />
         ))}
 

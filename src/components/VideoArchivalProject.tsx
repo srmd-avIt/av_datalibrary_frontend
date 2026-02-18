@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import React, { useState, useEffect, useMemo, CSSProperties } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext"; 
@@ -462,11 +464,11 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     },
     { key: 'LockedBy', label: 'LockedBy', width: 180 },
     { key: 'MLUniqueID', label: 'MLUniqueID', width: 120 },
-    { 
-      key: 'EventRefMLID', 
-      label: 'EventRefMLID', 
+    {
+      key: 'ParentEventRefMLID',
+      label: 'Parent EventRefMLID',
       width: 150,
-      render: (item) => <span style={{ fontWeight: 700, color: '#f8fafc' }}>{item.EventRefMLID}</span>
+      render: (item) => <span style={{ fontWeight: 700, color: '#fbbf24' }}>{item.ParentEventRefMLID || '-'}</span>
     },
     {
       key: 'Reels',
@@ -851,96 +853,97 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       )}
 
       {/* RELATED ITEMS MODAL */}
-    {/* RELATED ITEMS MODAL */}
-{showRelatedModal && (
-  <div style={styles.modalOverlay} onClick={() => setShowRelatedModal(false)}>
-    <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-      <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>Reels from Source</h3>
-          <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>Source Parent: <strong style={{color: '#60a5fa'}}>{selectedSourceId}</strong></p>
-        </div>
-        <button 
-          onClick={() => setShowRelatedModal(false)}
-          style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-        >
-          <X size={24} />
-        </button>
-      </div>
-
-      <div className="modal-scrollbar" style={{ padding: '0', overflow: 'auto', flex: 1, position: 'relative' }}>
-        {modalLoading ? (
-            <div style={{ padding: 40, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', flexDirection: 'column', gap: 10 }}>
-              <Loader2 size={32} style={{ animation: 'spinLoader 1s linear infinite' }} />
-              <span>Loading details...</span>
+      {showRelatedModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowRelatedModal(false)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>Reels from Source</h3>
+                <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>Parent MLID: <strong style={{color: '#60a5fa'}}>{selectedSourceId}</strong></p>
+              </div>
+              <button 
+                onClick={() => setShowRelatedModal(false)}  
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+              >
+                <X size={24} />
+              </button>
             </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
-            <thead style={{ position: 'sticky', top: 0, background: '#1e293b', zIndex: 10 }}>
-              <tr>
-                <th style={styles.tableHeader}>Type</th> {/* New Column for visual clarity */}
-                <th style={styles.tableHeader}>MLUniqueID</th>
-                <th style={styles.tableHeader}>ContentFrom</th>
-                <th style={styles.tableHeader}>CounterFrom</th>
-                <th style={styles.tableHeader}>CounterTo</th>
-                <th style={styles.tableHeader}>Event Name</th>
-                <th style={styles.tableHeader}>Details</th>
-                <th style={styles.tableHeader}>Dimension</th>
-                <th style={styles.tableHeader}>Topic</th>
-                <th style={styles.tableHeader}>Production Bucket</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relatedReels.length === 0 && (
-                  <tr><td colSpan={10} style={{padding: 20, textAlign: 'center', color: '#64748b'}}>No records found.</td></tr>
-              )}
-              {relatedReels.map((item, idx) => {
-                  // Determine if this row is the Parent or Child
-                  // 1. Check if backend sent 'EntryType'
-                  // 2. Fallback: Check if ID matches selectedSourceId
-                  const isParent = item.EntryType === 'Parent' || item.MLUniqueID === selectedSourceId;
-                  
-                  return (
-                    <tr key={idx} style={{ 
-                        borderBottom: '1px solid rgba(255,255,255,0.05)', 
-                        // Highlight Parent Row lightly
-                        background: isParent ? 'rgba(16, 185, 129, 0.1)' : (idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent') 
-                    }}>
-                      <td style={styles.tableCell}>
-                        <span style={{
-                            ...styles.suffixTag,
-                            background: isParent ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                            color: isParent ? '#34d399' : '#60a5fa',
-                            border: isParent ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)',
-                            marginLeft: 0,
-                            fontSize: '0.7rem'
-                        }}>
-                          {isParent ? "PARENT" : "CHILD"}
-                        </span>
-                      </td>
-                      <td style={{...styles.tableCell, fontWeight: isParent ? 700 : 400, color: isParent ? '#fff' : '#e2e8f0' }}>{item.MLUniqueID}</td>
-                      <td style={styles.tableCell}>{item.ContentFrom}</td>
-                      <td style={styles.tableCell}>{item.CounterFrom}</td>
-                      <td style={styles.tableCell}>{item.CounterTo}</td>
-                      <td style={styles.tableCell}>{item.EventName}</td>
-                      <td style={styles.tableCell}>{item.Detail}</td>
-                      <td style={styles.tableCell}>{item.Dimension}</td>
-                      <td style={styles.tableCell}>{item.Topic}</td>
-                      <td style={styles.tableCell}>
-                        <span style={getBucketBadgeStyle(item.ProductionBucket)}>
-                          {item.ProductionBucket}
-                        </span>
-                      </td>
+
+            <div className="modal-scrollbar" style={{ padding: '0', overflow: 'auto', flex: 1, position: 'relative' }}>
+              {modalLoading ? (
+                  <div style={{ padding: 40, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', flexDirection: 'column', gap: 10 }}>
+                    <Loader2 size={32} style={{ animation: 'spinLoader 1s linear infinite' }} />
+                    <span>Loading details...</span>
+                  </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: '#1e293b', zIndex: 10 }}>
+                    <tr>
+                      <th style={styles.tableHeader}>Type</th> {/* New Column for visual clarity */}
+                      <th style={styles.tableHeader}>MLUniqueID</th>
+                      <th style={styles.tableHeader}>EventRefMLID</th>
+                      <th style={styles.tableHeader}>ContentFrom</th>
+                      <th style={styles.tableHeader}>CounterFrom</th>
+                      <th style={styles.tableHeader}>CounterTo</th>
+                      <th style={styles.tableHeader}>Event Name</th>
+                      <th style={styles.tableHeader}>Details</th>
+                      <th style={styles.tableHeader}>Dimension</th>
+                      <th style={styles.tableHeader}>Topic</th>
+                      <th style={styles.tableHeader}>Production Bucket</th>
                     </tr>
-                  );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  </div>
-)}
+                  </thead>
+                  <tbody>
+                    {relatedReels.length === 0 && (
+                        <tr><td colSpan={10} style={{padding: 20, textAlign: 'center', color: '#64748b'}}>No records found.</td></tr>
+                    )}
+                    {relatedReels.map((item, idx) => {
+                        // Determine if this row is the Parent or Child
+                        // 1. Check if backend sent 'EntryType'
+                        // 2. Fallback: Check if ID matches selectedSourceId
+                        const isParent = item.EntryType === 'Parent' || item.MLUniqueID === selectedSourceId;
+                        
+                        return (
+                          <tr key={idx} style={{ 
+                              borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                              // Highlight Parent Row lightly
+                              background: isParent ? 'rgba(16, 185, 129, 0.1)' : (idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent') 
+                          }}>
+                            <td style={styles.tableCell}>
+                              <span style={{
+                                  ...styles.suffixTag,
+                                  background: isParent ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                                  color: isParent ? '#34d399' : '#60a5fa',
+                                  border: isParent ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)',
+                                  marginLeft: 0,
+                                  fontSize: '0.7rem'
+                              }}>
+                                {isParent ? "PARENT" : "CHILD"}
+                              </span>
+                            </td>
+                            <td style={{...styles.tableCell, fontWeight: isParent ? 700 : 400, color: isParent ? '#fff' : '#e2e8f0' }}>{item.MLUniqueID}</td>
+                            <td style={styles.tableCell}>{item.EventRefMLID}</td>
+                            <td style={styles.tableCell}>{item.ContentFrom}</td>
+                            <td style={styles.tableCell}>{item.CounterFrom}</td>
+                            <td style={styles.tableCell}>{item.CounterTo}</td>
+                            <td style={styles.tableCell}>{item.EventName}</td>
+                            <td style={styles.tableCell}>{item.Detail}</td>
+                            <td style={styles.tableCell}>{item.Dimension}</td>
+                            <td style={styles.tableCell}>{item.Topic}</td>
+                            <td style={styles.tableCell}>
+                              <span style={getBucketBadgeStyle(item.ProductionBucket)}>
+                                {item.ProductionBucket}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, gap: 15 }}>
