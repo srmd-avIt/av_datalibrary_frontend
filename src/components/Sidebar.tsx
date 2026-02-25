@@ -1,4 +1,3 @@
-// src/components/Sidebar.tsx
 import React, { useState, useMemo, useEffect } from "react";
 // Removed createPortal since we no longer need the overlay
 
@@ -8,7 +7,8 @@ import {
   User, ChevronLeft, ChevronRight, Music, Hash, Layers, Gift, Flag, 
   MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, 
   ListFilter, Scissors, ListTree, FolderKanban, X, Columns, HardDrive, 
-  LayoutGrid, CheckSquare, Search, Plus, Eye
+  LayoutGrid, CheckSquare, Search, Plus, Eye,
+  SearchCheck
 } from "lucide-react";
 
 import { Button } from "./ui/button";
@@ -35,9 +35,6 @@ function useSlideshow(trigger: boolean, count: number, delay: number = 200) {
   const [visibleCount, setVisibleCount] = useState(trigger ? 0 : count);
   useEffect(() => {
     if (trigger) {
-      // Only start animation if we aren't already fully visible
-      // However, usually we want to animate from 0 when opening.
-      // Since the component is now stable, this effect runs only when trigger changes false->true.
       setVisibleCount(0);
       let i = 0;
       const interval = setInterval(() => {
@@ -74,20 +71,20 @@ const SidebarItem = ({ item, activeView, collapsed, isOpen, onToggle, onClick }:
 
   // Helper for inline window checks (client-side safe)
   const isSmallScreen = typeof window !== "undefined" && window.innerWidth <= 600;
-  const iconSize = isSmallScreen ? "14px" : "16px";
+  const iconSize = isSmallScreen ? "18px" : "16px"; // Made slightly larger for mobile taps
 
   if (item.children && item.children.length > 0) {
     return (
-      <div>
+      <div className="mb-1">
         <Button
           variant="ghost"
           size={collapsed ? "sm" : "default"}
           style={{
             display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
-            padding: collapsed ? "0" : isSmallScreen ? "0 8px" : "0 16px",
-            height: collapsed ? "40px" : isSmallScreen ? "38px" : "44px",
-            gap: collapsed ? "0px" : isSmallScreen ? "8px" : "12px",
-            borderRadius: "16px", transition: "all 200ms", fontSize: isSmallScreen ? "14px" : "16px", textAlign: "left",
+            padding: collapsed ? "0" : isSmallScreen ? "0 12px" : "0 16px",
+            height: collapsed ? "40px" : isSmallScreen ? "44px" : "44px", // Taller on mobile for touch
+            gap: collapsed ? "0px" : isSmallScreen ? "12px" : "12px",
+            borderRadius: "16px", transition: "all 200ms", fontSize: isSmallScreen ? "15px" : "16px", textAlign: "left",
           }}
           className={`w-full ${collapsed ? "justify-center p-0 h-10" : "gap-3 h-11"} rounded-xl transition-all duration-200 ${isActive || isOpen ? "bg-gradient-to-r from-blue-500/20 to-purple-600/20 text-white border border-blue-500/30 shadow-lg" : "text-slate-300 hover:text-white hover:bg-slate-800/50 border border-transparent hover:border-slate-700/50"}`}
           onClick={() => onToggle(item.id)}
@@ -108,16 +105,16 @@ const SidebarItem = ({ item, activeView, collapsed, isOpen, onToggle, onClick }:
               return (
                 <Button key={child.id} variant="ghost" size="default" onClick={() => onClick(child.id)}
                   style={{
-                    display: "flex", alignItems: "center", width: "100%", gap: isSmallScreen ? "8px" : "12px",
-                    height: isSmallScreen ? "38px" : "44px", borderRadius: "16px", transition: "all 0.2s ease", justifyContent: "flex-start",
-                    paddingLeft: isSmallScreen ? "8px" : "16px", paddingRight: isSmallScreen ? "8px" : "16px", fontSize: isSmallScreen ? "13px" : "15px",
+                    display: "flex", alignItems: "center", width: "100%", gap: isSmallScreen ? "12px" : "12px",
+                    height: isSmallScreen ? "42px" : "44px", borderRadius: "16px", transition: "all 0.2s ease", justifyContent: "flex-start",
+                    paddingLeft: isSmallScreen ? "12px" : "16px", paddingRight: isSmallScreen ? "12px" : "16px", fontSize: isSmallScreen ? "14px" : "15px",
                     backdropFilter: "blur(8px)",
                     background: isChildActive ? "linear-gradient(90deg, rgba(51,65,85,0.5) 60%, rgba(59,130,246,0.15) 100%)" : "rgba(30,41,59,0.25)",
                     border: isChildActive ? "2px solid rgba(59,130,246,0.25)" : "2px solid rgba(51,65,85,0.10)",
                     color: isChildActive ? "white" : "rgb(148,163,184)", cursor: "pointer", minWidth: 0, overflow: "hidden", textAlign: "left", opacity: 1, transform: "translateY(0)", transitionProperty: "opacity, transform", transitionDuration: "300ms",
                   }}
-                  onMouseEnter={e => { if (!isChildActive) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f4f6f8ff"; e.currentTarget.style.border = "2px solid rgba(59,130,246,0.15)"; } }}
-                  onMouseLeave={e => { if (!isChildActive) { e.currentTarget.style.background = "rgba(30,41,59,0.25)"; e.currentTarget.style.color = "rgb(148,163,184)"; e.currentTarget.style.border = "2px solid rgba(51,65,85,0.10)"; } }}
+                  onMouseEnter={e => { if (!isChildActive && !isSmallScreen) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f4f6f8ff"; e.currentTarget.style.border = "2px solid rgba(59,130,246,0.15)"; } }}
+                  onMouseLeave={e => { if (!isChildActive && !isSmallScreen) { e.currentTarget.style.background = "rgba(30,41,59,0.25)"; e.currentTarget.style.color = "rgb(148,163,184)"; e.currentTarget.style.border = "2px solid rgba(51,65,85,0.10)"; } }}
                 >
                   <ChildIcon style={{ width: iconSize, height: iconSize, flexShrink: 0 }} />
                   <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{child.label}</span>
@@ -133,33 +130,34 @@ const SidebarItem = ({ item, activeView, collapsed, isOpen, onToggle, onClick }:
 
   // Standard Item
   return (
-    <Button variant="ghost" size={collapsed ? "sm" : "default"}
-      style={{
-        display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
-        padding: collapsed ? "0" : isSmallScreen ? "0 12px" : "0 16px",
-        height: collapsed ? "40px" : isSmallScreen ? "38px" : "44px",
-        gap: collapsed ? "0px" : isSmallScreen ? "8px" : "12px",
-        borderRadius: "12px", transition: "all 200ms", fontSize: isSmallScreen ? "14px" : "16px",
-        ...(isActive ? { background: "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))", color: "white", border: "1px solid rgba(59,130,246,0.30)", boxShadow: "0 0 10px rgba(59,130,246,0.25)" } : { color: "rgb(203,213,225)", border: "1px solid transparent", cursor: "pointer" }),
-      }}
-      onClick={() => onClick(item.id)}
-      title={collapsed ? item.label : undefined}
-      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f0f3f7ff"; e.currentTarget.style.border = "1px solid rgba(59,130,246,0.15)"; } }}
-      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgb(203,213,225)"; e.currentTarget.style.border = "1px solid transparent"; } }}
-    >
-      <Icon style={{ width: iconSize, height: iconSize }} />
-      {!collapsed && (
-        <>
-          <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{item.label}</span>
-          {isActive && (<div style={{ marginLeft: "auto", width: isSmallScreen ? "6px" : "8px", height: isSmallScreen ? "6px" : "8px", borderRadius: "9999px", backgroundColor: "rgb(96,165,250)" }}></div>)}
-        </>
-      )}
-    </Button>
+    <div className="mb-1">
+      <Button variant="ghost" size={collapsed ? "sm" : "default"}
+        style={{
+          display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
+          padding: collapsed ? "0" : isSmallScreen ? "0 12px" : "0 16px",
+          height: collapsed ? "40px" : isSmallScreen ? "44px" : "44px", // Taller on mobile for touch
+          gap: collapsed ? "0px" : isSmallScreen ? "12px" : "12px",
+          borderRadius: "12px", transition: "all 200ms", fontSize: isSmallScreen ? "15px" : "16px",
+          ...(isActive ? { background: "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))", color: "white", border: "1px solid rgba(59,130,246,0.30)", boxShadow: "0 0 10px rgba(59,130,246,0.25)" } : { color: "rgb(203,213,225)", border: "1px solid transparent", cursor: "pointer" }),
+        }}
+        onClick={() => onClick(item.id)}
+        title={collapsed ? item.label : undefined}
+        onMouseEnter={e => { if (!isActive && !isSmallScreen) { e.currentTarget.style.background = "rgba(59,130,246,0.10)"; e.currentTarget.style.color = "#f0f3f7ff"; e.currentTarget.style.border = "1px solid rgba(59,130,246,0.15)"; } }}
+        onMouseLeave={e => { if (!isActive && !isSmallScreen) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgb(203,213,225)"; e.currentTarget.style.border = "1px solid transparent"; } }}
+      >
+        <Icon style={{ width: iconSize, height: iconSize }} />
+        {!collapsed && (
+          <>
+            <span style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{item.label}</span>
+            {isActive && (<div style={{ marginLeft: "auto", width: isSmallScreen ? "6px" : "8px", height: isSmallScreen ? "6px" : "8px", borderRadius: "9999px", backgroundColor: "rgb(96,165,250)" }}></div>)}
+          </>
+        )}
+      </Button>
+    </div>
   );
 };
 
 // --- Independent Component: SidebarSection ---
-// Replaces the old SidebarContent. Maps items to stable SidebarItems.
 const SidebarSection = ({ items, activeView, collapsed, openMenus, toggleMenu, handleMenuClick }: any) => {
   return (
     <div className="space-y-1">
@@ -198,7 +196,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   // Logic to determine if Project Hub is active
   const isProjectHubActive = activeView === "digitalrecordings_gsheet";
 
-  // 1. Main Menu Items (Removed Submitters ML from here)
+  // 1. Main Menu Items
   const allMenuItems = [
     { id: "dashboard", label: "Home", icon: Home },
     { id: "satsang_dashboard", label: "Satsang Search", icon: LayoutDashboard },
@@ -219,7 +217,6 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         { id: "medialog_satsang_category", label: "Satsang Category (AS IS)", icon: ListTree },
       ],
     },
-    // Submitters ML removed from here
     { id: "aux", label: "Aux Files", icon: FileText },
     {
       id: "master-data",
@@ -256,19 +253,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     { id: "user-management", label: "User Management", icon: User, requiredRoles: ['Admin', 'Owner'] }
   ];
 
-  // 2. Separate definition for Submitters ML
-  const submittersMlConfig = {
-    id: "submitters-ml",
-    label: "Submitters ML",
-    icon: Users,
-    children: [
-      { id: "check-ml-reference", label: "Check ML Reference", icon: CheckSquare },
-      { id: "search-new-ml-event-code", label: "Search ML by EventCode", icon: Search },
-     
-    ],
-  };
-
-  // Logic to check if user can see Audio Merge App (Used for visibility if needed, or to disable button)
+  // Logic to check if user can see Audio Merge App
   const canViewAudioMerge = useMemo(() => {
     if (!user) return false;
     if (user.role === "Owner" || user.role === "Admin") return true;
@@ -302,276 +287,603 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
     return allowed;
   }, [user, allMenuItems]);
 
-  // 4. Calculate visibility for SUBMITTERS ML separately
-  const visibleSubmittersMl = useMemo(() => {
-    if (!user) return null;
-    // Owner/Admin always see it
-    if (user.role === "Owner" || user.role === "Admin") return submittersMlConfig;
-
-    const permMap: { [key: string]: Set<string> } = {};
-    (user.permissions || []).forEach((p) => { permMap[p.resource] = new Set(p.actions); });
-
-    // Check children permissions
-    const visibleChildren = submittersMlConfig.children.filter((child) => {
-      const actions = permMap[child.label];
-      return actions && (actions.has("read") || actions.has("write"));
-    });
-
-    if (visibleChildren.length > 0) {
-      return { ...submittersMlConfig, children: visibleChildren };
-    }
-    return null;
-  }, [user]);
-
   const handleMenuClick = (id: string) => {
     onViewChange(id);
-    if (collapsed) onClose?.();
+    if (collapsed || isMobile) onClose?.(); // Auto close on mobile
   };
 
   const toggleMenu = (id: string) => {
     setOpenMenus(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  return (
-    <>
-      {isMobile ? (
-        // --- MOBILE SIDEBAR ---
-        <>
-          <div className={`fixed inset-0 bg-black/60 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose} />
-          <div className={`fixed top-0 left-0 h-full w-72 flex flex-col bg-gradient-to-b from-slate-900/95 via-slate-800/90 to-slate-900/95 border-r border-slate-700/50 shadow-2xl transition-transform duration-300 ease-in-out z-50 ${isOpen ? 'transform translate-x-0' : 'transform -translate-x-full'}`}>
-            <div className="p-6 border-b border-slate-700/50 relative">
-              <Button variant="ghost" size="sm" className="absolute top-4 right-4 w-8 h-8 rounded-full p-0" onClick={onClose}><X className="w-4 h-4 text-slate-300" /></Button>
-              <div className="flex items-center gap-3 mb-4">
-                {/* 1. Mobile Logo/Title */}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"><Database className="w-5 h-5 text-white" /></div>
-                <div><h2 className="text-xl font-bold text-white">Data Library</h2><p className="text-xs text-slate-400">Analytics Dashboard</p></div>
-              </div>
+  // ==========================================
+  // 📱 MOBILE APP UI 
+  // ==========================================
+ const renderMobileView = () => (
+  <>
+    {/* Overlay */}
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 40,
+        backgroundColor: "rgba(0,0,0,0.7)",
+        opacity: isOpen ? 1 : 0,
+        pointerEvents: isOpen ? "auto" : "none",
+        transition: "opacity 0.3s ease"
+      }}
+      onClick={onClose}
+    />
 
-              {/* 2. Mobile User Profile */}
-              {user && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                  <Avatar className="w-8 h-8"><AvatarImage src={user.picture} /><AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">{user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar>
-                  <div className="flex-1 min-w-0"><p className="text-sm font-medium text-white truncate">{user.name}</p><p className="text-xs text-slate-400 truncate">{user.email}</p></div>
-                </div>
-              )}
+    {/* Drawer Container */}
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "85vw",
+        maxWidth: "340px",
+        height: "100dvh",
+        backgroundColor: "#0b1120",
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+        transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 0.3s ease-in-out",
+        zIndex: 50,
+        display: "flex",
+        flexDirection: "column"
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "20px",
+          borderBottom: "1px solid rgba(100,116,139,0.3)",
+          position: "relative",
+          backgroundColor: "rgba(15,23,42,0.4)"
+        }}
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: "16px",
+            right: "16px",
+            width: "32px",
+            height: "32px",
+            borderRadius: "999px",
+            backgroundColor: "rgba(255,255,255,0.05)",
+            padding: 0
+          }}
+        >
+          <X style={{ width: "16px", height: "16px", color: "#cbd5e1" }} />
+        </Button>
 
-               {/* 3. Mobile Apps Button */}
-               <div 
-                  className={`
-                    flex flex-col items-center justify-center mt-4 p-2 rounded-xl transition-all
-                    ${isProjectHubActive ? "bg-gradient-to-r from-blue-500/10 to-purple-600/10 border border-blue-500/30" : "border border-transparent"}
-                  `}
-               >
-                  <button 
-                    onClick={() => handleMenuClick("digitalrecordings_gsheet")}
-                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 flex items-center justify-center text-white shadow-lg hover:shadow-pink-500/25 transition-all active:scale-95 border border-white/10"
-                    title="Open Apps"
-                  >
-                      <LayoutGrid className="w-5 h-5" />
-                  </button>
-                  <span className={`text-[10px] font-semibold mt-1 uppercase tracking-wider ${isProjectHubActive ? "text-white" : "text-slate-400"}`}>Project Hub</span>
-              </div>
-            </div>
-            
-            <nav className="flex-1 p-4 overflow-y-auto custom-sidebar-scrollbar">
-              <SidebarSection 
-                items={visibleMenuItems} 
-                activeView={activeView} 
-                collapsed={false} 
-                openMenus={openMenus} 
-                toggleMenu={toggleMenu} 
-                handleMenuClick={handleMenuClick} 
-              />
-              
-              {/* Separate Section for Submitters ML */}
-              {visibleSubmittersMl && (
-                <>
-                  <Separator
-                    style={{
-                      marginTop: "12px",
-                      marginBottom: "12px",
-                      backgroundColor: "rgba(51,65,85,0.5)"
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      paddingLeft: "8px",
-                      paddingRight: "8px",
-                      paddingTop: "4px",
-                      paddingBottom: "4px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      marginBottom: "4px"
-                    }}
-                  >
-                    Submitters Area
-                  </div>
-
-                  <SidebarSection 
-                    items={[visibleSubmittersMl]} 
-                    activeView={activeView} 
-                    collapsed={false} 
-                    openMenus={openMenus} 
-                    toggleMenu={toggleMenu} 
-                    handleMenuClick={handleMenuClick} 
-                  />
-                </>
-              )}
-
-
-              <div className="space-y-1 mt-6">
-                <Button variant="ghost" size="default" className="w-full justify-start gap-3 h-11 rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => { logout(); onClose?.(); }}>
-                  <LogOut className="w-4 h-4" /><span className="font-medium">Logout</span>
-                </Button>
-              </div>
-            </nav>
+        {/* Logo Area */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "12px",
+              background: "linear-gradient(to right, #3b82f6, #9333ea)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <Database style={{ width: "20px", height: "20px", color: "#fff" }} />
           </div>
-        </>
-      ) : (
-        // --- DESKTOP SIDEBAR ---
-        <div className={`${collapsed ? 'w-16' : 'w-72'} h-full flex flex-col backdrop-blur-xl bg-gradient-to-b from-slate-900/95 via-slate-800/90 to-slate-900/95 border-r border-slate-700/50 rounded-r-2xl shadow-2xl transition-all duration-300 relative`}>
-          <Button variant="ghost" size="sm" style={{ position: "absolute", top: "1.5rem", right: collapsed ? "-0.75rem" : "0.75rem", width: "1.5rem", height: "1.5rem", borderRadius: "9999px", backgroundColor: "rgb(30 41 59)", border: "1px solid rgba(51, 65, 85, 0.5)", zIndex: 50, padding: 0, cursor: "pointer", transition: "all 0.3s ease" }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgb(51 65 85)")} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgb(30 41 59)")} onClick={onToggleCollapse}>
-            {collapsed ? <ChevronRight className="w-3 h-3 text-slate-300" /> : <ChevronLeft className="w-3 h-3 text-slate-300" />}
-          </Button>
-
-          <div className={`${collapsed ? "p-3" : "p-6"} border-b border-slate-700/50 transition-all duration-300`}>
-            {/* 1. Header Logo Area */}
-           <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} mb-4`}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"><Database className="w-5 h-5 text-white" /></div>
-          {!collapsed && (<div><h2 className="text-xl font-bold text-white">Data Library</h2><p className="text-xs text-slate-400">Analytics Dashboard</p></div>)}
+          <div>
+            <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#fff", margin: 0 }}>
+              Data Library
+            </h2>
+            <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>
+              Analytics Dashboard
+            </p>
+          </div>
         </div>
 
-            {/* 2. User Profile Area */}
-            {!collapsed && user && (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 mb-4">
-                <Avatar className="w-8 h-8"><AvatarImage src={user.picture} /><AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">{user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar>
-                <div className="flex-1 min-w-0"><p className="text-sm font-medium text-white truncate">{user.name}</p><p className="text-xs text-slate-400 truncate">{user.email}</p></div>
-              </div>
-            )}
-            {collapsed && user && (
-              <div className="flex justify-center mb-4">
-                <Avatar className="w-8 h-8"><AvatarImage src={user.picture} /><AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm">{user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</AvatarFallback></Avatar>
-              </div>
-            )}
+        {/* User Profile */}
+        {user && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "12px",
+              borderRadius: "12px",
+              backgroundColor: "rgba(30,41,59,0.5)",
+              border: "1px solid rgba(100,116,139,0.3)",
+              marginBottom: "16px"
+            }}
+          >
+            <Avatar style={{ width: "32px", height: "32px" }}>
+              <AvatarImage src={user.picture} />
+              <AvatarFallback
+                style={{
+                  background: "linear-gradient(to right, #3b82f6, #9333ea)",
+                  color: "#fff",
+                  fontSize: "14px"
+                }}
+              >
+                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
 
-            {/* 3. Apps Button Area */}
-            <div
-              onClick={() => handleMenuClick("digitalrecordings_gsheet")}
-              className={`
-                flex items-center transition-all duration-200 cursor-pointer group
-                ${collapsed ? "justify-center p-1" : "gap-3 p-2"}
-                rounded-xl
-              `}
-              style={{
-                ...(isProjectHubActive
-                  ? {
-                      background: "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))",
-                      border: "1px solid rgba(59,130,246,0.30)",
-                      boxShadow: "0 0 10px rgba(59,130,246,0.25)"
-                    }
-                  : {
-                      border: "1px solid transparent",
-                      background: "transparent"
-                    }
-                )
-              }}
-              onMouseEnter={(e) => {
-                if(!isProjectHubActive) {
-                    e.currentTarget.style.background = "rgba(59,130,246,0.10)";
-                    e.currentTarget.style.borderColor = "rgba(59,130,246,0.15)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if(!isProjectHubActive) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.borderColor = "transparent";
-                }
-              }}
-              title="Project Hub"
-            >
-              <div className={`
-                rounded-xl bg-gradient-to-br from-pink-500 to-violet-600
-                flex items-center justify-center text-white shadow-lg
-                transition-all duration-200
-                group-hover:scale-105 group-active:scale-95 border border-white/10
-                ${collapsed ? "w-8 h-8" : "w-10 h-10"}
-              `}>
-                <LayoutGrid className={collapsed ? "w-4 h-4" : "w-5 h-5"} />
-              </div>
-
-              {!collapsed && (
-                <span className={`text-sm font-medium transition-colors duration-200 ${isProjectHubActive ? "text-white" : "text-slate-400 group-hover:text-white"}`}>
-                  Project Hub
-                </span>
-              )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#fff",
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}
+              >
+                {user.name}
+              </p>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}
+              >
+                {user.email}
+              </p>
             </div>
+          </div>
+        )}
 
+        {/* Project Hub Button */}
+        <div
+          onClick={() => handleMenuClick("digitalrecordings_gsheet")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "8px",
+            borderRadius: "12px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            ...(isProjectHubActive
+              ? {
+                  background:
+                    "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))",
+                  border: "1px solid rgba(59,130,246,0.30)",
+                  boxShadow: "0 0 10px rgba(59,130,246,0.25)"
+                }
+              : {
+                  border: "1px solid transparent",
+                  background: "transparent"
+                })
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "12px",
+              background: "linear-gradient(to bottom right, #ec4899, #8b5cf6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.1)"
+            }}
+          >
+            <LayoutGrid style={{ width: "20px", height: "20px" }} />
           </div>
 
-          <nav className={`flex-1 ${collapsed ? "p-2" : "p-4"} overflow-y-auto transition-all duration-300 custom-sidebar-scrollbar`}>
-            {/* Main Menu Items */}
-            <SidebarSection 
-                items={visibleMenuItems} 
-                activeView={activeView} 
-                collapsed={collapsed} 
-                openMenus={openMenus} 
-                toggleMenu={toggleMenu} 
-                handleMenuClick={handleMenuClick} 
-            />
-            
-            {/* Separate Section for Submitters ML */}
-            {visibleSubmittersMl && (
-              <>
-                <Separator className="my-3 bg-slate-700/50" />
-                {!collapsed && (
-                  <div className="px-2 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Submitters To ML
-                  </div>
-                )}
-                <SidebarSection 
-                    items={[visibleSubmittersMl]} 
-                    activeView={activeView} 
-                    collapsed={collapsed} 
-                    openMenus={openMenus} 
-                    toggleMenu={toggleMenu} 
-                    handleMenuClick={handleMenuClick} 
-                />
-              </>
-            )}
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: isProjectHubActive ? "#fff" : "#94a3b8"
+            }}
+          >
+            Project Hub
+          </span>
+        </div>
+      </div>
 
-            <Separator className="my-6 bg-slate-700/50" />
-            
-            {/* Logout Button */}
-            <div className="space-y-1">
-              <Button variant="ghost" size={collapsed ? "sm" : "default"}
-                style={{
-                  display: "flex", alignItems: "center", width: "100%", justifyContent: collapsed ? "center" : "flex-start",
-                  padding: collapsed ? "0" : window.innerWidth <= 600 ? "0 8px" : "0 16px",
-                  height: collapsed ? "40px" : window.innerWidth <= 600 ? "38px" : "44px",
-                  gap: collapsed ? "0px" : window.innerWidth <= 600 ? "8px" : "12px",
-                  borderRadius: "16px", transition: "all 200ms", fontSize: window.innerWidth <= 600 ? "14px" : "16px", textAlign: "left",
-                }}
-                className={`w-full ${collapsed ? "justify-center p-0 h-10" : "gap-3 h-11"} rounded-xl text-slate-300 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all duration-200`}
-                onClick={logout}
-                title={collapsed ? "Logout" : undefined}
-              >
-                <LogOut className="w-4 h-4" style={{ width: window.innerWidth <= 600 ? "14px" : "16px", height: window.innerWidth <= 600 ? "14px" : "16px" }} />
-                {!collapsed && (<span className="font-medium" style={{ fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>Logout</span>)}
-              </Button>
-            </div>
-          </nav>
+      {/* Scrollable Menu */}
+      <nav
+        style={{
+          flex: 1,
+          padding: "16px 12px",
+          overflowY: "auto"
+        }}
+      >
+        <SidebarSection
+          items={visibleMenuItems}
+          activeView={activeView}
+          collapsed={false}
+          openMenus={openMenus}
+          toggleMenu={toggleMenu}
+          handleMenuClick={handleMenuClick}
+        />
+      </nav>
 
-          {!collapsed && (
-            <div className="p-4 border-t border-slate-700/50">
-              <div className="text-xs text-slate-500 text-center">© 2025 Data Library v2.1.0</div>
-            </div>
-          )}
+      {/* Logout Footer */}
+      <div
+        style={{
+          padding: "16px",
+          borderTop: "1px solid rgba(30,41,59,0.8)",
+          backgroundColor: "rgba(15,23,42,0.3)"
+        }}
+      >
+        <Button
+          variant="ghost"
+          onClick={() => {
+            logout();
+            onClose?.();
+          }}
+          style={{
+            width: "100%",
+            height: "48px",
+            borderRadius: "12px",
+            backgroundColor: "rgba(30,41,59,0.5)",
+            color: "#f87171",
+            fontWeight: 600,
+            fontSize: "15px",
+            border: "1px solid rgba(239,68,68,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "12px"
+          }}
+        >
+          <LogOut style={{ width: "20px", height: "20px" }} />
+          Logout
+        </Button>
+      </div>
+    </div>
+  </>
+);
+  // ==========================================
+  // 💻 DESKTOP UI (Exactly as you provided)
+  // ==========================================
+  const renderDesktopView = () => (
+  <div
+    style={{
+      width: collapsed ? "64px" : "288px",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      backdropFilter: "blur(20px)",
+      background:
+        "linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(30,41,59,0.9), rgba(15,23,42,0.95))",
+      borderRight: "1px solid rgba(100,116,139,0.3)",
+      borderTopRightRadius: "16px",
+      borderBottomRightRadius: "16px",
+      boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+      transition: "all 0.3s ease",
+      position: "relative"
+    }}
+  >
+    {/* Collapse Toggle Button */}
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onToggleCollapse}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.backgroundColor = "rgb(51,65,85)")
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.backgroundColor = "rgb(30,41,59)")
+      }
+      style={{
+        position: "absolute",
+        top: "1.5rem",
+        right: collapsed ? "-0.75rem" : "0.75rem",
+        width: "24px",
+        height: "24px",
+        borderRadius: "9999px",
+        backgroundColor: "rgb(30,41,59)",
+        border: "1px solid rgba(51,65,85,0.5)",
+        zIndex: 50,
+        padding: 0,
+        cursor: "pointer",
+        transition: "all 0.3s ease"
+      }}
+    >
+      {collapsed ? (
+        <ChevronRight style={{ width: "12px", height: "12px", color: "#cbd5e1" }} />
+      ) : (
+        <ChevronLeft style={{ width: "12px", height: "12px", color: "#cbd5e1" }} />
+      )}
+    </Button>
+
+    {/* Header Section */}
+    <div
+      style={{
+        padding: collapsed ? "12px" : "24px",
+        borderBottom: "1px solid rgba(100,116,139,0.3)",
+        transition: "all 0.3s ease"
+      }}
+    >
+      {/* Logo Area */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          gap: collapsed ? 0 : "12px",
+          marginBottom: "16px"
+        }}
+      >
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "12px",
+            background: "linear-gradient(to right, #3b82f6, #9333ea)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          <Database style={{ width: "20px", height: "20px", color: "#fff" }} />
+        </div>
+
+        {!collapsed && (
+          <div>
+            <h2
+              style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "#fff",
+                margin: 0
+              }}
+            >
+              Data Library
+            </h2>
+            <p
+              style={{
+                fontSize: "12px",
+                color: "#94a3b8",
+                margin: 0
+              }}
+            >
+              Analytics Dashboard
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* User Profile */}
+      {user && !collapsed && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            borderRadius: "12px",
+            backgroundColor: "rgba(30,41,59,0.5)",
+            border: "1px solid rgba(100,116,139,0.3)",
+            marginBottom: "16px"
+          }}
+        >
+          <Avatar style={{ width: "32px", height: "32px" }}>
+            <AvatarImage src={user.picture} />
+            <AvatarFallback
+              style={{
+                background: "linear-gradient(to right, #3b82f6, #9333ea)",
+                color: "#fff",
+                fontSize: "14px"
+              }}
+            >
+              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p
+              style={{
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "#fff",
+                margin: 0,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}
+            >
+              {user.name}
+            </p>
+            <p
+              style={{
+                fontSize: "12px",
+                color: "#94a3b8",
+                margin: 0,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}
+            >
+              {user.email}
+            </p>
+          </div>
         </div>
       )}
-    </>
-  );
+
+      {user && collapsed && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+          <Avatar style={{ width: "32px", height: "32px" }}>
+            <AvatarImage src={user.picture} />
+            <AvatarFallback
+              style={{
+                background: "linear-gradient(to right, #3b82f6, #9333ea)",
+                color: "#fff",
+                fontSize: "14px"
+              }}
+            >
+              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      )}
+
+      {/* Project Hub */}
+      <div
+        onClick={() => handleMenuClick("digitalrecordings_gsheet")}
+        title="Project Hub"
+        onMouseEnter={(e) => {
+          if (!isProjectHubActive) {
+            e.currentTarget.style.background = "rgba(59,130,246,0.1)";
+            e.currentTarget.style.borderColor = "rgba(59,130,246,0.15)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isProjectHubActive) {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "transparent";
+          }
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          gap: collapsed ? 0 : "12px",
+          padding: collapsed ? "4px" : "8px",
+          borderRadius: "12px",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          ...(isProjectHubActive
+            ? {
+                background:
+                  "linear-gradient(to right, rgba(59,130,246,0.2), rgba(147,51,234,0.2))",
+                border: "1px solid rgba(59,130,246,0.3)",
+                boxShadow: "0 0 10px rgba(59,130,246,0.25)"
+              }
+            : {
+                border: "1px solid transparent",
+                background: "transparent"
+              })
+        }}
+      >
+        <div
+          style={{
+            width: collapsed ? "32px" : "40px",
+            height: collapsed ? "32px" : "40px",
+            borderRadius: "12px",
+            background: "linear-gradient(to bottom right, #ec4899, #8b5cf6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            border: "1px solid rgba(255,255,255,0.1)"
+          }}
+        >
+          <LayoutGrid
+            style={{
+              width: collapsed ? "16px" : "20px",
+              height: collapsed ? "16px" : "20px"
+            }}
+          />
+        </div>
+
+        {!collapsed && (
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: isProjectHubActive ? "#fff" : "#94a3b8"
+            }}
+          >
+            Project Hub
+          </span>
+        )}
+      </div>
+    </div>
+
+    {/* Navigation */}
+    <nav
+      style={{
+        flex: 1,
+        padding: collapsed ? "8px" : "16px",
+        overflowY: "auto",
+        transition: "all 0.3s ease"
+      }}
+    >
+      <SidebarSection
+        items={visibleMenuItems}
+        activeView={activeView}
+        collapsed={collapsed}
+        openMenus={openMenus}
+        toggleMenu={toggleMenu}
+        handleMenuClick={handleMenuClick}
+      />
+
+      <div style={{ margin: "24px 0", height: "1px", background: "rgba(100,116,139,0.3)" }} />
+
+      {/* Logout */}
+      <Button
+        variant="ghost"
+        onClick={logout}
+        title={collapsed ? "Logout" : undefined}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          width: "100%",
+          padding: collapsed ? 0 : "0 16px",
+          height: collapsed ? "40px" : "44px",
+          gap: collapsed ? 0 : "12px",
+          borderRadius: "12px",
+          fontSize: "16px",
+          color: "#cbd5e1",
+          background: "transparent",
+          border: "1px solid transparent",
+          transition: "all 0.2s ease",
+          cursor: "pointer"
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "#f87171";
+          e.currentTarget.style.background = "rgba(239,68,68,0.1)";
+          e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "#cbd5e1";
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderColor = "transparent";
+        }}
+      >
+        <LogOut style={{ width: "16px", height: "16px" }} />
+        {!collapsed && <span style={{ fontWeight: 500 }}>Logout</span>}
+      </Button>
+    </nav>
+
+    {!collapsed && (
+      <div
+        style={{
+          padding: "16px",
+          borderTop: "1px solid rgba(100,116,139,0.3)"
+        }}
+      >
+        <div
+          style={{
+            fontSize: "12px",
+            color: "#64748b",
+            textAlign: "center"
+          }}
+        >
+          © 2025 Data Library v2.1.0
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+  // Conditional Return: Render mobile view if on a phone, desktop view if on a laptop
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

@@ -6,9 +6,21 @@ import { Search, X, Edit, ArrowRight } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 
-// --- Helper Renderer for Tags ---
+// --- Helper: Standard Centered Text Renderer ---
+const centeredTextRenderer = (value: any) => {
+  return (
+    <div className="w-full flex items-center justify-center text-center">
+      {/* CHANGED: Render value, or an empty string if null/undefined */}
+      {value || ""}
+    </div>
+  );
+};
+
+// --- Helper Renderer for Tags (Updated to Center) ---
 const categoryTagRenderer = (value: string | null | undefined) => {
-  if (!value) return <span className="text-slate-500">-</span>;
+  // CHANGED: Removed the "-" so it renders completely blank when empty
+  if (!value) return <div className="w-full flex items-center justify-center text-slate-500"></div>;
+  
   const getTextColorForBg = (hex: string): string => {
     if (!hex || hex.length < 7) return "#0f172a";
     const r = parseInt(hex.slice(1, 3), 16),
@@ -16,9 +28,11 @@ const categoryTagRenderer = (value: string | null | undefined) => {
       b = parseInt(hex.slice(5, 7), 16);
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.7 ? "#f7f9fcff" : "#f1f5f9";
   };
+  
   const values = value.split(",").map((v) => v.trim()).filter(Boolean);
+  
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5 justify-center w-full">
       {values.map((val, index) => {
         const bgColor = getColorForString(val);
         return (
@@ -39,9 +53,9 @@ const categoryTagRenderer = (value: string | null | undefined) => {
   );
 };
 
-// --- Column Configuration ---
+// --- Column Configuration with Centering ---
 const CHECK_ML_COLUMNS = [
-  { key: "Yr", label: "Year", sortable: true, editable: true },
+  { key: "Yr", label: "Year", sortable: true, editable: true, render: centeredTextRenderer },
   {
     key: "EventDisplay",
     label: "Event Name - EventCode",
@@ -50,18 +64,19 @@ const CHECK_ML_COLUMNS = [
     render: (_v: any, row: any) => {
       const en = row.EventName || "";
       const ec = row.EventCode || row.fkEventCode || "";
-      return `${en}${en && ec ? " - " : ""}${ec}`;
+      const text = `${en}${en && ec ? " - " : ""}${ec}`;
+      return <div className="w-full flex items-center justify-center text-center">{text}</div>;
     },
   },
   { key: "NewEventCategory", label: "New Event Category", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true },
-  { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true },
-  { key: "EventCode", label: "Event Code", sortable: true, editable: true },
-  { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-  { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
-  { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
-  { key: "ContentTo", label: "Content To", sortable: true, editable: true },
-  { key: "TimeOfDay", label: "Time Of Day", sortable: true, editable: true },
+  { key: "FootageSrNo", label: "FootageSrNo", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "LogSerialNo", label: "LogSerialNo", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "EventCode", label: "Event Code", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "ContentFrom", label: "Content From", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "ContentTo", label: "Content To", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "TimeOfDay", label: "Time Of Day", sortable: true, editable: true, render: centeredTextRenderer },
 
   { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
   { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
@@ -77,63 +92,60 @@ const CHECK_ML_COLUMNS = [
     render: (_v: any, row: any) => {
       const d = row.Detail || "";
       const s = row.SubDetail || "";
-      return `${d}${d && s ? " - " : ""}${s}`;
+      const text = `${d}${d && s ? " - " : ""}${s}`;
+      return <div className="w-full flex items-center justify-center text-center">{text}</div>;
     },
   },
 
-
   { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "CounterFrom", label: "Counter From", sortable: true, editable: true },
-  { key: "CounterTo", label: "Counter To", sortable: true, editable: true },
-  { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
-  { key: "TotalDuration", label: "Total Duration", sortable: true, editable: true },
+  { key: "CounterFrom", label: "Counter From", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "CounterTo", label: "Counter To", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "TotalDuration", label: "Total Duration", sortable: true, editable: true, render: centeredTextRenderer },
   { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true },
+  { key: "SpeakerSinger", label: "Speaker / Singer", sortable: true, editable: true, render: centeredTextRenderer },
   { key: "fkOrganization", label: "Organization", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "Designation", label: "Designation", sortable: true, editable: true },
+  { key: "Designation", label: "Designation", sortable: true, editable: true, render: centeredTextRenderer },
   { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
   { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
   { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "Venue", label: "Venue", sortable: true, editable: true },
-  { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true },
+  { key: "Venue", label: "Venue", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "LocationWithinAshram", label: "LocationWithinAshram", sortable: true, editable: true, render: centeredTextRenderer },
   { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "Number", label: "Number", sortable: true, editable: true },
-  { key: "Topic", label: "Topic", sortable: true, editable: true },
-  { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true },
-  { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+  { key: "Number", label: "Number", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "Topic", label: "Topic", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "TopicGivenBy", label: "TopicGivenBy", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "Synopsis", label: "Synopsis", sortable: true, editable: true, render: centeredTextRenderer },
   { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
-  { key: "SeriesName", label: "Series Name", sortable: true, editable: true },
-  { key: "SatsangStart", label: "Satsang Start", sortable: true, editable: true },
-  { key: "SatsangEnd", label: "Satsang End", sortable: true, editable: true },
+  { key: "SeriesName", label: "Series Name", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "SatsangStart", label: "Satsang Start", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "SatsangEnd", label: "Satsang End", sortable: true, editable: true, render: centeredTextRenderer },
 
+  { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "Remarks", label: "Remarks", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "EndPage", label: "EndPage", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "IsInformal", label: "IsInformal", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "Guidance", label: "Guidance", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true, render: centeredTextRenderer },
 
-  { key: "AudioMP3Distribution", label: "AudioMP3Distribution", sortable: true, editable: true },
-  { key: "AudioWAVDistribution", label: "AudioWAVDistribution", sortable: true, editable: true },
-  { key: "AudioMP3DRCode", label: "AudioMP3DRCode", sortable: true, editable: true },
-  { key: "AudioWAVDRCode", label: "AudioWAVDRCode", sortable: true, editable: true },
-  { key: "FullWAVDRCode", label: "FullWAVDRCode", sortable: true, editable: true },
-  { key: "Remarks", label: "Remarks", sortable: true, editable: true },
-  { key: "IsStartPage", label: "IsStartPage", sortable: true, editable: true },
-  { key: "EndPage", label: "EndPage", sortable: true, editable: true },
-  { key: "IsInformal", label: "IsInformal", sortable: true, editable: true },
-  { key: "IsPPGNotPresent", label: "IsPPGNotPresent", sortable: true, editable: true },
-  { key: "Guidance", label: "Guidance", sortable: true, editable: true },
-  { key: "DiskMasterDuration", label: "DiskMasterDuration", sortable: true, editable: true },
-  { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters", sortable: true, editable: true },
-  { key: "EventRefMLID", label: "EventRefMLID", sortable: true, editable: true },
-
-  { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true },
-  { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true },
-  { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true },
-  { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true },
+  { key: "EventRefMLID2", label: "EventRefMLID2", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "DubbedLanguage", label: "DubbedLanguage", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "DubbingArtist", label: "DubbingArtist", sortable: true, editable: true, render: centeredTextRenderer },
+  { key: "HasSubtitle", label: "HasSubtitle", sortable: true, editable: true, render: centeredTextRenderer },
   { key: "SubTitlesLanguage", label: "SubTitlesLanguage", sortable: true, render: categoryTagRenderer, editable: true },
 
   { key: "EditingType", label: "EditingType", sortable: true, render: categoryTagRenderer, editable: true },
   { key: "BhajanType", label: "BhajanType", sortable: true, render: categoryTagRenderer, editable: true },
 
-  { key: "Grading", label: "Grading", sortable: true, editable: true },
-
-  { key: "ProductionBucket", label: "Production Bucket", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "Grading", label: "Grading", sortable: true, editable: true, render: centeredTextRenderer },
 ];
 
 export function CheckMLReference() {
@@ -164,7 +176,7 @@ export function CheckMLReference() {
    <div
   style={{
     width: "100%",
-    minHeight: "100vh",
+    height: "100%", // <-- Changed to 100% so it behaves properly inside the parent scrollable container
     display: "flex",
     flexDirection: "column",
     background: "rgba(2,6,23,0.5)",

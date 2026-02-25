@@ -92,8 +92,12 @@ const APP_RESOURCES = [
   "List of Edited Highlights",
   "User Management",
   "Column Management",
+  "Submitters ML",
   "Check ML Reference",
   "Search ML by EventCode",
+  "Search New Media for Person Event",
+  "Search New Media Extensively",
+  "ML Summary by event code"
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";

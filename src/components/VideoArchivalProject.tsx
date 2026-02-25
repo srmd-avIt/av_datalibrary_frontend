@@ -315,6 +315,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
   const [activeTab, setActiveTab] = useState<TabType>('used');
   const [data, setData] = useState<ArchivalItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Search State
   const [searchState, setSearchState] = useState<{ used: string; unused: string }>({
@@ -344,6 +345,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
   const [relatedReels, setRelatedReels] = useState<ArchivalItem[]>([]);
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedSourceId, setSelectedSourceId] = useState("");
+  const [expandedModalGroups, setExpandedModalGroups] = useState<Record<string, boolean>>({});
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -382,6 +384,99 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     const permission = user.permissions?.find((p: any) => p.resource === resourceName);
     return permission?.actions?.includes('write') ?? false;
   }, [user]);
+
+  // --- EXPORT FUNCTIONALITY ---
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    const loadingToast = toast.loading("Preparing CSV Export...");
+    
+    try {
+      const token = localStorage.getItem('app-token');
+      const endpoint = activeTab === 'used' 
+        ? '/api/video-archival/satsang-reels'
+        : '/api/video-archival/unused-satsangs';
+
+      const queryParams = new URLSearchParams({
+        limit: '10000', // Fetch up to 10k records to ensure all filtered data is included
+        page: '1'
+      });
+
+      if (debouncedSearch) queryParams.append('search', debouncedSearch);
+      appliedRules.forEach(rule => {
+        if (rule.value && rule.value.trim() !== '') queryParams.append(rule.field, rule.value);
+      });
+
+      const res = await fetch(`${cleanBaseUrl}${endpoint}?${queryParams}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      if (!res.ok) throw new Error("Failed to fetch export data");
+      
+      const result = await res.json();
+      const exportData = result.data || [];
+
+      if (exportData.length === 0) {
+        toast.dismiss(loadingToast);
+        toast.warning("No data available to export");
+        return;
+      }
+
+      // Prepare CSV String
+      const headers = [
+        "MLUniqueID", "Parent EventRefMLID", "ReelCount", "ContentFrom", "CounterFrom", 
+        "CounterTo", "EventName", "RecordingName", "Year", "Detail", 
+        "Dimension", "Topic", "ProductionBucket", "LockStatus", "LockedBy"
+      ];
+
+      const csvRows = [];
+      csvRows.push(headers.join(",")); // Add Header Row
+
+      exportData.forEach((item: ArchivalItem) => {
+        const row = [
+          item.MLUniqueID,
+          item.ParentEventRefMLID,
+          activeTab === 'used' ? item.ReelCount : '-',
+          item.ContentFrom,
+          item.CounterFrom,
+          item.CounterTo,
+          item.EventName,
+          item.RecordingName,
+          item.Yr,
+          item.Detail,
+          item.Dimension,
+          item.Topic,
+          item.ProductionBucket,
+          item.LockStatus === 'Locked' ? 'Locked' : 'Available',
+          item.LockedBy
+        ].map(val => {
+          if (val === null || val === undefined) return '""';
+          const str = String(val).replace(/"/g, '""'); // Escape double quotes
+          return `"${str}"`;
+        });
+        csvRows.push(row.join(","));
+      });
+
+      const csvContent = csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Wisdom_Reels_Archival_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.dismiss(loadingToast);
+      toast.success("Export successful!");
+    } catch (e) {
+      console.error(e);
+      toast.dismiss(loadingToast);
+      toast.error("An error occurred during export.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
 
   // --- COLUMN DEFINITIONS ---
   const getBucketBadgeStyle = (bucket?: string): CSSProperties => {
@@ -468,7 +563,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       key: 'ParentEventRefMLID',
       label: 'Parent EventRefMLID',
       width: 150,
-      render: (item) => <span style={{ fontWeight: 700, color: '#fbbf24' }}>{item.ParentEventRefMLID || '-'}</span>
+      render: (item) => <span style={{ fontWeight: 700, color: '#fbbf24' }}>{item.ParentEventRefMLID}</span>
     },
     {
       key: 'Reels',
@@ -626,6 +721,18 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       if (res.ok) {
         const data = await res.json();
         setRelatedReels(data);
+
+        // Group Pre-Expand logic for Modal: Start CLOSED by default
+        const initExp: Record<string, boolean> = {};
+        data.forEach((item: any) => {
+          const isParent = item.EntryType === 'Parent' || item.MLUniqueID === sourceMLID;
+          if (!isParent) {
+            const tKey = item.Topic?.trim() ? item.Topic.trim() : "No Topic";
+            initExp[tKey] = false; // Collapsed on open
+          }
+        });
+        setExpandedModalGroups(initExp);
+
       } else {
         toast.error("Failed to fetch related reels.");
       }
@@ -692,6 +799,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     }
   };
 
+  // --- Main Table Grouping Logic ---
   const processedData = useMemo(() => {
     if (currentGroupBy === 'none') {
       return { isGrouped: false, items: data, totalPages: Math.ceil(serverTotalRecords / SERVER_PAGE_SIZE), groups: [] };
@@ -707,6 +815,28 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     const groupList = groupKeys.map(key => ({ key, items: groups[key] }));
     return { isGrouped: true, groups: groupList, totalRecords: data.length, totalPages: 1 };
   }, [data, currentGroupBy, serverTotalRecords]);
+
+  // --- Modal Grouping Logic: Separate Parent vs Child ---
+  const parentReel = useMemo(() => {
+    return relatedReels.find(item => item.EntryType === 'Parent' || item.MLUniqueID === selectedSourceId);
+  }, [relatedReels, selectedSourceId]);
+
+  const groupedChildReels = useMemo(() => {
+    const groups: Record<string, ArchivalItem[]> = {};
+    const childItems = relatedReels.filter(item => item !== parentReel);
+    
+    childItems.forEach(item => {
+      const topicKey = item.Topic?.trim() ? item.Topic.trim() : "No Topic";
+      if (!groups[topicKey]) groups[topicKey] = [];
+      groups[topicKey].push(item);
+    });
+    // Sort keys alphabetically
+    return Object.keys(groups).sort().map(k => ({ topic: k, items: groups[k] }));
+  }, [relatedReels, parentReel]);
+
+  const toggleModalGroup = (topic: string) => {
+    setExpandedModalGroups(prev => ({ ...prev, [topic]: !prev[topic] }));
+  };
 
   const handlePageChange = (newPage: number) => {
     const max = processedData.totalPages;
@@ -811,6 +941,42 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     </tr>
   );
 
+  // Helper function specifically for Modal rows to avoid code duplication
+  const renderModalRow = (item: ArchivalItem, idx: number, isParent: boolean) => (
+    <tr key={item.MLUniqueID || idx} style={{ 
+        borderBottom: '1px solid rgba(255,255,255,0.05)', 
+        background: isParent ? 'rgba(16, 185, 129, 0.1)' : (idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent') 
+    }}>
+      <td style={styles.tableCell}>
+        <span style={{
+            background: isParent ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+            color: isParent ? '#34d399' : '#60a5fa',
+            border: isParent ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            fontWeight: 700
+        }}>
+          {isParent ? "PARENT" : "CHILD"}
+        </span>
+      </td>
+      <td style={{...styles.tableCell, fontWeight: isParent ? 700 : 400, color: isParent ? '#fff' : '#e2e8f0' }}>{item.MLUniqueID}</td>
+      <td style={styles.tableCell}>{item.EventRefMLID}</td>
+      <td style={styles.tableCell}>{item.ContentFrom}</td>
+      <td style={styles.tableCell}>{item.CounterFrom}</td>
+      <td style={styles.tableCell}>{item.CounterTo}</td>
+      <td style={styles.tableCell}>{item.EventName}</td>
+      <td style={styles.tableCell}>{item.Detail}</td>
+      <td style={styles.tableCell}>{item.Dimension}</td>
+      <td style={styles.tableCell}>{item.Topic}</td>
+      <td style={styles.tableCell}>
+        <span style={getBucketBadgeStyle(item.ProductionBucket)}>
+          {item.ProductionBucket}
+        </span>
+      </td>
+    </tr>
+  );
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col relative">
       <style>{`
@@ -853,97 +1019,256 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       )}
 
       {/* RELATED ITEMS MODAL */}
-      {showRelatedModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowRelatedModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>Reels from Source</h3>
-                <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>Parent MLID: <strong style={{color: '#60a5fa'}}>{selectedSourceId}</strong></p>
-              </div>
-              <button 
-                onClick={() => setShowRelatedModal(false)}  
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="modal-scrollbar" style={{ padding: '0', overflow: 'auto', flex: 1, position: 'relative' }}>
-              {modalLoading ? (
-                  <div style={{ padding: 40, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', flexDirection: 'column', gap: 10 }}>
-                    <Loader2 size={32} style={{ animation: 'spinLoader 1s linear infinite' }} />
-                    <span>Loading details...</span>
-                  </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
-                  <thead style={{ position: 'sticky', top: 0, background: '#1e293b', zIndex: 10 }}>
-                    <tr>
-                      <th style={styles.tableHeader}>Type</th> {/* New Column for visual clarity */}
-                      <th style={styles.tableHeader}>MLUniqueID</th>
-                      <th style={styles.tableHeader}>EventRefMLID</th>
-                      <th style={styles.tableHeader}>ContentFrom</th>
-                      <th style={styles.tableHeader}>CounterFrom</th>
-                      <th style={styles.tableHeader}>CounterTo</th>
-                      <th style={styles.tableHeader}>Event Name</th>
-                      <th style={styles.tableHeader}>Details</th>
-                      <th style={styles.tableHeader}>Dimension</th>
-                      <th style={styles.tableHeader}>Topic</th>
-                      <th style={styles.tableHeader}>Production Bucket</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {relatedReels.length === 0 && (
-                        <tr><td colSpan={10} style={{padding: 20, textAlign: 'center', color: '#64748b'}}>No records found.</td></tr>
-                    )}
-                    {relatedReels.map((item, idx) => {
-                        // Determine if this row is the Parent or Child
-                        // 1. Check if backend sent 'EntryType'
-                        // 2. Fallback: Check if ID matches selectedSourceId
-                        const isParent = item.EntryType === 'Parent' || item.MLUniqueID === selectedSourceId;
-                        
-                        return (
-                          <tr key={idx} style={{ 
-                              borderBottom: '1px solid rgba(255,255,255,0.05)', 
-                              // Highlight Parent Row lightly
-                              background: isParent ? 'rgba(16, 185, 129, 0.1)' : (idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent') 
-                          }}>
-                            <td style={styles.tableCell}>
-                              <span style={{
-                                  ...styles.suffixTag,
-                                  background: isParent ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                                  color: isParent ? '#34d399' : '#60a5fa',
-                                  border: isParent ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)',
-                                  marginLeft: 0,
-                                  fontSize: '0.7rem'
-                              }}>
-                                {isParent ? "PARENT" : "CHILD"}
-                              </span>
-                            </td>
-                            <td style={{...styles.tableCell, fontWeight: isParent ? 700 : 400, color: isParent ? '#fff' : '#e2e8f0' }}>{item.MLUniqueID}</td>
-                            <td style={styles.tableCell}>{item.EventRefMLID}</td>
-                            <td style={styles.tableCell}>{item.ContentFrom}</td>
-                            <td style={styles.tableCell}>{item.CounterFrom}</td>
-                            <td style={styles.tableCell}>{item.CounterTo}</td>
-                            <td style={styles.tableCell}>{item.EventName}</td>
-                            <td style={styles.tableCell}>{item.Detail}</td>
-                            <td style={styles.tableCell}>{item.Dimension}</td>
-                            <td style={styles.tableCell}>{item.Topic}</td>
-                            <td style={styles.tableCell}>
-                              <span style={getBucketBadgeStyle(item.ProductionBucket)}>
-                                {item.ProductionBucket}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
+     {showRelatedModal && (
+  <div
+    onClick={() => setShowRelatedModal(false)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.65)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 1000
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "90%",
+        maxWidth: "1200px",
+        height: "85vh",
+        background: "#0f172a",
+        borderRadius: 16,
+        display: "flex",
+        flexDirection: "column",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.6)",
+        overflow: "hidden"
+      }}
+    >
+      {/* HEADER */}
+      <div
+        style={{
+          padding: "20px",
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
+        <div>
+          <h3
+            style={{
+              margin: 0,
+              color: "#fff",
+              fontSize: "1.2rem",
+              fontWeight: 700
+            }}
+          >
+            Reels from Source
+          </h3>
+          <p
+            style={{
+              margin: 0,
+              color: "#94a3b8",
+              fontSize: "0.85rem"
+            }}
+          >
+            Parent MLID:{" "}
+            <strong style={{ color: "#60a5fa" }}>
+              {selectedSourceId}
+            </strong>
+          </p>
         </div>
-      )}
+
+        <button
+          onClick={() => setShowRelatedModal(false)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#94a3b8",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center"
+          }}
+        >
+          <X size={24} />
+        </button>
+      </div>
+
+      {/* BODY */}
+      <div
+        style={{
+          flex: 1,
+          overflow: "auto",
+          position: "relative"
+        }}
+      >
+        {modalLoading ? (
+          <div
+            style={{
+              padding: 40,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              flexDirection: "column",
+              gap: 12,
+              color: "#94a3b8"
+            }}
+          >
+            <Loader2
+              size={32}
+              style={{ animation: "spinLoader 1s linear infinite" }}
+            />
+            <span>Loading details...</span>
+          </div>
+        ) : (
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: "1000px"
+            }}
+          >
+            <thead
+              style={{
+                position: "sticky",
+                top: 0,
+                background: "#1e293b",
+                zIndex: 10
+              }}
+            >
+              <tr>
+                {[
+                  "Type",
+                  "MLUniqueID",
+                  "EventRefMLID",
+                  "ContentFrom",
+                  "CounterFrom",
+                  "CounterTo",
+                  "Event Name",
+                  "Details",
+                  "Dimension",
+                  "Topic",
+                  "Production Bucket"
+                ].map((header) => (
+                  <th
+                    key={header}
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: "#cbd5e1",
+                      borderBottom: "1px solid rgba(255,255,255,0.1)",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {relatedReels.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={11}
+                    style={{
+                      padding: 20,
+                      textAlign: "center",
+                      color: "#64748b"
+                    }}
+                  >
+                    No records found.
+                  </td>
+                </tr>
+              )}
+
+              {/* Parent Row */}
+              {parentReel &&
+                renderModalRow(parentReel, 0, true)}
+
+              {/* Grouped Children */}
+              {groupedChildReels.map((group) => {
+                const isExpanded =
+                  expandedModalGroups[group.topic];
+
+                return (
+                  <React.Fragment key={group.topic}>
+                    <tr
+                      onClick={() =>
+                        toggleModalGroup(group.topic)
+                      }
+                      style={{
+                        background:
+                          "rgba(59,130,246,0.1)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <td
+                        colSpan={11}
+                        style={{
+                          padding: "10px 16px",
+                          color: "#60a5fa",
+                          fontWeight: 600
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10
+                          }}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp size={16} />
+                          ) : (
+                            <ChevronDown size={16} />
+                          )}
+
+                          <span>
+                            Topic: {group.topic}
+                          </span>
+
+                          <span
+                            style={{
+                              background:
+                                "rgba(255,255,255,0.1)",
+                              padding: "2px 8px",
+                              borderRadius: 12,
+                              fontSize: "0.7rem",
+                              color: "#e2e8f0",
+                              fontWeight: 400
+                            }}
+                          >
+                            {group.items.length} child
+                            items
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {isExpanded &&
+                      group.items.map((item, idx) =>
+                        renderModalRow(
+                          item,
+                          idx,
+                          false
+                        )
+                      )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Main Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, gap: 15 }}>
@@ -973,6 +1298,26 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
             <Search size={16} color="#94a3b8" />
             <input type="text" placeholder="Global Search..." value={searchState[activeTab]} onChange={(e) => setSearchState(prev => ({ ...prev, [activeTab]: e.target.value }))} style={styles.searchInput}/>
           </div>
+
+          {/* Export Button */}
+          <button 
+            onClick={handleExportCSV}
+            disabled={isExporting}
+            style={{
+              background: '#1e293b',
+              color: '#94a3b8',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 6,
+              padding: '6px 12px',
+              cursor: isExporting ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: '0.85rem',
+              opacity: isExporting ? 0.7 : 1
+            }}
+          >
+            {isExporting ? <Loader2 size={14} style={{ animation: "spinLoader 1s linear infinite" }} /> : <Download size={14} />} 
+            {isExporting ? "Exporting..." : "Export"}
+          </button>
 
           {/* --- POPOVER FILTER BUTTON & DROPDOWN --- */}
           <div style={{ position: 'relative' }}>
@@ -1194,7 +1539,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#60a5fa', fontSize: '0.8rem', fontWeight: 600 }}>
                                     <Download size={14} /> Show next 50 items (Showing {limit} of {count})
                                   </div>
-                                </td>
+                                 </td>
                               </tr>
                             )}
                           </>

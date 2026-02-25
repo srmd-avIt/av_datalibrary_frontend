@@ -23,8 +23,6 @@ import { toast } from "sonner";
 // --- Import the updated dialog ---
 import { ManageColumnsDialog, SaveConfig } from "./components/ManageColumnsDialog";
 import { GoogleSheetForm } from "./components/Googlesheetform";
-import { CheckMLReference } from "./components/CheckMLReference";
-import { SearchNewMLEventCode } from "./components/SearchNewMLEventCode";
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
@@ -586,7 +584,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       return row.ContentFromDetailCity;
     }
 
-    // ✅ Prevent fallback when EventRefMLID is empty
+    // Prevent fallback when EventRefMLID is empty
     if (!row.EventRefMLID) {
       return ""; // or return null;
     }
@@ -688,7 +686,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       return row.ContentFromDetailCity;
     }
 
-    // ✅ Prevent fallback when EventRefMLID is empty
+    // Prevent fallback when EventRefMLID is empty
     if (!row.EventRefMLID) {
       return ""; // or return null;
     }
@@ -751,11 +749,11 @@ const VIEW_CONFIGS: Record<string, any> = {
 
 digitalrecordings_gsheet: {
   title: "Digital Recordings (Google Sheet)",
-  apiEndpoint: "/google-sheet/digital-recordings", // Backend endpoint for Google Sheet integration
-  idKey: "RecordingCode", // Unique identifier for rows
+  apiEndpoint: "/google-sheet/digital-recordings", 
+  idKey: "RecordingCode", 
   detailsType: "digitalrecording",
   disableRowClick: false,
-  showAddButton: true, // Enables the "Add" button
+  showAddButton: true, 
   keyMap: {
     "Event Code": "fkEventCode",
     "Recording Name": "RecordingName",
@@ -789,8 +787,8 @@ digitalrecordings_gsheet: {
     "Is Informal": "IsInformal",
     "Associated DR": "AssociatedDR",
     "Teams": "Teams",
-    "ML Unique ID": "MLUniqueID", // Added keyMap for MLUniqueID
-    "Audio WAV Code": "AudioWAVDRCode", // Added keyMap for AudioWAVDRCode
+    "ML Unique ID": "MLUniqueID", 
+    "Audio WAV Code": "AudioWAVDRCode", 
   },
   columns: [
     { key: "fkEventCode", label: "Event Code", sortable: true, editable: true },
@@ -825,8 +823,8 @@ digitalrecordings_gsheet: {
     { key: "IsInformal", label: "Is Informal", sortable: true, editable: true },
     { key: "AssociatedDR", label: "Associated DR", sortable: true, editable: true },
     { key: "Teams", label: "Teams", sortable: true, editable: true, render: categoryTagRenderer },
-    { key: "MLUniqueID", label: "ML Unique ID", sortable: true, editable: true }, // Added column for MLUniqueID
-    { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true }, // Added column for AudioWAVDRCode
+    { key: "MLUniqueID", label: "ML Unique ID", sortable: true, editable: true }, 
+    { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true }, 
   ],
 },
 
@@ -1212,20 +1210,16 @@ export default function App() {
  const { data: allUsers } = useQuery({
   queryKey: ['allUsersForColumnMgmt'],
   queryFn: async () => {
-    // 1. Get the JWT token from localStorage
     const token = localStorage.getItem('app-token');
-
-    // 2. Add the token to the fetch headers
     const resp = await fetch(`${API_BASE_URL}/users`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // ✅ Added this line
+        'Authorization': `Bearer ${token}` 
       }
     });
 
     if (resp.status === 401) {
-      // If the token is missing or expired, the backend sends 401
       console.error("Session expired or unauthorized");
       throw new Error('Unauthorized');
     }
@@ -1239,7 +1233,6 @@ export default function App() {
       email: u.email 
     }));
   },
-  // Ensure this only runs if a user is logged in and is an Admin
   enabled: !!user && (user.role === 'Admin' || user.role === 'Owner'),
 });
 
@@ -1290,8 +1283,6 @@ export default function App() {
     return config.columns.map((c: any) => c.key);
   };
 
-  // --- UPDATED HELPER: Wrapped in useMemo depending on layoutVersion ---
-  // This ensures that when layoutVersion changes (after saving), this recalculates
   const activeColumns = useMemo(() => {
     const config = VIEW_CONFIGS[activeView];
     if (!config || !config.columns) return [];
@@ -1299,7 +1290,6 @@ export default function App() {
     const hardcodedColumns = config.columns;
     let savedKeys: string[] = [];
     
-    // 1. Check for specific user layout FIRST
     if (user?.id) {
         const { orderKey } = getLayoutKeys(activeView, user.id);
         const savedData = localStorage.getItem(orderKey);
@@ -1308,7 +1298,6 @@ export default function App() {
         }
     }
 
-    // 2. If NO user layout found, fall back to GLOBAL layout
     if (savedKeys.length === 0) {
         const { orderKey: globalKey } = getLayoutKeys(activeView, null);
         const globalData = localStorage.getItem(globalKey);
@@ -1317,14 +1306,11 @@ export default function App() {
         }
     }
 
-    // 3. If STILL no layout, default to hardcoded configuration
     if (savedKeys.length === 0) {
         return hardcodedColumns;
     }
 
-    // 4. Merge logic: Create definitions for keys in saved layout that are missing from code
     const knownKeys = new Set(hardcodedColumns.map((c: any) => c.key));
-
     const extraColumns = savedKeys
       .filter((key) => !knownKeys.has(key))
       .map((key) => ({
@@ -1336,7 +1322,7 @@ export default function App() {
       }));
 
     return [...hardcodedColumns, ...extraColumns];
-  }, [activeView, user?.id, layoutVersion]); // recalculate when layoutVersion changes
+  }, [activeView, user?.id, layoutVersion]); 
 
   const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
 
@@ -1530,19 +1516,13 @@ export default function App() {
     </div>
   );
 
-    case "check-ml-reference":
-      return <CheckMLReference />;
-      
-      case "search-new-ml-event-code":
-      return <SearchNewMLEventCode />;
-
-       case "digitalrecordings_gsheet":
-        return (
-           <GoogleSheetForm 
-             config={VIEW_CONFIGS.digitalrecordings_gsheet} 
-             userEmail={user?.email} 
-           />
-        );
+  case "digitalrecordings_gsheet":
+    return (
+       <GoogleSheetForm 
+         config={VIEW_CONFIGS.digitalrecordings_gsheet} 
+         userEmail={user?.email} 
+       />
+    );
   }
 
   const config = VIEW_CONFIGS[activeView];

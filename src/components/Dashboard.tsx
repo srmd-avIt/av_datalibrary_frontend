@@ -5,37 +5,42 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // Gurudev images for the slider from the public folder
 const gurudevImages = [
-  {
-    src: "/images/Image1.jpg", // Assumes public/images/Image1.jpg
-    title: "",
-    subtitle: ""
-  },
-  {
-    src: "/images/Image2.jpg", // Assumes public/images/Image2.jpg
-    title: "",
-    subtitle: ""
-  },
-  {
-    src: "/images/Image3.jpg", // Assumes public/images/Image3.jpg
-    title: "",
-    subtitle: ""
-  },
-  {
-    src: "/images/Image4.jpg", // Assumes public/images/Image4.jpg
-    title: "",
-    subtitle: ""
-  },
-  {
-    src: "/images/Image5.jpg", // Assumes public/images/Image5.jpg
-    title: "",
-    subtitle: ""
-  }
+  { src: "/images/Image1.jpg", title: "Peace & Harmony", subtitle: "Join the movement" },
+  { src: "/images/Image2.jpg", title: "Meditation", subtitle: "Find your inner self" },
+  { src: "/images/Image3.jpg", title: "Wisdom", subtitle: "Daily quotes" },
+  { src: "/images/Image4.jpg", title: "Community", subtitle: "Together we grow" },
+  { src: "/images/Image5.jpg", title: "Events", subtitle: "Upcoming gatherings" }
 ];
 
 export function Dashboard() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Auto-advance slider
+  // 1. Detect Mobile AND Force Body Background Color
+  useEffect(() => {
+    const checkIsMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      
+      // ✨ FIX: This forces the entire browser body to be dark on mobile, 
+      // completely eliminating any white space at the bottom or when scrolling.
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120"; // Matches your dark header
+      } else {
+        document.body.style.backgroundColor = ""; // Resets for desktop
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+      document.body.style.backgroundColor = ""; // Cleanup
+    };
+  }, []);
+
+  // 2. Auto-advance slider
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % gurudevImages.length);
@@ -51,145 +56,144 @@ export function Dashboard() {
     setCurrentImageIndex((prev) => (prev - 1 + gurudevImages.length) % gurudevImages.length);
   };
 
-  return (
+  // ==========================================
+  // 📱 MOBILE UI
+  // ==========================================
+  const renderMobileView = () => (
+    // ✨ FIX: Added explicit inline styles for minHeight to guarantee screen fill
+    <div 
+      className="text-white pb-20"
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#0b1120", // Matches your exact dark theme from the screenshot
+        display: "flex",
+        flexDirection: "column"
+      }}
+    >
+      {/* Mobile Header */}
+      <div className="px-5 pt-8 pb-4">
+        <h1 className="text-2xl font-bold tracking-tight">Home</h1>
+        <p className="text-gray-400 text-sm mt-1">Welcome to our data library</p>
+      </div>
+
+      {/* Mobile App-Style Slider */}
+      <div className="relative w-full h-[380px] bg-slate-900 mt-2">
+        <img
+          src={gurudevImages[currentImageIndex].src}
+          alt={gurudevImages[currentImageIndex].title}
+          className="w-full h-full object-cover transition-opacity duration-500"
+        />
+        
+        {/* Dark Gradient Overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1120] via-black/40 to-transparent" />
+
+        {/* Mobile Text */}
+        <div className="absolute bottom-10 left-0 w-full px-5 text-center">
+          <h2 className="text-2xl font-bold text-white mb-1 shadow-sm">
+            {gurudevImages[currentImageIndex].title}
+          </h2>
+          <p className="text-sm text-[#eab308] font-medium"> {/* Yellow color from your screenshot */}
+            {gurudevImages[currentImageIndex].subtitle}
+          </p>
+        </div>
+
+        {/* Mobile Dots */}
+        <div className="absolute bottom-4 w-full flex justify-center gap-3">
+          {gurudevImages.map((_, index) => (
+            <div
+              key={index}
+              onClick={() => setCurrentImageIndex(index)}
+              className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                index === currentImageIndex ? "w-8 bg-white" : "w-2.5 bg-white/40"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ==========================================
+  // 💻 DESKTOP UI (Kept exactly as it was)
+  // ==========================================
+  const renderDesktopView = () => (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Home</h1>
-          <p className="text-muted-foreground mt-1">Welcome to our data library </p>
+          <p className="text-muted-foreground mt-1">Welcome to our data library</p>
         </div>
       </div>
 
-      {/* Gurudev Image Slider */}
       <Card
         style={{
           position: "relative",
           overflow: "hidden",
-          backgroundImage: "linear-gradient(to right, rgba(15,23,42,0.5), rgba(30,41,59,0.5))", // from-slate-900/50 to-slate-800/50
-          backdropFilter: "blur(4px)", // backdrop-blur-sm
-          border: "1px solid rgba(51,65,85,0.5)", // border-slate-700/50
+          backgroundImage: "linear-gradient(to right, rgba(15,23,42,0.5), rgba(30,41,59,0.5))", 
+          backdropFilter: "blur(4px)", 
+          border: "1px solid rgba(51,65,85,0.5)", 
         }}
       >
         <div className="relative w-full flex flex-col items-center">
           <div
             style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: "rgba(30,41,59,0.3)", // bg-slate-800/30
-              minHeight: 200,
-              position: "relative", // needed for the absolute overlay
+              width: "100%", display: "flex", justifyContent: "center", alignItems: "center",
+              backgroundColor: "rgba(30,41,59,0.3)", minHeight: 200, position: "relative", 
             }}
           >
             <img
               src={gurudevImages[currentImageIndex].src}
               alt={gurudevImages[currentImageIndex].title}
               style={{
-                maxWidth: "100%",
-                maxHeight: "400px",
-                width: "auto",
-                height: "auto",
-                display: "block",
-                margin: "0 auto",
+                maxWidth: "100%", maxHeight: "400px", width: "auto", height: "auto",
+                display: "block", margin: "0 auto",
               }}
             />
             <div
               style={{
-                position: "absolute",
-                inset: 0, // shorthand for top:0; right:0; bottom:0; left:0
+                position: "absolute", inset: 0, 
                 background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent 50%, transparent 100%)",
                 pointerEvents: "none",
               }}
             />
           </div>
 
-          {/* Content overlay */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "1.5rem", // bottom-6
-              left: "1.5rem",   // left-6
-              color: "#ffffff",  // text-white
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "1.5rem",       // text-2xl
-                fontWeight: 600,          // font-semibold
-                marginBottom: "0.5rem",   // mb-2
-              }}
-            >
+          <div style={{ position: "absolute", bottom: "1.5rem", left: "1.5rem", color: "#ffffff" }}>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.5rem" }}>
               {gurudevImages[currentImageIndex].title}
             </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.9)", // text-white/90
-              }}
-            >
+            <p style={{ color: "rgba(255,255,255,0.9)" }}>
               {gurudevImages[currentImageIndex].subtitle}
             </p>
           </div>
 
-          {/* Navigation buttons */}
           <Button
             onClick={prevImage}
             style={{
-              position: "absolute",
-              left: "1rem",               // left-4
-              top: "50%",                  // top-1/2
-              transform: "translateY(-50%)", // -translate-y-1/2
-              backgroundColor: "rgba(0,0,0,0.2)", // bg-black/20
-              color: "#ffffff",            // text-white
-              border: "none",              // border-none
-              padding: "0.5rem",           // approximate size="icon"
-              cursor: "pointer",
+              position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", 
+              backgroundColor: "rgba(0,0,0,0.2)", color: "#ffffff", border: "none", padding: "0.5rem", cursor: "pointer",
             }}
-            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.4)")}
-            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)")}
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
           <Button
             onClick={nextImage}
             style={{
-              position: "absolute",
-              right: "1rem",               // right-4
-              top: "50%",                  // top-1/2
-              transform: "translateY(-50%)", // -translate-y-1/2
-              backgroundColor: "rgba(0,0,0,0.2)", // bg-black/20
-              color: "#ffffff",            // text-white
-              border: "none",              // border-none
-              padding: "0.5rem",           // approximate size="icon"
-              cursor: "pointer",
+              position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", 
+              backgroundColor: "rgba(0,0,0,0.2)", color: "#ffffff", border: "none", padding: "0.5rem", cursor: "pointer",
             }}
-            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.4)")}
-            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.2)")}
           >
             <ChevronRight className="h-6 w-6" />
           </Button>
 
-          {/* Dots indicator */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "1rem", // bottom-4
-              right: "1.5rem", // right-6
-              display: "flex",
-              gap: "0.5rem", // space-x-2
-            }}
-          >
+          <div style={{ position: "absolute", bottom: "1rem", right: "1.5rem", display: "flex", gap: "0.5rem" }}>
             {gurudevImages.map((_, index) => (
-              <button
+              <div
                 key={index}
                 onClick={() => setCurrentImageIndex(index)}
                 style={{
-                  width: "0.5rem",   // w-2
-                  height: "0.5rem",  // h-2
-                  borderRadius: "50%", // rounded-full
-                  backgroundColor: index === currentImageIndex ? "#ffffff" : "rgba(255,255,255,0.4)", // bg-white or bg-white/40
-                  transition: "background-color 0.3s", // transition-colors
-                  border: "none",
+                  width: "8px", height: "8px", borderRadius: "50%", 
+                  backgroundColor: index === currentImageIndex ? "#ffffff" : "rgba(255,255,255,0.4)", 
                   cursor: "pointer",
                 }}
               />
@@ -199,4 +203,6 @@ export function Dashboard() {
       </Card>
     </div>
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

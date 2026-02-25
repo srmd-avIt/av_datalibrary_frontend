@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
@@ -12,15 +11,22 @@ import {
   // Hub Icons
   Layout, Wand2, Video, FileText, ArrowRight, ArrowLeft,
   // New Icons for Table View
-  TableProperties, LayoutList, Grip, GripVertical
+  TableProperties, LayoutList, Grip, GripVertical,
+  // Submitters ML Icons
+  Users, Search, SearchCheck, ListTree
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import * as mm from 'music-metadata-browser';
 
-// --- IMPORT THE NEW COMPONENT HERE ---
+// --- IMPORT THE NEW COMPONENTS HERE ---
 import { VideoArchivalProject } from "./VideoArchivalProject"; 
+import { CheckMLReference } from "./CheckMLReference";
+import { SearchNewMLEventCode } from "./SearchNewMLEventCode";
+import { SearchDetailsByMLID } from "./SearchDetailsByMLID";
+import { MLSummaryByEventCode } from "./MLSummaryByEventCode";
+import { SearchNewMediaExtensively } from "./SearchNewMediaExtensively";
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL;
 const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
@@ -312,6 +318,139 @@ const SearchableSelect = ({ label, name, options, value, onChange, theme, requir
 };
 
 // ============================================================================
+// --- NEW COMPONENT: SubmittersMLHub ---
+// ============================================================================
+// ============================================================================
+// --- NEW COMPONENT: SubmittersMLHub ---
+// ============================================================================
+const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
+  const { user } = useAuth();
+  
+  // Base configuration of tabs with their required permissions
+  const allTabs = useMemo(() => [
+    { id: "check-ml-reference", label: "Check ML Reference", icon: CheckSquare, permissionKey: "Check ML Reference" },
+    { id: "search-new-ml-event-code", label: "Search ML by EventCode", icon: Search, permissionKey: "Search ML by EventCode" },
+    { id: "Search Details by MLID", label: "Search New Media for Person Event", icon: Eye, permissionKey: "Search New Media for Person Event" },
+    { id: "Search New Media Extensively", label: "Search New Media Extensively", icon: SearchCheck, permissionKey: "Search New Media Extensively" },
+    { id: "ML Summary by event code", label: "ML Summary by event code", icon: ListTree, permissionKey: "ML Summary by event code" }
+  ], []);
+
+  // Filter tabs based on RBAC
+  const visibleTabs = useMemo(() => {
+    if (!user) return [];
+    if (user.role === "Owner" || user.role === "Admin") return allTabs;
+    
+    // Create a Set of permission strings the user has read/write access to
+    const permittedResources = new Set(
+      (user.permissions || [])
+        .filter(p => p.actions.includes("read") || p.actions.includes("write"))
+        .map(p => p.resource)
+    );
+    
+    return allTabs.filter(tab => permittedResources.has(tab.permissionKey));
+  }, [user, allTabs]);
+
+  const [activeTab, setActiveTab] = useState<string>(visibleTabs.length > 0 ? visibleTabs[0].id : "");
+
+  // Ensure active tab is valid if visibleTabs changes
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) {
+        setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab]);
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {/* Header */}
+      <div style={styles.header(false)}>
+        <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' }}>
+            <button 
+              onClick={onBack} 
+              style={{ background: 'transparent', border: `1px solid rgba(255,255,255,0.2)`, borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }} 
+              onMouseEnter={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color='white'}} 
+              onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color='#94a3b8'}}
+            >
+                <ArrowLeft size={20} />
+            </button>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+            <h1 style={styles.title(false)}>Submitters ML</h1>
+        </div>
+      </div>
+
+      {/* Main Container - Stacked Vertically */}
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: "16px", marginTop: "10px", overflow: "hidden" }}>
+        {visibleTabs.length > 0 ? (
+          <>
+            {/* Top Navigation Tabs - Made Smaller and Centered */}
+            <div 
+              style={{ 
+                display: "flex", 
+                flexDirection: "row", 
+                gap: "8px",           // Tighter spacing between tabs
+                overflowX: "auto", 
+                paddingBottom: "4px", 
+                flexShrink: 0,
+                justifyContent: "center" // Centers the tabs horizontally
+              }} 
+              className="hide-scrollbar"
+            >
+              {visibleTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "6px",
+                    padding: "8px 16px",    // Smaller padding
+                    fontSize: "0.85rem",    // Smaller font size
+                    borderRadius: "8px",    // Sharper, smaller corners
+                    border: "1px solid",
+                    borderColor: activeTab === tab.id ? "rgba(59, 130, 246, 0.5)" : "transparent",
+                    background: activeTab === tab.id ? "rgba(59, 130, 246, 0.1)" : "rgba(30, 41, 59, 0.5)",
+                    color: activeTab === tab.id ? "#fff" : "#94a3b8",
+                    cursor: "pointer", transition: "all 0.2s", textAlign: "center",
+                    fontWeight: activeTab === tab.id ? 600 : 500,
+                    whiteSpace: "nowrap"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== tab.id) {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== tab.id) {
+                        e.currentTarget.style.background = "rgba(30, 41, 59, 0.5)";
+                    }
+                  }}
+                >
+                  <tab.icon size={16} color={activeTab === tab.id ? "#3b82f6" : "#64748b"} /> {/* Smaller Icon */}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Content Area (Takes up the rest of the space below the tabs) */}
+            <div style={{ flex: 1, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden" }} className="custom-scrollbar">
+              {activeTab === "check-ml-reference" && <CheckMLReference />}
+              {activeTab === "search-new-ml-event-code" && <SearchNewMLEventCode />}
+              {activeTab === "Search Details by MLID" && <SearchDetailsByMLID />}
+              {activeTab === "Search New Media Extensively" && <SearchNewMediaExtensively />}
+              {activeTab === "ML Summary by event code" && <MLSummaryByEventCode />}
+            </div>
+          </>
+        ) : (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "#94a3b8" }}>
+              <Lock size={64} style={{ marginBottom: "20px", opacity: 0.5 }} />
+              <h2 style={{ color: "#fff", fontSize: "1.5rem", marginBottom: "10px" }}>Access Denied</h2>
+              <p>You do not have permission to view any modules in this section.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // --- MAIN COMPONENT ---
 // ============================================================================
 
@@ -324,26 +463,39 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival'>('hub');
+  const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival' | 'submitters_ml'>('hub');
   
   const [isTableView, setIsTableView] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
-  const canViewAudioMerge = 
-      loggedInUser?.role === "Admin" || 
-      loggedInUser?.role === "Owner" || 
-      !!loggedInUser?.permissions?.some((p: any) => 
-        p.resource === "Audio Merge Project" && 
-        (p.actions.includes("read") || p.actions.includes("write"))
-      );
+  const canViewAudioMerge = useMemo(() => {
+    if (!loggedInUser) return false;
+    if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+    return !!loggedInUser.permissions?.some((p: any) => 
+      p.resource === "Audio Merge Project" && 
+      (p.actions.includes("read") || p.actions.includes("write"))
+    );
+  }, [loggedInUser]);
 
-       const canViewWisdomReels = 
-      loggedInUser?.role === "Admin" || 
-      loggedInUser?.role === "Owner" || 
-      !!loggedInUser?.permissions?.some((p: any) => 
-        p.resource === "Wisdom Reels Archival" && 
+  const canViewWisdomReels = useMemo(() => {
+    if (!loggedInUser) return false;
+    if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+    return !!loggedInUser.permissions?.some((p: any) => 
+      p.resource === "Wisdom Reels Archival" && 
+      (p.actions.includes("read") || p.actions.includes("write"))
+    );
+  }, [loggedInUser]);
+  
+  const canViewSubmittersML = useMemo(() => {
+    if (!loggedInUser) return false;
+    if (loggedInUser.role === "Owner" || loggedInUser.role === "Admin") return true;
+    
+    // 1) Require explicit access to the "Submitters ML" CARD
+    return !!loggedInUser.permissions?.some(p => 
+        p.resource === "Submitters ML" && 
         (p.actions.includes("read") || p.actions.includes("write"))
-      );
+    );
+  }, [loggedInUser]);
 
   const hasEditAccess = (loggedInUser?.role === "Admin" || loggedInUser?.role === "Owner") || !!loggedInUser?.permissions?.some((p: any) => (p.resource === "Digital Recordings" || p.resource === "Audio Merge Project") && p.actions.includes("write"));
   const canApprove = hasEditAccess;
@@ -1039,7 +1191,7 @@ const handleSendComment = async () => {
       } else { 
           if (windowWidth < 1280) return "1.2fr 0.8fr 0fr"; 
           return "4fr 2fr 0fr"; 
-      } 
+      }  
   };
   
   const renderField = (label: string, name: string, theme: any, options: any = {}) => ( <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> <Label style={{...styles.label, color: focusedField === name && !options.disabled ? theme.to : styles.label.color }}> {label} {options.required && <span style={{ color: theme.from, fontSize: "1.2em", lineHeight: 0 }}>*</span>} </Label> <Input name={name} type={options.type || "text"} value={(formData as any)[name]} onChange={handleChange} onFocus={() => setFocusedField(name)} onBlur={() => setFocusedField(null)} disabled={options.disabled} style={{ ...styles.input(theme, options.disabled, isCompact), borderColor: formErrors[name] ? "#ef4444" : (focusedField === name && !options.disabled ? theme.to : "rgba(255,255,255,0.1)") }} autoComplete="off" /> {formErrors[name] && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 2 }}>{formErrors[name]}</div>} </div> );
@@ -1321,26 +1473,23 @@ const handleSendComment = async () => {
         description: 'Track satsangs used for reels and manage editing workflow.', 
         icon: Video, 
         color: colors.secondary, 
-        // --- CHANGED TO USE DYNAMIC PICKED COUNT ---
         stats: { label: 'Picked', value: wisdomPickedCount }, 
         progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, 
         tags: ['Video', 'Archive'], 
         status: "PENDING_APPROVAL",
-        
-        // --- CHANGE THIS LINE ---
         isVisible: canViewWisdomReels 
       },
       { 
-        id: 'ai_transcription', 
-        title: 'AI Transcription', 
-        description: 'Automated speech-to-text generation review and manual subtitle correction.', 
-        icon: FileText, 
+        id: 'submitters_ml', 
+        title: 'Submitters ML', 
+        description: 'Manage ML references, extensive searches, and ML summaries by event code.', 
+        icon: Users, 
         color: colors.success, 
-        stats: { label: 'Approved', value: 84 }, 
-        progress: 88, 
-        tags: ['AI', 'Text'], 
+        stats: { label: 'Modules', value: 5 }, 
+        progress: 100, 
+        tags: ['ML', 'Search'], 
         status: "APPROVED",
-        isVisible: true 
+        isVisible: canViewSubmittersML 
       }
     ];
 
@@ -1429,7 +1578,12 @@ const handleSendComment = async () => {
             visibleProjects.map((project) => (
             <div 
               key={project.id}
-              onClick={() => { if(project.id === 'audio_merge') setViewMode('form'); else if(project.id === 'video_archival') setViewMode('video_archival'); else toast.info("Project coming soon"); }}
+              onClick={() => { 
+                if(project.id === 'audio_merge') setViewMode('form'); 
+                else if(project.id === 'video_archival') setViewMode('video_archival'); 
+                else if(project.id === 'submitters_ml') setViewMode('submitters_ml');
+                else toast.info("Project coming soon"); 
+              }}
               style={{ background: '#131b2e', borderRadius: '24px', padding: '32px', border: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', cursor: 'pointer', minHeight: '320px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s' }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -1530,6 +1684,14 @@ const handleSendComment = async () => {
     return (
       <div style={styles.wrapper}>
         <VideoArchivalProject onBack={() => setViewMode('hub')} userEmail={userEmail} />
+      </div>
+    );
+  }
+
+  if (viewMode === 'submitters_ml') {
+    return (
+      <div style={styles.wrapper}>
+        <SubmittersMLHub onBack={() => setViewMode('hub')} />
       </div>
     );
   }
