@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -7,7 +8,7 @@ import {
   Sparkles, Layers, Plus, ListChecks, Trash2, UploadCloud, 
   CheckSquare, Square, Inbox, Pencil, X, MessageSquare, Send, Eye, RotateCcw,
   AlertCircle, XCircle, ChevronDown, ChevronRight, CheckCircle2, ListFilter, Loader2,
-  AtSign, CornerUpLeft, FileSearch, Lock,
+  AtSign, CornerUpLeft, FileSearch, Lock, RefreshCw,
   // Hub Icons
   Layout, Wand2, Video, FileText, ArrowRight, ArrowLeft,
   // New Icons for Table View
@@ -57,7 +58,7 @@ const TABLE_COLUMNS = [
   { id: 'Filesize', label: 'File Size', width: 90 },
   { id: 'FilesizeInBytes', label: 'Bytes', width: 100 },
   { id: 'fkMediaName', label: 'Media Type', width: 100 },
-  { id: 'BitRate', label: 'Bitrate', width: 80 },
+
   { id: 'NoOfFiles', label: 'No. Files', width: 80 },
   { id: 'AudioBitrate', label: 'Audio Bitrate', width: 100 },
   { id: 'Masterquality', label: 'Master Quality', width: 120 },
@@ -168,6 +169,7 @@ const mapSheetRowToQueueItem = (row: any) => {
     return {
         _id: idFromCode || Math.floor(Math.random() * 100000000),
         _status: status,
+        QcStatus: getVal(['QC Status', 'QcStatus']), // Fixed to retain original status
         fkEventCode: getVal(['Event Code', 'fkEventCode']), 
         EventName: getVal(['Event Name', 'EventName', 'Recording Name', 'RecordingName']), 
         Yr: getVal(['Year', 'Yr']), 
@@ -178,7 +180,7 @@ const mapSheetRowToQueueItem = (row: any) => {
         Filesize: getVal(['File Size', 'Filesize']),
         FilesizeInBytes: getVal(['File Size (Bytes)', 'FilesizeInBytes']),
         fkMediaName: getVal(['Media Name', 'fkMediaName']),
-        BitRate: getVal(['Bit Rate', 'BitRate']),
+       
         NoOfFiles: getVal(['Number of Files', 'NoOfFiles']) || "1",
         AudioBitrate: getVal(['Audio Bitrate', 'AudioBitrate']),
         Masterquality: getVal(['Master Quality', 'Masterquality']),
@@ -317,9 +319,6 @@ const SearchableSelect = ({ label, name, options, value, onChange, theme, requir
     );
 };
 
-// ============================================================================
-// --- NEW COMPONENT: SubmittersMLHub ---
-// ============================================================================
 // ============================================================================
 // --- NEW COMPONENT: SubmittersMLHub ---
 // ============================================================================
@@ -541,7 +540,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const activeEntry = queue.find(q => q._id === activeCommentId);
   const isCommentsOpen = !!activeCommentId && !!activeEntry;
 
-  const initialFormState = { fkEventCode: "", EventName: "", Yr: "", NewEventCategory: "", RecordingName: "", RecordingCode: "", Duration: "", DistributionDriveLink: "", BitRate: "", Dimension: "", Masterquality: "", fkMediaName: "", Filesize: "", FilesizeInBytes: "", NoOfFiles: "1", RecordingRemarks: "", CounterError: "", ReasonError: "", MasterProductTitle: "", fkDistributionLabel: "", ProductionBucket: "", fkDigitalMasterCategory: "", AudioBitrate: "", AudioTotalDuration: "", QcRemarksCheckedOn: "", PreservationStatus: "Preserve", QCSevak: "", QcStatus: "", SubmittedDate: "", PresStatGuidDt: "", InfoOnCassette: "", IsInformal: "", AssociatedDR: "", Teams: "", MLUniqueID: "", Detail: "", AudioWAVDRCode: "", fkGranth: "", Number: "", Topic: "", ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", SubDuration: "", Remarks: "", files: [] as any[] };
+  const initialFormState = { fkEventCode: "", EventName: "", Yr: "", NewEventCategory: "", RecordingName: "", RecordingCode: "", Duration: "", DistributionDriveLink: "",  Dimension: "", Masterquality: "", fkMediaName: "", Filesize: "", FilesizeInBytes: "", NoOfFiles: "1", RecordingRemarks: "", CounterError: "", ReasonError: "", MasterProductTitle: "", fkDistributionLabel: "", ProductionBucket: "", fkDigitalMasterCategory: "", AudioBitrate: "", AudioTotalDuration: "", QcRemarksCheckedOn: "", PreservationStatus: "Preserve", QCSevak: "", QcStatus: "", SubmittedDate: "", PresStatGuidDt: "", InfoOnCassette: "", IsInformal: "", AssociatedDR: "", Teams: "", MLUniqueID: "", Detail: "", AudioWAVDRCode: "", fkGranth: "", Number: "", Topic: "", ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", SubDuration: "", Remarks: "", files: [] as any[] };
   const [formData, setFormData] = useState(initialFormState);
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
@@ -594,7 +593,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         }
       };
 
-      // NEW: Fetch specific users for Wisdom Project
       const fetchWisdomUsers = async () => {
         try {
             const token = localStorage.getItem('app-token');
@@ -619,14 +617,12 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       fetchWisdomUsers();
   }, []);
 
-  // NEW: Fetch Wisdom Picked/Locked Count
   useEffect(() => {
     const fetchWisdomPickedCount = async () => {
         if (!canViewWisdomReels) return;
         try {
             const token = localStorage.getItem('app-token');
             
-            // Fetch both lists to get accurate lock count
             const [usedRes, unusedRes] = await Promise.all([
                 fetch(`${cleanBaseUrl}/api/video-archival/satsang-reels?limit=10000`, { 
                     headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
@@ -643,7 +639,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
                 const usedData = await usedRes.json();
                 const items = usedData.data || [];
                 picked += items.filter((i: any) => i.LockStatus === 'Locked').length;
-                total += items.length; // Add to total if we want total library size
+                total += items.length;
             }
 
             if (unusedRes.ok) {
@@ -662,43 +658,65 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     fetchWisdomPickedCount();
   }, [canViewWisdomReels]);
 
-  // --- SYNC QUEUE WITH GOOGLE SHEET (THE FIX) ---
-  useEffect(() => {
-    const fetchSheetData = async () => {
-      try {
-        const token = localStorage.getItem('app-token');
-        // Fetch data using the limit
-        const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings?limit=500`, { 
-            headers: {
-                "Content-Type": "application/json",
-                ...(token ? { "Authorization": `Bearer ${token}` } : {})
-            }
-        });
-
-        if (res.ok) {
-          const result = await res.json();
-          if (result.data && Array.isArray(result.data)) {
-            // 1. Map Sheet Data to Frontend Queue Format
-            const freshQueue = result.data.map(mapSheetRowToQueueItem);
-            
-            // 2. Update state - This REPLACES the current queue, so deleted sheet items disappear
-            setQueue(freshQueue);
-            
-            // 3. Update localStorage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(freshQueue));
-            
-            console.log("Queue synced with Google Sheet");
+  // --- MERGE QUEUE WITH GOOGLE SHEET (HANDLES DELETIONS & PRESERVES LOCAL STATUS) ---
+  const fetchSheetData = async () => {
+    try {
+      const token = localStorage.getItem('app-token');
+      const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings?limit=500`, { 
+          headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
           }
-        }
-      } catch (error) {
-        console.error("Error syncing with Google Sheet:", error);
-      }
-    };
+      });
 
-    if(canViewAudioMerge) {
-        fetchSheetData();
+      if (res.ok) {
+        const result = await res.json();
+        if (result.data && Array.isArray(result.data)) {
+          const freshQueue = result.data.map(mapSheetRowToQueueItem);
+          
+          // Get current local storage data
+          const savedData = localStorage.getItem(STORAGE_KEY);
+          const localQueue = savedData ? JSON.parse(savedData) : [];
+
+          // Merge: Keep rows from freshQueue (handles sheet deletions & additions automatically).
+          // If the row existed locally, preserve its local status and comments over the fetched ones.
+          const mergedQueue = freshQueue.map((freshItem: any) => {
+              const localItem = localQueue.find((l: any) => l._id === freshItem._id);
+              if (localItem) {
+                  return {
+                      ...freshItem,
+                      _status: localItem._status, // Preserve local frontend status
+                      QcStatus: localItem.QcStatus, // Preserve mapped status
+                      comments: localItem.comments?.length > 0 ? localItem.comments : freshItem.comments, // Preserve local comments
+                  };
+              }
+              return freshItem; // It's a brand new row from sheet
+          });
+
+          setQueue(mergedQueue);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedQueue));
+          console.log("Queue synced from Google Sheet (Deletions reflected, Local Status Preserved)");
+        }
+      }
+    } catch (error) {
+      console.error("Error syncing with Google Sheet:", error);
     }
+  };
+
+  useEffect(() => {
+      if(canViewAudioMerge) {
+          fetchSheetData();
+      }
   }, [canViewAudioMerge]);
+
+  // Handle Manual Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleManualRefresh = async () => {
+      setIsRefreshing(true);
+      await fetchSheetData();
+      setIsRefreshing(false);
+      toast.success("Synced with Google Sheet");
+  };
 
   // --- COLUMN RESIZING LOGIC ---
   const handleResizeStart = (e: React.MouseEvent, columnId: string) => {
@@ -725,7 +743,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleFileScan = async (e: any) => {
+ const handleFileScan = async (e: any) => {
     const files = Array.from(e.target.files || []) as File[];
     if (files.length === 0) return;
 
@@ -735,7 +753,15 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         let totalBytes = 0;
         let totalDuration = 0;
         let maxRes = { w: 0, h: 0 };
-        const distinctExtensions = new Set<string>(); 
+        const distinctExtensions = new Set<string>();
+        
+        // Get the first file's name (without extension) for Recording Name
+        let recordingName = "";
+        if (files.length > 0) {
+            const firstFile = files[0];
+            // Remove extension from filename
+            recordingName = firstFile.name.substring(0, firstFile.name.lastIndexOf('.')) || firstFile.name;
+        }
 
         const mediaFiles = files.filter(f => f.name !== ".DS_Store" && f.size > 0);
 
@@ -786,13 +812,14 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
 
         setFormData(prev => ({
             ...prev,
+            RecordingName: recordingName, // Auto-fill from filename
             NoOfFiles: mediaFiles.length.toString(),
             Filesize: formatBytes(totalBytes),
             FilesizeInBytes: totalBytes.toString(), 
             fkMediaName: fileTypeString, 
             Duration: formatDuration(totalDuration), 
             AudioTotalDuration: formatDuration(totalDuration), 
-            BitRate: bitrateString, 
+           
             AudioBitrate: bitrateString, 
             Dimension: dimensionStr || prev.Dimension,
             Masterquality: quality || prev.Masterquality,
@@ -807,7 +834,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     }
     
     if(fileInputRef.current) fileInputRef.current.value = "";
-  };
+};
 
   const handleChange = async (e: any) => {
     const { name, value } = e.target;
@@ -863,7 +890,76 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   
   const enableEditing = () => { if(activeCommentId) setEditingId(activeCommentId); };
   const handleStatusClick = (id: number, e: any) => { e.stopPropagation(); if (openStatusDropdown === id) setOpenStatusDropdown(null); else setOpenStatusDropdown(id); };
-  const updateStatus = (id: number, newStatus: string, e: any) => { e.stopPropagation(); setQueue(prev => prev.map(item => item._id === id ? { ...item, _status: newStatus } : item)); setOpenStatusDropdown(null); };
+
+  // --- UPDATED updateStatus: Syncs with Backend via API ---
+const updateStatus = async (id: number, newStatus: string, e: any) => { 
+    e.stopPropagation(); 
+    
+    const statusMap: Record<string, string> = {
+        'incomplete': 'Submitted to MM',
+        'revision': 'Needs Revision',
+        'inwarding': 'Inwarding',
+        'submission_confirmed': 'Submission Confirmed',
+        'complete': 'Complete'
+    };
+    
+    const mappedStatus = statusMap[newStatus] || newStatus;
+
+    // Find the item to update
+    const itemToUpdate = queue.find(item => item._id === id);
+    if (!itemToUpdate) return;
+
+    // Optimistic UI Update (Update local state immediately)
+    setQueue(prev => {
+        const updated = prev.map(item => 
+            item._id === id 
+                ? { ...item, _status: newStatus, QcStatus: mappedStatus } 
+                : item
+        );
+        
+        // Save to localStorage
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        
+        return updated;
+    });
+
+    // Sync with Backend/Google Sheet
+    try {
+        const token = localStorage.getItem('app-token');
+        const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+            method: "PUT",
+            headers: { 
+                "Content-Type": "application/json",
+                ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                ...itemToUpdate,
+                _status: newStatus,
+                QcStatus: mappedStatus,
+                Logchats: formatLogchats(itemToUpdate.comments || [])
+            }),
+        });
+
+        if (!res.ok) {
+            throw new Error("Failed to sync status to Google Sheet");
+        }
+
+        toast.success(`Status updated to ${mappedStatus}`);
+    } catch (error) {
+        console.error("Status Update Error:", error);
+        toast.error("Status updated locally, but sync to Google Sheet failed");
+        
+        // Revert local state on failure
+        setQueue(prev => prev.map(item => 
+            item._id === id 
+                ? { ...item, _status: itemToUpdate._status, QcStatus: itemToUpdate.QcStatus } 
+                : item
+        ));
+    }
+    
+    setOpenStatusDropdown(null);
+};
+
   const toggleGroup = (group: string) => { const newSet = new Set(expandedGroups); if (newSet.has(group)) newSet.delete(group); else newSet.add(group); setExpandedGroups(newSet); };
   
   function parseDurationToSeconds(duration: string): number {
@@ -939,7 +1035,8 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             ...formData, 
             _id: editingId, 
             comments: existingItem?.comments || [], 
-            _status: existingItem?._status || 'incomplete' 
+            _status: existingItem?._status || 'incomplete',
+            QcStatus: existingItem?.QcStatus || 'Submitted to MM' // Preserves Default Backend Status Name
         };
 
         setQueue(prev => prev.map(item => {
@@ -976,7 +1073,13 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         
     } else {
         // CREATE NEW ENTRY
-        const newItem = { ...formData, _id: Date.now(), comments: [], _status: 'incomplete' };
+        const newItem = { 
+            ...formData, 
+            _id: Date.now(), 
+            comments: [], 
+            _status: 'incomplete', 
+            QcStatus: 'Submitted to MM' // Initialize Backend Status Correctly
+        };
         try {
             const token = localStorage.getItem('app-token');
             const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
@@ -1037,8 +1140,6 @@ const handleCloseComments = () => {
         }
     }
   };
-
- // Inside Googlesheetform.tsx
 
 const handleSendComment = async () => {
     if (!commentInput.trim() || !activeCommentId) return;
@@ -1194,7 +1295,38 @@ const handleSendComment = async () => {
       }  
   };
   
-  const renderField = (label: string, name: string, theme: any, options: any = {}) => ( <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> <Label style={{...styles.label, color: focusedField === name && !options.disabled ? theme.to : styles.label.color }}> {label} {options.required && <span style={{ color: theme.from, fontSize: "1.2em", lineHeight: 0 }}>*</span>} </Label> <Input name={name} type={options.type || "text"} value={(formData as any)[name]} onChange={handleChange} onFocus={() => setFocusedField(name)} onBlur={() => setFocusedField(null)} disabled={options.disabled} style={{ ...styles.input(theme, options.disabled, isCompact), borderColor: formErrors[name] ? "#ef4444" : (focusedField === name && !options.disabled ? theme.to : "rgba(255,255,255,0.1)") }} autoComplete="off" /> {formErrors[name] && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 2 }}>{formErrors[name]}</div>} </div> );
+  const renderField = (label: string, name: string, theme: any, options: any = {}) => ( 
+  <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> 
+    <Label style={{...styles.label, color: focusedField === name && !options.disabled ? theme.to : styles.label.color }}> 
+      {label} 
+      {options.required && <span style={{ color: theme.from, fontSize: "1.2em", lineHeight: 0 }}>*</span>} 
+    </Label> 
+    <Input 
+      name={name} 
+      type={options.type || "text"} 
+      value={(formData as any)[name]} 
+      onChange={(e) => {
+        let value = e.target.value;
+        // Apply uppercase transform if specified
+        if (options.uppercase) {
+          value = value.toUpperCase();
+        }
+        e.target.value = value;
+        handleChange(e);
+      }}
+      onFocus={() => setFocusedField(name)} 
+      onBlur={() => setFocusedField(null)} 
+      disabled={options.disabled} 
+      style={{ 
+        ...styles.input(theme, options.disabled, isCompact), 
+        borderColor: formErrors[name] ? "#ef4444" : (focusedField === name && !options.disabled ? theme.to : "rgba(255,255,255,0.1)"),
+        textTransform: options.uppercase ? 'uppercase' : 'none' // CSS uppercase
+      }} 
+      autoComplete="off" 
+    /> 
+    {formErrors[name] && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 2 }}>{formErrors[name]}</div>} 
+  </div> 
+);
   
   const getGroupedQueue = (data: any[], groupBy: string) => { 
       const groups: any = {}; 
@@ -1745,52 +1877,45 @@ const handleSendComment = async () => {
                     {isViewing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(59, 130, 246, 0.1)", border: "1px solid #3b82f6", borderRadius: 8, color: "#3b82f6", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Eye size={14}/> View Mode - Read Only</div>}
 
                     <div style={styles.sectionBlock}>
-                        <SectionTitle icon={Database} title="Core Identity" theme={colors.core} />
+                        <SectionTitle icon={Database} title="Event Details" theme={colors.core} />
                         <div style={styles.gridFields}>
                     
     <SearchableSelect label="Event Code" name="fkEventCode" options={eventCodeOptions.map(opt => opt.EventCode)} value={formData.fkEventCode} onChange={handleChange} theme={colors.core} required={true} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
     {renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
     {renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}
     {renderField("Event Category", "NewEventCategory", colors.core, {medium: true,required: true, disabled: !hasEditAccess || isViewing  })}
-    {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
-    {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
+   
 
                         </div>
                     </div>
                     <div style={styles.sectionBlock}>
                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <SectionTitle icon={FileAudio} title="Technical Specs" theme={colors.tech} />
+                            <SectionTitle icon={FileAudio} title="DMS details" theme={colors.tech} />
                             
                             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}>
-                                <FileSearch size={14} /> Scan File(s)
+                                <FileSearch size={14} /> Scan File
                             </button>
                         </div>
 
                         <div style={styles.gridFields}>
+                         {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
+                        {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
                         {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
                         {renderField("File Size", "Filesize", colors.tech, { disabled: !hasEditAccess || isViewing })}
                         {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        {renderField("Bit Rate", "BitRate", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                        {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing, uppercase: true })}
                         {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
                         {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        </div>
-                    </div>
-                    <div style={styles.sectionBlock}>
-                        <SectionTitle icon={Layers} title="Classification" theme={colors.class} />
                         <div style={styles.gridFields}>
                         <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
                         </div>
-                    </div>
-                    <div style={{...styles.sectionBlock, marginBottom: 0}}>
-                        <SectionTitle icon={CheckCircle} title="QC Log" theme={colors.qc} />
-                        <div style={styles.gridFields}>
-                        <SearchableSelect label="PreservationStatus" name="PreservationStatus" options={PRESERVATION_STATUS_OPTIONS} value={formData.PreservationStatus} onChange={handleChange} theme={colors.qc} required disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                        {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
+                          {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
                         </div>
                     </div>
+                   
+                    
                     <div style={{...styles.sectionBlock, marginBottom: 0}}><br/>
-                        <SectionTitle icon={FileAudio} title="Unique Identifiers" theme={colors.tech} />
+                        <SectionTitle icon={FileAudio} title="MediaLog Details" theme={colors.tech} />
                         <div style={styles.gridFields}>
                             <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
                            
@@ -1852,6 +1977,8 @@ const handleSendComment = async () => {
                     </div>
 
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
+                         
+
                          {isTableView && queue.length > 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Group by:</span>

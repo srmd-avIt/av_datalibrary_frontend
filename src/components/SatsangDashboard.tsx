@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 
 // -----------------
-// MultiSelect component (searchable, multi-select badges) - FIXED
+// MultiSelect component (searchable, multi-select badges)
 // -----------------
 interface Option {
   value: string;
@@ -23,7 +23,7 @@ interface MultiSelectComboboxProps {
   onChange: (value: string[]) => void;
   placeholder?: string;
   style?: React.CSSProperties;
-  maxVisibleBadges?: number; // how many labels to show before summarizing (default 2)
+  maxVisibleBadges?: number; // how many labels to show before summarizing
 }
 
 const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
@@ -35,7 +35,10 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
   maxVisibleBadges = 2,
 }) => {
   const [open, setOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState(''); // <-- Add this line
+  const [searchInput, setSearchInput] = useState('');
+  
+  // Detect mobile for inline sizing without needing global CSS
+  const isMobileSize = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   const toggle = (val: string) => {
     if (value.includes(val)) {
@@ -48,11 +51,6 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
   const clearOne = (e: React.MouseEvent, val: string) => {
     e.stopPropagation();
     onChange(value.filter(v => v !== val));
-  };
-
-  const clearAll = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    onChange([]);
   };
 
   const selectedOptions = useMemo(
@@ -68,132 +66,131 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: 8, 
+            minHeight: isMobileSize ? '44px' : 'auto', // Touch friendly
+            fontSize: isMobileSize ? '16px' : 'inherit', // Prevent iOS zoom
+            ...style 
+          }}
         >
-        
-<div
-  style={{
-    display: 'flex',
-    gap: 6,
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    flex: 1,
-    overflow: 'hidden'
-  }}
->
-  {selectedOptions.length === 0 ? (
-    <span style={{ opacity: 0.75 }}>{placeholder}</span>
-  ) : (
-    <>
-      {selectedOptions.length <= maxVisibleBadges
-        ? selectedOptions.map(opt => (
-            <span
-              key={opt.value}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: '#111827',
-                color: '#fff',
-                padding: '2px 8px',
-                borderRadius: 8,
-                fontSize: 12
-              }}
-            >
-              <span
-                style={{
-                  maxWidth: 120,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {opt.label}
-              </span>
-
-              {/* BUTTON FIX: stop propagation on pointer/mouse down and on click */}
-              <button
-                type="button"
-                aria-label={`Remove ${opt.label}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();   // prevents focus jump in some cases
-                  e.stopPropagation();  // stop parent handlers that run on mousedown
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();  // extra safety
-                  clearOne(e, opt.value);
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  margin: 0,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-              >
-                <X style={{ width: 12, height: 12, pointerEvents: 'none' }} />
-              </button>
-            </span>
-          ))
-        : (
-          <span style={{ color: '#e6eef9' }}>{`${selectedOptions.length} selected`}</span>
-        )}
-    </>
-  )}
-</div>
-
-
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              flex: 1,
+              overflow: 'hidden'
+            }}
+          >
+            {selectedOptions.length === 0 ? (
+              <span style={{ opacity: 0.75 }}>{placeholder}</span>
+            ) : (
+              <>
+                {selectedOptions.length <= maxVisibleBadges
+                  ? selectedOptions.map(opt => (
+                      <span
+                        key={opt.value}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: '#111827',
+                          color: '#fff',
+                          padding: '2px 8px',
+                          borderRadius: 8,
+                          fontSize: 12
+                        }}
+                      >
+                        <span
+                          style={{
+                            maxWidth: isMobileSize ? 80 : 120, // Mobile text limit
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {opt.label}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${opt.label}`}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearOne(e, opt.value);
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            margin: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <X style={{ width: 12, height: 12, pointerEvents: 'none' }} />
+                        </button>
+                      </span>
+                    ))
+                  : (
+                    <span style={{ color: '#e6eef9' }}>{`${selectedOptions.length} selected`}</span>
+                  )}
+              </>
+            )}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-           
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </div>
         </Button>
       </PopoverTrigger>
 
-     <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)', maxHeight: 320, overflow: 'auto' }}>
-  <Command>
-    <CommandInput
-      placeholder="Search..."
-      value={searchInput}
-      onValueChange={setSearchInput}
-    />
-    <CommandList>
-      <CommandEmpty>No results found.</CommandEmpty>
-      <CommandGroup>
-        {options
-          .filter(opt =>
-            !searchInput
-              ? true
-              : opt.label.toLowerCase().includes(searchInput.toLowerCase())
-          )
-          .map(opt => {
-            const isSelected = value.includes(opt.value);
-            return (
-              <CommandItem
-                key={opt.value}
-                value={opt.label}
-                onSelect={() => toggle(opt.value)}
-              >
-                <Check
-                  className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`}
-                />
-                <span>{opt.label}</span>
-              </CommandItem>
-            );
-          })}
-      </CommandGroup>
-    </CommandList>
-  </Command>
-</PopoverContent>
+      <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)', maxHeight: 320, overflow: 'auto' }}>
+        <Command>
+          <CommandInput
+            placeholder="Search..."
+            value={searchInput}
+            onValueChange={setSearchInput}
+            style={{ fontSize: isMobileSize ? '16px' : 'inherit', minHeight: isMobileSize ? '44px' : 'auto' }}
+          />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              {options
+                .filter(opt =>
+                  !searchInput
+                    ? true
+                    : opt.label.toLowerCase().includes(searchInput.toLowerCase())
+                )
+                .map(opt => {
+                  const isSelected = value.includes(opt.value);
+                  return (
+                    <CommandItem
+                      key={opt.value}
+                      value={opt.label}
+                      onSelect={() => toggle(opt.value)}
+                    >
+                      <Check
+                        className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`}
+                      />
+                      <span>{opt.label}</span>
+                    </CommandItem>
+                  );
+                })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
     </Popover>
   );
 };
 
 // ----------------- end MultiSelect component
-// -----------------
 
 const categoryTagRenderer = (value: string | null | undefined) => {
   if (!value) return <span className="text-slate-500"></span>;
@@ -270,9 +267,8 @@ const VIEW_CONFIGS: Record<string, any> = {
         },
       },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
-
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
-      { key: "ContentTo", label: "Content To", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true }, 
       {
         key: "DetailSub",
         label: "Detail - SubDetail",
@@ -284,30 +280,25 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
-
       { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "NewEventCategory", label: "New Event Category", sortable: true, render: categoryTagRenderer, editable: true },
-
       { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Venue", label: "Venue", sortable: true, editable: true },
-
       { key: "Guidance", label: "Guidance", sortable: true, editable: true },
       { key: "Remarks", label: "Remarks", sortable: true, editable: true },
       { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
       { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
-
       { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
       { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
-
       { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
       { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
@@ -319,6 +310,7 @@ const VIEW_CONFIGS: Record<string, any> = {
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
 export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { type: string; data: any; title: string }) => void }) {
+  const [isMobile, setIsMobile] = useState(false);
   const [searchFilters, setSearchFilters] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any> | undefined>(undefined);
   const [showOverridePopup, setShowOverridePopup] = useState(false);
@@ -326,6 +318,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
   const [countryOptions, setCountryOptions] = useState<Option[]>([]);
   const [stateOptions, setStateOptions] = useState<Option[]>([]);
+  const [granthOptions, setGranthOptions] = useState<Option[]>([]);
   const [cityOptions, setCityOptions] = useState<Option[]>([]);
   const [eventCategoryOptions, setEventCategoryOptions] = useState<Option[]>([]);
   const [numberOptions, setNumberOptions] = useState<Option[]>([]);
@@ -333,6 +326,26 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Screen resize detector & background fixer for mobile app feel
+  useEffect(() => {
+    const checkIsMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+      } else {
+        document.body.style.backgroundColor = "";
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
 
   useEffect(() => {
     const fetchOptions = async (endpoint: string, dataKey: string, setter: React.Dispatch<React.SetStateAction<Option[]>>) => {
@@ -361,27 +374,18 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
     fetchOptions('/countries/options', 'fkCountry', setCountryOptions);
     fetchOptions('/states/options', 'fkState', setStateOptions);
+    fetchOptions('/granths/options', 'fkGranth', setGranthOptions);
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
     fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions);
     
-    // --- UPDATED: Static list for Segment Category instead of fetch ---
     const specificSegmentCategories = [
-      'Prasangik Udbodhan', 
-      'SU', 
-      'SU - GM', 
-      'SU - Revision', 
-      'Satsang', 
-      'Informal Satsang', 
-      'Pravachan',
-      'Product/Webseries',
-      'SU - Extracted',
-      'Satsang Clips',
-      'SU - Capsule'
-    ].sort(); // Alphabetical sort
+      'Prasangik Udbodhan', 'SU', 'SU - GM', 'SU - Revision', 'Satsang', 
+      'Informal Satsang', 'Pravachan', 'Product/Webseries', 'SU - Extracted', 
+      'Satsang Clips', 'SU - Capsule'
+    ].sort();
 
     setSegmentCategoryOptions(specificSegmentCategories.map(val => ({ value: val, label: val })));
-    // -----------------------------------------------------------------
 
   }, []);
 
@@ -397,12 +401,6 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
       return acc;
     }, {} as Record<string, any>);
 
-    // If both ContentFrom and ContentTo are present, send as a range filter
-    if (searchFilters.ContentFrom && searchFilters.ContentTo) {
-      activeFilters.ContentFrom = searchFilters.ContentFrom;
-      activeFilters.ContentTo = searchFilters.ContentTo;
-    }
-
     setAppliedFilters(activeFilters);
     setSearchResult([]);
   };
@@ -417,7 +415,6 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         setSearchResult(data.data || []);
         setSearchLoading(false);
 
-        // If EventCode and other filters are present, but no result, show popup and prepare to search by EventCode only
         if (
           appliedFilters.EventCode &&
           Object.keys(appliedFilters).length > 1 &&
@@ -437,20 +434,623 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
   const handleRowSelect = (item: Record<string, any>) => {
     if (onShowDetails) {
-      onShowDetails({
-        type: 'medialog',
-        data: item,
-        title: 'Media Log Details'
-      });
+      onShowDetails({ type: 'medialog', data: item, title: 'Media Log Details' });
     }
   };
 
   const satsangCategoryConfig = VIEW_CONFIGS['medialog_satsang_category'];
 
-  return (
-    <div className="p-4 space-y-6">
+  // ==========================================
+  // 📱 MOBILE APP UI (Native App Feel)
+  // ==========================================
+ const renderMobileView = () => (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      minHeight: "100dvh",
+      backgroundColor: "#0b1120",
+      color: "white"
+    }}
+  >
+    {/* Mobile Header */}
+    <div
+      style={{
+        padding: "32px 20px 16px 20px",
+        backgroundColor: "rgba(15,23,42,0.4)",
+        borderBottom: "1px solid rgba(30,41,59,0.8)",
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
+        backdropFilter: "blur(12px)"
+      }}
+    >
+      <h1
+        style={{
+          fontSize: "24px",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          margin: 0,
+          color: "white"
+        }}
+      >
+        Satsang Search
+      </h1>
+      <p
+        style={{
+          color: "#94a3b8",
+          fontSize: "14px",
+          marginTop: "4px"
+        }}
+      >
+        Filter and find records easily
+      </p>
+    </div>
+
+    {/* Content */}
+    <div
+      style={{
+        padding: "24px 20px 128px 20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px"
+      }}
+    >
+      {/* Example Field Block */}
+      {/* New Event Category */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      New Event Category
+    </Label>
+    <MultiSelectCombobox
+      options={eventCategoryOptions}
+      value={searchFilters.NewEventCategory || []}
+      onChange={(v) => handleInputChange("NewEventCategory", v)}
+      placeholder="Select categories..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* Segment Category */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      Segment Category
+    </Label>
+    <MultiSelectCombobox
+      options={segmentCategoryOptions}
+      value={searchFilters["Segment Category"] || []}
+      onChange={(v) =>
+        handleInputChange("Segment Category", v)
+      }
+      placeholder="Select segments..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* City */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      City
+    </Label>
+    <MultiSelectCombobox
+      options={cityOptions}
+      value={searchFilters.fkCity || []}
+      onChange={(v) => handleInputChange("fkCity", v)}
+      placeholder="Select cities..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* Topic */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      Topic
+    </Label>
+    <Input
+      placeholder="e.g., Bhakti"
+      value={searchFilters.Topic || ""}
+      onChange={(e) =>
+        handleInputChange("Topic", e.target.value)
+      }
+      style={{
+        width: "100%",
+        height: "46px",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white",
+        fontSize: "16px",
+        padding: "0 12px"
+      }}
+    />
+  </div>
+
+  {/* Number */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      Number
+    </Label>
+    <MultiSelectCombobox
+      options={numberOptions}
+      value={searchFilters.Number || []}
+      onChange={(v) => handleInputChange("Number", v)}
+      placeholder="Select numbers..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* Country */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      Country
+    </Label>
+    <MultiSelectCombobox
+      options={countryOptions}
+      value={searchFilters.fkCountry || []}
+      onChange={(v) => handleInputChange("fkCountry", v)}
+      placeholder="Select countries..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* State */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      State
+    </Label>
+    <MultiSelectCombobox
+      options={stateOptions}
+      value={searchFilters.fkState || []}
+      onChange={(v) => handleInputChange("fkState", v)}
+      placeholder="Select states..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* Granth */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      Granth
+    </Label>
+    <MultiSelectCombobox
+      options={granthOptions}
+      value={searchFilters.fkGranth || []}
+      onChange={(v) => handleInputChange("fkGranth", v)}
+      placeholder="Select granth..."
+      style={{
+        width: "100%",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white"
+      }}
+    />
+  </div>
+
+  {/* ML Date From */}
+  <div>
+    <Label
+      style={{
+        marginBottom: "8px",
+        display: "block",
+        fontWeight: 500,
+        color: "#cbd5e1"
+      }}
+    >
+      ML Date From
+    </Label>
+    <Input
+      placeholder="dd.mm.yyyy"
+      value={searchFilters.ContentFrom || ""}
+      onChange={(e) =>
+        handleInputChange("ContentFrom", e.target.value)
+      }
+      style={{
+        width: "100%",
+        height: "46px",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white",
+        fontSize: "16px",
+        padding: "0 12px"
+      }}
+    />
+  </div>
+
+  {/* Event From & To */}
+  <div style={{ display: "flex", gap: "16px" }}>
+    <div style={{ flex: 1 }}>
+      <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+        Event From
+      </Label>
+      <Input
+        placeholder="dd-mm-yyyy"
+        value={searchFilters.FromDate || ""}
+        onChange={(e) => handleInputChange("FromDate", e.target.value)}
+        style={{
+          width: "100%",
+          height: "46px",
+          borderRadius: "10px",
+          backgroundColor: "#1e293b",
+          border: "1px solid #334155",
+          color: "white",
+          fontSize: "16px",
+          padding: "0 12px"
+        }}
+      />
+    </div>
+
+    <div style={{ flex: 1 }}>
+      <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+        Event To
+      </Label>
+      <Input
+        placeholder="dd-mm-yyyy"
+        value={searchFilters.ToDate || ""}
+        onChange={(e) => handleInputChange("ToDate", e.target.value)}
+        style={{
+          width: "100%",
+          height: "46px",
+          borderRadius: "10px",
+          backgroundColor: "#1e293b",
+          border: "1px solid #334155",
+          color: "white",
+          fontSize: "16px",
+          padding: "0 12px"
+        }}
+      />
+    </div>
+  </div>
+
+  {/* Year */}
+  <div>
+    <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+      Year
+    </Label>
+    <Input
+      placeholder="e.g., 2024"
+      value={searchFilters.Yr || ""}
+      onChange={(e) => handleInputChange("Yr", e.target.value)}
+      style={{
+        width: "100%",
+        height: "46px",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white",
+        fontSize: "16px",
+        padding: "0 12px"
+      }}
+    />
+  </div>
+
+  {/* MLUniqueID */}
+  <div>
+    <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+      MLUniqueID
+    </Label>
+    <Input
+      placeholder="e.g., E00001_001.1"
+      value={searchFilters.MLUniqueID || ""}
+      onChange={(e) => handleInputChange("MLUniqueID", e.target.value)}
+      style={{
+        width: "100%",
+        height: "46px",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white",
+        fontSize: "16px",
+        padding: "0 12px"
+      }}
+    />
+  </div>
+
+  {/* Event Code */}
+  <div>
+    <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+      Event Code
+    </Label>
+    <Input
+      placeholder="e.g., E00001"
+      value={searchFilters.EventCode || ""}
+      onChange={(e) => handleInputChange("EventCode", e.target.value)}
+      style={{
+        width: "100%",
+        height: "46px",
+        borderRadius: "10px",
+        backgroundColor: "#1e293b",
+        border: "1px solid #334155",
+        color: "white",
+        fontSize: "16px",
+        padding: "0 12px"
+      }}
+    />
+  </div>
+
+      {/* Results */}
+      {appliedFilters && (
+        <div
+          style={{
+            marginTop: "32px",
+            paddingTop: "16px",
+            borderTop: "1px solid rgba(30,41,59,1)"
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              marginBottom: "16px"
+            }}
+          >
+            Results
+          </h2>
+
+          {satsangCategoryConfig ? (
+            <div
+              style={{
+                backgroundColor: "#0f172a",
+                borderRadius: "12px",
+                overflow: "hidden",
+                border: "1px solid #1e293b"
+              }}
+            >
+              <ClickUpListViewUpdated
+                title=""
+                columns={satsangCategoryConfig.columns}
+                apiEndpoint={satsangCategoryConfig.apiEndpoint}
+                viewId={
+                  satsangCategoryConfig.idKey ||
+                  "medialog_satsang_category"
+                }
+                idKey={satsangCategoryConfig.idKey}
+                initialFilters={appliedFilters}
+                onViewChange={() => setAppliedFilters(undefined)}
+                onRowSelect={handleRowSelect}
+              />
+            </div>
+          ) : (
+            <p style={{ color: "#ef4444" }}>
+              Configuration not found.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+
+    {/* Sticky Bottom Bar */}
+    <div
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        width: "100%",
+        padding: "16px",
+        backgroundColor: "rgba(11,17,32,0.9)",
+        backdropFilter: "blur(16px)",
+        borderTop: "1px solid rgba(30,41,59,0.8)",
+        display: "flex",
+        gap: "12px",
+        zIndex: 30,
+        boxShadow: "0 -10px 20px rgba(0,0,0,0.3)"
+      }}
+    >
+      <Button
+        onClick={handleClear}
+        style={{
+          flex: 1,
+          height: "48px",
+          borderRadius: "12px",
+          backgroundColor: "#1e293b",
+          border: "1px solid #334155",
+          color: "white",
+          fontWeight: 600
+        }}
+      >
+        Clear
+      </Button>
+
+      <Button
+        onClick={handleSearch}
+        style={{
+          flex: 2,
+          height: "48px",
+          borderRadius: "12px",
+          background:
+            "linear-gradient(to right, #2563eb, #7c3aed)",
+          color: "white",
+          fontWeight: 600,
+          boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px"
+        }}
+      >
+        <Search style={{ width: "20px", height: "20px" }} />
+        Search
+      </Button>
+    </div>
+
+    {/* Override Popup */}
+    {showOverridePopup && (
+      <div
+        onClick={() => setShowOverridePopup(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(0,0,0,0.8)",
+          zIndex: 50,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
+          backdropFilter: "blur(6px)"
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: "#0f172a",
+            width: "100%",
+            maxWidth: "320px",
+            borderRadius: "16px",
+            padding: "24px",
+            textAlign: "center",
+            border: "1px solid #334155",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.6)"
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              marginBottom: "12px"
+            }}
+          >
+            Filter Override
+          </h2>
+
+          <p
+            style={{
+              color: "#94a3b8",
+              fontSize: "14px",
+              marginBottom: "24px",
+              lineHeight: 1.6
+            }}
+          >
+            No results found for your filters. Showing
+            results for Event Code only.
+          </p>
+
+          <Button
+            onClick={() => {
+              setShowOverridePopup(false);
+              if (pendingEventCode) {
+                setAppliedFilters({
+                  EventCode: pendingEventCode
+                });
+                setPendingEventCode(null);
+              }
+            }}
+            style={{
+              width: "100%",
+              height: "46px",
+              borderRadius: "10px",
+              backgroundColor: "#3b82f6",
+              color: "white",
+              fontWeight: 600
+            }}
+          >
+            Understand
+          </Button>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+  // ==========================================
+  // 💻 DESKTOP UI (Exactly as you provided)
+  // ==========================================
+  const renderDesktopView = () => (
+    <div className="p-4 space-y-6 w-full">
       <Card style={{ padding: "24px", border: "1px solid #474849ff", borderRadius: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-        <CardHeader style={{ paddingBottom: "16px", borderBottom: "1px solid #f1f5f9" }}>
+        <CardHeader style={{ paddingBottom: "16px", borderBottom: "1px solid #2e3033" }}>
           <CardTitle style={{ fontSize: "20px", fontWeight: 600, color: "#f0f3f8ff" }}>
             Satsang Search
           </CardTitle>
@@ -458,165 +1058,69 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
         <CardContent style={{ paddingTop: "24px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" }}>
-
             <div>
-              <Label htmlFor="NewEventCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                New Event Category
-              </Label>
-              <MultiSelectCombobox
-                options={eventCategoryOptions}
-                value={searchFilters.NewEventCategory || []}
-                onChange={value => handleInputChange('NewEventCategory', value)}
-                placeholder="Select event categories..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
-              />
+              <Label htmlFor="NewEventCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>New Event Category</Label>
+              <MultiSelectCombobox options={eventCategoryOptions} value={searchFilters.NewEventCategory || []} onChange={value => handleInputChange('NewEventCategory', value)} placeholder="Select event categories..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-  <Label htmlFor="SegmentCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-    Segment Category
-  </Label>
-  <MultiSelectCombobox
-    options={segmentCategoryOptions}
-    value={searchFilters['Segment Category'] || []}
-    onChange={value => handleInputChange('Segment Category', value)}
-    placeholder="Select segment categories..."
-    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
-  />
-</div>
-
-            <div>
-              <Label htmlFor="fkCity" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                City
-              </Label>
-              <MultiSelectCombobox
-                options={cityOptions}
-                value={searchFilters.fkCity || []}
-                onChange={value => handleInputChange('fkCity', value)}
-                placeholder="Select cities..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
-              />
+              <Label htmlFor="SegmentCategory" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Segment Category</Label>
+              <MultiSelectCombobox options={segmentCategoryOptions} value={searchFilters['Segment Category'] || []} onChange={value => handleInputChange('Segment Category', value)} placeholder="Select segment categories..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-              <Label htmlFor="Topic" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                Topic
-              </Label>
-              <Input
-                id="Topic"
-                placeholder="e.g., Bhakti"
-                value={searchFilters.Topic || ''}
-                onChange={e => handleInputChange('Topic', e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }}
-              />
+              <Label htmlFor="fkCity" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>City</Label>
+              <MultiSelectCombobox options={cityOptions} value={searchFilters.fkCity || []} onChange={value => handleInputChange('fkCity', value)} placeholder="Select cities..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-              <Label htmlFor="Number" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                Number
-              </Label>
-              <MultiSelectCombobox
-                options={numberOptions}
-                value={searchFilters.Number || []}
-                onChange={value => handleInputChange('Number', value)}
-                placeholder="Select numbers..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
-              />
+              <Label htmlFor="Topic" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Topic</Label>
+              <Input id="Topic" placeholder="e.g., Bhakti" value={searchFilters.Topic || ''} onChange={e => handleInputChange('Topic', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
             </div>
-
             <div>
-              <Label htmlFor="fkCountry" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                Country
-              </Label>
-              <MultiSelectCombobox
-                options={countryOptions}
-                value={searchFilters.fkCountry || []}
-                onChange={value => handleInputChange('fkCountry', value)}
-                placeholder="Select countries..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
-              />
+              <Label htmlFor="Number" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Number</Label>
+              <MultiSelectCombobox options={numberOptions} value={searchFilters.Number || []} onChange={value => handleInputChange('Number', value)} placeholder="Select numbers..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-              <Label htmlFor="fkState" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                State
-              </Label>
-              <MultiSelectCombobox
-                options={stateOptions}
-                value={searchFilters.fkState || []}
-                onChange={value => handleInputChange('fkState', value)}
-                placeholder="Select states..."
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
-              />
+              <Label htmlFor="fkCountry" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Country</Label>
+              <MultiSelectCombobox options={countryOptions} value={searchFilters.fkCountry || []} onChange={value => handleInputChange('fkCountry', value)} placeholder="Select countries..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-              <Label htmlFor="ContentFrom" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                Content From
-              </Label>
-              <Input
-                id="ContentFrom"
-                placeholder="e.g., dd.mm.yyyy"
-                value={searchFilters.ContentFrom || ''}
-                onChange={e => handleInputChange('ContentFrom', e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }}
-              />
+              <Label htmlFor="fkState" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>State</Label>
+              <MultiSelectCombobox options={stateOptions} value={searchFilters.fkState || []} onChange={value => handleInputChange('fkState', value)} placeholder="Select states..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-              <Label htmlFor="ContentTo" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                Content To
-              </Label>
-              <Input
-                id="ContentTo"
-                placeholder="e.g., dd.mm.yyyy"
-                value={searchFilters.ContentTo || ''}
-                onChange={e => handleInputChange('ContentTo', e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }}
-              />
+              <Label htmlFor="fkState" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Granth</Label>
+              <MultiSelectCombobox options={granthOptions} value={searchFilters.fkGranth || []} onChange={value => handleInputChange('fkGranth', value)} placeholder="Select granth..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
-
             <div>
-              <Label htmlFor="MLUniqueID" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                EventRef MLUniqueID
-              </Label>
-              <Input
-                id="EventRefMLID"
-                placeholder="e.g., E00001_001.1"
-                value={searchFilters.EventRefMLID || ''}
-                onChange={e => handleInputChange('EventRefMLID', e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }}
-              />
+              <Label htmlFor="ContentFrom" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>ML Content Date</Label>
+              <Input id="ContentFrom" placeholder="e.g., dd.mm.yyyy" value={searchFilters.ContentFrom || ''} onChange={e => handleInputChange('ContentFrom', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
             </div>
-
             <div>
-              <Label htmlFor="EventCCode" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>
-                Event Code
-              </Label>
-              <Input
-                id="EventCode"
-                placeholder="e.g., E00001"
-                value={searchFilters.EventCode || ''}
-                onChange={e => handleInputChange('EventCode', e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }}
-              />
+              <Label htmlFor="FromDate" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Event From</Label>
+              <Input id="FromDate" placeholder="e.g., dd-mm-yyyy" value={searchFilters.FromDate || ''} onChange={e => handleInputChange('FromDate', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
             </div>
-
+            <div>
+              <Label htmlFor="ToDate" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Event To</Label>
+              <Input id="ToDate" placeholder="e.g., dd-mm-yyyy" value={searchFilters.ToDate || ''} onChange={e => handleInputChange('ToDate', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+            </div>
+            <div>
+              <Label htmlFor="MLUniqueID" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>MLUniqueID</Label>
+              <Input id="MLUniqueID" placeholder="e.g., E00001_001.1" value={searchFilters.MLUniqueID || ''} onChange={e => handleInputChange('MLUniqueID', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+            </div>
+            <div>
+              <Label htmlFor="EventCCode" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Event Code</Label>
+              <Input id="EventCode" placeholder="e.g., E00001" value={searchFilters.EventCode || ''} onChange={e => handleInputChange('EventCode', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+            </div>
+            <div>
+              <Label htmlFor="Yr" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Year</Label>
+              <Input id="Yr" placeholder="e.g., 2024" value={searchFilters.Yr || ''} onChange={e => handleInputChange('Yr', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+            </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", marginTop: "28px" }}>
-            <Button
-              variant="outline"
-              onClick={handleClear}
-              style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #1b1b1bff", backgroundColor: "#19191aff", fontSize: "14px", fontWeight: 500, cursor: "pointer" }}
-            >
+            <Button variant="outline" onClick={handleClear} style={{ padding: "10px 20px", borderRadius: "8px", border: "1px solid #1b1b1bff", backgroundColor: "#19191aff", fontSize: "14px", fontWeight: 500, cursor: "pointer" }}>
               Clear Search
             </Button>
-            <Button
-              size="lg"
-              onClick={handleSearch}
-              style={{ padding: "10px 24px", borderRadius: "8px", backgroundColor: "#161616ff", color: "#fff", fontWeight: 600, fontSize: "15px", cursor: "pointer" }}
-            >
+            <Button size="lg" onClick={handleSearch} style={{ padding: "10px 24px", borderRadius: "8px", backgroundColor: "#161616ff", color: "#fff", fontWeight: 600, fontSize: "15px", cursor: "pointer" }}>
               <Search style={{ marginRight: "8px", width: "18px", height: "18px" }} />
               Search
             </Button>
@@ -624,77 +1128,31 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
         </CardContent>
       </Card>
 
-      {/* Popup for Event Code override */}
+      {/* Desktop Popup */}
       {showOverridePopup && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.4)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-          onClick={() => setShowOverridePopup(false)}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: "32px 24px",
-              borderRadius: "12px",
-              minWidth: 320,
-              boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
-              textAlign: "center"
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#1b1b1b" }}>
-              Event Code Overrides Other Filters
-            </h2>
-            <p style={{ color: "#444", marginBottom: 24 }}>
-              No results found for the combination of Event Code and other filters.<br />
-              Showing results for Event Code only.
-            </p>
-            <Button
-              onClick={() => {
-                setShowOverridePopup(false);
-                if (pendingEventCode) {
-                  setAppliedFilters({ EventCode: pendingEventCode });
-                  setPendingEventCode(null);
-                }
-              }}
-              style={{ padding: "8px 24px", borderRadius: "8px", background: "#161616ff", color: "#fff", fontWeight: 600 }}
-            >
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.4)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }} onClick={() => setShowOverridePopup(false)}>
+          <div style={{ background: "#fff", padding: "32px 24px", borderRadius: "12px", minWidth: 320, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#1b1b1b" }}>Event Code Overrides Other Filters</h2>
+            <p style={{ color: "#444", marginBottom: 24 }}>No results found for the combination of Event Code and other filters.<br />Showing results for Event Code only.</p>
+            <Button onClick={() => { setShowOverridePopup(false); if (pendingEventCode) { setAppliedFilters({ EventCode: pendingEventCode }); setPendingEventCode(null); } }} style={{ width: "100%", padding: "8px 24px", borderRadius: "8px", background: "#161616ff", color: "#fff", fontWeight: 600 }}>
               OK
             </Button>
           </div>
         </div>
       )}
 
+      {/* Desktop Results */}
       {appliedFilters && (
-        <div className="mt-6">
+        <div className="mt-6 w-full overflow-x-auto">
           {satsangCategoryConfig ? (
-            <ClickUpListViewUpdated
-              title="Search Results"
-              columns={satsangCategoryConfig.columns}
-              apiEndpoint={satsangCategoryConfig.apiEndpoint}
-              viewId={satsangCategoryConfig.idKey || 'medialog_satsang_category'}
-              idKey={satsangCategoryConfig.idKey}
-              initialFilters={appliedFilters}
-              onViewChange={() => setAppliedFilters(undefined)}
-              onRowSelect={handleRowSelect}
-            />
+            <ClickUpListViewUpdated title="Search Results" columns={satsangCategoryConfig.columns} apiEndpoint={satsangCategoryConfig.apiEndpoint} viewId={satsangCategoryConfig.idKey || 'medialog_satsang_category'} idKey={satsangCategoryConfig.idKey} initialFilters={appliedFilters} onViewChange={() => setAppliedFilters(undefined)} onRowSelect={handleRowSelect} />
           ) : (
-            <Card>
-              <CardHeader><CardTitle>Error</CardTitle></CardHeader>
-              <CardContent>
-                <p className="text-red-500">Satsang Category view configuration not found.</p>
-              </CardContent>
-            </Card>
+            <Card><CardHeader><CardTitle>Error</CardTitle></CardHeader><CardContent><p className="text-red-500">Satsang Category view configuration not found.</p></CardContent></Card>
           )}
         </div>
       )}
     </div>
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

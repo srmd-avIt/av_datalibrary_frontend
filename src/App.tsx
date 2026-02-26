@@ -71,7 +71,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     title: "Satsang Dashboard",
   },
   medialog_all: {
-    title: "Media Log: ML formal & Informal",
+    title: " ML formal & Informal",
     apiEndpoint: "/newmedialog",
     idKey: "MLUniqueID",
     detailsType: "medialog",
@@ -176,7 +176,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   medialog_formal: {
-    title: "Media Log: Formal View",
+    title: "Formal View",
     apiEndpoint: "/newmedialog/formal", 
     idKey: "MLUniqueID",
     detailsType: "medialog",
@@ -425,7 +425,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   medialog_all_except_satsang: {
-    title: "Media Log: All Except Satsang",
+    title: "All Except Satsang",
     apiEndpoint: "/newmedialog/all-except-satsang",
     idKey: "MLUniqueID",
     detailsType: "medialog",
@@ -529,7 +529,7 @@ const VIEW_CONFIGS: Record<string, any> = {
   },
 
     medialog_satsang_extracted_clips: {
-    title: "Media Log: Satsang Extracted Clips",
+    title: "Satsang Extracted Clips",
     apiEndpoint: "/newmedialog/satsang-extracted-clips",
     idKey: "MLUniqueID",
     detailsType: "medialog",
@@ -604,7 +604,7 @@ const VIEW_CONFIGS: Record<string, any> = {
   },
 
    medialog_satsang_category: {
-    title: "Media Log: Satsang Category",
+    title: " Satsang Category",
     apiEndpoint: "/newmedialog/satsang-category",
     idKey: "MLUniqueID",
     detailsType: "medialog",
