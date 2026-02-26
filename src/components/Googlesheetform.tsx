@@ -561,6 +561,24 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     setOpenStatusDropdown(null);
   }, [isTableView]);
 
+  // --- NEW: Fetch ML options dynamically based on selected Event Code ---
+  useEffect(() => {
+      const fetchMlOptions = async () => {
+          try {
+              const url = formData.fkEventCode
+                  ? `${cleanBaseUrl}/api/ml-unique-id/options?eventCode=${encodeURIComponent(formData.fkEventCode)}`
+                  : `${cleanBaseUrl}/api/ml-unique-id/options`;
+              const res = await fetch(url);
+              if (res.ok) {
+                  setMlIdOptions(await res.json());
+              }
+          } catch (e) {
+              console.error("Error fetching ML options:", e);
+          }
+      };
+      fetchMlOptions();
+  }, [formData.fkEventCode]);
+
   // Initial Data Fetch & Users
   useEffect(() => {
       const fetchData = async () => {
@@ -568,9 +586,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
               // Fetch Dropdowns
               const ecRes = await fetch(`${cleanBaseUrl}/api/event-code/options`); 
               if (ecRes.ok) setEventCodeOptions(await ecRes.json());
-              
-              const mlRes = await fetch(`${cleanBaseUrl}/api/ml-unique-id/options`); 
-              if (mlRes.ok) setMlIdOptions(await mlRes.json());
           } catch (e) { 
               console.error(e); 
           }
@@ -846,7 +861,19 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
             fkEventCode: value,
             EventName: selectedEvent?.EventName || "",
             Yr: selectedEvent?.Yr || "",
-            NewEventCategory: selectedEvent?.NewEventCategory || ""
+            NewEventCategory: selectedEvent?.NewEventCategory || "",
+            // Reset ML-related fields when the Event Code changes
+            MLUniqueID: "",
+            Detail: "",
+            fkGranth: "",
+            Number: "",
+            Topic: "",
+            ContentFrom: "",
+            SatsangStart: "",
+            SatsangEnd: "",
+            fkCity: "",
+            SubDuration: "",
+            Remarks: ""
         }));
     }
    else if (name === "MLUniqueID") {
