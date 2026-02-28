@@ -564,7 +564,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
             left: 0,
             width: "100%",
             height: "100dvh",
-            zIndex: 9999, // Super high z-index to cover parent title/description
+            zIndex: 40, // <-- FIX: Lowered from 9999 so that Popovers (z-50) can appear above this container
             display: "flex",
             flexDirection: "column",
             backgroundColor: "#0b1120",
@@ -824,31 +824,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
           </div>
 
           {/* Event From & To */}
-          <div style={{ display: "flex", gap: "16px" }}>
-            <div style={{ flex: 1 }}>
-              <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
-                Event From
-              </Label>
-              <Input
-                placeholder="dd-mm-yyyy"
-                value={searchFilters.FromDate || ""}
-                onChange={(e) => handleInputChange("FromDate", e.target.value)}
-                style={{ width: "100%", minHeight: "46px", borderRadius: "10px", backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", fontSize: "16px", padding: "10px 12px" }}
-              />
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
-                Event To
-              </Label>
-              <Input
-                placeholder="dd-mm-yyyy"
-                value={searchFilters.ToDate || ""}
-                onChange={(e) => handleInputChange("ToDate", e.target.value)}
-                style={{ width: "100%", minHeight: "46px", borderRadius: "10px", backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", fontSize: "16px", padding: "10px 12px" }}
-              />
-            </div>
-          </div>
+        
 
           {/* Year */}
           <div>
