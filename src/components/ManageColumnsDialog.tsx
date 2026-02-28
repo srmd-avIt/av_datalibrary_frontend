@@ -1,10 +1,11 @@
+/// <reference types="vite/client" />
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, User, Users, Trash2, Loader2, CheckSquare } from 'lucide-react';
+import { GripVertical, ArrowLeft, ArrowRight, Eye, EyeOff, User, Users, Trash2, Loader2, CheckSquare, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
@@ -48,7 +49,7 @@ interface DraggableColumnProps {
   isVisible: boolean;
   onRemove: () => void;
   isCustom?: boolean;
-  listId: string; // [FIX]: Added to distinguish lists
+  listId: string; 
 }
 
 const DraggableColumn: React.FC<DraggableColumnProps> = ({ 
@@ -72,9 +73,7 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
       const hoverIndex = index;
       const sourceListId = item.listId;
 
-      // [FIX]: Prevent sorting/crashing if dragging across different lists
       if (sourceListId !== listId) return;
-
       if (dragIndex === hoverIndex) return;
       
       const hoverBoundingRect = ref.current.getBoundingClientRect();
@@ -93,32 +92,47 @@ const DraggableColumn: React.FC<DraggableColumnProps> = ({
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: ITEM_TYPE,
-    item: { index, listId }, // [FIX]: Pass listId
+    item: { index, listId }, 
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    canDrag: isVisible, // Only allow dragging visible columns
+    canDrag: isVisible, 
   });
 
   preview(drop(ref));
 
   return (
-    <div ref={ref} className={`flex items-center justify-between p-2 mb-2 rounded-md border bg-muted/30 ${isDragging ? 'opacity-50' : 'opacity-100'}`}>
-      <div className="flex items-center gap-2 overflow-hidden">
-        {/* Only show grip if visible/sortable */}
+    <div 
+      ref={ref} 
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 12px',
+        marginBottom: '8px',
+        borderRadius: '8px',
+        backgroundColor: '#1e293b',
+        border: '1px solid #334155',
+        opacity: isDragging ? 0.4 : 1,
+        transition: 'background-color 0.2s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
         {isVisible && (
-          <div ref={(node) => { drag(node as any); }} className="cursor-grab p-1 flex-shrink-0">
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
+          <div ref={(node) => { drag(node as any); }} style={{ cursor: 'grab', padding: '2px', flexShrink: 0 }}>
+            <GripVertical style={{ width: '16px', height: '16px', color: '#94a3b8' }} />
           </div>
         )}
-        <span className="text-sm truncate" title={column.label}>{column.label}</span>
+        <span style={{ fontSize: '14px', color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500 }} title={column.label}>
+          {column.label}
+        </span>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
         {isCustom && (
-          <Button variant="ghost" size="sm" onClick={onRemove} title="Remove custom column">
-            <Trash2 className="w-4 h-4 text-destructive" />
+          <Button variant="ghost" size="sm" onClick={onRemove} style={{ padding: '6px', height: 'auto' }} title="Remove custom column">
+            <Trash2 style={{ width: '16px', height: '16px', color: '#ef4444' }} />
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={onToggle} title={isVisible ? 'Hide' : 'Show'}>
-          {isVisible ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+        <Button variant="ghost" size="sm" onClick={onToggle} style={{ padding: '6px', height: 'auto', color: '#cbd5e1' }} title={isVisible ? 'Hide' : 'Show'}>
+          {isVisible ? <ArrowRight style={{ width: '16px', height: '16px' }} /> : <ArrowLeft style={{ width: '16px', height: '16px' }} />}
         </Button>
       </div>
     </div>
@@ -153,8 +167,8 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   const [currentVisible, setCurrentVisible] = useState<Column[]>([]);
   const [currentHidden, setCurrentHidden] = useState<Column[]>([]);
   const [isLoadingBackend, setIsLoadingBackend] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
-  // --- User Selection State ---
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [showColumnEditor, setShowColumnEditor] = useState(false); 
@@ -163,7 +177,14 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState('');
 
-  // --- Reset state when dialog opens/closes ---
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   useEffect(() => {
     if (!isOpen) {
       setSelectedUserIds([]);
@@ -172,80 +193,67 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     }
   }, [isOpen]);
 
-  // --- MAIN LOGIC: Fetch backend columns and merge (Runs when Editor Opens) ---
   useEffect(() => {
     if (!isOpen || !showColumnEditor) return;
 
     const initializeColumns = async () => {
-      // 1. Start with columns defined in frontend config
       let mergedColumns = [...allColumns];
 
-      // 2. Fetch from backend if endpoint provided
      if (apiEndpoint) {
-  setIsLoadingBackend(true);
-  try {
-    const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
-    const token = localStorage.getItem('app-token');
+        setIsLoadingBackend(true);
+        try {
+          const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
+          const token = localStorage.getItem('app-token');
 
-    const response = await fetch(fetchUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '', 
-      }
-    });
+          const response = await fetch(fetchUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '', 
+            }
+          });
 
-    if (response.status === 401 || response.status === 403) {
-      console.error("Column Discovery: Session expired or unauthorized. Redirecting...");
-      localStorage.removeItem('app-token');
-      localStorage.removeItem('google-token');
-      window.location.href = '/'; 
-      return;
-    }
+          if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('app-token');
+            localStorage.removeItem('google-token');
+            window.location.href = '/'; 
+            return;
+          }
 
-    if (response.ok) {
-      const data = await response.json();
-      const rows = Array.isArray(data) ? data : (data.data || []);
-      
-      if (rows.length > 0) {
-        const sampleRow = rows[0];
-        const backendKeys = Object.keys(sampleRow);
-        const existingKeys = new Set(mergedColumns.map(c => c.key));
-        
-        const newDiscoveredColumns: Column[] = backendKeys
-          .filter(key => !existingKeys.has(key))
-          .map(key => ({
-            key: key,
-            label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
-            sortable: true,
-            editable: false, 
-            isCustom: false
-          }));
+          if (response.ok) {
+            const data = await response.json();
+            const rows = Array.isArray(data) ? data : (data.data || []);
+            
+            if (rows.length > 0) {
+              const sampleRow = rows[0];
+              const backendKeys = Object.keys(sampleRow);
+              const existingKeys = new Set(mergedColumns.map(c => c.key));
+              
+              const newDiscoveredColumns: Column[] = backendKeys
+                .filter(key => !existingKeys.has(key))
+                .map(key => ({
+                  key: key,
+                  label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
+                  sortable: true,
+                  editable: false, 
+                  isCustom: false
+                }));
 
-        if (newDiscoveredColumns.length > 0) {
-          mergedColumns = [...mergedColumns, ...newDiscoveredColumns];
+              if (newDiscoveredColumns.length > 0) {
+                mergedColumns = [...mergedColumns, ...newDiscoveredColumns];
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch backend columns", error);
+        } finally {
+          setIsLoadingBackend(false);
         }
       }
-    } else {
-      throw new Error(`Server responded with ${response.status}`);
-    }
-  } catch (error) {
-    console.error("Failed to fetch backend columns", error);
-    toast.error("Could not fetch full column list from database.");
-  } finally {
-    setIsLoadingBackend(false);
-  }
-}
 
       setInternalColumns(mergedColumns);
 
-      // 3. Determine Visible vs Hidden
       let initialVisibleKeys = visibleColumnKeys;
-
-      // --- [FIX START] Single/Bulk User Mode Logic ---
-      // We check if at least one user is selected. If so, we use the FIRST selected user
-      // as the "Reference" to load the config. This fixes the issue where bulk editing
-      // defaulted to empty instead of the user's saved preference.
       const referenceUserId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
 
       if (referenceUserId) {
@@ -255,8 +263,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             const savedConfig = JSON.parse(savedConfigStr);
             if (savedConfig && Array.isArray(savedConfig.visible)) {
               initialVisibleKeys = savedConfig.visible;
-              
-              // Only show the text summary if exactly 1 user (to prevent confusion in bulk mode)
               if (selectedUserIds.length === 1) {
                 const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${referenceUserId}`);
                 setLastUserSummary(summary || null);
@@ -273,16 +279,12 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
       } else {
         setLastUserSummary(null);
       }
-      // --- [FIX END] ---
 
-      // A. Visible
       const visibleOrdered = initialVisibleKeys
         .map(key => mergedColumns.find(c => c.key === key))
         .filter((c): c is Column => !!c);
       
       const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
-
-      // B. Hidden (Everything else)
       const hidden = mergedColumns.filter(c => !visibleKeysSet.has(c.key));
       hidden.sort((a, b) => a.label.localeCompare(b.label));
 
@@ -291,10 +293,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     };
 
     initializeColumns();
-
   }, [isOpen, showColumnEditor, allColumns, visibleColumnKeys, apiEndpoint, selectedUserIds, viewId]); 
-
-  // --- Handlers ---
 
   const handleToggleUser = (userId: string) => {
     setSelectedUserIds(prev => 
@@ -327,16 +326,10 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         );
   };
 
-  // [FIX]: Use useCallback and safe state update to prevent drag crashes
   const moveVisibleCard = useCallback((dragIndex: number, hoverIndex: number) => {
     setCurrentVisible(prev => {
       const newCards = [...prev];
-      
-      // Bounds check for safety
-      if (dragIndex < 0 || dragIndex >= newCards.length || hoverIndex < 0 || hoverIndex >= newCards.length) {
-          return prev;
-      }
-      
+      if (dragIndex < 0 || dragIndex >= newCards.length || hoverIndex < 0 || hoverIndex >= newCards.length) return prev;
       const dragCard = newCards[dragIndex];
       newCards.splice(dragIndex, 1);
       newCards.splice(hoverIndex, 0, dragCard);
@@ -360,37 +353,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     }
   };
   
-  const handleAddColumn = () => {
-    if (!newColumnLabel.trim()) {
-      toast.error("Column Label is required.");
-      return;
-    }
-    const generateKey = (label: string) => {
-      return label.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => index === 0 ? word.toLowerCase() : word.toUpperCase()).replace(/\s+/g, '');
-    };
-    let baseKey = generateKey(newColumnLabel);
-    let finalKey = baseKey;
-    let counter = 1;
-    while (internalColumns.some(c => c.key === finalKey)) {
-      finalKey = `${baseKey}${counter++}`;
-    }
-    const newColumnDef: Column = { 
-      key: finalKey, 
-      label: newColumnLabel, 
-      sortable: true,
-      editable: true,
-      isCustom: true
-    };
-    
-    const newAll = [...internalColumns, newColumnDef];
-    setInternalColumns(newAll);
-    setCurrentHidden(prev => [...prev, newColumnDef].sort((a, b) => a.label.localeCompare(b.label)));
-    
-    setIsAddColumnOpen(false);
-    setNewColumnLabel('');
-    toast.success(`Column "${newColumnLabel}" added.`);
-  };
-
   const handleRemoveColumn = (keyToRemove: string) => {
     setInternalColumns(prev => prev.filter(c => c.key !== keyToRemove));
     setCurrentVisible(prev => prev.filter(c => c.key !== keyToRemove));
@@ -414,35 +376,200 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     
     const summaryText = `Visible: ${visibleKeys.join(', ')}, Hidden: ${hiddenKeys.join(', ')}`;
 
-    // Save config for ALL selected users locally
     if (target.type === 'specific_users') {
       target.userIds.forEach(uid => {
-        localStorage.setItem(
-          `columnConfig-${viewId}-${uid}`,
-          JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys })
-        );
-        localStorage.setItem(
-          `columnChangesSummary-${viewId}-${uid}`,
-          summaryText
-        );
+        localStorage.setItem(`columnConfig-${viewId}-${uid}`, JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys }));
+        localStorage.setItem(`columnChangesSummary-${viewId}-${uid}`, summaryText);
       });
-      
-      // Update UI state immediately if just 1 user (for better UX if dialog reopens)
-      if (target.userIds.length === 1) {
-        setLastUserSummary(summaryText);
-      }
+      if (target.userIds.length === 1) setLastUserSummary(summaryText);
     }
 
     onSave({ viewId, visibleKeys, hiddenKeys, target });
     onClose();
-    // Reset internal state
     setShowColumnEditor(false);
     setSelectedUserIds([]);
     setUserSearch('');
   };
 
-  // --- RENDER 1: User Selection Screen ---
-  if (!showColumnEditor) {
+  const getUserLabel = () => {
+    if (selectedUserIds.length === 1) {
+      return users.find(u => u.id === selectedUserIds[0])?.name || "User";
+    }
+    return `${selectedUserIds.length} Users`;
+  };
+
+  // ==========================================
+  // 📱 PERFECT MOBILE UI 
+  // ==========================================
+  
+  const renderMobileUserSelection = () => {
+    if (!isOpen) return null;
+    const filteredUsers = getFilteredUsers();
+    
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: '#0b1120', color: 'white', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+        {/* Header - Fixed Height */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: '#f8fafc' }}>Select Users</h2>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0 0' }}>Select users to apply settings</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} style={{ padding: 0, height: 36, width: 36, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+            <X style={{ width: '20px', height: '20px', color: '#cbd5e1' }} />
+          </Button>
+        </div>
+
+        {/* Body - Flex 1 & Hidden Overflow */}
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Search Row */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexShrink: 0 }}>
+            <Input
+              placeholder="Search users..."
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              style={{ flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', color: 'white', height: 44, borderRadius: 8, fontSize: 16 }}
+            />
+            <Button variant="outline" onClick={handleSelectAllUsers} style={{ height: 44, backgroundColor: '#1e293b', borderColor: '#334155', color: 'white', borderRadius: 8 }}>
+              {filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
+            </Button>
+          </div>
+
+          {/* List Area */}
+          <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 12, backgroundColor: '#0f172a', padding: 8 }}>
+            {filteredUsers.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "#64748b", fontSize: 14 }}>No users found</div>
+            ) : (
+              filteredUsers.map(user => {
+                const isSelected = selectedUserIds.includes(user.id);
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => handleToggleUser(user.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px",
+                      backgroundColor: isSelected ? "rgba(59,130,246,0.15)" : "transparent",
+                      border: isSelected ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent",
+                      marginBottom: 4, cursor: 'pointer'
+                    }}
+                  >
+                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} style={{ borderColor: '#64748b' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: "15px", color: isSelected ? '#fff' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+                      <div style={{ fontSize: "13px", color: "#64748b", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Footer - Fixed Bottom */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>
+            {selectedUserIds.length} selected
+          </div>
+          <Button
+            onClick={() => setShowColumnEditor(true)}
+            disabled={selectedUserIds.length === 0}
+            style={{ backgroundColor: '#2563eb', color: 'white', borderRadius: 8, height: 44, padding: '0 24px', fontWeight: 600 }}
+          >
+            Next <ArrowRight style={{ width: '16px', height: '16px', marginLeft: '8px' }} />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMobileColumnEditor = () => {
+    if (!isOpen) return null;
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: '#0b1120', color: 'white', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+        
+        {/* Header - Fixed */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Button variant="ghost" onClick={() => setShowColumnEditor(false)} style={{ padding: 0, height: 36, width: 36, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+            <ArrowLeft style={{ width: '20px', height: '20px', color: '#cbd5e1' }} />
+          </Button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, margin: 0, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Cols: {getUserLabel()}
+            </h2>
+          </div>
+        </div>
+
+        {/* Body - Flex 1 & Hidden Overflow - Vertically Stacked to prevent squishing */}
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+          
+          {selectedUserIds.length > 1 && (
+            <div style={{ padding: '12px', borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', fontSize: 13, display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+               <Users style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+               <span>Applying layout to <strong>{selectedUserIds.length}</strong> users.</span>
+            </div>
+          )}
+
+          {/* DndProvider wraps the scrollable areas */}
+          <DndProvider backend={HTML5Backend}>
+            
+            {/* Visible Columns Box (Takes half height) */}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 50%', minHeight: '300px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
+                <Eye style={{ width: '18px', height: '18px', color: '#60a5fa' }} />
+                <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#f8fafc' }}>Visible ({currentVisible.length})</h3>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: 8 }}>
+                {currentVisible.map((col, i) => (
+                  <DraggableColumn
+                    key={col.key} index={i} column={col} moveCard={moveVisibleCard} onToggle={() => toggleColumn(col.key, true)}
+                    isVisible={true} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} listId="VISIBLE"
+                  />
+                ))}
+                {currentVisible.length === 0 && <div style={{ textAlign: "center", color: "#64748b", padding: "20px 0", fontSize: 14 }}>No visible columns.</div>}
+              </div>
+            </div>
+
+            {/* Hidden Columns Box (Takes half height) */}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 50%', minHeight: '300px' }}>
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <EyeOff style={{ width: '18px', height: '18px', color: '#64748b' }} />
+                  <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#cbd5e1' }}>Hidden ({currentHidden.length})</h3>
+                </div>
+                {isLoadingBackend && <Loader2 style={{ width: '16px', height: '16px', color: '#60a5fa', animation: 'spin 1s linear infinite' }} />}
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: 8 }}>
+                {currentHidden.map((col, i) => (
+                  <DraggableColumn
+                    key={col.key} index={i} column={col} moveCard={() => {}} onToggle={() => toggleColumn(col.key, false)}
+                    isVisible={false} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} listId="HIDDEN"
+                  />
+                ))}
+                {!isLoadingBackend && currentHidden.length === 0 && <div style={{ textAlign: "center", color: "#64748b", padding: "20px 0", fontSize: 14 }}>All columns are visible.</div>}
+              </div>
+            </div>
+
+          </DndProvider>
+        </div>
+
+        {/* Footer - Fixed Bottom */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', display: 'flex', gap: 12, flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <Button variant="outline" onClick={onClose} style={{ flex: 1, backgroundColor: '#1e293b', borderColor: '#334155', color: 'white', height: 44, borderRadius: 8 }}>
+            Cancel
+          </Button>
+          <Button onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })} style={{ flex: 2, backgroundColor: '#2563eb', color: 'white', height: 44, borderRadius: 8, fontWeight: 600 }}>
+            Save Layout
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+
+  // ==========================================
+  // 💻 DESKTOP UI (Kept exactly as it was)
+  // ==========================================
+  const renderDesktopUserSelection = () => {
     const filteredUsers = getFilteredUsers();
     
     return (
@@ -467,351 +594,131 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             </Button>
           </div>
 
-         <ScrollArea
-  style={{
-    height: "18rem",        // h-72
-    width: "100%",          // w-full
-    border: "1px solid #e5e7eb",   // border
-    borderRadius: "8px",    // rounded-md
-    padding: "8px",         // p-2
-    overflowY: "auto"
-  }}
->
-  {filteredUsers.length === 0 ? (
-    <div
-      style={{
-        textAlign: "center",
-        padding: "16px 0",
-        color: "var(--muted-foreground)"
-      }}
-    >
-      No users found
-    </div>
-  ) : (
-    filteredUsers.map(user => {
-      const isSelected = selectedUserIds.includes(user.id);
-
-      return (
-        <div
-          key={user.id}
-          onClick={() => handleToggleUser(user.id)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",                 // space-x-3
-            padding: "8px",              // p-2
-            borderRadius: "8px",         // rounded-md
-            cursor: "pointer",
-            backgroundColor: isSelected
-              ? "var(--muted)"
-              : "transparent",
-            transition: "background 0.2s"
-          }}
-          onMouseEnter={e => {
-            if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)";
-          }}
-          onMouseLeave={e => {
-            if (!isSelected) e.currentTarget.style.background = "transparent";
-          }}
-        >
-          <Checkbox
-  checked={isSelected}
-  onCheckedChange={() => handleToggleUser(user.id)}
-  onClick={e => e.stopPropagation()}
-/>
-
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: "14px" }}>
-              {user.name}
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>
-              {user.email}
-            </div>
-          </div>
-        </div>
-      );
-    })
-  )}
-</ScrollArea>
-
+          <ScrollArea style={{ height: "18rem", width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "8px", overflowY: "auto" }}>
+            {filteredUsers.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted-foreground)" }}>No users found</div>
+            ) : (
+              filteredUsers.map(user => {
+                const isSelected = selectedUserIds.includes(user.id);
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => handleToggleUser(user.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "8px", cursor: "pointer",
+                      backgroundColor: isSelected ? "var(--muted)" : "transparent", transition: "background 0.2s"
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)"; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</div>
+                      <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{user.email}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </ScrollArea>
 
           <DialogFooter className="flex justify-between sm:justify-between w-full mt-4">
              <div className="text-sm text-muted-foreground self-center">
                 {selectedUserIds.length} user{selectedUserIds.length !== 1 && 's'} selected
              </div>
-            <div
-  style={{
-    display: "flex",
-    gap: "8px",         // replaces gap-2
-    marginTop: "8px"    // optional (remove if not needed)
-  }}
->
-  <Button
-    variant="ghost"
-    onClick={onClose}
-    style={{
-      padding: "8px 16px",
-      fontSize: "14px",
-      borderRadius: "6px"
-    }}
-  >
-    Cancel
-  </Button>
-
-  <Button
-    onClick={() => setShowColumnEditor(true)}
-    disabled={selectedUserIds.length === 0}
-    style={{
-      padding: "8px 16px",
-      fontSize: "14px",
-      borderRadius: "6px"
-    }}
-  >
-    Next
-  </Button>
-</div>
-
+            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+              <Button variant="ghost" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
+              <Button onClick={() => setShowColumnEditor(true)} disabled={selectedUserIds.length === 0} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Next</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
-  }
-
-  // --- RENDER 2: Column Editor Screen ---
-
-  const getUserLabel = () => {
-    if (selectedUserIds.length === 1) {
-      return users.find(u => u.id === selectedUserIds[0])?.name || "User";
-    }
-    return `${selectedUserIds.length} Users`;
   };
 
-  return (
-  <Dialog open={isOpen} onOpenChange={onClose}>
-  <DialogContent
-    style={{
-      maxWidth: "850px",
-      width: "90%",
-      height: "90vh",
-      maxHeight: "90vh",
-      padding: "20px",
-      borderRadius: "12px",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden" 
-    }}
-  >
-    <DialogHeader>
-      <DialogTitle>Manage Columns for {getUserLabel()}</DialogTitle>
-      <div className="text-sm text-muted-foreground">
-        Drag to reorder, use arrows to show/hide. "Hidden" list includes all available database fields.
-      </div>
-    </DialogHeader>
-
-    {lastUserSummary && selectedUserIds.length === 1 && (
-      <div className="mb-2 p-2 border rounded bg-muted/30 text-sm text-muted-foreground">
-        <strong>Last changes for this user:</strong>
-        <div className="line-clamp-2">{lastUserSummary}</div>
-      </div>
-    )}
-
-    {selectedUserIds.length > 1 && (
-      <div className="mb-2 p-2 border rounded bg-blue-50/50 text-blue-800 text-sm flex items-center gap-2">
-         <Users className="w-4 h-4" />
-         <span>You are applying this layout to <strong>{selectedUserIds.length}</strong> users at once.</span>
-      </div>
-    )}
-
-   <DndProvider backend={HTML5Backend}>
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "20px",
-      paddingTop: "10px",
-      flex: 1,
-      overflow: "hidden"
-    }}
-  >
-
-    {/* Visible Columns */}
-    <Card
-      style={{
-        padding: "12px",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden"
-      }}
-    >
-      <CardHeader>
-        <CardTitle
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px"
-          }}
+  const renderDesktopColumnEditor = () => {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent
+          style={{ maxWidth: "850px", width: "90%", height: "90vh", maxHeight: "90vh", padding: "20px", borderRadius: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}
         >
-          <Eye className="w-5 h-5" /> Visible ({currentVisible.length})
-        </CardTitle>
-      </CardHeader>
+          <DialogHeader>
+            <DialogTitle>Manage Columns for {getUserLabel()}</DialogTitle>
+            <div className="text-sm text-muted-foreground">
+              Drag to reorder, use arrows to show/hide. "Hidden" list includes all available database fields.
+            </div>
+          </DialogHeader>
 
-      <CardContent
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          minHeight: 0
-        }}
-      >
-        {currentVisible.map((col, i) => (
-          <DraggableColumn
-            key={col.key}
-            index={i}
-            column={col}
-            moveCard={moveVisibleCard}
-            onToggle={() => toggleColumn(col.key, true)}
-            isVisible={true}
-            onRemove={() => handleRemoveColumn(col.key)}
-            isCustom={col.isCustom}
-            listId="VISIBLE" // [FIX]: Added ID
-          />
-        ))}
+          {lastUserSummary && selectedUserIds.length === 1 && (
+            <div className="mb-2 p-2 border rounded bg-muted/30 text-sm text-muted-foreground">
+              <strong>Last changes for this user:</strong>
+              <div className="line-clamp-2">{lastUserSummary}</div>
+            </div>
+          )}
 
-        {currentVisible.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              fontSize: "14px",
-              color: "var(--muted-foreground)",
-              marginTop: "40px"
-            }}
-          >
-            No visible columns.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {selectedUserIds.length > 1 && (
+            <div className="mb-2 p-2 border rounded bg-blue-50/50 text-blue-800 text-sm flex items-center gap-2">
+               <Users className="w-4 h-4" />
+               <span>You are applying this layout to <strong>{selectedUserIds.length}</strong> users at once.</span>
+            </div>
+          )}
 
-    {/* Hidden Columns */}
-    <Card
-      style={{
-        padding: "12px",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden"
-      }}
-    >
-      <CardHeader
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}
-      >
-        <CardTitle
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            padding: "4px 0"
-          }}
-        >
-          <EyeOff className="w-5 h-5" /> Hidden ({currentHidden.length})
-        </CardTitle>
+          <DndProvider backend={HTML5Backend}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", paddingTop: "10px", flex: 1, overflow: "hidden" }}>
+              
+              {/* Visible Columns */}
+              <Card style={{ padding: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <CardHeader>
+                  <CardTitle style={{ display: "flex", alignItems: "center", gap: "8px" }}><Eye className="w-5 h-5" /> Visible ({currentVisible.length})</CardTitle>
+                </CardHeader>
+                <CardContent style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                  {currentVisible.map((col, i) => (
+                    <DraggableColumn
+                      key={col.key} index={i} column={col} moveCard={moveVisibleCard} onToggle={() => toggleColumn(col.key, true)}
+                      isVisible={true} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} listId="VISIBLE" 
+                    />
+                  ))}
+                  {currentVisible.length === 0 && <div style={{ textAlign: "center", fontSize: "14px", color: "var(--muted-foreground)", marginTop: "40px" }}>No visible columns.</div>}
+                </CardContent>
+              </Card>
 
-        {isLoadingBackend && (
-          <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#3b82f6" }} />
-        )}
-      </CardHeader>
+              {/* Hidden Columns */}
+              <Card style={{ padding: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <CardHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <CardTitle style={{ display: "flex", alignItems: "center", gap: "16px", padding: "4px 0" }}><EyeOff className="w-5 h-5" /> Hidden ({currentHidden.length})</CardTitle>
+                  {isLoadingBackend && <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#3b82f6" }} />}
+                </CardHeader>
+                <CardContent style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                  {currentHidden.map((col, i) => (
+                    <DraggableColumn
+                      key={col.key} index={i} column={col} moveCard={() => {}} onToggle={() => toggleColumn(col.key, false)}
+                      isVisible={false} onRemove={() => handleRemoveColumn(col.key)} isCustom={col.isCustom} listId="HIDDEN" 
+                    />
+                  ))}
+                  {!isLoadingBackend && currentHidden.length === 0 && <div style={{ textAlign: "center", fontSize: "14px", color: "var(--muted-foreground)", marginTop: "40px" }}>All columns are visible.</div>}
+                </CardContent>
+              </Card>
 
-      <CardContent
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          minHeight: 0
-        }}
-      >
-        {currentHidden.map((col, i) => (
-          <DraggableColumn
-            key={col.key}
-            index={i}
-            column={col}
-            moveCard={() => {}} // No sort for hidden
-            onToggle={() => toggleColumn(col.key, false)}
-            isVisible={false}
-            onRemove={() => handleRemoveColumn(col.key)}
-            isCustom={col.isCustom}
-            listId="HIDDEN" // [FIX]: Added ID
-          />
-        ))}
+            </div>
+          </DndProvider>
 
-        {!isLoadingBackend && currentHidden.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              fontSize: "14px",
-              color: "var(--muted-foreground)",
-              marginTop: "40px"
-            }}
-          >
-            All columns are visible.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter style={{ display: "flex", justifyContent: "space-between", gap: "12px", paddingTop: "20px" }}>
+            <Button variant="ghost" onClick={() => setShowColumnEditor(false)}><ArrowLeft className="w-4 h-4 mr-2" /> Back to Users</Button>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button variant="outline" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
+              <Button onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })} style={{ minWidth: "140px", padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Save for {getUserLabel()}</Button>
+            </div>
+          </DialogFooter>
 
-  </div>
-</DndProvider>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
-
-    <DialogFooter
-      style={{
-        display: "flex",
-        justifyContent: "space-between", // Changed for Back button
-        gap: "12px",
-        paddingTop: "20px"
-      }}
-    >
-      <Button 
-         variant="ghost" 
-         onClick={() => setShowColumnEditor(false)}
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Users
-      </Button>
-
-     <div
-  style={{
-    display: "flex",
-    gap: "8px" // gap-2
-  }}
->
-  <Button
-    variant="outline"
-    onClick={onClose}
-    style={{
-      padding: "8px 16px",
-      fontSize: "14px",
-      borderRadius: "6px"
-    }}
-  >
-    Cancel
-  </Button>
-
-  <Button
-    onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })}
-    style={{
-      minWidth: "140px",   // min-w-[140px]
-      padding: "8px 16px",
-      fontSize: "14px",
-      borderRadius: "6px"
-    }}
-  >
-    Save for {getUserLabel()}
-  </Button>
-</div>
-
-    </DialogFooter>
-
-  </DialogContent>
-</Dialog>
-  );
+  // Render logic switch
+  if (isMobile) {
+    return !showColumnEditor ? renderMobileUserSelection() : renderMobileColumnEditor();
+  } else {
+    return !showColumnEditor ? renderDesktopUserSelection() : renderDesktopColumnEditor();
+  }
 };

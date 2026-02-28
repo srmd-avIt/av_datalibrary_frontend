@@ -466,6 +466,9 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   
   const [isTableView, setIsTableView] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // --- NEW: State to control the duplicate recording code modal ---
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   
   const canViewAudioMerge = useMemo(() => {
     if (!loggedInUser) return false;
@@ -1053,6 +1056,21 @@ const updateStatus = async (id: number, newStatus: string, e: any) => {
         toast.error("Event Code and Recording Code are required.");
         return;
     }
+
+    // --- DUPLICATE RECORDING CODE VALIDATION ---
+    const isDuplicateDR = queue.some(item => 
+        item.RecordingCode && 
+        item.RecordingCode.toLowerCase() === formData.RecordingCode.toLowerCase() && 
+        item._id !== editingId // Ignore current entry during an update
+    );
+
+    if (isDuplicateDR) {
+        setFormErrors(prev => ({ ...prev, RecordingCode: "This Recording Code is already in use." }));
+        // Trigger the custom popup warning
+        setDuplicateWarning(formData.RecordingCode);
+        return;
+    }
+    // -------------------------------------------
 
     if (editingId) {
         // UPDATE EXISTING ENTRY
@@ -2205,6 +2223,46 @@ const handleSendComment = async () => {
             </div>
         );
       })()}
+
+      {/* --- DUPLICATE DR WARNING MODAL (CUSTOM UI) --- */}
+      {duplicateWarning && (
+        <div style={{ 
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', 
+            zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' 
+        }}>
+            <div className="animate-in fade-in zoom-in duration-200" style={{ 
+                background: '#1e293b', border: '1px solid #ef4444', borderRadius: '16px', 
+                padding: '24px', width: '90%', maxWidth: '420px', 
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', 
+                display: 'flex', flexDirection: 'column', gap: '16px' 
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
+                    <AlertCircle size={28} />
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#fff' }}>Duplicate Recording Code</h3>
+                </div>
+                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
+                    The Recording Code <strong style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>{duplicateWarning}</strong> is already used in the queue!
+                    <br/><br/>
+                    Please use a unique DR code before submitting.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                    <button 
+                        onClick={() => setDuplicateWarning(null)}
+                        style={{ 
+                            background: '#ef4444', color: '#fff', border: 'none', 
+                            borderRadius: '8px', padding: '10px 24px', fontWeight: 600, 
+                            cursor: 'pointer', transition: 'all 0.2s' 
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+                    >
+                        Got it
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 }

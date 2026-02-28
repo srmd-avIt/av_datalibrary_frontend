@@ -1346,7 +1346,7 @@ export default function App() {
     case "dashboard": return <Dashboard  />;
     case "ai-assistant": return <AIAssistant />;
     case "user-management": return <UserManagement />;
-    case "column-management":
+case "column-management":
     if (user?.role !== 'Admin' && user?.role !== 'Owner') {
       return (
         <div className="p-4 md:p-6 flex flex-col items-center justify-center text-center h-full">
@@ -1357,130 +1357,182 @@ export default function App() {
       );
     }
   return (
-<div style={{ padding: "1rem" }}>
-  <h1 style={{ fontSize: "1.875rem", fontWeight: "bold", color: "var(--foreground)", marginBottom: "1.5rem" }}>
-    Column Management
-  </h1>
+    <div style={{ padding: isMobile ? "1rem 0.75rem" : "1rem" }}>
+      <h1 style={{ fontSize: isMobile ? "1.5rem" : "1.875rem", fontWeight: "bold", color: "var(--foreground)", marginBottom: "1.5rem", paddingLeft: isMobile ? "0.75rem" : 0, paddingRight: isMobile ? "0.75rem" : 0 }}>
+        Column Management
+      </h1>
 
-  <Card style={{ maxWidth: "1200px", margin: "2rem auto", padding: "1.5rem", borderRadius: "0.75rem", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", height: "480px", display: "flex", flexDirection: "column", backgroundColor: "#000", border: "1px solid rgb(51 65 85)" }}>
-    <CardHeader>
-      <CardTitle style={{ fontSize: "1.25rem", fontWeight: 600 }}>Manage Column Layouts</CardTitle>
-      <CardDescription style={{ fontSize: "1rem", color: "rgb(148 163 184)" }}>
-        Select views to configure their default column layout for guests or specific users.
-      </CardDescription>
-    </CardHeader>
+      <Card style={{ 
+        maxWidth: isMobile ? "100%" : "1200px", 
+        margin: isMobile ? "1rem 0.75rem" : "2rem auto", 
+        padding: isMobile ? "1rem" : "1.5rem", 
+        borderRadius: "0.75rem", 
+        boxShadow: "0 4px 20px rgba(0,0,0,0.3)", 
+        // FIX: Replaced "auto" with a calc height so the list creates a scrollbar on mobile
+        height: isMobile ? "calc(100vh - 160px)" : "480px", 
+        display: "flex", 
+        flexDirection: "column", 
+        backgroundColor: "#000", 
+        border: "1px solid rgb(51 65 85)" 
+      }}>
+        <CardHeader style={{ paddingBottom: isMobile ? "0.75rem" : "1rem" }}>
+          <CardTitle style={{ fontSize: isMobile ? "1rem" : "1.25rem", fontWeight: 600 }}>Manage Column Layouts</CardTitle>
+          <CardDescription style={{ fontSize: isMobile ? "0.875rem" : "1rem", color: "rgb(148 163 184)" }}>
+            Select views to configure their default column layout for guests or specific users.
+          </CardDescription>
+        </CardHeader>
 
-    <CardContent style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1.5rem", paddingTop: "0.5rem", overflow: "hidden" }}>
-      <div style={{ flex: 1, overflowY: "auto", borderRadius: "0.5rem", border: "1px solid rgb(51 65 85)", padding: "0.5rem", backgroundColor: "#000", scrollbarWidth: "thin", scrollbarColor: "#475569 #1e293b" }} className="scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
-        {manageableViews.map((view) => (
-          <label key={view.id} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.4rem 0.5rem", cursor: "pointer", borderRadius: "0.375rem" }} className="hover:bg-slate-800/50">
-            <input
-              type="checkbox"
-              checked={selectedViewsForMgmt.includes(view.id)}
-              onChange={(e) => {
-                if (e.target.checked)
-                  setSelectedViewsForMgmt([ ...selectedViewsForMgmt, view.id ]);
-                else
-                  setSelectedViewsForMgmt(selectedViewsForMgmt.filter((id) => id !== view.id));
-              }}
-              style={{ height: "1rem", width: "1rem", borderRadius: "0.25rem", backgroundColor: "rgb(51 65 85)", border: "1px solid rgb(71 85 105)", accentColor: "#3b82f6" }}
-            />
-            <span style={{ color: "rgb(226 232 240)" }}>{view.title}</span>
-          </label>
-        ))}
-      </div>
-
-      <Button
-        onClick={() => {
-          if (selectedViewsForMgmt.length > 0) {
-            setCurrentIndex(0);
-            setIsColumnMgmtDialogOpen(true);
-          }
-        }}
-        disabled={selectedViewsForMgmt.length === 0}
-        style={{ width: "50%", fontSize: "1.125rem", padding: "0.75rem 0", alignSelf: "center" }}
-      >
-        Manage Layouts for Selected Views
-      </Button>
-
-      {changesSummary.length > 0 && (
-        <div style={{ marginTop: "1rem", padding: "0.75rem", border: "1px solid rgb(51 65 85)", borderRadius: "0.5rem", backgroundColor: "rgb(30 41 59 / 0.5)", overflowY: "auto", maxHeight: "120px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-            <h3 style={{ fontWeight: 600, color: "rgb(226 232 240)" }}>Summary of Changes</h3>
-            <Button variant="link" onClick={clearChangesSummary} style={{ padding: 0, height: "auto", color: "rgb(148 163 184)" }}>Clear</Button>
+        <CardContent style={{ 
+          flex: 1, 
+          display: "flex", 
+          flexDirection: "column", 
+          gap: "1rem",
+          paddingTop: "0.5rem", 
+          overflow: "hidden"
+        }}>
+          {/* Views List - Scrollable */}
+          <div style={{ 
+            flex: 1, 
+            overflowY: "auto", 
+            borderRadius: "0.5rem", 
+            border: "1px solid rgb(51 65 85)", 
+            padding: "0.5rem", 
+            backgroundColor: "#000", 
+            scrollbarWidth: "thin", 
+            scrollbarColor: "#475569 #1e293b",
+          }} className="scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
+            {manageableViews.map((view) => (
+              <label key={view.id} style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "0.75rem", 
+                padding: "0.5rem", 
+                cursor: "pointer", 
+                borderRadius: "0.375rem" 
+              }} className="hover:bg-slate-800/50">
+                <input
+                  type="checkbox"
+                  checked={selectedViewsForMgmt.includes(view.id)}
+                  onChange={(e) => {
+                    if (e.target.checked)
+                      setSelectedViewsForMgmt([ ...selectedViewsForMgmt, view.id ]);
+                    else
+                      setSelectedViewsForMgmt(selectedViewsForMgmt.filter((id) => id !== view.id));
+                  }}
+                  style={{ height: "1rem", width: "1rem", borderRadius: "0.25rem", backgroundColor: "rgb(51 65 85)", border: "1px solid rgb(71 85 105)", accentColor: "#3b82f6", flexShrink: 0 }}
+                />
+                <span style={{ color: "rgb(226 232 240)", fontSize: isMobile ? "0.875rem" : "1rem" }}>{view.title}</span>
+              </label>
+            ))}
           </div>
-          <ul style={{ fontSize: "0.875rem", color: "rgb(203 213 225)", listStyle: "none", paddingLeft: 0, margin: 0 }}>
-            {changesSummary.map((item, idx) => (<li key={idx}>✅ {item}</li>))}
-          </ul>
-        </div>
-      )}
-    </CardContent>
-  </Card>
 
-  {selectedViewsForMgmt.length > 0 && selectedViewsForMgmt[currentIndex] && (
-    <ManageColumnsDialog
-      isOpen={isColumnMgmtDialogOpen}
-      onClose={() => {
-        setIsColumnMgmtDialogOpen(false);
-        if (currentIndex + 1 < selectedViewsForMgmt.length) {
-          setCurrentIndex(currentIndex + 1);
-          setIsColumnMgmtDialogOpen(true);
-        } else {
-          setCurrentIndex(0);
-          setSelectedViewsForMgmt([]);
-        }
-      }}
-      allColumns={
-        manageableViews.find((v) => v.id === selectedViewsForMgmt[currentIndex])?.columns || []
-      }
-      apiEndpoint={VIEW_CONFIGS[selectedViewsForMgmt[currentIndex]]?.apiEndpoint}
-      
-      visibleColumnKeys={getVisibleColumnKeysForMgmt(selectedViewsForMgmt[currentIndex])}
-      viewId={selectedViewsForMgmt[currentIndex]}
-      users={allUsers || []}
-      onSave={(saveConfig: SaveConfig) => {
-        const { viewId, visibleKeys, hiddenKeys, target } = saveConfig;
-        const viewTitle = manageableViews.find((v) => v.id === viewId)?.title || viewId;
+          {/* Button */}
+      <Button
+            onClick={() => {
+              if (selectedViewsForMgmt.length > 0) {
+                setCurrentIndex(0);
+                setIsColumnMgmtDialogOpen(true);
+              }
+            }}
+            disabled={selectedViewsForMgmt.length === 0}
+            style={{
+              alignSelf: "center",
+              flexShrink: 0,
+              padding: "0.75rem 1rem",   // added padding
+              marginTop: "0.75rem",      // added margin
+              marginBottom: "0.5rem",    // added margin
+            }}
+          >
+            Manage Layouts for Selected Views
+          </Button>
 
-        if (target.type === "global_guest") {
-          const { orderKey, hiddenKey } = getLayoutKeys(viewId, null);
-          localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
-          localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
-          const summaryMsg = `Guest layout for "${viewTitle}" was updated.`;
-          updateChangesSummary(summaryMsg); 
-          setLayoutVersion(v => v + 1); // Force refresh
-          toast.success(summaryMsg);
-        } else if (target.type === "specific_users") {
-          target.userIds.forEach((userId) => {
-            const { orderKey, hiddenKey } = getLayoutKeys(viewId, userId);
-            localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
-            localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
-          });
+          {/* Changes Summary */}
+          {changesSummary.length > 0 && (
+            <div style={{ 
+              marginTop: "0.5rem", 
+              padding: "0.75rem", 
+              border: "1px solid rgb(51 65 85)", 
+              borderRadius: "0.5rem", 
+              backgroundColor: "rgb(30 41 59 / 0.5)", 
+              overflowY: "auto", 
+              maxHeight: isMobile ? "100px" : "120px",
+              flexShrink: 0
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <h3 style={{ fontWeight: 600, color: "rgb(226 232 240)", fontSize: isMobile ? "0.875rem" : "1rem" }}>Summary of Changes</h3>
+                <Button variant="link" onClick={clearChangesSummary} style={{ padding: 0, height: "auto", color: "rgb(148 163 184)", fontSize: "0.75rem" }}>Clear</Button>
+              </div>
+              <ul style={{ fontSize: "0.75rem", color: "rgb(203 213 225)", listStyle: "none", paddingLeft: 0, margin: 0 }}>
+                {changesSummary.map((item, idx) => (<li key={idx} style={{ marginBottom: "0.25rem" }}>✅ {item}</li>))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-          const selectedUsers = (allUsers || []).filter((u: any) => target.userIds.includes(u.id));
-          const userEmails = selectedUsers.map((u: any) => u.email); 
-          let userSummaryText = '';
-
-          if (userEmails.length === 1) {
-            userSummaryText = `for ${userEmails[0]}`;
-          } else if (userEmails.length > 1 && userEmails.length <= 3) {
-            userSummaryText = `for ${userEmails.slice(0, -1).join(', ')} and ${userEmails.slice(-1)}`;
-          } else if (userEmails.length > 3) {
-            userSummaryText = `for ${userEmails.slice(0, 2).join(', ')} and ${userEmails.length - 2} others`;
-          } else {
-            userSummaryText = `for ${target.userIds.length} user(s)`;
+      {selectedViewsForMgmt.length > 0 && selectedViewsForMgmt[currentIndex] && (
+        <ManageColumnsDialog
+          isOpen={isColumnMgmtDialogOpen}
+          onClose={() => {
+            setIsColumnMgmtDialogOpen(false);
+            if (currentIndex + 1 < selectedViewsForMgmt.length) {
+              setCurrentIndex(currentIndex + 1);
+              setIsColumnMgmtDialogOpen(true);
+            } else {
+              setCurrentIndex(0);
+              setSelectedViewsForMgmt([]);
+            }
+          }}
+          allColumns={
+            manageableViews.find((v) => v.id === selectedViewsForMgmt[currentIndex])?.columns || []
           }
+          apiEndpoint={VIEW_CONFIGS[selectedViewsForMgmt[currentIndex]]?.apiEndpoint}
+          visibleColumnKeys={getVisibleColumnKeysForMgmt(selectedViewsForMgmt[currentIndex])}
+          viewId={selectedViewsForMgmt[currentIndex]}
+          users={allUsers || []}
+          onSave={(saveConfig: SaveConfig) => {
+            const { viewId, visibleKeys, hiddenKeys, target } = saveConfig;
+            const viewTitle = manageableViews.find((v) => v.id === viewId)?.title || viewId;
 
-          const summaryMsg = `Layout for "${viewTitle}" was updated ${userSummaryText}.`;
-          updateChangesSummary(summaryMsg);
-          setLayoutVersion(v => v + 1); // Force refresh 
-          toast.success(summaryMsg);
-        }
-      }}
-      onColumnsUpdate={() => {}} 
-    />
-  )}
-</div>
+            if (target.type === "global_guest") {
+              const { orderKey, hiddenKey } = getLayoutKeys(viewId, null);
+              localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
+              localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
+              const summaryMsg = `Guest layout for "${viewTitle}" was updated.`;
+              updateChangesSummary(summaryMsg); 
+              setLayoutVersion(v => v + 1);
+              toast.success(summaryMsg);
+            } else if (target.type === "specific_users") {
+              target.userIds.forEach((userId) => {
+                const { orderKey, hiddenKey } = getLayoutKeys(viewId, userId);
+                localStorage.setItem(orderKey, JSON.stringify(visibleKeys));
+                localStorage.setItem(hiddenKey, JSON.stringify(hiddenKeys));
+              });
+
+              const selectedUsers = (allUsers || []).filter((u: any) => target.userIds.includes(u.id));
+              const userEmails = selectedUsers.map((u: any) => u.email); 
+              let userSummaryText = '';
+
+              if (userEmails.length === 1) {
+                userSummaryText = `for ${userEmails[0]}`;
+              } else if (userEmails.length > 1 && userEmails.length <= 3) {
+                userSummaryText = `for ${userEmails.slice(0, -1).join(', ')} and ${userEmails.slice(-1)}`;
+              } else if (userEmails.length > 3) {
+                userSummaryText = `for ${userEmails.slice(0, 2).join(', ')} and ${userEmails.length - 2} others`;
+              } else {
+                userSummaryText = `for ${target.userIds.length} user(s)`;
+              }
+
+              const summaryMsg = `Layout for "${viewTitle}" was updated ${userSummaryText}.`;
+              updateChangesSummary(summaryMsg);
+              setLayoutVersion(v => v + 1);
+              toast.success(summaryMsg);
+            }
+          }}
+          onColumnsUpdate={() => {}} 
+        />
+      )}
+    </div>
   );
 
  case "satsang_dashboard":

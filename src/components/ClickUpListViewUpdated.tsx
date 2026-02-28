@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from 'date-fns';
@@ -23,50 +24,42 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { DraggableResizableTable } from "./DraggableResizableTable";
-import { MobileTable } from "./MobileTableView";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Search, Download, ArrowUpDown, ArrowUp, ArrowDown, Users, Table as TableIcon,
-  Settings2, EyeOff, X, Funnel, Loader2, Pin, Grid, Plus, Trash2
+  Settings2, EyeOff, X, Funnel, Loader2, Pin, Grid, Plus, Trash2, CheckCircle2,
+  ChevronLeft, ChevronRight, ChevronDown, Menu
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
-import { SavedFilterTabs } from "./SavedFilterTabs"; // Import the new component
-import { Column, ListItem } from "./types"; // Import ListItem from ./types
+import { SavedFilterTabs } from "./SavedFilterTabs"; 
+import { Column, ListItem } from "./types"; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
-import { ManageColumnsDialog } from "./ManageColumnsDialog"; // add import if not present
+import { ManageColumnsDialog } from "./ManageColumnsDialog"; 
 
 import useLocalStorageState from "../hooks/useLocalStorageState"; 
-import { useAuth } from "../contexts/AuthContext"; // For permission checks
-import { useQueryClient } from "@tanstack/react-query"; // To invalidate cache
-import { toast } from "sonner"; // For notifications
-import'../styles/globals.css';
+import { useAuth } from "../contexts/AuthContext"; 
+import { useQueryClient } from "@tanstack/react-query"; 
+import { toast } from "sonner"; 
+import '../styles/globals.css';
 import { useDebounce } from "../hooks/useDebounce";
-// --- Vite env types for TypeScript ---
-/// <reference types="vite/client" />
 
 // --- Interfaces ---
-// ListItem and Column are now imported from './types', so local definitions are removed.
-
-// FilterConfig: Used for advanced filtering UI
 interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number"; options?: { value: string; label: string; }[]; }
-// ViewConfig: Used for saved views (grouping, sorting, filters, etc.)
 interface ViewConfig {
   id: string;
   name: string;
   filters?: Record<string, any>;
   groupBy?: string;
-  sortBy?: string; // Can be comma-separated
-  sortDirection?: string; // Can be comma-separated
+  sortBy?: string; 
+  sortDirection?: string; 
   apiEndpoint?: string;
 }
-// FilterGroup and FilterRule: Used for advanced filter logic
 interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
 interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
 
-// --- NEW: Saved Filter Interface ---
 interface SavedFilter {
   id: string;
   name: string;
@@ -75,14 +68,11 @@ interface SavedFilter {
   createdBy: string;
 }
 
-// --- NEW: Interface for a single sort field configuration ---
 interface SortField {
   key: string;
   direction: "asc" | "desc";
 }
 
-// --- API Response Type ---
-// Structure of API response for paginated data
 interface ApiResponse {
   data: ListItem[];
   pagination: {
@@ -92,10 +82,8 @@ interface ApiResponse {
 }
 
 // --- API Fetcher Function ---
-// Fetches data from the backend API with support for pagination, search, filters, and advanced filters
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-// Find this function near the top of ClickUpListViewUpdated.tsx
 async function fetchDataFromApi({
   apiEndpoint,
   page,
@@ -115,50 +103,31 @@ async function fetchDataFromApi({
   sortBy?: string;
   sortDirection?: "asc" | "desc";
 }): Promise<ApiResponse> {
-  // Build query params for API request
   const params = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
   });
   if (searchTerm) params.append("search", searchTerm);
 
-  // --- ✅ FIXED SECTION STARTS HERE ---
-  // Add simple filters
   Object.entries(filters || {}).forEach(([key, value]) => {
-    if (
-      value !== undefined &&
-      value !== null &&
-      value !== "" &&
-      value !== "all"
-    ) {
+    if (value !== undefined && value !== null && value !== "" && value !== "all") {
       if (Array.isArray(value)) {
-        // If it is an array, append the key for EACH item
-        // resulting in ?key=val1&key=val2
         value.forEach((v) => {
-          if (v !== null && v !== "") {
-            params.append(key, String(v));
-          }
+          if (v !== null && v !== "") params.append(key, String(v));
         });
       } else {
-        // Normal string handling
         params.append(key, String(value));
       }
     }
   });
-  // --- ✅ FIXED SECTION ENDS HERE ---
 
-  // Add advanced filters if present
   if (advancedFilters && advancedFilters.length > 0) {
     const sanitizedGroups = advancedFilters
       .map((group) => ({
         ...group,
         rules: group.rules.filter(
           (rule) =>
-            rule.field &&
-            rule.operator &&
-            rule.value !== undefined &&
-            rule.value !== null &&
-            rule.value !== ""
+            rule.field && rule.operator && rule.value !== undefined && rule.value !== null && rule.value !== ""
         ),
       }))
       .filter((group) => group.rules.length > 0);
@@ -168,24 +137,19 @@ async function fetchDataFromApi({
     }
   }
 
-  // Add sorting parameters
   if (sortBy && sortBy !== "none") {
     params.append("sortBy", sortBy);
     params.append("sortDirection", sortDirection || "asc");
   }
 
-  if (!API_BASE_URL)
-    throw new Error("API URL not configured. Set VITE_API_URL in .env");
+  if (!API_BASE_URL) throw new Error("API URL not configured. Set VITE_API_URL in .env");
 
-  // Build full API URL
-   const url = new URL(API_BASE_URL);
+  const url = new URL(API_BASE_URL);
   url.pathname += apiEndpoint.startsWith("/") ? apiEndpoint : `/${apiEndpoint}`;
   url.search = params.toString();
 
-  // ✅ 1. Get the token we saved in AuthProvider
   const token = localStorage.getItem('app-token');
 
-  // ✅ 2. Add the Authorization header to the fetch call
   const response = await fetch(url.href, {
     method: 'GET',
     headers: {
@@ -194,30 +158,26 @@ async function fetchDataFromApi({
     }
   });
 
-  // ✅ 3. If the backend says 401 (Denied), clear the local session and redirect
   if (response.status === 401 || response.status === 403) {
     console.error("JWT Token is invalid or missing. Redirecting to login...");
     localStorage.removeItem('app-token');
     localStorage.removeItem('google-token');
-    window.location.href = '/'; // Redirect to home/login
+    window.location.href = '/'; 
     throw new Error("Session expired. Please log in again.");
   }
 
-  if (!response.ok)
-    throw new Error(`API error: ${response.statusText}`);
+  if (!response.ok) throw new Error(`API error: ${response.statusText}`);
     
   return response.json();
 }
+
 // --- SimplePagination ---
-// Responsive pagination controls for navigating pages
 function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void; }) {
   const [jump, setJump] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
   
   React.useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -228,70 +188,29 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
     if (p !== currentPage) onPageChange(p); 
   };
 
-  if (isMobile) {
-    // Mobile: Compact pagination with essential controls only
-    return (
-      <div className="flex flex-col gap-3 w-full">
-        {/* Page info */}
-        <div className="text-center text-sm text-muted-foreground">
-          Page <strong>{currentPage}</strong> of <strong>{Math.max(1, totalPages)}</strong>
-        </div>
-        
-        {/* Navigation controls */}
-        <div className="flex items-center justify-between gap-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => go(currentPage - 1)} 
-            disabled={currentPage <= 1}
-            className="flex-1 max-w-[100px]"
-          >
-            Previous
-          </Button>
-          
-          {/* Quick jump input */}
-          <div className="flex items-center gap-1 min-w-0">
-            <Input 
-              type="number" 
-              min={1} 
-              max={Math.max(1, totalPages)} 
-              placeholder="Page" 
-              value={jump} 
-              onChange={(e: any) => setJump(e.target.value)} 
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { 
-                if (e.key === 'Enter') { 
-                  go(Number(jump)); 
-                  setJump(''); 
-                } 
-              }} 
-              className="w-16 h-8 text-center text-xs"
-            />
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => { go(Number(jump)); setJump(''); }}
-              className="px-2 h-8 text-xs"
-            >
-              Go
-            </Button>
-          </div>
-          
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => go(currentPage + 1)} 
-            disabled={currentPage >= Math.max(1, totalPages)}
-            className="flex-1 max-w-[100px]"
-          >
-            Next
-          </Button>
-        </div>
+  const renderMobile = () => (
+    <div className="flex flex-col gap-3 w-full px-2">
+      <div className="text-center text-sm text-slate-400">
+        Page <strong className="text-white">{currentPage}</strong> of <strong className="text-white">{Math.max(1, totalPages)}</strong>
       </div>
-    );
-  }
+      <div className="flex items-center justify-between gap-2">
+        <Button size="sm" onClick={() => go(currentPage - 1)} disabled={currentPage <= 1} style={{ flex: 1, backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", borderRadius: "8px" }}>
+          Prev
+        </Button>
+        <div className="flex items-center gap-1 min-w-0">
+          <Input type="number" min={1} max={Math.max(1, totalPages)} placeholder="Pg" value={jump} onChange={(e: any) => setJump(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { go(Number(jump)); setJump(''); } }} style={{ width: "60px", height: "36px", textAlign: "center", backgroundColor: "#0f172a", border: "1px solid #334155", color: "white", borderRadius: "8px" }} />
+          <Button size="sm" onClick={() => { go(Number(jump)); setJump(''); }} style={{ height: "36px", backgroundColor: "#3b82f6", color: "white", borderRadius: "8px" }}>
+            Go
+          </Button>
+        </div>
+        <Button size="sm" onClick={() => go(currentPage + 1)} disabled={currentPage >= Math.max(1, totalPages)} style={{ flex: 1, backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", borderRadius: "8px" }}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
 
-  // Desktop: Full pagination controls
-  return (
+  const renderDesktop = () => (
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
         <Button size="sm" variant="ghost" onClick={() => go(1)} disabled={currentPage <= 1}>First</Button>
@@ -308,18 +227,14 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
       </div>
     </div>
   );
+
+  return isMobile ? renderMobile() : renderDesktop();
 }
 
-// --- Helper Function for Frontend CSV Export ---
-// This function escapes values to be safely included in a CSV file.
 const escapeCsvValue = (value: any): string => {
-  if (value == null) {
-    return ''; // Return an empty string for null or undefined
-  }
+  if (value == null) return '';
   const stringValue = String(value);
-  // If the value contains a comma, a double quote, or a newline, it needs to be wrapped in double quotes.
   if (/[",\r\n]/.test(stringValue)) {
-    // Within a quoted field, any double quote must be escaped by another double quote.
     const escapedValue = stringValue.replace(/"/g, '""');
     return `"${escapedValue}"`;
   }
@@ -327,19 +242,17 @@ const escapeCsvValue = (value: any): string => {
 };
 
 // --- Main Component ---
-// This is the main list/table view component with filtering, sorting, grouping, column hiding, pagination, and timeline view
 export function ClickUpListViewUpdated({
   title,
   columns,
   apiEndpoint,
   viewId,
-  keyMap, // <-- ADD THIS PROP
+  keyMap,
   filterConfigs = [],
   views = [],
   onRowSelect,
   idKey,
   showAddButton = false,
-  // optional props passed from App.tsx
   rowTransformer,
   initialGroupBy,
   initialSortBy,
@@ -347,12 +260,13 @@ export function ClickUpListViewUpdated({
   groupEnabled,
   initialFilters,
   onViewChange,
+  onOpenSidebar // Optional prop added to open sidebar on mobile
 }: {
   title: string;
   columns: Column[];
   apiEndpoint: string;
   viewId: string;
-  keyMap?: Record<string, string>; // <-- DEFINE THE PROP TYPE
+  keyMap?: Record<string, string>;
   filterConfigs?: FilterConfig[];
   views?: ViewConfig[];
   onRowSelect?: (item: ListItem) => void;
@@ -365,62 +279,46 @@ export function ClickUpListViewUpdated({
   groupEnabled?: boolean;
   initialFilters?: Record<string, any>;
   onViewChange?: () => void;
+  onOpenSidebar?: () => void;
 }) {
-  // --- State Management Strategy ---
-  // The component uses a combination of "global" and "user-specific" state to meet the requirements.
-  //
-  // GLOBAL / SHARED STATE:
-  // - `savedFilters`: This state is persisted in localStorage with a key that is the same for all users viewing this table
-  //   (e.g., 'global-saved-filters-My-Table'). This simulates a shared database of saved filters that everyone can see and use.
-  // - Global Column Layouts: Persisted with a `global-column-` prefix, these are managed by Admins and applied to all 'Guest' role users.
-  //
-  // USER-SPECIFIC STATE:
-  // - All other view-related settings (sorting, grouping, applied filters, column order, frozen columns, etc.)
-  //   are persisted in localStorage with a unique key prefix for this table instance. This ensures that each user's
-  //   personalization settings are saved and restored without affecting other users.
-  // - User-Specific Column Layouts: For non-Guest users, their column order and visibility is saved to a personal key.
-  //
-  // TRANSIENT STATE:
-  // - `currentPage`, `isExporting`, etc., are managed with `useState` as they are session-specific and not meant to be persisted.
-
-  // --- Create a unique key prefix for this specific table instance ---
   const localStorageKeyPrefix = `view-${viewId}`;
-
-  // --- State ---
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  // --- Mobile detection ---
+  // Custom Mobile States
   const [isMobile, setIsMobile] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [mobileSelectedRow, setMobileSelectedRow] = useState<any | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [groupLimits, setGroupLimits] = useState<Record<string, number>>({});
   
+  // State to track which specific ENTIRE COLUMNS are expanded on mobile
+  const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      // Dark theme background for mobile view
+      if (mobileState) document.body.style.backgroundColor = "#0b1120";
+      else document.body.style.backgroundColor = "";
     };
-    
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      document.body.style.backgroundColor = "";
+    };
   }, []);
   
-  // --- GLOBAL / SHARED STATE ---
-  // This state is persisted to a "global" localStorage key for this table, making it visible to all users.
   const [savedFilters, setSavedFilters] = useLocalStorageState<SavedFilter[]>(`global-saved-filters-${localStorageKeyPrefix}`, []);
-  
-  // --- TRANSIENT STATE (Session-specific) ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
   const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
-  
-  // --- MODIFIED: State for bulk editing is now persisted in localStorage ---
   const [pendingChanges, setPendingChanges] = useLocalStorageState<Record<string, Record<string, any>>>(`${localStorageKeyPrefix}-pendingChanges`, {});
-
-  // --- NEW: State for inline editing ---
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
   const [editValue, setEditValue] = useState<any>('');
 
-  // --- MODIFIED: State for multiple sort fields ---
   const [sortByFields, setSortByFields] = useState<SortField[]>(() => {
     if (!initialSortBy) return [];
     const keys = initialSortBy.split(',');
@@ -431,49 +329,40 @@ export function ClickUpListViewUpdated({
     }));
   });
 
-  // --- MODIFIED: State for multiple grouping fields ---
   const [groupByFields, setGroupByFields] = useState<(string | null)[]>(initialGroupBy ? [initialGroupBy] : []);
   const [groupDirections, setGroupDirections] = useState<Record<string, "asc" | "desc">>({});
   const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
-  
-  // --- Mobile view state ---
-  const [mobileViewMode, setMobileViewMode] = useState<'table' | 'cards'>('table');
 
-  // --- USER-SPECIFIC STATE (persisted for the current user/browser) ---
-   const [searchTerm, setSearchTerm] = useState("");
-    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  // Clear expanded state and limits if group fields change
+  useEffect(() => {
+    setExpandedGroups({});
+    setGroupLimits({});
+    setExpandedColumns({});
+  }, [groupByFields]);
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [advancedFilters, setAdvancedFilters] = useState<FilterGroup[]>([]);
   const [activeView, setActiveView] = useState(views[0]?.id || "");
 
-  // Get current view config and filters
   const currentView = useMemo(() => views.find(v => v.id === activeView), [views, activeView]);
   const activeViewFilters = useMemo(() => currentView?.filters || {}, [currentView]);
-
-  // Use the apiEndpoint from the selected view if present, otherwise fallback to the prop
   const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
 
-  // --- MODIFIED: Role-based & User-Specific Column Layout Logic ---
-  // This logic now correctly loads the most specific layout available for the user.
   const getLayoutKeys = (userId?: string | null) => {
     const prefix = userId ? `user-${userId}-view-${viewId}` : `global-view-${viewId}`;
-    return {
-      orderKey: `column-order-${prefix}`,
-      hiddenKey: `hidden-columns-${prefix}`,
-    };
+    return { orderKey: `column-order-${prefix}`, hiddenKey: `hidden-columns-${prefix}` };
   };
 
   const [columnOrder, setColumnOrder] = useLocalStorageState<string[]>(
     getLayoutKeys(user?.id).orderKey,
     (() => {
       const userKeys = getLayoutKeys(user?.id);
-      const guestKeys = getLayoutKeys(); // No user ID for guest/global
-
+      const guestKeys = getLayoutKeys();
       const userOrder = localStorage.getItem(userKeys.orderKey);
       if (userOrder) return JSON.parse(userOrder) as string[];
-
       const guestOrder = localStorage.getItem(guestKeys.orderKey);
       if (guestOrder) return JSON.parse(guestOrder) as string[];
-
       return columns.map(c => c.key);
     })()
   );
@@ -483,33 +372,16 @@ export function ClickUpListViewUpdated({
     (() => {
       const userKeys = getLayoutKeys(user?.id);
       const guestKeys = getLayoutKeys();
-
       const userHidden = localStorage.getItem(userKeys.hiddenKey);
       if (userHidden) return JSON.parse(userHidden) as string[];
-
       const guestHidden = localStorage.getItem(guestKeys.hiddenKey);
       if (guestHidden) return JSON.parse(guestHidden) as string[];
-
       return [];
     })()
   );
   
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 
-  // --- ✅ FIX: REMOVED THE USEEFFECT THAT CONVERTED initialFilters to AdvancedFilters ---
-  /* 
-  useEffect(() => {
-    if (initialFilters && Object.keys(initialFilters).length > 0) {
-      // This was causing multi-select arrays to become string literals in JSON,
-      // breaking backend IN/LIKE logic.
-      // We now pass initialFilters directly to the query below.
-    } else if (initialFilters === undefined) {
-      setAdvancedFilters([]);
-    }
-  }, [initialFilters]);
-  */
-
-  // --- NEW: Permission Check Logic ---
   const hasAccess = useMemo(() => {
     return (resourceName: string, accessLevel: 'read' | 'write' = 'read'): boolean => {
       if (!user) return false;
@@ -520,11 +392,8 @@ export function ClickUpListViewUpdated({
     };
   }, [user]);
 
-  // --- NEW: Handlers for Inline Editing ---
   const handleCellDoubleClick = (rowIndex: number, column: Column, value: any) => {
-    // Check 1: Is the column definition marked as editable?
     if (!column.editable) return;
-    // Check 2: Does the user have 'write' access for this resource?
     if (!hasAccess(title, 'write')) {
       toast.error(`You don't have permission to edit ${title}.`);
       return;
@@ -533,248 +402,126 @@ export function ClickUpListViewUpdated({
     setEditValue(value);
   };
 
-const handleUpdateCell = async () => {
-  if (!editingCell) return;
+  const handleUpdateCell = async () => {
+    if (!editingCell) return;
+    const { rowIndex, columnKey } = editingCell;
+    const item = finalItems[rowIndex];
+    const id = item[idKey];
+    const originalValue = item[columnKey];
+    setEditingCell(null);
+    if (editValue === originalValue) return;
 
-  const { rowIndex, columnKey } = editingCell;
-  const item = finalItems[rowIndex];
-  const id = item[idKey];
-  const originalValue = item[columnKey];
-
-  // Exit edit mode immediately
-  setEditingCell(null);
-
-  // Don't save if the value hasn't changed
-  if (editValue === originalValue) {
-    return;
-  }
-
-  const savingToast = toast.loading(`Updating ${columnKey}...`);
-
-  try {
+    const savingToast = toast.loading(`Updating ${columnKey}...`);
+    try {
       const token = localStorage.getItem('app-token');
+      const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '', 
+        },
+        body: JSON.stringify({ [columnKey]: editValue }),
+      });
 
-    // ✅ 2. Pass the token in the headers
-    const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '', // ✅ JWT Header added
-      },
-      body: JSON.stringify({ [columnKey]: editValue }),
-    });
+      if (response.status === 401 || response.status === 403) {
+        toast.error("Session expired. Please log in again.", { id: savingToast });
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        setTimeout(() => { window.location.href = '/'; }, 1500);
+        return;
+      }
 
-    // ✅ 3. Handle Unauthorized/Expired session (Logic from useEffect)
-    if (response.status === 401 || response.status === 403) {
-      console.error("Session expired or unauthorized. Redirecting...");
-      toast.error("Session expired. Please log in again.", { id: savingToast });
-      
-      localStorage.removeItem('app-token');
-      localStorage.removeItem('google-token');
-      
-      // Delay redirect slightly so user can read the toast message
-      setTimeout(() => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.sqlMessage || errorData.message || errorData.error || errorData.toString() || `Failed to update ${id}`;
+        toast.error(`Error: ${errorMsg}`, { id: savingToast });
+        return;
+      }
+
+      toast.success("Update saved successfully!", { id: savingToast });
+      await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
+    }
+  };
+
+  const handleCellEdit = async (rowIndex: number, column: Column, newValue: any) => {
+    const updatedRow = { ...finalItems[rowIndex], [column.key]: newValue };
+    if (user?.email) updatedRow.LastModifiedBy = user.email;
+    delete updatedRow.LastModifiedTimestamp;
+    setEditingCell(null);
+    if (finalItems[rowIndex][column.key] === newValue) return;
+
+    const savingToast = toast.loading(`Updating ${column.label}...`);
+    let endpoint = "";
+    let rowId = "";
+
+    if (effectiveApiEndpoint.includes("digitalrecording")) { endpoint = "/digitalrecording"; rowId = updatedRow.RecordingCode; }
+    else if (effectiveApiEndpoint.includes("auxfiles")) { endpoint = "/auxfiles"; rowId = updatedRow.new_auxid; }
+    else if (effectiveApiEndpoint.includes("newmedialog")) { endpoint = "/newmedialog"; rowId = updatedRow.MLUniqueID; }
+    else if (effectiveApiEndpoint.includes("events")) { endpoint = "/events"; rowId = updatedRow.EventID; }
+    else if (effectiveApiEndpoint.includes("audio")) { endpoint = "/audio"; rowId = updatedRow.AID; }
+    else if (effectiveApiEndpoint.includes("bhajantype")) { endpoint = "/bhajan-type"; rowId = updatedRow.BTID; }
+    else if (effectiveApiEndpoint.includes("digitalmastercategory")) { endpoint = "/digital-master-category"; rowId = updatedRow.DMCID; }
+    else if (effectiveApiEndpoint.includes("distributionlabel")) { endpoint = "/distribution-label"; rowId = updatedRow.LabelID; }
+    else if (effectiveApiEndpoint.includes("editingtype")) { endpoint = "/editing-type"; rowId = updatedRow.EdID; }
+    else if (effectiveApiEndpoint.includes("editingstatus")) { endpoint = "/editing-status"; rowId = updatedRow.EdID; }
+    else if (effectiveApiEndpoint.includes("eventcategory")) { endpoint = "/event-category"; rowId = updatedRow.EventCategoryID; }
+    else if (effectiveApiEndpoint.includes("footagetype")) { endpoint = "/footage-type"; rowId = updatedRow.FootageID; }
+    else if (effectiveApiEndpoint.includes("formattype")) { endpoint = "/formattype"; rowId = updatedRow.FTID; }
+    else if (effectiveApiEndpoint.includes("granths")) { endpoint = "/granths"; rowId = updatedRow.ID; }
+    else if (effectiveApiEndpoint.includes("language")) { endpoint = "/language"; rowId = updatedRow.STID; }
+    else if (effectiveApiEndpoint.includes("master-quality")) { endpoint = "/master-quality"; rowId = updatedRow.MQID; }
+    else if (effectiveApiEndpoint.includes("organizations")) { endpoint = "/organizations"; rowId = updatedRow.OrganizationID; }
+    else if (effectiveApiEndpoint.includes("neweventcategory")) { endpoint = "/new-event-category"; rowId = updatedRow.SrNo || updatedRow.CategoryID; }
+    else if (effectiveApiEndpoint.includes("newcities")) { endpoint = "/new-cities"; rowId = updatedRow.CityID; }
+    else if (effectiveApiEndpoint.includes("newcountries")) { endpoint = "/new-countries"; rowId = updatedRow.CountryID; }
+    else if (effectiveApiEndpoint.includes("newstates")) { endpoint = "/new-states"; rowId = updatedRow.StateID; }
+    else if (effectiveApiEndpoint.includes("occasions")) { endpoint = "/occasions"; rowId = updatedRow.OccasionID; }
+    else if (effectiveApiEndpoint.includes("topicnumbersource")) { endpoint = "/topic-number-source"; rowId = updatedRow.TNID; }
+    else if (effectiveApiEndpoint.includes("time-of-day")) { endpoint = "/time-of-day"; rowId = updatedRow.TimeID; }  
+    else if (effectiveApiEndpoint.includes("aux-file-type")) { endpoint = "/aux-file-type"; rowId = updatedRow.AuxTypeID; }
+    else if (effectiveApiEndpoint.includes("topic-given-by")) { endpoint = "/topic-given-by"; rowId = updatedRow.TGBID; }
+    else { endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`; rowId = updatedRow[idKey]; }
+
+    try {
+      const token = localStorage.getItem('app-token');
+      const response = await fetch(`${API_BASE_URL}${endpoint}/${rowId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : '' },
+        body: JSON.stringify(updatedRow),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
         window.location.href = '/'; 
-      }, 1500);
-      return;
+        return;
+      }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.sqlMessage || errorData.message || errorData.error || errorData.toString() || `Failed to update ${rowId}`;
+        return { status: 'rejected', reason: errorMsg, rowId };
+      }
+      toast.success("Update saved successfully!", { id: savingToast });
+      await queryClient.invalidateQueries({ queryKey: [endpoint] });
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`, { id: savingToast });
     }
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      // Extract the most detailed error message
-      const errorMsg =
-        errorData.sqlMessage ||
-        errorData.message ||
-        errorData.error ||
-        errorData.toString() ||
-        `Failed to update ${id}`;
-      toast.error(`Error: ${errorMsg}`, { id: savingToast });
-      return;
-    }
-
-    toast.success("Update saved successfully!", { id: savingToast });
-    // Refetch data to show the update
-    await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
-
-  } catch (error: any) {
-    toast.error(`Error: ${error.message}`, { id: savingToast });
-    console.error("Failed to update cell:", error);
-  }
-};
-
-const handleCellEdit = async (rowIndex: number, column: Column, newValue: any) => {
-  // Get the updated row
-  const updatedRow = { ...finalItems[rowIndex], [column.key]: newValue };
-
-  // Set LastModifiedBy to current user's email
-  if (user?.email) {
-    updatedRow.LastModifiedBy = user.email;
-  }
-
-  // Remove audit fields (backend sets them)
-  delete updatedRow.LastModifiedTimestamp;
-
-  // Exit edit mode immediately
-  setEditingCell(null);
-
-  // Don't save if the value hasn't changed
-  if (finalItems[rowIndex][column.key] === newValue) {
-    return;
-  }
-
-  const savingToast = toast.loading(`Updating ${column.label}...`);
-
-  // Determine endpoint and row id key
-  let endpoint = "";
-let rowId = "";
-
-if (effectiveApiEndpoint.includes("digitalrecording")) {
-  endpoint = "/digitalrecording";
-  rowId = updatedRow.RecordingCode;
-} else if (effectiveApiEndpoint.includes("auxfiles")) {
-  endpoint = "/auxfiles";
-  rowId = updatedRow.new_auxid; // <-- FIXED HERE
-} else if (effectiveApiEndpoint.includes("newmedialog")) {
-  endpoint = "/newmedialog";
-  rowId = updatedRow.MLUniqueID;
-} else if (effectiveApiEndpoint.includes("events")) {
-  endpoint = "/events";
-  rowId = updatedRow.EventID;
-} else if (effectiveApiEndpoint.includes("audio")) {
-  endpoint = "/audio";
-  rowId = updatedRow.AID;
-} else if (effectiveApiEndpoint.includes("bhajantype")) {
-  endpoint = "/bhajan-type";
-  rowId = updatedRow.BTID;
-} else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
-  endpoint = "/digital-master-category";
-  rowId = updatedRow.DMCID;
-} else if (effectiveApiEndpoint.includes("distributionlabel")) {
-  endpoint = "/distribution-label";
-  rowId = updatedRow.LabelID;
-} else if (effectiveApiEndpoint.includes("editingtype")) {
-  endpoint = "/editing-type";
-  rowId = updatedRow.EdID;
-} else if (effectiveApiEndpoint.includes("editingstatus")) {
-  endpoint = "/editing-status";
-  rowId = updatedRow.EdID;
-} else if (effectiveApiEndpoint.includes("eventcategory")) {
-  endpoint = "/event-category";
-  rowId = updatedRow.EventCategoryID;
-} else if (effectiveApiEndpoint.includes("footagetype")) {
-  endpoint = "/footage-type";
-  rowId = updatedRow.FootageID;
-} else if (effectiveApiEndpoint.includes("formattype")) {
-  endpoint = "/format-type";
-  rowId = updatedRow.FTID;
-} else if (effectiveApiEndpoint.includes("granths")) {
-  endpoint = "/granths";
-  rowId = updatedRow.ID;
-} else if (effectiveApiEndpoint.includes("language")) {
-  endpoint = "/language";
-  rowId = updatedRow.STID;
-} else if (effectiveApiEndpoint.includes("master-quality")) {
-  endpoint = "/master-quality";
-  rowId = updatedRow.MQID;
-} else if (effectiveApiEndpoint.includes("organizations")) {
-  endpoint = "/organizations";
-  rowId = updatedRow.OrganizationID;
-} else if (effectiveApiEndpoint.includes("neweventcategory")) {
-  endpoint = "/new-event-category";
-  rowId = updatedRow.SrNo || updatedRow.CategoryID;
-} else if (effectiveApiEndpoint.includes("newcities")) {
-  endpoint = "/new-cities";
-  rowId = updatedRow.CityID;
-} else if (effectiveApiEndpoint.includes("newcountries")) {
-  endpoint = "/new-countries";
-  rowId = updatedRow.CountryID;
-} else if (effectiveApiEndpoint.includes("newstates")) {
-  endpoint = "/new-states";
-  rowId = updatedRow.StateID;
-} else if (effectiveApiEndpoint.includes("occasions")) {
-  endpoint = "/occasions";
-  rowId = updatedRow.OccasionID;
-} else if (effectiveApiEndpoint.includes("topicnumbersource")) {
-  endpoint = "/topic-number-source";
-  rowId = updatedRow.TNID;
-} else if (effectiveApiEndpoint.includes("time-of-day")) {
-  endpoint = "/time-of-day";
-  rowId = updatedRow.TimeID;
-}  else if (effectiveApiEndpoint.includes("aux-file-type")) {
-  endpoint = "/aux-file-type";
-  rowId = updatedRow.AuxTypeID;
-} else if (effectiveApiEndpoint.includes("topic-given-by")) {
-  endpoint = "/topic-given-by";
-  rowId = updatedRow.TGBID;
-} else {
-  endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`;
-  rowId = updatedRow[idKey];
-}
-try {
-    const token = localStorage.getItem('app-token');
-
-  // ✅ 2. Pass the token in the headers
-  const response = await fetch(`${API_BASE_URL}${endpoint}/${rowId}`, {
-    method: "PUT",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": token ? `Bearer ${token}` : '', // ✅ JWT Header added
-    },
-    body: JSON.stringify(updatedRow),
-  });
-
-  // ✅ 3. Handle Unauthorized access (Logic from useEffect)
-  if (response.status === 401 || response.status === 403) {
-    console.error("Session expired or unauthorized. Redirecting...");
-    
-    // Clear storage to force a clean login
-    localStorage.removeItem('app-token');
-    localStorage.removeItem('google-token');
-    
-    // Redirect to login page
-    window.location.href = '/'; 
-    return;
-  }
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      // Extract the most detailed error message
-      const errorMsg =
-        errorData.sqlMessage ||
-        errorData.message ||
-        errorData.error ||
-        errorData.toString() ||
-        `Failed to update ${rowId}`;
-      return { status: 'rejected', reason: errorMsg, rowId };
-    }
-
-    toast.success("Update saved successfully!", { id: savingToast });
-    // Refetch data to show the update
-    await queryClient.invalidateQueries({ queryKey: [endpoint] });
-
-  } catch (error: any) {
-    toast.error(`Error: ${error.message}`, { id: savingToast });
-    console.error("Failed to update cell:", error);
-  }
-};
+  };
 
   const handleSaveFilter = (name: string, filterGroups: FilterGroup[]) => {
-  const newSavedFilter: SavedFilter = { 
-    id: `filter_${Date.now()}`,
-    name, 
-    filterGroups,
-    createdAt: new Date().toISOString(),
-    createdBy: user?.email || "", // <-- Add this line!
+    const newSavedFilter: SavedFilter = { 
+      id: `filter_${Date.now()}`, name, filterGroups, createdAt: new Date().toISOString(), createdBy: user?.email || "", 
+    };
+    setSavedFilters(prev => {
+      const existing = prev.find(f => f.name === name);
+      if (existing) return prev.map(f => f.name === name ? { ...newSavedFilter, id: existing.id } : f);
+      return [...prev, newSavedFilter];
+    });
+    setActiveSavedFilterName(name);
+    setAdvancedFilters(filterGroups);
   };
-  setSavedFilters(prev => {
-    const existing = prev.find(f => f.name === name);
-    if (existing) {
-      return prev.map(f => f.name === name ? { ...newSavedFilter, id: existing.id } : f);
-    }
-    return [...prev, newSavedFilter];
-  });
-  setActiveSavedFilterName(name);
-  setAdvancedFilters(filterGroups);
-};
 
   const handleDeleteFilter = (name: string) => {
     setSavedFilters(prev => prev.filter(f => f.name !== name));
@@ -788,135 +535,71 @@ try {
     setActiveSavedFilterName(name);
     if (name) {
       const savedFilter = savedFilters.find(f => f.name === name);
-      if (savedFilter) {
-        setAdvancedFilters(savedFilter.filterGroups);
-      }
+      if (savedFilter) setAdvancedFilters(savedFilter.filterGroups);
     } else {
       setAdvancedFilters([]);
     }
   };
 
-  // Reset column order and sizing when view or columns change
-  useEffect(() => {
-    // This effect might not be needed anymore with the new logic,
-    // but we'll keep it to ensure views are reset correctly.
-    // The primary logic is now in the useMemo hook above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeView, columns.map(col => col.key).join(",")]);
-
-  // Get current column order and sizing for the active view
+  useEffect(() => {}, [activeView, columns.map(col => col.key).join(",")]);
   const columnSizing = viewColumnSizing[activeView] || {};
-
   const itemsPerPage = 50;
-
-  // Set active view when views change
   useEffect(() => { setActiveView(views[0]?.id || ""); }, [views]);
 
-  // --- MODIFIED: Determine active sort fields from state ---
   const activeSortBy = sortByFields.map(f => f.key).join(',');
   const activeSortDirection = sortByFields.map(f => f.direction).join(',');
-
-  // --- MODIFIED: Check if any grouping is active ---
   const isGroupingActive = groupByFields.some(field => field && field !== "none");
-
-  // --- NEW: Determine if we need to fetch all data ---
-  // Fetch all data if grouping is active. Sorting is now handled by the API.
   const shouldFetchAllForGrouping = isGroupingActive;
 
-  // Build filter configs for advanced filter UI
   const finalFilterConfigs = useMemo(() => {
     if (filterConfigs && filterConfigs.length > 0) {
-      // Map options to correct shape if needed
       return filterConfigs.map(fc => ({
-        ...fc,
-        options: fc.options
-          ? fc.options.map(opt =>
-              typeof opt === "string"
-                ? { value: opt, label: opt }
-                : opt
-            )
-          : undefined,
+        ...fc, options: fc.options ? fc.options.map(opt => typeof opt === "string" ? { value: opt, label: opt } : opt) : undefined,
       }));
     }
-    return columns
-      .filter((col) => col.filterable !== false)
-      .map((col) => ({
-        key: col.key,
-        label: col.label,
-        type: "text" as "text", // Explicitly cast to the correct type
-        options: undefined,
-      }));
+    return columns.filter((col) => col.filterable !== false).map((col) => ({
+      key: col.key, label: col.label, type: "text" as "text", options: undefined,
+    }));
   }, [columns, filterConfigs]);
 
-  // --- Query for PAGINATED data (when not grouping) ---
-const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
-  queryKey: [
-    effectiveApiEndpoint,
-    currentPage,
-     debouncedSearchTerm,
-    searchTerm,
-    JSON.stringify(activeViewFilters),
-    JSON.stringify(advancedFilters),
-    JSON.stringify(initialFilters), // ✅ ADD THIS: Trigger refetch when dashboard filters change
-    activeSortBy, 
-    activeSortDirection, 
-  ],
-  queryFn: () =>
-    fetchDataFromApi({
-      apiEndpoint: effectiveApiEndpoint,
-      page: currentPage,
-      limit: itemsPerPage,
-       searchTerm: debouncedSearchTerm,
-      // ✅ FIX: Merge initialFilters here so they go as standard params
-      filters: { ...activeViewFilters, ...initialFilters }, 
-      advancedFilters,
-      sortBy: activeSortBy, 
-      sortDirection: activeSortDirection as "asc" | "desc", 
+  const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
+    queryKey: [
+      effectiveApiEndpoint, currentPage, debouncedSearchTerm, searchTerm,
+      JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), JSON.stringify(initialFilters),
+      activeSortBy, activeSortDirection, 
+    ],
+    queryFn: () => fetchDataFromApi({
+      apiEndpoint: effectiveApiEndpoint, page: currentPage, limit: itemsPerPage, searchTerm: debouncedSearchTerm,
+      filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
+      sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc", 
     }),
-  enabled: !shouldFetchAllForGrouping,
-  staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
-refetchOnWindowFocus: false,// 1 minute
-  placeholderData: previous => previous, // <-- This keeps previous data while fetching
-});
+    enabled: !shouldFetchAllForGrouping,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previous => previous,
+  });
 
-const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
-  queryKey: [
-    effectiveApiEndpoint,
-    'all-for-grouping',
-    searchTerm,
-    JSON.stringify(activeViewFilters),
-    JSON.stringify(advancedFilters),
-    JSON.stringify(initialFilters), // ✅ ADD THIS
-    activeSortBy, 
-    activeSortDirection, 
-  ],
-  queryFn: () =>
-    fetchDataFromApi({
-      apiEndpoint: effectiveApiEndpoint,
-      page: 1,
-      limit: 1000000,
-      searchTerm,
-      // ✅ FIX: Merge initialFilters here too
-      filters: { ...activeViewFilters, ...initialFilters }, 
-      advancedFilters,
-      sortBy: activeSortBy, 
-      sortDirection: activeSortDirection as "asc" | "desc", 
+  const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
+    queryKey: [
+      effectiveApiEndpoint, 'all-for-grouping', searchTerm,
+      JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), JSON.stringify(initialFilters),
+      activeSortBy, activeSortDirection, 
+    ],
+    queryFn: () => fetchDataFromApi({
+      apiEndpoint: effectiveApiEndpoint, page: 1, limit: 1000000, searchTerm,
+      filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
+      sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc", 
     }),
-  enabled: shouldFetchAllForGrouping,
- staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
-refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
-  placeholderData: previous => previous,
-});
+    enabled: shouldFetchAllForGrouping,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: previous => previous,
+  });
 
-  // --- Data and pagination ---
-  // Use all data if grouping, otherwise use paginated data. Both are now sorted by the API.
   let allItems = shouldFetchAllForGrouping ? (allDataForGrouping?.data || []) : (queryData?.data || []);
   
-  // --- NEW: Apply keyMap transformation if it exists ---
   const transformedApiItems = useMemo(() => {
-    if (!keyMap || Object.keys(keyMap).length === 0) {
-      return allItems;
-    }
+    if (!keyMap || Object.keys(keyMap).length === 0) return allItems;
     return allItems.map(item => {
       const newItem: Record<string, any> = {};
       for (const key in item) {
@@ -927,100 +610,56 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
     });
   }, [allItems, keyMap]);
 
-  // Apply optional rowTransformer (provided by App.tsx for digitalrecordings)
   const transformedItems = React.useMemo(() => {
     if (!rowTransformer || typeof rowTransformer !== "function") return transformedApiItems;
-    try {
-      return (transformedApiItems || []).map((r: any) => rowTransformer(r));
-    } catch (e) {
-      console.error("rowTransformer error:", e);
-      return transformedApiItems;
-    }
+    try { return (transformedApiItems || []).map((r: any) => rowTransformer(r)); } 
+    catch (e) { console.error("rowTransformer error:", e); return transformedApiItems; }
   }, [transformedApiItems, rowTransformer]);
   
-  // Use transformed items as rows for sorting/grouping/pagination
   let rows = transformedItems;
 
-  // --- REMOVED: Client-side sorting logic has been removed. ---
-  // The component now relies entirely on the API for sorting.
-  // const sortedData = rows;
-  
-   // --- MODIFIED: Custom Client-side Sorting for Nested Numeric/Alphanumeric Logic ---
-  // This handles the "Numbers First (001, 1), Alphanumeric Last (A01)" requirement
-  // and supports nested keys like "EventCode,FootageSrNo,LogSerialNo"
   const sortedData = useMemo(() => {
     if (!rows || rows.length === 0) return [];
-    
-    // If no sort is active, return original order (which comes from API)
-    // However, the user wants this to apply for the default view config too.
     if (!activeSortBy || activeSortBy === "none") return rows;
-
     const keys = activeSortBy.split(',');
     const directions = (activeSortDirection || "").split(',');
-
-    // Create a copy to sort
     return [...rows].sort((a, b) => {
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
-        // Default to asc if direction missing
         const direction = directions[i] || 'asc';
         const dirMult = direction === 'desc' ? -1 : 1;
-
         const valA = a[key];
         const valB = b[key];
-
-        // Equality check to skip to next key
         if (valA === valB) continue;
-
-        // Null handling (push to end)
         if (valA === null || valA === undefined || valA === "") return 1;
         if (valB === null || valB === undefined || valB === "") return -1;
-
         const strA = String(valA).trim();
         const strB = String(valB).trim();
-
-        // Check if strictly numeric (digits only)
-        // This distinguishes "1" from "A1"
         const isNumA = /^\d+$/.test(strA);
         const isNumB = /^\d+$/.test(strB);
-
-        // Logic: Numbers come BEFORE Text
-        // If sorting ASC: Numbers (top) -> Text (bottom)
-        // If sorting DESC: Text (top) -> Numbers (bottom)
         if (isNumA && !isNumB) return -1 * dirMult;
         if (!isNumA && isNumB) return 1 * dirMult;
-
         let comparison = 0;
         if (isNumA && isNumB) {
-          // Both numbers: numeric sort
           comparison = Number(strA) - Number(strB);
         } else {
-          // Both text (or mixed like "A1", "A2"): natural sort
           comparison = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
         }
-
-        if (comparison !== 0) {
-          return comparison * dirMult;
-        }
+        if (comparison !== 0) return comparison * dirMult;
       }
       return 0;
     });
   }, [rows, activeSortBy, activeSortDirection]);
 
-  // --- MODIFIED: Client-side pagination now uses the API-sorted data ---
   const finalItems = useMemo(() => {
     if (shouldFetchAllForGrouping) {
       const start = (currentPage - 1) * itemsPerPage;
       const end = start + itemsPerPage;
       return sortedData.slice(start, end);
     }
-    // For paginated view, we use the client-sorted data as well, because the
-    // client sort handles the "Number vs String" logic that the API likely does not.
-    // However, if pagination is truly server-side, we only sort the current page here.
     return sortedData; 
   }, [sortedData, currentPage, itemsPerPage, shouldFetchAllForGrouping]);
 
-  // Overlay any staged pendingChanges onto the finalItems so the UI shows staged edits
   const finalItemsWithPendingChanges = useMemo(() => {
     if (!pendingChanges || Object.keys(pendingChanges).length === 0) return finalItems;
     return finalItems.map(item => {
@@ -1034,174 +673,96 @@ refetchOnWindowFocus: false, // Don't refetch just because I clicked the window
   const totalItems = shouldFetchAllForGrouping ? (sortedData.length) : (queryData?.pagination?.totalItems || 0);
   const totalPages = shouldFetchAllForGrouping ? Math.ceil(totalItems / itemsPerPage) : (queryData?.pagination?.totalPages || 1);
 
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, activeSortBy, activeSortDirection, JSON.stringify(initialFilters)]);
 
-  // Reset page when filters/search/view change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), activeView, activeSortBy, activeSortDirection, JSON.stringify(initialFilters)]);
-
-  // --- Grouping logic ---
-  // This logic now correctly operates on `sortedData` and `finalItems`.
   const groupedData: Record<string, any> = useMemo(() => {
     const activeGroupBy = groupByFields.filter((f): f is string => f !== null && f !== "none");
-    if (activeGroupBy.length === 0) {
-      return { "": finalItems };
-    }
-
+    if (activeGroupBy.length === 0) return { "": finalItems };
     const recursiveGroup = (items: ListItem[], fields: string[], level: number): Record<string, any> => {
-      if (fields.length === 0) {
-        return items;
-      }
+      if (fields.length === 0) return items;
       const [currentField, ...restFields] = fields;
       const groupDirection = groupDirections[currentField] || "asc";
-
       const groups = items.reduce((acc, item) => {
         const groupValue = item[currentField] ?? "Ungrouped";
         if (!acc[groupValue]) acc[groupValue] = [];
         acc[groupValue].push(item);
         return acc;
       }, {} as Record<string, ListItem[]>);
-
       const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
         const direction = groupDirection === "asc" ? 1 : -1;
-
-        // Try numeric comparison first
-        const toNum = (v: string) => {
-          const n = Number(v);
-          return Number.isFinite(n) ? n : null;
-        };
-
-        const aNum = toNum(String(a));
-        const bNum = toNum(String(b));
-
-        if (aNum !== null && bNum !== null) {
-          // both numeric -> numeric compare
-          return (aNum - bNum) * direction;
-        }
-
-        if (aNum !== null && bNum === null) {
-          // numbers come before text
-          return -1 * direction;
-        }
-
-        if (aNum === null && bNum !== null) {
-          // text comes after numbers
-          return 1 * direction;
-        }
-
-        // both non-numeric -> case-insensitive alphabetical compare
-        const aStr = String(a).toLowerCase();
-        const bStr = String(b).toLowerCase();
+        const toNum = (v: string) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+        const aNum = toNum(String(a)); const bNum = toNum(String(b));
+        if (aNum !== null && bNum !== null) return (aNum - bNum) * direction;
+        if (aNum !== null && bNum === null) return -1 * direction;
+        if (aNum === null && bNum !== null) return 1 * direction;
+        const aStr = String(a).toLowerCase(); const bStr = String(b).toLowerCase();
         if (aStr < bStr) return -1 * direction;
         if (aStr > bStr) return 1 * direction;
         return 0;
       });
-
       const result: Record<string, any> = {};
-      for (const key of sortedGroupKeys) {
-        result[key] = recursiveGroup(groups[key], restFields, level + 1);
-      }
+      for (const key of sortedGroupKeys) result[key] = recursiveGroup(groups[key], restFields, level + 1);
       return result;
     };
-
     return recursiveGroup(sortedData, activeGroupBy, 0);
   }, [sortedData, finalItems, groupByFields, groupDirections]);
 
-  // --- Export logic ---
-  // MODIFIED: This function now handles the entire export process on the frontend.
   const handleExport = async () => {
     setIsExporting(true);
     toast.info("Preparing your export. This may take a moment for large datasets.");
-
     try {
-      // 1. Fetch ALL data that matches the current filters and sorting from the API
       const allDataResponse = await fetchDataFromApi({
-        apiEndpoint: effectiveApiEndpoint,
-        page: 1,
-        limit: 1000000, // Fetch a very large number of items to get all of them
-        searchTerm,
-        // ✅ Include initialFilters in export query
-        filters: { ...activeViewFilters, ...initialFilters },
-        advancedFilters,
-        sortBy: activeSortBy,
-        sortDirection: activeSortDirection as "asc" | "desc",
+        apiEndpoint: effectiveApiEndpoint, page: 1, limit: 1000000, searchTerm,
+        filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
+        sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc",
       });
-
       let itemsToExport = allDataResponse.data || [];
-
-      // 2. Apply the same transformations as the displayed data (keyMap and rowTransformer)
       if (keyMap && Object.keys(keyMap).length > 0) {
         itemsToExport = itemsToExport.map(item => {
           const newItem: Record<string, any> = {};
-          for (const key in item) {
-            const newKey = keyMap[key] || key;
-            newItem[newKey] = item[key];
-          }
-          // Ensure 'id' property exists for ListItem type
-          if (!('id' in newItem)) {
-            newItem.id = item.id ?? item[keyMap['id']] ?? '';
-          }
+          for (const key in item) { const newKey = keyMap[key] || key; newItem[newKey] = item[key]; }
+          if (!('id' in newItem)) newItem.id = item.id ?? item[keyMap['id']] ?? '';
           return newItem as ListItem;
         });
       }
-
       if (rowTransformer && typeof rowTransformer === "function") {
         itemsToExport = itemsToExport.map(r => rowTransformer(r));
       }
+      if (itemsToExport.length === 0) { toast.warning("No data to export for the current filters."); setIsExporting(false); return; }
 
-      if (itemsToExport.length === 0) {
-        toast.warning("No data to export for the current filters.");
-        setIsExporting(false);
-        return;
-      }
-
-      // 3. Convert the JSON data to a CSV string using only the currently visible columns
       const headers = visibleColumns.map(col => col.label);
       const dataKeys = visibleColumns.map(col => col.key);
 
-      // ...existing code...
-const extractText = (value: any): string => {
-  if (typeof value === "string" || typeof value === "number") return String(value);
-  if (React.isValidElement(value)) {
-    // Recursively extract text from React elements
-    const props = value.props as { children?: React.ReactNode };
-    const children = props && "children" in props ? props.children : undefined;
-    if (children === undefined || children === null) return "";
-    if (Array.isArray(children)) return children.map(extractText).join(" ");
-    return extractText(children);
-  }
-  if (Array.isArray(value)) {
-    // Only join if all elements are string/number
-    if (value.every(v => typeof v === "string" || typeof v === "number")) {
-      return value.join(", ");
-    }
-    // Otherwise, recursively extract text
-    return value.map(extractText).join(" ");
-  }
-  return ""; // For objects or anything else, return empty string
-};
+      const extractText = (value: any): string => {
+        if (typeof value === "string" || typeof value === "number") return String(value);
+        if (React.isValidElement(value)) {
+          const props = value.props as { children?: React.ReactNode };
+          const children = props && "children" in props ? props.children : undefined;
+          if (children === undefined || children === null) return "";
+          if (Array.isArray(children)) return children.map(extractText).join(" ");
+          return extractText(children);
+        }
+        if (Array.isArray(value)) {
+          if (value.every(v => typeof v === "string" || typeof v === "number")) return value.join(", ");
+          return value.map(extractText).join(" ");
+        }
+        return ""; 
+      };
 
-const csvRows = [
-  headers.map(escapeCsvValue).join(','), // Create the header row
-  ...itemsToExport.map(row =>
-    visibleColumns.map(col => {
-      let value = row[col.key];
-      if (typeof col.render === "function") {
-        value = col.render(value, row);
-      }
-      value = extractText(value);
-      return escapeCsvValue(value);
-    }).join(',')
-  )
-];
-// ...existing code...
+      const csvRows = [
+        headers.map(escapeCsvValue).join(','),
+        ...itemsToExport.map(row => visibleColumns.map(col => {
+            let value = row[col.key];
+            if (typeof col.render === "function") value = col.render(value, row);
+            value = extractText(value);
+            return escapeCsvValue(value);
+          }).join(',')
+        )
+      ];
 
       const csvContent = csvRows.join('\n');
-
-      // 4. Create a Blob from the CSV string and trigger a download in the browser
-      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // \uFEFF for Excel compatibility
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); 
       const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_export_${new Date().toISOString().slice(0,10)}.csv`;
-
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
@@ -1210,9 +771,7 @@ const csvRows = [
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
       toast.success("Export started successfully!");
-
     } catch (err) {
       console.error("Export error:", err);
       toast.error('Failed to export data. Please check the console for details.');
@@ -1221,497 +780,110 @@ const csvRows = [
     }
   };
 
-  // --- Utility functions for grouping/sorting UI ---
   const getAvailableGroupByFields = () => { return columns.filter(col => col.filterable !== false).map(col => ({ value: col.key, label: col.label })); };
   const getAvailableSortFields = () => { return columns.filter(col => col.sortable).map(col => ({ value: col.key, label: col.label })); };
   
-  // --- NEW: Handler for single-column sort via table header click ---
+  const getSortIcon = (columnKey: string) => {
+    const sortField = sortByFields.find(f => f.key === columnKey);
+    if (!sortField) return <ArrowUpDown className="w-4 h-4 text-slate-400" />;
+    return sortField.direction === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+  };
+  
   const handleHeaderSort = (columnKey: string) => {
     setSortByFields(prevFields => {
-      // Find if the column is already being sorted
       const existingField = prevFields.find(f => f.key === columnKey);
-
-      // If it's already the primary sort field, just toggle its direction
       if (existingField && prevFields.length === 1 && prevFields[0].key === columnKey) {
         return [{ ...existingField, direction: existingField.direction === 'asc' ? 'desc' : 'asc' }];
       }
-      
-      // Otherwise, make this column the single sort field
       return [{ key: columnKey, direction: 'asc' }];
     });
   };
 
-  const getSortIcon = (columnKey: string) => {
-    const sortField = sortByFields.find(f => f.key === columnKey);
-    if (!sortField) return <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50" />;
-    return sortField.direction === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />;
-  };
-
   const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
-  // --- Add button handler ---
-  const handleAddClick = () => {
-    // TODO: Implement add logic or open a modal for adding a new item
-    toast.info("Add button clicked!");
-  };
-
-  // --- TanStack Table column definitions ---
-  const colDefs: ColumnDef<any>[] = useMemo(
-    () =>
-      columns.map(
-        (col): ColumnDef<any> => ({
-          accessorKey: col.key,
-          header: col.label,
-          enableResizing: true,
-          cell: (info: { getValue: () => any; row: { original: ListItem } }) =>
-            col.render ? col.render(info.getValue(), info.row.original) : info.getValue(),
-        })
-      ),
-    [columns]
-  );
-
-  // --- Table instance for TanStack Table ---
-  const table = useReactTable({
-    data: finalItems || [],
-    columns: colDefs,
-    state: { columnOrder, columnSizing },
-    onColumnOrderChange: (newOrder) => {
-      const newOrderArray = typeof newOrder === 'function' ? newOrder(columnOrder) : newOrder;
-      setColumnOrder(newOrderArray);
-    },
-    onColumnSizingChange: (newSizing) =>
-  setViewColumnSizing((prev) => ({
-    ...prev,
-    [activeView]: typeof newSizing === "function" ? newSizing(prev[activeView] || {}) : newSizing,
-  })),
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  // --- DnD-kit Sortable header ---
-  function DraggableHeader({ header }: { header: any }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-      useSortable({ id: header.column.id });
-    return (
-      <th
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        colSpan={header.colSpan}
-        className="border-b bg-card text-sm font-medium"
-      >
-        <div className="flex items-center justify-start relative w-full h-full">
-          {flexRender(header.column.columnDef.header, header.getContext())}
-          {header.column.getCanResize() && (
-            <div
-              onMouseDown={header.getResizeHandler()}
-              onTouchStart={header.getResizeHandler()}
-              className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none bg-transparent hover:bg-blue-400"
-            />
-          )}
-        </div>
-      </th>
-    );
-  }
-
-  // --- State for adding new entries ---
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState<Record<string, any>>({});
+  const formColumns = columns.filter(col => col.key !== "LastModifiedBy" && col.key !== "LastModifiedTimestamp" && col.key !== "LastModifiedTs" && col.key !== idKey && !/id$/i.test(col.key));
 
-  // Filter columns for form (exclude LastModifiedBy, LastModifiedTimestamp, idKey, and keys containing 'id')
-  const formColumns = columns.filter(
-    col =>
-      col.key !== "LastModifiedBy" &&
-      col.key !== "LastModifiedTimestamp" &&
-      col.key !== "LastModifiedTs" &&
-      col.key !== idKey &&
-      !/id$/i.test(col.key) // Exclude keys ending with 'id' (case-insensitive)
-  );
+  const handleAddFormChange = (key: string, value: any) => { setAddForm(f => ({ ...f, [key]: value })); };
 
-
-  // Handle input change
-  const handleAddFormChange = (key: string, value: any) => {
-    setAddForm(f => ({ ...f, [key]: value }));
-  };
-
-  // Handle submit
   const handleAddSubmit = async () => {
-    if (!hasAccess(title, 'write')) {
-      toast.error("You don't have permission to add entries.");
-      setAddOpen(false);
-      return;
-    }
+    if (!hasAccess(title, 'write')) { toast.error("You don't have permission to add entries."); setAddOpen(false); return; }
     try {
-     // ✅ 1. Get the token from localStorage
-    const token = localStorage.getItem('app-token');
-    const userEmail = user?.email || "";
-
-    // ✅ 2. Define standard headers for all requests
-    const requestHeaders = {
-      "Content-Type": "application/json",
-      "Authorization": token ? `Bearer ${token}` : '', // ✅ JWT Header added
-    };
-
-    let response: Response;
-    
-      // Segment Category
-      if (apiEndpoint === "/segment-category") {
-        response = await fetch(`${API_BASE_URL}/segment-category`, {
-          method: "POST",
-         headers: requestHeaders,
-          body: JSON.stringify({
-            SegCatName: addForm.SegCatName || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Topic Given By
-      else if (apiEndpoint === "/topic-given-by") {
-        response = await fetch(`${API_BASE_URL}/topic-given-by`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            TGB_Name: addForm.TGB_Name || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Aux File Type
-      else if (apiEndpoint === "/aux-file-type") {
-        response = await fetch(`${API_BASE_URL}/aux-file-type`, {
-          method: "POST",
-           headers: requestHeaders,
-          body: JSON.stringify({
-            AuxFileType: addForm.AuxFileType || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Audio
-      else if (apiEndpoint === "/audio") {
-        response = await fetch(`${API_BASE_URL}/audio`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            AudioList: addForm.AudioList || "",
-            Distribution: addForm.Distribution || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Bhajan Type
-      else if (apiEndpoint === "/bhajan-type") {
-        response = await fetch(`${API_BASE_URL}/bhajan-type`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            BhajanName: addForm.BhajanName || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Digital Master Category
-      else if (apiEndpoint === "/digital-master-category") {
-        response = await fetch(`${API_BASE_URL}/digital-master-category`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            DMCategory_name: addForm.DMCategory_name || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Distribution Label
-      else if (apiEndpoint === "/distribution-label") {
-        response = await fetch(`${API_BASE_URL}/distribution-label`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            LabelName: addForm.LabelName || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Editing Type
-      else if (apiEndpoint === "/editing-type") {
-        response = await fetch(`${API_BASE_URL}/editing-type`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            EdType: addForm.EdType || "",
-            AudioVideo: addForm.AudioVideo || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Editing Status
-      else if (apiEndpoint === "/editing-status") {
-        response = await fetch(`${API_BASE_URL}/editing-status`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            EdType: addForm.EdType || "",
-            AudioVideo: addForm.AudioVideo || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Event Category
-      else if (apiEndpoint === "/event-category") {
-        response = await fetch(`${API_BASE_URL}/event-category`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            EventCategory: addForm.EventCategory || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Footage Type
-      else if (apiEndpoint === "/footage-type") {
-        response = await fetch(`${API_BASE_URL}/footage-type`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            FootageTypeList: addForm.FootageTypeList || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Format Type
-      else if (apiEndpoint === "/format-type") {
-        response = await fetch(`${API_BASE_URL}/format-type`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            Type: addForm.Type || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Granths
-      else if (apiEndpoint === "/granths") {
-        response = await fetch(`${API_BASE_URL}/granths`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            Name: addForm.Name || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Language
-      else if (apiEndpoint === "/language") {
-        response = await fetch(`${API_BASE_URL}/language`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            TitleLanguage: addForm.TitleLanguage || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // New Event Category
-      else if (apiEndpoint === "/new-event-category") {
-        response = await fetch(`${API_BASE_URL}/new-event-category`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            NewEventCategoryName: addForm.NewEventCategoryName || "",
-            MARK_DISCARD: addForm.MARK_DISCARD || "0",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // New Cities
-      else if (apiEndpoint === "/new-cities") {
-        response = await fetch(`${API_BASE_URL}/new-cities`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            City: addForm.City || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // New Countries
-      else if (apiEndpoint === "/new-countries") {
-        response = await fetch(`${API_BASE_URL}/new-countries`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            Country: addForm.Country || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // New States
-      else if (apiEndpoint === "/new-states") {
-        response = await fetch(`${API_BASE_URL}/new-states`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            State: addForm.State || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Master Quality
-      else if (apiEndpoint === "/master-quality") {
-        response = await fetch(`${API_BASE_URL}/master-quality`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            MQName: addForm.MQName || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Organizations
-      else if (apiEndpoint === "/organizations") {
-        response = await fetch(`${API_BASE_URL}/organizations`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            Organization: addForm.Organization || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Occasions
-      else if (apiEndpoint === "/occasions") {
-        response = await fetch(`${API_BASE_URL}/occasions`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            Occasion: addForm.Occasion || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-
-    else if (apiEndpoint === "/google-sheet/digital-recordings") {
-  response = await fetch(`${API_BASE_URL}/google-sheet/digital-recordings`, {
-    method: "POST",
-    headers: requestHeaders,
-    body: JSON.stringify({
-      fkEventCode: addForm.fkEventCode || "",
-      RecordingName: addForm.RecordingName || "",
-      RecordingCode: addForm.RecordingCode || "",
-      Duration: addForm.Duration || "",
-      DistributionDriveLink: addForm.DistributionDriveLink || "",
-      BitRate: addForm.BitRate || "",
-      Dimension: addForm.Dimension || "",
-      Masterquality: addForm.Masterquality || "",
-      fkMediaName: addForm.fkMediaName || "",
-      Filesize: addForm.Filesize || "",
-      FilesizeInBytes: addForm.FilesizeInBytes || "",
-      NoOfFiles: addForm.NoOfFiles || "",
-      RecordingRemarks: addForm.RecordingRemarks || "",
-      CounterError: addForm.CounterError || "",
-      ReasonError: addForm.ReasonError || "",
-      MasterProductTitle: addForm.MasterProductTitle || "",
-      fkDistributionLabel: addForm.fkDistributionLabel || "",
-      ProductionBucket: addForm.ProductionBucket || "",
-      fkDigitalMasterCategory: addForm.fkDigitalMasterCategory || "",
-      AudioBitrate: addForm.AudioBitrate || "",
-      AudioTotalDuration: addForm.AudioTotalDuration || "",
-      QcRemarksCheckedOn: addForm.QcRemarksCheckedOn || "",
-      PreservationStatus: addForm.PreservationStatus || "",
-      QCSevak: addForm.QCSevak || "",
-      QcStatus: addForm.QcStatus || "",
-      SubmittedDate: addForm.SubmittedDate || "",
-      PresStatGuidDt: addForm.PresStatGuidDt || "",
-      InfoOnCassette: addForm.InfoOnCassette || "",
-      IsInformal: addForm.IsInformal || "",
-      AssociatedDR: addForm.AssociatedDR || "",
-      Teams: addForm.Teams || "",
-      LastModifiedBy: userEmail, // Add the current user's email
-    }),
-  });
-}
-      // Topic Number Source
-      else if (apiEndpoint === "/topic-number-source") {
-        response = await fetch(`${API_BASE_URL}/topic-number-source`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            TNName: addForm.TNName || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      // Time of Day
-      else if (apiEndpoint === "/time-of-day") {
-        response = await fetch(`${API_BASE_URL}/time-of-day`, {
-          method: "POST",
-          headers: requestHeaders,
-          body: JSON.stringify({
-            TimeList: addForm.TimeList || "",
-            LastModifiedBy: userEmail
-          }),
-        });
-      }
-      else {
-      response = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
-        method: "POST",
-        headers: requestHeaders,
-        body: JSON.stringify({ ...addForm, LastModifiedBy: userEmail }),
-      });
-    }
-
-       // ✅ 3. GLOBAL AUTH CHECK (Handles all cases above)
-    if (response.status === 401 || response.status === 403) {
-      console.error("Session expired or unauthorized. Redirecting...");
-      toast.error("Session expired. Please log in again.");
+      const token = localStorage.getItem('app-token');
+      const userEmail = user?.email || "";
+      const requestHeaders = { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : '' };
+      let response: Response;
       
-      localStorage.removeItem('app-token');
-      localStorage.removeItem('google-token');
-      
-      setTimeout(() => { window.location.href = '/'; }, 1500);
-      return;
-    }
+      if (apiEndpoint === "/segment-category") { response = await fetch(`${API_BASE_URL}/segment-category`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ SegCatName: addForm.SegCatName || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/topic-given-by") { response = await fetch(`${API_BASE_URL}/topic-given-by`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ TGB_Name: addForm.TGB_Name || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/aux-file-type") { response = await fetch(`${API_BASE_URL}/aux-file-type`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ AuxFileType: addForm.AuxFileType || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/audio") { response = await fetch(`${API_BASE_URL}/audio`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ AudioList: addForm.AudioList || "", Distribution: addForm.Distribution || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/bhajan-type") { response = await fetch(`${API_BASE_URL}/bhajan-type`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ BhajanName: addForm.BhajanName || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/digital-master-category") { response = await fetch(`${API_BASE_URL}/digital-master-category`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ DMCategory_name: addForm.DMCategory_name || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/distribution-label") { response = await fetch(`${API_BASE_URL}/distribution-label`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ LabelName: addForm.LabelName || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/editing-type") { response = await fetch(`${API_BASE_URL}/editing-type`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ EdType: addForm.EdType || "", AudioVideo: addForm.AudioVideo || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/editing-status") { response = await fetch(`${API_BASE_URL}/editing-status`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ EdType: addForm.EdType || "", AudioVideo: addForm.AudioVideo || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/event-category") { response = await fetch(`${API_BASE_URL}/event-category`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ EventCategory: addForm.EventCategory || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/footage-type") { response = await fetch(`${API_BASE_URL}/footage-type`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ FootageTypeList: addForm.FootageTypeList || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/format-type") { response = await fetch(`${API_BASE_URL}/format-type`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ Type: addForm.Type || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/granths") { response = await fetch(`${API_BASE_URL}/granths`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ Name: addForm.Name || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/language") { response = await fetch(`${API_BASE_URL}/language`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ TitleLanguage: addForm.TitleLanguage || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/new-event-category") { response = await fetch(`${API_BASE_URL}/new-event-category`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ NewEventCategoryName: addForm.NewEventCategoryName || "", MARK_DISCARD: addForm.MARK_DISCARD || "0", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/new-cities") { response = await fetch(`${API_BASE_URL}/new-cities`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ City: addForm.City || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/new-countries") { response = await fetch(`${API_BASE_URL}/new-countries`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ Country: addForm.Country || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/new-states") { response = await fetch(`${API_BASE_URL}/new-states`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ State: addForm.State || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/master-quality") { response = await fetch(`${API_BASE_URL}/master-quality`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ MQName: addForm.MQName || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/organizations") { response = await fetch(`${API_BASE_URL}/organizations`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ Organization: addForm.Organization || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/occasions") { response = await fetch(`${API_BASE_URL}/occasions`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ Occasion: addForm.Occasion || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/google-sheet/digital-recordings") {
+        response = await fetch(`${API_BASE_URL}/google-sheet/digital-recordings`, {
+          method: "POST", headers: requestHeaders,
+          body: JSON.stringify({
+            fkEventCode: addForm.fkEventCode || "", RecordingName: addForm.RecordingName || "", RecordingCode: addForm.RecordingCode || "", Duration: addForm.Duration || "", DistributionDriveLink: addForm.DistributionDriveLink || "", BitRate: addForm.BitRate || "", Dimension: addForm.Dimension || "", Masterquality: addForm.Masterquality || "", fkMediaName: addForm.fkMediaName || "", Filesize: addForm.Filesize || "", FilesizeInBytes: addForm.FilesizeInBytes || "", NoOfFiles: addForm.NoOfFiles || "", RecordingRemarks: addForm.RecordingRemarks || "", CounterError: addForm.CounterError || "", ReasonError: addForm.ReasonError || "", MasterProductTitle: addForm.MasterProductTitle || "", fkDistributionLabel: addForm.fkDistributionLabel || "", ProductionBucket: addForm.ProductionBucket || "", fkDigitalMasterCategory: addForm.fkDigitalMasterCategory || "", AudioBitrate: addForm.AudioBitrate || "", AudioTotalDuration: addForm.AudioTotalDuration || "", QcRemarksCheckedOn: addForm.QcRemarksCheckedOn || "", PreservationStatus: addForm.PreservationStatus || "", QCSevak: addForm.QCSevak || "", QcStatus: addForm.QcStatus || "", SubmittedDate: addForm.SubmittedDate || "", PresStatGuidDt: addForm.PresStatGuidDt || "", InfoOnCassette: addForm.InfoOnCassette || "", IsInformal: addForm.IsInformal || "", AssociatedDR: addForm.AssociatedDR || "", Teams: addForm.Teams || "", LastModifiedBy: userEmail,
+          }),
+        });
+      }
+      else if (apiEndpoint === "/topic-number-source") { response = await fetch(`${API_BASE_URL}/topic-number-source`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ TNName: addForm.TNName || "", LastModifiedBy: userEmail }), }); }
+      else if (apiEndpoint === "/time-of-day") { response = await fetch(`${API_BASE_URL}/time-of-day`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ TimeList: addForm.TimeList || "", LastModifiedBy: userEmail }), }); }
+      else { response = await fetch(`${API_BASE_URL}${apiEndpoint}`, { method: "POST", headers: requestHeaders, body: JSON.stringify({ ...addForm, LastModifiedBy: userEmail }), }); }
+
+      if (response.status === 401 || response.status === 403) {
+        toast.error("Session expired. Please log in again.");
+        localStorage.removeItem('app-token'); localStorage.removeItem('google-token');
+        setTimeout(() => { window.location.href = '/'; }, 1500); return;
+      }
 
       if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      // --- BEGIN: DETAILED ERROR POPUP LOGIC (copied from handleBulkUpdate) ---
-      let errorMsg = '';
-      if (typeof errorData === 'object' && errorData !== null) {
-        if (errorData.sqlMessage) errorMsg += `❌ ${errorData.sqlMessage}\n`;
-        if (errorData.message) errorMsg += `Message: ${errorData.message}\n`;
-        if (errorData.sql) errorMsg += `SQL:\n${errorData.sql}\n`;
-        if (errorData.stack) errorMsg += `Stack:\n${errorData.stack}\n`;
-        if (errorData.code) errorMsg += `Code: ${errorData.code}\n`;
-        if (errorData.errno) errorMsg += `Errno: ${errorData.errno}\n`;
-        if (errorData.sqlState) errorMsg += `SQLState: ${errorData.sqlState}\n`;
-        if (!errorMsg) errorMsg = JSON.stringify(errorData, null, 2);
-      } else {
-        errorMsg = String(errorData) || "Failed to add entry";
+        const errorData = await response.json().catch(() => ({}));
+        let errorMsg = '';
+        if (typeof errorData === 'object' && errorData !== null) {
+          if (errorData.sqlMessage) errorMsg += `❌ ${errorData.sqlMessage}\n`;
+          if (errorData.message) errorMsg += `Message: ${errorData.message}\n`;
+          if (errorData.sql) errorMsg += `SQL:\n${errorData.sql}\n`;
+          if (errorData.stack) errorMsg += `Stack:\n${errorData.stack}\n`;
+          if (errorData.code) errorMsg += `Code: ${errorData.code}\n`;
+          if (errorData.errno) errorMsg += `Errno: ${errorData.errno}\n`;
+          if (errorData.sqlState) errorMsg += `SQLState: ${errorData.sqlState}\n`;
+          if (!errorMsg) errorMsg = JSON.stringify(errorData, null, 2);
+        } else { errorMsg = String(errorData) || "Failed to add entry"; }
+        showErrorDialog(errorMsg, "Add Entry Error");
+        toast.error("Failed to add entry"); return;
       }
-      // Show error dialog (same as bulk update)
-      showErrorDialog(errorMsg, "Add Entry Error");
-      toast.error("Failed to add entry");
-      return;
-    }
       toast.success("Entry added!");
-    setAddOpen(false);
-    setAddForm({});
-    await queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
-  } catch (e: any) {
-    // Show error dialog for unexpected errors
-    showErrorDialog(e?.message || String(e), "Add Entry Error");
-    toast.error("Failed to add entry");
-  }
-};
+      setAddOpen(false); setAddForm({});
+      await queryClient.invalidateQueries({ queryKey: [apiEndpoint] });
+    } catch (e: any) {
+      showErrorDialog(e?.message || String(e), "Add Entry Error");
+      toast.error("Failed to add entry");
+    }
+  };
 
-  // --- Cell editing: always use sortedData ---
   const handleCellChange = (rowIndex: number, columnKey: string, newValue: any) => {
-    // Use sortedData for editing, so it works with grouping and paging
     const item = sortedData[rowIndex];
     if (!item) return;
-
     const rowId = item[idKey];
     const originalValue = item[columnKey];
-
     setEditingCell(null);
 
     if (newValue === originalValue) {
@@ -1720,9 +892,7 @@ const csvRows = [
           const newRowChanges = { ...prev[rowId] };
           delete newRowChanges[columnKey];
           if (Object.keys(newRowChanges).length === 0) {
-            const newTotalChanges = { ...prev };
-            delete newTotalChanges[rowId];
-            return newTotalChanges;
+            const newTotalChanges = { ...prev }; delete newTotalChanges[rowId]; return newTotalChanges;
           }
           return { ...prev, [rowId]: newRowChanges };
         });
@@ -1730,173 +900,79 @@ const csvRows = [
       return;
     }
 
-    setPendingChanges(prev => ({
-      ...prev,
-      [rowId]: {
-        ...prev[rowId],
-        [columnKey]: newValue,
-      }
-    }));
+    setPendingChanges(prev => ({ ...prev, [rowId]: { ...prev[rowId], [columnKey]: newValue } }));
   };
 
-  // --- Bulk update: already uses sortedData ---
-  // ...existing code...
-  // --- Bulk update: already uses sortedData ---
   const handleBulkUpdate = async () => {
     const changesToSave = Object.entries(pendingChanges);
-    if (changesToSave.length === 0) {
-      toast.info("No changes to save.");
-      return;
-    }
-
+    if (changesToSave.length === 0) { toast.info("No changes to save."); return; }
     const savingToast = toast.loading(`Saving ${changesToSave.length} update(s)...`);
 
     const updatePromises = changesToSave.map(async ([rowId, changes]) => {
-      // Always search the full dataset (`sortedData`)
       const originalItem = sortedData.find(item => String(item[idKey]) === String(rowId));
-      if (!originalItem) {
-        return { status: 'rejected', reason: `Original item with ID ${rowId} not found.`, rowId };
-      }
+      if (!originalItem) return { status: 'rejected', reason: `Original item with ID ${rowId} not found.`, rowId };
       const updatedRow = { ...originalItem, ...changes };
-      // Add audit fields
-      if (user?.email) {
-        updatedRow.LastModifiedBy = user.email;
-      }
+      if (user?.email) updatedRow.LastModifiedBy = user.email;
       delete updatedRow.LastModifiedTimestamp;
 
-      // Determine the correct endpoint and ID for this specific row
-      let endpoint = "";
-      let resolvedRowId = "";
-
-      if (effectiveApiEndpoint.includes("digitalrecording")) {
-        endpoint = "/digitalrecording";
-        resolvedRowId = updatedRow.RecordingCode;
-      } else if (effectiveApiEndpoint.includes("auxfiles")) {
-        endpoint = "/auxfiles";
-        resolvedRowId = updatedRow.AuxCode;
-      } else if (effectiveApiEndpoint.includes("newmedialog")) {
-        endpoint = "/newmedialog";
-        resolvedRowId = updatedRow.MLUniqueID;
-      } else if (effectiveApiEndpoint.includes("events")) {
-        endpoint = "/events";
-        resolvedRowId = updatedRow.EventID;
-      } else if (effectiveApiEndpoint.includes("non-event-production")) {
-        endpoint = "/non-event-production";
-        resolvedRowId = updatedRow.SMCode;
-      } else if (effectiveApiEndpoint.includes("audio")) {
-        endpoint = "/audio"; 
-        resolvedRowId = updatedRow.AID;
-      } else if (effectiveApiEndpoint.includes("bhajantype")) {
-        endpoint = "/bhajantype";
-        resolvedRowId = updatedRow.BTID;
-      } else if (effectiveApiEndpoint.includes("digitalmastercategory")) {
-        endpoint = "/digital-master-category";
-        resolvedRowId = updatedRow.DMCID;
-      } else if (effectiveApiEndpoint.includes("distributionlabel")) {
-        endpoint = "/distribution-label";
-        resolvedRowId = updatedRow.LabelID;
-      } else if (effectiveApiEndpoint.includes("editingtype")) {
-        endpoint = "/editing-type";
-        resolvedRowId = updatedRow.EdID;
-      } else if (effectiveApiEndpoint.includes("editingstatus")) {
-        endpoint = "/editing-status";
-        resolvedRowId = updatedRow.EdID;
-      } else if (effectiveApiEndpoint.includes("eventcategory")) {
-        endpoint = "/event-category";
-        resolvedRowId = updatedRow.EventCategoryID;
-      } else if (effectiveApiEndpoint.includes("footagetype")) {
-        endpoint = "/footage-type";
-        resolvedRowId = updatedRow.FootageID;
-      } else if (effectiveApiEndpoint.includes("formattype")) {
-        endpoint = "/formattype";
-        resolvedRowId = updatedRow.FTID;
-      } else if (effectiveApiEndpoint.includes("granths")) {
-        endpoint = "/granths";
-        resolvedRowId = updatedRow.ID;
-      } else if (effectiveApiEndpoint.includes("language")) {
-        endpoint = "/language";
-        resolvedRowId = updatedRow.STID;
-      } else if (effectiveApiEndpoint.includes("master-quality")) {
-        endpoint = "/master-quality";
-        resolvedRowId = updatedRow.MQID;
-      } else if (effectiveApiEndpoint.includes("organizations")) {
-        endpoint = "/organizations";
-        resolvedRowId = updatedRow.OrganizationID;
-      } else if (effectiveApiEndpoint.includes("neweventcategory")) {
-        endpoint = "/new-event-category";
-        resolvedRowId = updatedRow.SrNo || updatedRow.CategoryID;
-      } else if (effectiveApiEndpoint.includes("newcities")) {
-        endpoint = "/newcities";
-        resolvedRowId = updatedRow.CityID;
-      } else if (effectiveApiEndpoint.includes("newcountries")) {
-        endpoint = "/newcountries";
-        resolvedRowId = updatedRow.CountryID;
-      } else if (effectiveApiEndpoint.includes("newstates")) {
-        endpoint = "/newstates";
-        resolvedRowId = updatedRow.StateID;
-      } else if (effectiveApiEndpoint.includes("occasions")) {
-        endpoint = "/occasions";
-        resolvedRowId = updatedRow.OccasionID;
-      } else if (effectiveApiEndpoint.includes("topicnumbersource")) {
-        endpoint = "/topicnumbersource";
-        resolvedRowId = updatedRow.TNID;
-      } else if (effectiveApiEndpoint.includes("time-of-day")) {
-        endpoint = "/time-of-day";
-        resolvedRowId = updatedRow.TimeID;
-      }  else if (effectiveApiEndpoint.includes("aux-file-type")) {
-        endpoint = "/aux-file-type";
-        resolvedRowId = updatedRow.AuxTypeID;
-      } else if (effectiveApiEndpoint.includes("topic-given-by")) {
-        endpoint = "/topic-given-by";
-        resolvedRowId = updatedRow.TGBID;
-      } else {
-        endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`;
-        resolvedRowId = updatedRow[idKey];
-      }
+      let endpoint = ""; let resolvedRowId = "";
+      if (effectiveApiEndpoint.includes("digitalrecording")) { endpoint = "/digitalrecording"; resolvedRowId = updatedRow.RecordingCode; }
+      else if (effectiveApiEndpoint.includes("auxfiles")) { endpoint = "/auxfiles"; resolvedRowId = updatedRow.AuxCode; }
+      else if (effectiveApiEndpoint.includes("newmedialog")) { endpoint = "/newmedialog"; resolvedRowId = updatedRow.MLUniqueID; }
+      else if (effectiveApiEndpoint.includes("events")) { endpoint = "/events"; resolvedRowId = updatedRow.EventID; }
+      else if (effectiveApiEndpoint.includes("non-event-production")) { endpoint = "/non-event-production"; resolvedRowId = updatedRow.SMCode; }
+      else if (effectiveApiEndpoint.includes("audio")) { endpoint = "/audio"; resolvedRowId = updatedRow.AID; }
+      else if (effectiveApiEndpoint.includes("bhajantype")) { endpoint = "/bhajantype"; resolvedRowId = updatedRow.BTID; }
+      else if (effectiveApiEndpoint.includes("digitalmastercategory")) { endpoint = "/digital-master-category"; resolvedRowId = updatedRow.DMCID; }
+      else if (effectiveApiEndpoint.includes("distributionlabel")) { endpoint = "/distribution-label"; resolvedRowId = updatedRow.LabelID; }
+      else if (effectiveApiEndpoint.includes("editingtype")) { endpoint = "/editing-type"; resolvedRowId = updatedRow.EdID; }
+      else if (effectiveApiEndpoint.includes("editingstatus")) { endpoint = "/editing-status"; resolvedRowId = updatedRow.EdID; }
+      else if (effectiveApiEndpoint.includes("eventcategory")) { endpoint = "/event-category"; resolvedRowId = updatedRow.EventCategoryID; }
+      else if (effectiveApiEndpoint.includes("footagetype")) { endpoint = "/footage-type"; resolvedRowId = updatedRow.FootageID; }
+      else if (effectiveApiEndpoint.includes("formattype")) { endpoint = "/formattype"; resolvedRowId = updatedRow.FTID; }
+      else if (effectiveApiEndpoint.includes("granths")) { endpoint = "/granths"; resolvedRowId = updatedRow.ID; }
+      else if (effectiveApiEndpoint.includes("language")) { endpoint = "/language"; resolvedRowId = updatedRow.STID; }
+      else if (effectiveApiEndpoint.includes("master-quality")) { endpoint = "/master-quality"; resolvedRowId = updatedRow.MQID; }
+      else if (effectiveApiEndpoint.includes("organizations")) { endpoint = "/organizations"; resolvedRowId = updatedRow.OrganizationID; }
+      else if (effectiveApiEndpoint.includes("neweventcategory")) { endpoint = "/new-event-category"; resolvedRowId = updatedRow.SrNo || updatedRow.CategoryID; }
+      else if (effectiveApiEndpoint.includes("newcities")) { endpoint = "/newcities"; resolvedRowId = updatedRow.CityID; }
+      else if (effectiveApiEndpoint.includes("newcountries")) { endpoint = "/newcountries"; resolvedRowId = updatedRow.CountryID; }
+      else if (effectiveApiEndpoint.includes("newstates")) { endpoint = "/newstates"; resolvedRowId = updatedRow.StateID; }
+      else if (effectiveApiEndpoint.includes("occasions")) { endpoint = "/occasions"; resolvedRowId = updatedRow.OccasionID; }
+      else if (effectiveApiEndpoint.includes("topicnumbersource")) { endpoint = "/topicnumbersource"; resolvedRowId = updatedRow.TNID; }
+      else if (effectiveApiEndpoint.includes("time-of-day")) { endpoint = "/time-of-day"; resolvedRowId = updatedRow.TimeID; }  
+      else if (effectiveApiEndpoint.includes("aux-file-type")) { endpoint = "/aux-file-type"; resolvedRowId = updatedRow.AuxTypeID; }
+      else if (effectiveApiEndpoint.includes("topic-given-by")) { endpoint = "/topic-given-by"; resolvedRowId = updatedRow.TGBID; }
+      else { endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`; resolvedRowId = updatedRow[idKey]; }
 
       try {
-        // ✅ 1. Get the token from localStorage
-      const token = localStorage.getItem('app-token');
+        const token = localStorage.getItem('app-token');
+        const response = await fetch(`${API_BASE_URL}${endpoint}/${resolvedRowId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : "" },
+          body: JSON.stringify(updatedRow),
+        });
 
-      // ✅ 2. Execute fetch with Authorization Header
-      const response = await fetch(`${API_BASE_URL}${endpoint}/${resolvedRowId}`, {
-        method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": token ? `Bearer ${token}` : "" // ✅ JWT Header added
-        },
-        body: JSON.stringify(updatedRow),
-      });
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('app-token'); localStorage.removeItem('google-token');
+          window.location.href = '/'; return { status: 'rejected', reason: "Session expired", rowId };
+        }
 
-      // ✅ 3. Handle Unauthorized/Expired session
-      if (response.status === 401 || response.status === 403) {
-        console.error("Bulk Update: Unauthorized. Redirecting...");
-        localStorage.removeItem('app-token');
-        localStorage.removeItem('google-token');
-        window.location.href = '/'; 
-        return { status: 'rejected', reason: "Session expired", rowId };
-      }
-
-if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-  // Build a detailed error message from all fields
-  let errorMsg = '';
-  if (typeof errorData === 'object' && errorData !== null) {
-    if (errorData.sqlMessage) errorMsg += `❌ ${errorData.sqlMessage}\n`;
-    if (errorData.message) errorMsg += `Message: ${errorData.message}\n`;
-    if (errorData.sql) errorMsg += `SQL:\n${errorData.sql}\n`;
-    if (errorData.stack) errorMsg += `Stack:\n${errorData.stack}\n`;
-    if (errorData.code) errorMsg += `Code: ${errorData.code}\n`;
-    if (errorData.errno) errorMsg += `Errno: ${errorData.errno}\n`;
-    if (errorData.sqlState) errorMsg += `SQLState: ${errorData.sqlState}\n`;
-    // If still empty, show the whole object
-    if (!errorMsg) errorMsg = JSON.stringify(errorData, null, 2);
-  } else {
-    errorMsg = String(errorData) || `Failed to update ${resolvedRowId}`;
-  }
-  return { status: 'rejected', reason: errorMsg, rowId };
-}
-
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          let errorMsg = '';
+          if (typeof errorData === 'object' && errorData !== null) {
+            if (errorData.sqlMessage) errorMsg += `❌ ${errorData.sqlMessage}\n`;
+            if (errorData.message) errorMsg += `Message: ${errorData.message}\n`;
+            if (errorData.sql) errorMsg += `SQL:\n${errorData.sql}\n`;
+            if (errorData.stack) errorMsg += `Stack:\n${errorData.stack}\n`;
+            if (errorData.code) errorMsg += `Code: ${errorData.code}\n`;
+            if (errorData.errno) errorMsg += `Errno: ${errorData.errno}\n`;
+            if (errorData.sqlState) errorMsg += `SQLState: ${errorData.sqlState}\n`;
+            if (!errorMsg) errorMsg = JSON.stringify(errorData, null, 2);
+          } else { errorMsg = String(errorData) || `Failed to update ${resolvedRowId}`; }
+          return { status: 'rejected', reason: errorMsg, rowId };
+        }
         return { status: 'fulfilled', value: resolvedRowId };
       } catch (error: any) {
         return { status: 'rejected', reason: error?.message || String(error), rowId };
@@ -1904,55 +980,39 @@ if (!response.ok) {
     });
 
     const results = await Promise.allSettled(updatePromises);
+    let successfulUpdates = 0; let failedUpdates = 0; const failedDetails: string[] = [];
 
-    let successfulUpdates = 0;
-    let failedUpdates = 0;
-    const failedDetails: string[] = [];
-
-results.forEach(result => {
-  if (result.status === 'fulfilled') {
-    const value = result.value;
-    if (value && (value as any).status === 'fulfilled') {
-      successfulUpdates++;
-    } else if (value && (value as any).status === 'rejected') {
-      failedUpdates++;
-      let reason = (value as any).reason || (value as any).rowId || 'Unknown';
-      // Always stringify if not a string
-      if (typeof reason !== 'string') {
-        reason = JSON.stringify(reason, null, 2);
+    results.forEach(result => {
+      if (result.status === 'fulfilled') {
+        const value = result.value;
+        if (value && (value as any).status === 'fulfilled') { successfulUpdates++; } 
+        else if (value && (value as any).status === 'rejected') {
+          failedUpdates++; let reason = (value as any).reason || (value as any).rowId || 'Unknown';
+          if (typeof reason !== 'string') reason = JSON.stringify(reason, null, 2);
+          try {
+            const parsed = JSON.parse(reason);
+            if (parsed && typeof parsed === 'object') {
+              let details = '';
+              if (parsed.sqlMessage) details += `❌ ${parsed.sqlMessage}\n`;
+              if (parsed.message) details += `Message: ${parsed.message}\n`;
+              if (parsed.sql) details += `SQL:\n${parsed.sql}\n`;
+              if (parsed.stack) details += `Stack:\n${parsed.stack}\n`;
+              if (parsed.code) details += `Code: ${parsed.code}\n`;
+              if (parsed.errno) details += `Errno: ${parsed.errno}\n`;
+              if (parsed.sqlState) details += `SQLState: ${parsed.sqlState}\n`;
+              if (parsed.error && !details) details += `Error: ${parsed.error}\n`;
+              if (!details) details = JSON.stringify(parsed, null, 2);
+              reason = details;
+            }
+          } catch { }
+          failedDetails.push(`ID ${ (value as any).rowId || 'unknown' }: ${reason}`);
+        } else { failedUpdates++; failedDetails.push(`Unknown failure: ${JSON.stringify(value, null, 2)}`); }
+      } else {
+        failedUpdates++; let reason = result.reason;
+        if (typeof reason !== 'string') reason = JSON.stringify(reason, null, 2);
+        failedDetails.push(`Promise rejected: ${String(reason)}`);
       }
-      // Try to parse JSON string if it looks like an object
-      try {
-        const parsed = JSON.parse(reason);
-        // If parsed object has sqlMessage or stack, build a detailed message
-        if (parsed && typeof parsed === 'object') {
-          let details = '';
-          if (parsed.sqlMessage) details += `❌ ${parsed.sqlMessage}\n`;
-          if (parsed.message) details += `Message: ${parsed.message}\n`;
-          if (parsed.sql) details += `SQL:\n${parsed.sql}\n`;
-          if (parsed.stack) details += `Stack:\n${parsed.stack}\n`;
-          if (parsed.code) details += `Code: ${parsed.code}\n`;
-          if (parsed.errno) details += `Errno: ${parsed.errno}\n`;
-          if (parsed.sqlState) details += `SQLState: ${parsed.sqlState}\n`;
-          if (parsed.error && !details) details += `Error: ${parsed.error}\n`;
-          if (!details) details = JSON.stringify(parsed, null, 2);
-          reason = details;
-        }
-      } catch { /* not JSON, leave as is */ }
-      failedDetails.push(`ID ${ (value as any).rowId || 'unknown' }: ${reason}`);
-    } else {
-      failedUpdates++;
-      failedDetails.push(`Unknown failure: ${JSON.stringify(value, null, 2)}`);
-    }
-  } else {
-    failedUpdates++;
-    let reason = result.reason;
-    if (typeof reason !== 'string') {
-      reason = JSON.stringify(reason, null, 2);
-    }
-    failedDetails.push(`Promise rejected: ${String(reason)}`);
-  }
-});
+    });
 
     if (failedUpdates > 0) {
       const summary = `${failedUpdates} update(s) failed. ${successfulUpdates} saved.`;
@@ -1966,27 +1026,639 @@ results.forEach(result => {
     setPendingChanges({});
     await queryClient.invalidateQueries({ queryKey: [effectiveApiEndpoint] });
   };
-  // Handler to discard pending changes
-  const handleDiscardChanges = () => {
-    setPendingChanges({});
-    toast.info("All pending changes discarded.");
-  };
-// ...existing code...
 
-  // --- NEW: Error dialog state/helper ---
-  const [errorDialog, setErrorDialog] = useState<{ open: boolean; title?: string; message?: string }>({
-    open: false,
-    title: "Error",
-    message: "",
-  });
-  const showErrorDialog = (message: string, title = "Error") => {
-    setErrorDialog({ open: true, title, message });
+  const handleDiscardChanges = () => { setPendingChanges({}); toast.info("All pending changes discarded."); };
+
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; title?: string; message?: string }>({ open: false, title: "Error", message: "", });
+  const showErrorDialog = (message: string, title = "Error") => { setErrorDialog({ open: true, title, message }); };
+
+  // ==========================================
+  // 📱 MOBILE APP UI (Dark Theme + Sticky Table)
+  // ==========================================
+  
+  const renderMobileDetailsView = () => {
+    if (!mobileSelectedRow) return null;
+
+    // Try to get a title from the first visible column
+    const titleVal = visibleColumns.length > 0 ? mobileSelectedRow[visibleColumns[0].key] : "Entry Details";
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 100,
+          backgroundColor: "#0b1120",
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: "sans-serif",
+          height: "100dvh",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "16px",
+            borderBottom: "1px solid #1e293b",
+            backgroundColor: "rgba(30,41,59,0.95)",
+            backdropFilter: "blur(8px)",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.5)"
+          }}
+        >
+          <ChevronLeft
+            style={{ width: 28, height: 28, color: "#cbd5e1", cursor: "pointer", marginRight: 12 }}
+            onClick={() => setMobileSelectedRow(null)}
+          />
+          <h2
+            style={{
+              color: "#ffffff",
+              fontSize: 18,
+              fontWeight: 600,
+              margin: 0,
+              flex: 1,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {titleVal || "Entry Details"}
+          </h2>
+        </div>
+
+        {/* Content - All Columns */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            paddingBottom: "80px", // space for bottom swiping
+          }}
+        >
+          {columns.map((col) => {
+            let cellValue = mobileSelectedRow[col.key];
+            if (typeof col.render === "function") {
+              cellValue = col.render(cellValue, mobileSelectedRow);
+            }
+
+            return (
+              <div
+                key={col.key}
+                style={{
+                  backgroundColor: "#1e293b",
+                  padding: "14px",
+                  borderRadius: "10px",
+                  border: "1px solid #334155",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                }}
+              >
+                <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 6, fontWeight: 500 }}>
+                  {col.label}
+                </div>
+                <div style={{ fontSize: 15, color: "#f8fafc", wordBreak: "break-word" }}>
+                  {cellValue !== undefined && cellValue !== null && cellValue !== "" ? (
+                    cellValue
+                  ) : (
+                    <span style={{ color: "#475569" }}>-</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
-  // --- Render ---
-  return (
-    <div className={`${isMobile ? 'p-2 space-y-3' : 'p-6 space-y-4'}`}>
-      {/* Title and description */}
+  const renderDataRow = (row: any, keyMapVal: string | number) => {
+    return (
+      <tr
+        key={keyMapVal}
+        onClick={() => setMobileSelectedRow(row)} // Click anywhere to open details
+        style={{
+          borderBottom: "1px solid rgba(30,41,59,0.5)",
+          cursor: "pointer" // Indicate that row is clickable
+        }}
+      >
+        {visibleColumns.map((col, cIndex) => {
+          let cellValue = row[col.key];
+          if (typeof col.render === "function") {
+            cellValue = col.render(cellValue, row);
+          }
+
+          // Check if this entire column is expanded
+          const isColumnExpanded = expandedColumns[col.key];
+
+          return (
+            <td
+              key={col.key}
+              style={{
+                padding: "12px 16px",
+                color: "#cbd5e1",
+                position: cIndex === 0 ? "sticky" : "static",
+                left: cIndex === 0 ? 0 : undefined,
+                backgroundColor: cIndex === 0 ? "#0b1120" : undefined,
+                borderRight: cIndex === 0 ? "1px solid #1e293b" : undefined,
+                zIndex: cIndex === 0 ? 20 : undefined,
+                
+                // Dynamic styling for column expansion
+                whiteSpace: isColumnExpanded ? "normal" : "nowrap",
+                wordBreak: isColumnExpanded ? "break-word" : "normal",
+                minWidth: isColumnExpanded ? "250px" : undefined, // widen when expanded
+                maxWidth: isColumnExpanded ? "85vw" : (cIndex === 0 ? 160 : 200),
+                overflow: isColumnExpanded ? "visible" : "hidden",
+                textOverflow: isColumnExpanded ? "clip" : "ellipsis",
+                verticalAlign: isColumnExpanded ? "top" : "middle",
+                transition: "all 0.2s ease-in-out",
+              }}
+            >
+              {cIndex === 0 ? (
+                <div style={{ display: "flex", alignItems: isColumnExpanded ? "flex-start" : "center", gap: 10 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#3b82f6", flexShrink: 0, marginTop: isColumnExpanded ? 8 : 0 }} />
+                  <span style={{ fontWeight: 500, color: "#f1f5f9" }}>
+                    {cellValue}
+                  </span>
+                </div>
+              ) : (
+                cellValue
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    );
+  };
+
+  const renderMobileTableRows = () => {
+    if (!isGroupingActive) {
+      return finalItems.map((row, rIndex) => renderDataRow(row, row[idKey] || rIndex));
+    }
+
+    const renderGroup = (groupData: any, level: number, parentKey: string = "") => {
+      // Reached the end: it's an array of matching rows
+      if (Array.isArray(groupData)) {
+        const currentLimit = groupLimits[parentKey] || 50;
+        const visibleItems = groupData.slice(0, currentLimit);
+        
+        const rows = visibleItems.map((row, rIndex) => renderDataRow(row, `${parentKey}-${row[idKey] || rIndex}`));
+        
+      // Show "Load More" row if there are more items to show in this group
+        if (groupData.length > currentLimit) {
+          rows.push(
+            <tr key={`${parentKey}-load-more`} style={{ backgroundColor: "#0f172a" }}>
+              <td 
+                colSpan={visibleColumns.length} 
+                style={{ 
+                  padding: "12px 16px", // Adjusted padding to match rows
+                  textAlign: "left",    // <--- Moved to the left
+                  position: "sticky", 
+                  left: 0,
+                  borderBottom: "1px solid #1e293b"
+                }}
+              >
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGroupLimits(prev => ({ ...prev, [parentKey]: currentLimit + 50 }));
+                  }}
+                  style={{ backgroundColor: "#1e293b", borderColor: "#334155", color: "#cbd5e1" }}
+                >
+                  Load More ({groupData.length - currentLimit} remaining)
+                </Button>
+              </td>
+            </tr>
+          );
+        }
+        
+        return rows;
+      }
+
+      // Still grouping: render group headers
+      return Object.entries(groupData).map(([key, value]) => {
+        const groupKey = `${parentKey}-${key}`;
+        const isExpanded = !!expandedGroups[groupKey];
+        const currentField = columns.find(c => c.key === groupByFields[level])?.label || groupByFields[level] || "Group";
+        
+        return (
+          <React.Fragment key={groupKey}>
+            <tr 
+              onClick={() => setExpandedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
+              style={{ backgroundColor: "#0f172a", borderBottom: "1px solid #1e293b", cursor: "pointer" }}
+            >
+              <td
+                colSpan={visibleColumns.length}
+                style={{
+                  padding: "12px 16px",
+                  fontWeight: 600,
+                  color: "#f8fafc",
+                  position: "sticky",
+                  left: 0,
+                  backgroundColor: "#0f172a",
+                  zIndex: 25,
+                  borderRight: "none"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", paddingLeft: level * 16 }}>
+                  {isExpanded ? (
+                    <ChevronDown style={{ width: 18, height: 18, color: "#cbd5e1", marginRight: 8 }} />
+                  ) : (
+                    <ChevronRight style={{ width: 18, height: 18, color: "#cbd5e1", marginRight: 8 }} />
+                  )}
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#3b82f6", marginRight: 10 }} />
+                  <span>{currentField}: {key}</span>
+                  <Badge variant="outline" style={{ marginLeft: 8, backgroundColor: "#1e293b", color: "#94a3b8", border: "none" }}>
+                    {Array.isArray(value) ? value.length : (typeof value === 'object' && value !== null ? Object.keys(value as object).length : 0)}
+                  </Badge>
+                </div>
+              </td>
+            </tr>
+            {isExpanded && renderGroup(value, level + 1, groupKey)}
+          </React.Fragment>
+        );
+      });
+    };
+
+    return renderGroup(groupedData, 0);
+  };
+
+ const renderMobileView = () => (
+  <>
+  {renderMobileDetailsView()}
+  <div
+    style={{
+      display: mobileSelectedRow ? "none" : "flex",
+      flexDirection: "column",
+      height: "100dvh",
+      backgroundColor: "#0b1120",
+      color: "#e2e8f0",
+      fontFamily: "sans-serif",
+      position: "relative"
+    }}
+  >
+    {/* Global styles for the spinner so it works inline */}
+    <style>{`
+      @keyframes inline-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}</style>
+
+    
+
+    {/* Horizontal Pills */}
+    <div
+      style={{
+        display: "flex",
+        overflowX: "auto",
+        gap: 8,
+        padding: "12px 16px",
+        backgroundColor: "#0b1120",
+        borderBottom: "1px solid rgba(30,41,59,0.5)",
+        flexShrink: 0,
+        scrollbarWidth: "none", /* Firefox */
+        msOverflowStyle: "none" /* IE/Edge */
+      }}
+    >
+      <button
+        onClick={handleExport}
+        disabled={isExporting}
+        style={{
+          flexShrink: 0,
+          height: 36,
+          borderRadius: 20,
+          backgroundColor: "#1e293b",
+          border: "1px solid #334155",
+          color: "#ffffff",
+          padding: "0 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          cursor: "pointer"
+        }}
+      >
+        {isExporting ? (
+          <Loader2 style={{ width: 16, height: 16, animation: "inline-spin 1s linear infinite" }} />
+        ) : (
+          <Download style={{ width: 16, height: 16 }} />
+        )}
+        Export
+      </button>
+
+      {/* Group Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" style={{ flexShrink: 0, height: "36px", borderRadius: "20px", backgroundColor: "#1e293b", borderColor: "#334155", color: "white" }}>
+            <Users style={{ width: 16, height: 16, marginRight: 4 }} /> {groupByFields[0] !== "none" ? "Grouped" : "Group"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent 
+          style={{ width: 288, padding: 16, backgroundColor: "#0f172a", border: "1px solid #334155", color: "#ffffff", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }} 
+          align="start"
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "#e2e8f0" }}>Group by field</div>
+            <Select value={groupByFields[0] || 'none'} onValueChange={(v: string) => { setGroupByFields(v === 'none' ? [] : [v]); setGroupDirections(prev => ({ ...prev, [v]: "asc" })); }}>
+              <SelectTrigger style={{ height: 40, backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <SelectValue placeholder="Select field" />
+              </SelectTrigger>
+              <SelectContent style={{ backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6 }}>
+                <SelectItem value="none">No grouping</SelectItem>
+                {getAvailableGroupByFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            {groupByFields[0] !== "none" && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                style={{ width: "100%", backgroundColor: "#dc2626", color: "#ffffff", border: "none", height: 36, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} 
+                onClick={() => setGroupByFields([])}
+              >
+                <X style={{ width: 16, height: 16, marginRight: 8 }} /> Clear Grouping
+              </Button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Sort Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" style={{ flexShrink: 0, height: "36px", borderRadius: "20px", backgroundColor: "#1e293b", borderColor: "#334155", color: "white" }}>
+            <ArrowUpDown style={{ width: 16, height: 16, marginRight: 4 }} /> {sortByFields.length > 0 ? "Sorted" : "Sort"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent 
+          style={{ width: 288, padding: 16, backgroundColor: "#0f172a", border: "1px solid #334155", color: "#ffffff", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }} 
+          align="start"
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "#e2e8f0" }}>Sort by field</div>
+            <Select value={sortByFields[0]?.key || 'none'} onValueChange={(v: string) => { if (v === 'none') setSortByFields([]); else setSortByFields([{ key: v, direction: 'asc' }]); }}>
+              <SelectTrigger style={{ height: 40, backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <SelectValue placeholder="Select field" />
+              </SelectTrigger>
+              <SelectContent style={{ backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6 }}>
+                <SelectItem value="none">No sorting</SelectItem>
+                {getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+
+    {/* Expandable Search Bar */}
+    {showMobileSearch && (
+      <div
+        style={{
+          padding: "12px 16px",
+          backgroundColor: "#0b1120",
+          borderBottom: "1px solid #1e293b",
+          flexShrink: 0
+        }}
+      >
+        <div style={{ position: "relative" }}>
+          <Search
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 16,
+              height: 16,
+              color: "#94a3b8"
+            }}
+          />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            placeholder="Search..."
+            style={{
+              width: "100%",
+              paddingLeft: 36,
+              height: 40,
+              borderRadius: 8,
+              border: "1px solid #334155",
+              backgroundColor: "#1e293b",
+              color: "#ffffff",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
+              fontSize: 16
+            }}
+          />
+        </div>
+      </div>
+    )}
+
+    {/* Table Area */}
+    <div
+      style={{
+        flex: 1,
+        overflow: "auto",
+        backgroundColor: "#0b1120"
+      }}
+    >
+      {(isLoading || isGroupingDataLoading) && (
+       <div
+          style={{
+            padding: "40px 0",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12
+          }}
+        >
+         <Loader2 style={{ width: 32, height: 32, color: "#3b82f6", animation: "inline-spin 1s linear infinite" }} />
+          <span style={{ color: "#94a3b8", fontSize: 14 }}>Loading records...</span>
+        </div>
+      )}
+      {error &&<div
+          style={{
+            padding: 16,
+            margin: 16,
+            textAlign: "center",
+            color: "#f87171",
+            backgroundColor: "rgba(127,29,29,0.3)",
+            borderRadius: 8,
+            border: "1px solid rgba(153,27,27,0.5)",
+            fontSize: 14
+          }}
+        >Error: {(error as Error).message}</div>}
+      {!(isLoading || isGroupingDataLoading) && finalItems.length === 0 &&<div
+          style={{
+            padding: 40,
+            textAlign: "center",
+            color: "#64748b"
+          }}
+        >No results found.</div>}
+
+      {finalItems.length > 0 && !(isLoading || isGroupingDataLoading) && (
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            whiteSpace: "nowrap",
+            fontSize: 14
+          }}
+        >
+          <thead
+            style={{
+              position: "sticky",
+              top: 0,
+              backgroundColor: "#1e293b",
+              color: "#cbd5e1",
+              zIndex: 30
+            }}
+          >
+            <tr>
+              {visibleColumns.map((col, index) => (
+                <th
+                  key={col.key}
+                  onClick={() => {
+                    // Toggle expansion state for the entire column
+                    setExpandedColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }));
+                  }}
+                  style={{
+                    padding: "12px 16px",
+                    fontWeight: 600,
+                    borderBottom: "1px solid #334155",
+                    letterSpacing: 0.5,
+                    position: index === 0 ? "sticky" : "static",
+                    left: index === 0 ? 0 : undefined,
+                    backgroundColor: "#1e293b",
+                    borderRight: index === 0 ? "1px solid #334155" : undefined,
+                    zIndex: index === 0 ? 40 : undefined,
+                    cursor: "pointer",
+                    whiteSpace: expandedColumns[col.key] ? "normal" : "nowrap",
+                    minWidth: expandedColumns[col.key] ? "250px" : undefined, // expand header width too
+                    transition: "all 0.2s ease-in-out"
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span>{col.label}</span>
+                    <span style={{ fontSize: '10px', opacity: 0.5, marginLeft: '4px' }}>
+                      {expandedColumns[col.key] ? "[-]" : "[+]"}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {renderMobileTableRows()}
+          </tbody>
+        </table>
+      )}
+    </div>
+
+    {/* Sticky Pagination placed above the bottom bar */}
+    {finalItems.length > 0 && !(isLoading || isGroupingDataLoading) && (
+      <div
+        style={{
+          padding: "12px 16px 76px 16px", // Space allocated to clear the bottom bar securely
+          backgroundColor: "#0f172a",
+          borderTop: "1px solid #1e293b",
+          zIndex: 30,
+          flexShrink: 0
+        }}
+      >
+        <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))} />
+      </div>
+    )}
+
+    {/* Bottom Bar */}
+    <div
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        width: "100%",
+        backgroundColor: "rgba(30,41,59,0.95)",
+        backdropFilter: "blur(8px)",
+        borderTop: "1px solid #1e293b",
+        padding: "12px 16px",
+        display: "flex",
+        justifyContent: "center", 
+        alignItems: "center",
+        gap: "32px", 
+        zIndex: 40,
+        boxShadow: "0 -4px 10px rgba(0,0,0,0.5)"
+      }}
+    >
+      {Object.keys(pendingChanges).length > 0 ? (
+        // Bulk Edit Mode Bar
+        <div style={{ display: "flex", gap: 8, width: "100%" }}>
+          <Button
+            onClick={handleDiscardChanges}
+            style={{
+              flex: 1,
+              height: 40,
+              backgroundColor: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.5)",
+              color: "#f87171",
+              borderRadius: 8,
+              cursor: "pointer"
+            }}
+          >Discard</Button>
+          <Button
+            onClick={handleBulkUpdate}
+            style={{
+              flex: 1,
+              height: 40,
+              backgroundColor: "#2563eb",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer"
+            }}
+          >Save ({Object.keys(pendingChanges).length})</Button>
+        </div>
+      ) : (
+        // Standard Bottom Bar Mode
+        <>
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            style={{ padding: 6, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", color: "#94a3b8" }}
+          >
+            <Search style={{ width: 24, height: 24 }} />
+          </button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button style={{ padding: 6, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", color: "#94a3b8" }}>
+                <Settings2 style={{ width: 24, height: 24 }} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent 
+              style={{ width: "90vw", padding: 16, backgroundColor: "#0f172a", borderRadius: 12, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #334155", marginLeft: 16, marginBottom: 8 }} 
+              align="center" side="top"
+            >
+              <h3 style={{ fontWeight: 600, color: "#ffffff", marginBottom: 16, fontSize: 16 }}>Filters & Sorting</h3>
+              <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} onSaveFilter={handleSaveFilter} />
+            </PopoverContent>
+          </Popover>
+        </>
+      )}
+    </div>
+  </div>
+  </>
+);
+
+  // ==========================================
+  // 💻 DESKTOP UI (Exactly as you provided)
+  // ==========================================
+  const renderDesktopView = () => (
+    <div className="p-6 space-y-4 w-full">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
@@ -1995,915 +1667,200 @@ results.forEach(result => {
           </p>
         </div>
       </div>
-      {/* View selection buttons */}
+      
       {views && views.length > 1 && (
         <div className="flex gap-2 mb-4">
           {views.map((view) => (
-            <Button
-              key={view.id}
-              variant={activeView === view.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveView(view.id)}
-            >
+            <Button key={view.id} variant={activeView === view.id ? "default" : "outline"} size="sm" onClick={() => setActiveView(view.id)}>
               {view.name}
             </Button>
           ))}
         </div>
       )}
-      {/* Saved Filter Tabs */}
-      <SavedFilterTabs
-        savedFilters={savedFilters}
-        activeFilterName={activeSavedFilterName}
-        onSelectFilter={handleSelectFilter}
-        onDeleteFilter={handleDeleteFilter}
-        currentUser={user ? { email: user.email, role: user.role } : { email: '', role: '' }}
-      />
-      {/* Main card container */}
+      
+      <SavedFilterTabs savedFilters={savedFilters} activeFilterName={activeSavedFilterName} onSelectFilter={handleSelectFilter} onDeleteFilter={handleDeleteFilter} currentUser={user ? { email: user.email, role: user.role } : { email: '', role: '' }} />
+      
       <Card className="border-0 shadow-sm bg-card">
-        {/* Card header: tabs, export, filters, grouping, sorting, column hiding, search */}
         <CardHeader className="p-6 border-b bg-muted/20 rounded-t-lg">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            {/* Mobile: Title and table indicator */}
-            {isMobile ? (
-              <div className="flex items-center gap-3 w-full">
-                {/* Mobile View Toggle */}
-                <div className="flex bg-white rounded-md border border-gray-200 p-1">
-                  <button
-                    onClick={() => setMobileViewMode('table')}
-                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
-                      mobileViewMode === 'table'
-                        ? 'bg-blue-500 text-white'
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                  >
-                    <TableIcon className="w-3 h-3" />
-                    Table
-                  </button>
-                  <button
-                    onClick={() => setMobileViewMode('cards')}
-                    className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
-                      mobileViewMode === 'cards'
-                        ? 'bg-blue-500 text-white'
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                  >
-                    <Grid className="w-3 h-3" />
-                    Cards
-                  </button>
-                </div>
-                <div className="ml-auto flex gap-2">
-                  {/* --- NEW: Bulk Edit Buttons for Mobile --- */}
-                  {Object.keys(pendingChanges).length > 0 && (
-                    <>
-                      <Button variant="destructive" size="sm" className="gap-2 h-8" onClick={handleDiscardChanges}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                      <Button variant="default" size="sm" className="gap-2 h-8" onClick={handleBulkUpdate}>
-                        Save ({Object.keys(pendingChanges).length})
-                      </Button>
-                    </>
-                  )}
-                  <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-slate-600 text-white hover:bg-slate-800" onClick={handleExport} disabled={isExporting}>
-                    {isExporting ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Download className="w-3 h-3" />)}
-                    {isExporting ? 'Export' : 'Export'}
-                  </Button>
-                  {showAddButton && hasAccess(title, 'write') && (
-                    <Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>
-                      + Add
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Desktop: Tabs for table/timeline */}
-                <Tabs value="table">
-                  <TabsList className="grid grid-cols-1 w-fit">
-                    <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {/* Desktop: Export button */}
-                <div className="flex items-center gap-2">
-                  {/* --- NEW: Bulk Edit Buttons for Desktop --- */}
-                  {Object.keys(pendingChanges).length > 0 && (
-                    <>
-                      <Button variant="destructive" size="sm" className="gap-2 h-8" onClick={handleDiscardChanges}>
-                        <X className="w-4 h-4" />
-                        Discard
-                      </Button>
-                      <Button variant="default" size="sm" className="gap-2 h-8" onClick={handleBulkUpdate}>
-                        Save Changes ({Object.keys(pendingChanges).length})
-                      </Button>
-                    </>
-                  )}
-                 <Button
-  variant="outline"
-  size="sm"
-  className="gap-2 h-8"
-  onClick={handleExport}
-  disabled={isExporting}
->
-  {isExporting ? (
-    <>
-      <style>
-        {`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-          }
-        `}
-      </style>
-
-      <Loader2
-        className="w-4 h-4"
-        style={{
-          animation: "spin 0.7s linear infinite",
-          transformOrigin: "center",
-        }}
-      />
-    </>
-  ) : (
-    <Download className="w-4 h-4" />
-  )}
-
-  {isExporting ? "Exporting..." : "Export"}
-</Button>
-
-                  {showAddButton && hasAccess(title, 'write') && (
-                    <Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>
-                      + Add
-                    </Button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          {/* Mobile-first search */}
-          {isMobile && (
-            <div className="pt-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search..." 
-                  value={searchTerm} 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
-                  className="pl-10 h-10 text-base"
-                />
-              </div>
+            <Tabs value="table">
+              <TabsList className="grid grid-cols-1 w-fit">
+                <TabsTrigger value="table" className="flex items-center gap-2"><TableIcon className="w-4 h-4" />Table</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex items-center gap-2">
+              {Object.keys(pendingChanges).length > 0 && (
+                <>
+                  <Button variant="destructive" size="sm" className="gap-2 h-8" onClick={handleDiscardChanges}><X className="w-4 h-4" />Discard</Button>
+                  <Button variant="default" size="sm" className="gap-2 h-8" onClick={handleBulkUpdate}>Save Changes ({Object.keys(pendingChanges).length})</Button>
+                </>
+              )}
+              <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isExporting ? "Exporting..." : "Export"}
+              </Button>
+              {showAddButton && hasAccess(title, 'write') && (<Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>+ Add</Button>)}
             </div>
-          )}
+          </div>
 
-          {/* Mobile vs Desktop Controls */}
-          {isMobile ? (
-            /* Mobile: Comprehensive controls in compact layout */
-            <div className="pt-4 space-y-3">
-              {/* Mobile Controls Row 1: Freeze, Filter, Sort */}
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Mobile Freeze Column Controls */}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} onSaveFilter={handleSaveFilter} />
+              <div className="flex items-center gap-1">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <Pin className="w-3 h-3" />
-                      {frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}
-                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2 h-8"><Pin className="w-4 h-4" />{frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}</Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-64 p-3" align="start">
                     <div className="space-y-3">
                       <div className="font-medium text-sm">Freeze up to column</div>
                       <Select value={frozenColumnKey || 'none'} onValueChange={(value: string) => setFrozenColumnKey(value === 'none' ? null : value)}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select column to freeze" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No columns frozen</SelectItem>
-                          {visibleColumns.map((col) => (
-                            <SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>
-                          ))}
-                        </SelectContent>
+                        <SelectTrigger className="h-8"><SelectValue placeholder="Select column to freeze" /></SelectTrigger>
+                        <SelectContent><SelectItem value="none">No columns frozen</SelectItem>{visibleColumns.map((col) => (<SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>))}</SelectContent>
                       </Select>
                     </div>
                   </PopoverContent>
                 </Popover>
-                {frozenColumnKey && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns">
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-
-                {/* Mobile Advanced Filters */}
-                <AdvancedFiltersClickUp 
-                  filters={finalFilterConfigs} 
-                  onFiltersChange={setAdvancedFilters} 
-                  data={finalItems} 
-                  onSaveFilter={handleSaveFilter} 
-                />
-
-                {/* Mobile Sort By */}
+                {frozenColumnKey && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns"><X className="w-4 h-4" /></Button>)}
+              </div>
+              <div className="flex items-center gap-1">
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <ArrowUpDown className="w-3 h-3" />
-                      {sortByFields.length > 0 ? `${getAvailableSortFields().find(f => f.value === sortByFields[0].key)?.label}` : "Sort"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start">
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />Group</Button></PopoverTrigger>
+                  <PopoverContent className="w-80 p-3" align="start">
                     <div className="space-y-3">
-                      <div className="font-medium text-sm">Sort by field</div>
-                      <Select value={sortByFields[0]?.key || 'none'} onValueChange={(v: string) => {
-                        if (v === 'none') {
-                          setSortByFields([]);
-                        } else {
-                          setSortByFields([{ key: v, direction: 'asc' }]);
-                        }
-                      }}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select field" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No sorting</SelectItem>
-                          {getAvailableSortFields().map((field) => (
-                            <SelectItem key={field.value} value={field.value}>Sort by {field.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {sortByFields.length > 0 && (
-                        <>
-                          <div className="font-medium text-sm">Sort direction</div>
-                          <Select value={sortByFields[0].direction} onValueChange={(value: "asc" | "desc") => {
-                            const newFields = [...sortByFields];
-                            newFields[0].direction = value;
-                            setSortByFields(newFields);
-                          }}>
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="asc">Ascending</SelectItem>
-                              <SelectItem value="desc">Descending</SelectItem>
-                            </SelectContent>
+                      <div className="font-medium text-sm">Group by fields</div>
+                      {groupByFields.map((field, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Select value={field || 'none'} onValueChange={(v: string) => { const newFields = [...groupByFields]; newFields[index] = v === 'none' ? null : v; setGroupByFields(newFields.filter(f => f !== null)); }}>
+                            <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Select field" /></SelectTrigger>
+                            <SelectContent><SelectItem value="none">-- No Grouping --</SelectItem>{getAvailableGroupByFields().map((f) => (<SelectItem key={f.value} value={f.value} disabled={groupByFields.includes(f.value)}>{f.label}</SelectItem>))}</SelectContent>
                           </Select>
-                        </>
-                      )}
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { const newFields = [...groupByFields]; newFields.splice(index, 1); setGroupByFields(newFields); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setGroupByFields([...groupByFields, null])}><Plus className="w-4 h-4" /> Add grouping level</Button>
                     </div>
                   </PopoverContent>
                 </Popover>
-                {sortByFields.length > 0 && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortByFields([])} title="Clear sorting">
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
+                {isGroupingActive && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear all groupings"><X className="w-4 h-4" /></Button>)}
               </div>
-
-              {/* Mobile Controls Row 2: Group, Columns */}
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Mobile Group By */}
+              <div className="flex items-center gap-1">
                 <Popover>
-                  <PopoverTrigger asChild>
-
-                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <Users className="w-3 h-3" />
-                      {groupByFields[0] !== "none" ? `${getAvailableGroupByFields().find(f => f.value === groupByFields[0])?.label}` : "Group"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3" align="start">
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><ArrowUpDown className="w-4 h-4" />Sort</Button></PopoverTrigger>
+                  <PopoverContent className="w-80 p-3" align="start">
                     <div className="space-y-3">
-                      <div className="font-medium text-sm">Group by field</div>
-                      <Select value={groupByFields[0] || 'none'} onValueChange={(v: string) => {
-                        setGroupByFields(v === 'none' ? [] : [v]);
-                        setGroupDirections(prev => ({ ...prev, [v]: "asc" }));
-                      }}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Select field" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No grouping</SelectItem>
-                          {getAvailableGroupByFields().map((field) => (
-                            <SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {(groupByFields[0] && groupByFields[0] !== "none") && (
-                        <>
-                          <div className="font-medium text-sm">Sort groups</div>
-                          <Select value={groupDirections[groupByFields[0] ?? ""] ?? "asc"} onValueChange={(value: "asc" | "desc") => setGroupDirections(prev => ({...prev, [groupByFields[0] ?? ""]: value}))}>
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="asc">Ascending (A-Z)</SelectItem>
-                              <SelectItem value="desc">Descending (Z-A)</SelectItem>
-                            </SelectContent>
+                      <div className="font-medium text-sm">Sort by fields</div>
+                      {sortByFields.map((field, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Select value={field.key} onValueChange={(v: string) => { const newFields = [...sortByFields]; newFields[index] = { ...newFields[index], key: v }; setSortByFields(newFields); }}>
+                            <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Select field" /></SelectTrigger>
+                            <SelectContent>{getAvailableSortFields().map((f) => (<SelectItem key={f.value} value={f.value} disabled={sortByFields.some(sf => sf.key === f.value)}>{f.label}</SelectItem>))}</SelectContent>
                           </Select>
-                        </>
-                      )}
+                          <Select value={field.direction} onValueChange={(v: "asc" | "desc") => { const newFields = [...sortByFields]; newFields[index] = { ...newFields[index], direction: v }; setSortByFields(newFields); }}>
+                            <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                            <SelectContent><SelectItem value="asc">Ascending</SelectItem><SelectItem value="desc">Descending</SelectItem></SelectContent>
+                          </Select>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { const newFields = [...sortByFields]; newFields.splice(index, 1); setSortByFields(newFields); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSortByFields([...sortByFields, { key: '', direction: 'asc' }])}><Plus className="w-4 h-4" /> Add sorting level</Button>
                     </div>
                   </PopoverContent>
                 </Popover>
-                {groupByFields[0] !== "none" && (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear all groupings">
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-
-                {/* Mobile Column Visibility */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <EyeOff className="w-3 h-3" />
-                      Columns
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-72" align="start">
-                    <div className="space-y-3">
-                      <div className="font-medium text-sm">Show/Hide Columns</div>
-                      {/* --- NEW: Select/Deselect All for Mobile --- */}
-                      <div className="flex items-center space-x-2 border-b pb-2 mb-2">
-                        <Checkbox
-                          id="mobile-select-all-columns"
-                          checked={hiddenColumns.length === 0}
-                          onCheckedChange={(checked) => {
-                            setHiddenColumns(checked ? [] : columns.map(c => c.key));
-                          }}
-                        />
-                        <label htmlFor="mobile-select-all-columns" className="text-sm font-medium">
-                          {hiddenColumns.length > 0 ? "Show All" : "Hide All"}
-                        </label>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto space-y-2">
-                        {columns.map((column) => (
-                          <div key={column.key} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`mobile-column-${column.key}`} 
-                              checked={!hiddenColumns.includes(column.key)} 
-                              onCheckedChange={(checked: boolean) => { 
-                                setHiddenColumns(prevHidden => {
-                                  if (checked) { 
-                                    return prevHidden.filter(c => c !== column.key); 
-                                  } else { 
-                                    return [...prevHidden, column.key]; 
-                                  } 
-                                });
-                              }} 
-                            />
-                            <label htmlFor={`mobile-column-${column.key}`} className="text-sm truncate">{column.label}</label>
-                          </div>
-                        ))}
-                      </div>
+                {sortByFields.length > 0 && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortByFields([])} title="Clear all sorting"><X className="w-4 h-4" /></Button>)}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-64 h-8" />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><EyeOff className="w-4 h-4" />Hide</Button></PopoverTrigger>
+                <PopoverContent className="w-64 max-h-72 overflow-y-auto" align="end" style={{ scrollbarWidth: "thin", scrollbarColor: "#475569 #1e293b" }}>
+                  <div className="space-y-3">
+                    <div className="font-medium">Show/Hide Columns</div>
+                    <div className="flex items-center space-x-2 border-b pb-2 mb-2">
+                      <Checkbox id="desktop-select-all-columns" checked={hiddenColumns.length === 0} onCheckedChange={(checked) => { setHiddenColumns(checked ? [] : columns.map((c) => c.key)); }} />
+                      <label htmlFor="desktop-select-all-columns" className="text-sm font-medium">{hiddenColumns.length > 0 ? "Show All" : "Hide All"}</label>
                     </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          ) : (
-            /* Desktop: Full controls layout */
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Advanced filters */}
-                <AdvancedFiltersClickUp 
-                  filters={finalFilterConfigs} 
-                  onFiltersChange={setAdvancedFilters} 
-                  data={finalItems} 
-                  onSaveFilter={handleSaveFilter} 
-                />
-
-                {/* --- Freeze Column Button & Popover --- */}
-                <div className="flex items-center gap-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2 h-8">
-                        <Pin className="w-4 h-4" />
-                        {frozenColumnKey ? `Freeze: ${columns.find(c => c.key === frozenColumnKey)?.label}` : "Freeze"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-3" align="start">
-                      <div className="space-y-3">
-                        <div className="font-medium text-sm">Freeze up to column</div>
-                        <Select value={frozenColumnKey || 'none'} onValueChange={(value: string) => setFrozenColumnKey(value === 'none' ? null : value)}>
-                          <SelectTrigger className="h-8"><SelectValue placeholder="Select column to freeze" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No columns frozen</SelectItem>
-                            {visibleColumns.map((col) => (<SelectItem key={col.key} value={col.key}>{col.label}</SelectItem>))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {frozenColumnKey && (
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setFrozenColumnKey(null)} title="Unfreeze columns">
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* --- MODIFIED: Grouping controls for multiple fields --- */} 
-                <div className="flex items-center gap-1">
-                  <Popover>
-                    <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><Users className="w-4 h-4" />Group</Button></PopoverTrigger>
-                    <PopoverContent className="w-80 p-3" align="start">
-                      <div className="space-y-3">
-                        <div className="font-medium text-sm">Group by fields</div>
-                        {groupByFields.map((field, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <Select value={field || 'none'} onValueChange={(v: string) => {
-                              const newFields = [...groupByFields];
-                              newFields[index] = v === 'none' ? null : v;
-                              setGroupByFields(newFields.filter(f => f !== null));
-                            }}>
-                              <SelectTrigger className="h-8 flex-1">
-                                <SelectValue placeholder="Select field" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">-- No Grouping --</SelectItem>
-                                {getAvailableGroupByFields().map((f) => (
-                                  <SelectItem key={f.value} value={f.value} disabled={groupByFields.includes(f.value)}>{f.label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                              const newFields = [...groupByFields];
-                              newFields.splice(index, 1);
-                              setGroupByFields(newFields);
-                            }}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setGroupByFields([...groupByFields, null])}>
-                          <Plus className="w-4 h-4" /> Add grouping level
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {isGroupingActive && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setGroupByFields([])} title="Clear all groupings"><X className="w-4 h-4" /></Button>)}
-                </div>
-                
-                {/* --- MODIFIED: Sorting controls for multiple fields --- */}
-                <div className="flex items-center gap-1">
-                  <Popover>
-                    <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8"><ArrowUpDown className="w-4 h-4" />Sort</Button></PopoverTrigger>
-                    <PopoverContent className="w-80 p-3" align="start">
-                      <div className="space-y-3">
-                        <div className="font-medium text-sm">Sort by fields</div>
-                        {sortByFields.map((field, index) => (
-                                                  <div key={index} className="flex items-center gap-2">
-                                                    <Select value={field.key} onValueChange={(v: string) => {
-                                                      const newFields = [...sortByFields];
-                                                      newFields[index] = { ...newFields[index], key: v };
-                                                      setSortByFields(newFields);
-                                                    }}>
-                                                      <SelectTrigger className="h-8 flex-1">
-                                                        <SelectValue placeholder="Select field" />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        {getAvailableSortFields().map((f) => (
-                                                          <SelectItem key={f.value} value={f.value} disabled={sortByFields.some(sf => sf.key === f.value)}>{f.label}</SelectItem>
-                                                        ))}
-                                                      </SelectContent>
-                                                    </Select>
-                                                    <Select value={field.direction} onValueChange={(v: "asc" | "desc") => {
-                                                      const newFields = [...sortByFields];
-                                                      newFields[index] = { ...newFields[index], direction: v };
-                                                      setSortByFields(newFields);
-                                                    }}>
-                                                      <SelectTrigger className="h-8 w-28">
-                                                        <SelectValue />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        <SelectItem value="asc">Ascending</SelectItem>
-                                                        <SelectItem value="desc">Descending</SelectItem>
-                                                      </SelectContent>
-                                                    </Select>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                                                      const newFields = [...sortByFields];
-                                                      newFields.splice(index, 1);
-                                                      setSortByFields(newFields);
-                                                    }}>
-                                                      <Trash2 className="w-4 h-4 text-destructive" />
-                                                    </Button>
-                                                  </div>
-                                                ))}
-                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setSortByFields([...sortByFields, { key: '', direction: 'asc' }])}>
-                          <Plus className="w-4 h-4" /> Add sorting level
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                 
-                  {sortByFields.length > 0 && (<Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive" onClick={() => setSortByFields([])} title="Clear all sorting"><X className="w-4 h-4" /></Button>)}
-                </div>
-              </div>
-              
-              {/* Search and column hiding */}
-           <div className="flex items-center gap-2 ml-auto">
-  <div className="relative">
-    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-    <Input
-      placeholder="Search"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      className="pl-8 w-64 h-8"
-    />
-  </div>
-
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button variant="outline" size="sm" className="gap-2 h-8">
-        <EyeOff className="w-4 h-4" />Hide
-      </Button>
-    </PopoverTrigger>
-
-    <PopoverContent className="w-64 max-h-72 overflow-y-auto" align="end"
-      style={{
-        scrollbarWidth: "thin",
-        scrollbarColor: "#475569 #1e293b", // subtle scrollbar colors for Firefox
-      }}
-    >
-      <div className="space-y-3">
-        <div className="font-medium">Show/Hide Columns</div>
-
-        {/* Select/Deselect All */}
-        <div className="flex items-center space-x-2 border-b pb-2 mb-2">
-          <Checkbox
-            id="desktop-select-all-columns"
-            checked={hiddenColumns.length === 0}
-            onCheckedChange={(checked) => {
-              setHiddenColumns(checked ? [] : columns.map((c) => c.key));
-            }}
-          />
-          <label
-            htmlFor="desktop-select-all-columns"
-            className="text-sm font-medium"
-          >
-            {hiddenColumns.length > 0 ? "Show All" : "Hide All"}
-          </label>
-        </div>
-
-        {/* Scrollable Column List */}
-        <div
-          className="space-y-2 pr-1"
-          style={{
-            maxHeight: "200px",
-            overflowY: "auto",
-            scrollbarWidth: "thin",
-            scrollbarColor: "#475569 #f0f2f5ff",
-          }}
-        >
-          {columns.map((column) => (
-            <div key={column.key} className="flex items-center space-x-2">
-              <Checkbox
-                id={`column-${column.key}`}
-                checked={!hiddenColumns.includes(column.key)}
-                onCheckedChange={(checked: boolean) => {
-                  setHiddenColumns((prevHidden) => {
-                    if (checked) {
-                      return prevHidden.filter((c) => c !== column.key);
-                    } else {
-                      return [...prevHidden, column.key];
-                    }
-                  });
-                }}
-              />
-              <label
-                htmlFor={`column-${column.key}`}
-                className="text-sm text-foreground"
-              >
-                {column.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-    </PopoverContent>
-  </Popover>
-</div>
-
-            </div>
-          )}
-        </CardHeader>
-        {/* Card content: table or timeline */}
-        <CardContent className="p-0">
-            <div className={`${isMobile ? 'overflow-y-auto mobile-scroll' : 'overflow-x-auto'} relative custom-scrollbar`} style={{ maxHeight: isMobile ? 'calc(100vh - 280px)' : '60vh' }}>
-              {/* Initial loading state (blocks the whole view) */}
-            {(isLoading || isGroupingDataLoading) && (
-  <>
-    <style>
-      {`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-      `}
-    </style>
-
-    <div className="p-8 text-center flex items-center justify-center gap-2">
-      <Loader2
-        className="w-4 h-4"
-        style={{
-          animation: "spin 0.7s linear infinite",
-          transformOrigin: "center"
-        }}
-      />
-      Loading...
-    </div>
-  </>
-)}
-
-
-              
-              {/* Error state */}
-              {error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div>}
-
-              {/* Empty state */}
-              {!(isLoading || isGroupingDataLoading) && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
-              
-              {/* Data display */}
-              {finalItems.length > 0 && (
-                <div className={`transition-opacity duration-300 ${isFetching && !isLoading && !isGroupingDataLoading ? 'opacity-50' : 'opacity-100'}`}>
-                  {/* Mobile view: Full table functionality with mobile responsiveness */}
-                  {isMobile ? (
-                    <div className="p-2 pb-6">
-                      <MobileTable
-                        items={finalItems}
-                        columns={visibleColumns as any}
-                        onRowSelect={(item) => onRowSelect?.(item as any)}
-                        onSort={handleHeaderSort} // onSort is now handled by the popover
-                        getSortIcon={getSortIcon}
-                        groupedData={groupedData as any}
-                        activeGroupBy={groupByFields.join(',')}
-                        activeView={activeView}
-                        idKey={idKey}
-                        isLoading={isLoading || isGroupingDataLoading}
-                        frozenColumnKey={frozenColumnKey}
-                        columnOrder={columnOrder}
-                        columnSizing={columnSizing}
-                        editingCell={editingCell}
-                        editValue={editValue}
-                        setEditValue={setEditValue}
-                        setEditingCell={setEditingCell}
-                        // Pass all the state management props
-                        sortBy={activeSortBy}
-                        sortDirection={activeSortDirection as "asc" | "desc"}
-                        setSortBy={(v) => setSortByFields(v === 'none' ? [] : [{key: v, direction: 'asc'}])}
-                        setSortDirection={(v) => setSortByFields(prev => prev.length > 0 ? [{...prev[0], direction: v as 'asc' | 'desc'}] : [])}
-                        groupBy={groupByFields[0] || 'none'}
-                        groupDirection={groupDirections[groupByFields[0] || ''] || 'asc'}
-                        setGroupBy={(field) => setGroupByFields(field === 'none' ? [] : [field])}
-                        setGroupDirection={(dir) => setGroupDirections(prev => ({...prev, [groupByFields[0] || '']: dir}))}
-                        setFrozenColumnKey={setFrozenColumnKey}
-                        hiddenColumns={hiddenColumns}
-                        setHiddenColumns={setHiddenColumns}
-                        sortedData={sortedData}
-                        viewMode={mobileViewMode}
-                        setViewMode={setMobileViewMode}
-                        handleUpdateCell={handleUpdateCell}
-                          handleCellDoubleClick={handleCellDoubleClick}
-                         isMobile={isMobile}
-                           handleCellEdit={(rowIndex, column, newValue) => handleCellChange(rowIndex, column.key, newValue)}
-                      />
+                    <div className="space-y-2 pr-1" style={{ maxHeight: "200px", overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: "#475569 #f0f2f5ff" }}>
+                      {columns.map((column) => (
+                        <div key={column.key} className="flex items-center space-x-2">
+                          <Checkbox id={`column-${column.key}`} checked={!hiddenColumns.includes(column.key)} onCheckedChange={(checked: boolean) => { setHiddenColumns((prevHidden) => { if (checked) { return prevHidden.filter((c) => c !== column.key); } else { return [...prevHidden, column.key]; } }); }} />
+                          <label htmlFor={`column-${column.key}`} className="text-sm text-foreground">{column.label}</label>
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    /* Desktop view: Full table with drag, resize, grouping, sorting, selection */
-                    <DraggableResizableTable
-                      data={finalItemsWithPendingChanges}
-                      columns={visibleColumns as any}
-                      onRowSelect={(item) => onRowSelect?.(item as any)}
-                      onSort={handleHeaderSort} // onSort is now handled by the popover
-                      getSortIcon={getSortIcon}
-                      groupedData={groupedData as any}
-                      groupByFields={groupByFields.filter(f => f).map(f => ({ key: f!, direction: groupDirections[f!] || 'asc' }))}
-                      idKey={idKey}
-                       handleCellEdit={(rowIndex, column, newValue) => handleCellChange(rowIndex, column.key, newValue)}
-                      // --- Pass editing props to the table ---
-                      editingCell={editingCell}
-                      editValue={editValue}
-                      setEditValue={setEditValue}
-      
-                      handleUpdateCell={handleUpdateCell}
-                      handleCellDoubleClick={handleCellDoubleClick}
-                      setEditingCell={setEditingCell} // Pass the setter function
-                      sortedData={sortedData} // Pass the sorted data array
-                       // --- Pass freeze props to the table component ---
-                      frozenColumnKey={frozenColumnKey}
-                      columnOrder={columnOrder}
-                      columnSizing={columnSizing}
-                      setViewColumnOrder={setColumnOrder}
-                    />
-                  )}
-                </div>
-              )}
-
-              {/* Background fetching indicator (buffering) */}
-{isFetching && !isLoading && !isGroupingDataLoading && (
-  <>
-    <style>
-      {`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-      `}
-    </style>
-
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border">
-        <Loader2
-          className="w-4 h-4"
-          style={{
-            animation: "spin 0.7s linear infinite",
-            transformOrigin: "center"
-          }}
-        />
-        <span>Buffering...</span>
-      </div>
-    </div>
-  </>
-)}
-
-            </div>
-        </CardContent>
-        {/* Pagination and results count */}
-        { !(isLoading || isGroupingDataLoading) && totalItems > 0 &&
-          <div className={`border-t ${isMobile ? 'p-4 space-y-3' : 'p-6'}`}>
-            {/* Mobile Layout */}
-            {isMobile ? (
-              <div className="space-y-3">
-                {/* Results count and clear filters */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{totalItems} results</span>
-                  {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
-                    <Button 
-                      
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => { 
-                        setAdvancedFilters([]); 
-                        setActiveView(views[0]?.id || ""); 
-                      }} 
-                      className="text-muted-foreground hover:text-foreground text-xs h-8"
-                    >
-                      Clear filters
-                    </Button>
-                  )}
-                </div>
-                
-                {/* Pagination */}
-                {!(isGroupingActive && totalPages <= 1) && (
-                  <SimplePagination 
-                    currentPage={currentPage} 
-                    totalPages={totalPages} 
-                    onPageChange={(p) => setCurrentPage(Number(p))}
-                  />
-                )}
-              </div>
-            ) : (
-              /* Desktop Layout */
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div><span>{totalItems} results</span></div>
-                {/* Show pagination unless grouping is active and there's only one page */}
-                {!(isGroupingActive && totalPages <= 1) && (
-                  <div className="flex items-center gap-4">
-                      {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (
-                          <Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>
-                      )}
-                      <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))}/>
                   </div>
-                )}
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto relative custom-scrollbar" style={{ maxHeight: '60vh' }}>
+            {(isLoading || isGroupingDataLoading) && (<div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>)}
+            {error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div>}
+            {!(isLoading || isGroupingDataLoading) && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
+            {finalItems.length > 0 && (
+              <div className={`transition-opacity duration-300 ${isFetching && !isLoading && !isGroupingDataLoading ? 'opacity-50' : 'opacity-100'}`}>
+                <DraggableResizableTable data={finalItemsWithPendingChanges} columns={visibleColumns as any} onRowSelect={(item) => onRowSelect?.(item as any)} onSort={handleHeaderSort} getSortIcon={getSortIcon} groupedData={groupedData as any} groupByFields={groupByFields.filter(f => f).map(f => ({ key: f!, direction: groupDirections[f!] || 'asc' }))} idKey={idKey} handleCellEdit={(rowIndex, column, newValue) => handleCellChange(rowIndex, column.key, newValue)} editingCell={editingCell} editValue={editValue} setEditValue={setEditValue} handleUpdateCell={handleUpdateCell} handleCellDoubleClick={handleCellDoubleClick} setEditingCell={setEditingCell} sortedData={sortedData} frozenColumnKey={frozenColumnKey} columnOrder={columnOrder} columnSizing={columnSizing} setViewColumnOrder={setColumnOrder} />
               </div>
             )}
+            {isFetching && !isLoading && !isGroupingDataLoading && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border"><Loader2 className="w-4 h-4 animate-spin" /><span>Buffering...</span></div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+        {!(isLoading || isGroupingDataLoading) && totalItems > 0 &&
+          <div className="border-t p-6">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div><span>{totalItems} results</span></div>
+              {!(isGroupingActive && totalPages <= 1) && (
+                <div className="flex items-center gap-4">
+                  {(advancedFilters.some(group => group.rules.length > 0) || Object.keys(activeViewFilters).length > 0) && (<Button variant="ghost" size="sm" onClick={() => { setAdvancedFilters([]); setActiveView(views[0]?.id || ""); }} className="text-muted-foreground hover:text-foreground">Clear filters</Button>)}
+                  <SimplePagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(Number(p))}/>
+                </div>
+              )}
+            </div>
           </div>
         }
       </Card>
 
-      {/* Add Entry Modal */}
+      {/* Dialogs... (Add & Error remain unchanged) */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-  <DialogContent
-    style={{
-      maxHeight: "90vh",
-      overflowY: "auto",
-    }}
-  >
-    <DialogHeader>
-      <DialogTitle>Add New {title}</DialogTitle>
-    </DialogHeader>
+        <DialogContent style={{ maxHeight: "90vh", overflowY: "auto" }}>
+          <DialogHeader><DialogTitle>Add New {title}</DialogTitle></DialogHeader>
+          <form onSubmit={e => { e.preventDefault(); handleAddSubmit(); }} className="space-y-6">
+            {formColumns.map(col => (
+              <div key={col.key}>
+                <label className="block text-sm font-medium mb-2">{col.label}</label>
+                <Input value={addForm[col.key] || ""} onChange={e => handleAddFormChange(col.key, e.target.value)} required />
+              </div>
+            ))}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)} style={{ width: "120px" }}>Cancel</Button>
+              <Button type="submit" style={{ width: "120px" }} disabled={!hasAccess(title, "write")}>Add</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-    <form
-      onSubmit={e => {
-        e.preventDefault();
-        handleAddSubmit();
-      }}
-      className="space-y-6"
-    >
-      {formColumns.map(col => (
-        <div key={col.key}>
-          <label className="block text-sm font-medium mb-2">
-            {col.label}
-          </label>
-          <Input
-            value={addForm[col.key] || ""}
-            onChange={e =>
-              handleAddFormChange(col.key, e.target.value)
-            }
-            required
-          />
-        </div>
-      ))}
-
-      <DialogFooter>
-        {isMobile ? (
-          <div className="flex flex-col gap-2 w-full">
-            <Button
-              type="submit"
-              className="w-full h-12 text-base"
-              disabled={!hasAccess(title, "write")}
-            >
-              Add
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAddOpen(false)}
-              className="w-full h-12 text-base"
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAddOpen(false)}
-              style={{ width: "120px" }}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              style={{ width: "120px" }}
-              disabled={!hasAccess(title, "write")}
-            >
-              Add
-            </Button>
-          </>
-        )}
-      </DialogFooter>
-    </form>
-  </DialogContent>
-</Dialog>
-
-      {/* Error Dialog for showing backend/bulk-update failures */}
-<Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>{errorDialog.title}</DialogTitle>
-    </DialogHeader>
-    <div
-      className="py-2 text-sm whitespace-pre-wrap"
-      style={{
-        maxHeight: 400,
-        overflowY: "auto",
-        wordBreak: "break-word",
-      }}
-    >
-      {errorDialog.message}
+      <Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{errorDialog.title}</DialogTitle></DialogHeader>
+          <div className="py-2 text-sm whitespace-pre-wrap" style={{ maxHeight: 400, overflowY: "auto", wordBreak: "break-word" }}>{errorDialog.message}</div>
+          <DialogFooter style={{ display: "flex", justifyContent: "flex-end", paddingTop: "12px" }}>
+            <button onClick={() => setErrorDialog({ open: false, title: "Error", message: "" })} style={{ padding: "8px 16px", borderRadius: "8px", backgroundColor: "rgb(51, 65, 85)", color: "white", fontSize: "14px", fontWeight: 500, border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", transition: "all 0.2s ease-in-out" }}>Close</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-    <DialogFooter
-      style={{
-        display: "flex",
-        justifyContent: "flex-end",
-        paddingTop: "12px",
-      }}
-    >
-      <button
-        onClick={() =>
-          setErrorDialog({ open: false, title: "Error", message: "" })
-        }
-        style={{
-          padding: "8px 16px",
-          borderRadius: "8px",
-          backgroundColor: "rgb(51, 65, 85)",      // slate-700
-          color: "white",
-          fontSize: "14px",
-          fontWeight: 500,
-          border: "1px solid rgba(255,255,255,0.1)",
-          cursor: "pointer",
-          transition: "all 0.2s ease-in-out",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "rgb(71, 85, 105)"; // slate-600
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "rgb(51, 65, 85)"; // slate-700
-        }}
-      >
-        Close
-      </button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-    </div>
-    
   );
+
+  // Return specific view based on screen size
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

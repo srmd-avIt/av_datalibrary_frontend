@@ -16,6 +16,23 @@ import { Separator } from "./ui/separator";
 import { useAuth } from "../contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 
+// --- CSS for sidebar scrollbar styling ---
+const sidebarScrollCss = `
+  nav::-webkit-scrollbar {
+    width: 6px;
+  }
+  nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  nav::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 3px;
+  }
+  nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.5);
+  }
+`;
+
 // --- Hook for detecting mobile screen ---
 const useMobile = () => {
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 768 : false));
@@ -552,336 +569,341 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   // 💻 DESKTOP UI (Exactly as you provided)
   // ==========================================
   const renderDesktopView = () => (
-  <div
-    style={{
-      width: collapsed ? "64px" : "288px",
-      height: "100%",
-      display: "flex",
-      flexDirection: "column",
-      backdropFilter: "blur(20px)",
-      background:
-        "linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(30,41,59,0.9), rgba(15,23,42,0.95))",
-      borderRight: "1px solid rgba(100,116,139,0.3)",
-      borderTopRightRadius: "16px",
-      borderBottomRightRadius: "16px",
-      boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
-      transition: "all 0.3s ease",
-      position: "relative"
-    }}
-  >
-    {/* Collapse Toggle Button */}
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onToggleCollapse}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.backgroundColor = "rgb(51,65,85)")
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.backgroundColor = "rgb(30,41,59)")
-      }
-      style={{
-        position: "absolute",
-        top: "1.5rem",
-        right: collapsed ? "-0.75rem" : "0.75rem",
-        width: "24px",
-        height: "24px",
-        borderRadius: "9999px",
-        backgroundColor: "rgb(30,41,59)",
-        border: "1px solid rgba(51,65,85,0.5)",
-        zIndex: 50,
-        padding: 0,
-        cursor: "pointer",
-        transition: "all 0.3s ease"
-      }}
-    >
-      {collapsed ? (
-        <ChevronRight style={{ width: "12px", height: "12px", color: "#cbd5e1" }} />
-      ) : (
-        <ChevronLeft style={{ width: "12px", height: "12px", color: "#cbd5e1" }} />
-      )}
-    </Button>
+  <>
+    {/* inject the stylesheet once when the sidebar is rendered */}
+    <style dangerouslySetInnerHTML={{ __html: sidebarScrollCss }} />
 
-    {/* Header Section */}
     <div
       style={{
-        padding: collapsed ? "12px" : "24px",
-        borderBottom: "1px solid rgba(100,116,139,0.3)",
-        transition: "all 0.3s ease"
+        width: collapsed ? "64px" : "288px",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backdropFilter: "blur(20px)",
+        background:
+          "linear-gradient(to bottom, rgba(15,23,42,0.95), rgba(30,41,59,0.9), rgba(15,23,42,0.95))",
+        borderRight: "1px solid rgba(100,116,139,0.3)",
+        borderTopRightRadius: "16px",
+        borderBottomRightRadius: "16px",
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+        transition: "all 0.3s ease",
+        position: "relative"
       }}
     >
-      {/* Logo Area */}
-      <div
+      {/* Collapse Toggle Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onToggleCollapse}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.backgroundColor = "rgb(51,65,85)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.backgroundColor = "rgb(30,41,59)")
+        }
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: collapsed ? "center" : "flex-start",
-          gap: collapsed ? 0 : "12px",
-          marginBottom: "16px"
+          position: "absolute",
+          top: "1.5rem",
+          right: collapsed ? "-0.75rem" : "0.75rem",
+          width: "24px",
+          height: "24px",
+          borderRadius: "9999px",
+          backgroundColor: "rgb(30,41,59)",
+          border: "1px solid rgba(51,65,85,0.5)",
+          zIndex: 50,
+          padding: 0,
+          cursor: "pointer",
+          transition: "all 0.3s ease"
         }}
       >
-        <div
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "12px",
-            background: "linear-gradient(to right, #3b82f6, #9333ea)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-        >
-          <Database style={{ width: "20px", height: "20px", color: "#fff" }} />
-        </div>
-
-        {!collapsed && (
-          <div>
-            <h2
-              style={{
-                fontSize: "20px",
-                fontWeight: 700,
-                color: "#fff",
-                margin: 0
-              }}
-            >
-              Data Library
-            </h2>
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#94a3b8",
-                margin: 0
-              }}
-            >
-              Analytics Dashboard
-            </p>
-          </div>
+        {collapsed ? (
+          <ChevronRight style={{ width: "12px", height: "12px", color: "#cbd5e1" }} />
+        ) : (
+          <ChevronLeft style={{ width: "12px", height: "12px", color: "#cbd5e1" }} />
         )}
-      </div>
+      </Button>
 
-      {/* User Profile */}
-      {user && !collapsed && (
+      {/* Header Section */}
+      <div
+        style={{
+          padding: collapsed ? "12px" : "24px",
+          borderBottom: "1px solid rgba(100,116,139,0.3)",
+          transition: "all 0.3s ease"
+        }}
+      >
+        {/* Logo Area */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
-            padding: "12px",
-            borderRadius: "12px",
-            backgroundColor: "rgba(30,41,59,0.5)",
-            border: "1px solid rgba(100,116,139,0.3)",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap: collapsed ? 0 : "12px",
             marginBottom: "16px"
           }}
         >
-          <Avatar style={{ width: "32px", height: "32px" }}>
-            <AvatarImage src={user.picture} />
-            <AvatarFallback
-              style={{
-                background: "linear-gradient(to right, #3b82f6, #9333ea)",
-                color: "#fff",
-                fontSize: "14px"
-              }}
-            >
-              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "12px",
+              background: "linear-gradient(to right, #3b82f6, #9333ea)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            <Database style={{ width: "20px", height: "20px", color: "#fff" }} />
+          </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p
+          {!collapsed && (
+            <div>
+              <h2
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: "#fff",
+                  margin: 0
+                }}
+              >
+                Data Library
+              </h2>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  margin: 0
+                }}
+              >
+                Analytics Dashboard
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* User Profile */}
+        {user && !collapsed && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "12px",
+              borderRadius: "12px",
+              backgroundColor: "rgba(30,41,59,0.5)",
+              border: "1px solid rgba(100,116,139,0.3)",
+              marginBottom: "16px"
+            }}
+          >
+            <Avatar style={{ width: "32px", height: "32px" }}>
+              <AvatarImage src={user.picture} />
+              <AvatarFallback
+                style={{
+                  background: "linear-gradient(to right, #3b82f6, #9333ea)",
+                  color: "#fff",
+                  fontSize: "14px"
+                }}
+              >
+                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#fff",
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}
+              >
+                {user.name}
+              </p>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}
+              >
+                {user.email}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {user && collapsed && (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+            <Avatar style={{ width: "32px", height: "32px" }}>
+              <AvatarImage src={user.picture} />
+              <AvatarFallback
+                style={{
+                  background: "linear-gradient(to right, #3b82f6, #9333ea)",
+                  color: "#fff",
+                  fontSize: "14px"
+                }}
+              >
+                {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        )}
+
+        {/* Project Hub */}
+        <div
+          onClick={() => handleMenuClick("digitalrecordings_gsheet")}
+          title="Project Hub"
+          onMouseEnter={(e) => {
+            if (!isProjectHubActive) {
+              e.currentTarget.style.background = "rgba(59,130,246,0.1)";
+              e.currentTarget.style.borderColor = "rgba(59,130,246,0.15)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isProjectHubActive) {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "transparent";
+            }
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap: collapsed ? 0 : "12px",
+            padding: collapsed ? "4px" : "8px",
+            borderRadius: "12px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            ...(isProjectHubActive
+              ? {
+                  background:
+                    "linear-gradient(to right, rgba(59,130,246,0.20), rgba(147,51,234,0.20))",
+                  border: "1px solid rgba(59,130,246,0.30)",
+                  boxShadow: "0 0 10px rgba(59,130,246,0.25)"
+                }
+              : {
+                  border: "1px solid transparent",
+                  background: "transparent"
+                })
+          }}
+        >
+          <div
+            style={{
+              width: collapsed ? "32px" : "40px",
+              height: collapsed ? "32px" : "40px",
+              borderRadius: "12px",
+              background: "linear-gradient(to bottom right, #ec4899, #8b5cf6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.1)"
+            }}
+          >
+            <LayoutGrid
+              style={{
+                width: collapsed ? "16px" : "20px",
+                height: collapsed ? "16px" : "20px"
+              }}
+            />
+          </div>
+
+          {!collapsed && (
+            <span
               style={{
                 fontSize: "14px",
                 fontWeight: 500,
-                color: "#fff",
-                margin: 0,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis"
+                color: isProjectHubActive ? "#fff" : "#94a3b8"
               }}
             >
-              {user.name}
-            </p>
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#94a3b8",
-                margin: 0,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis"
-              }}
-            >
-              {user.email}
-            </p>
+              Project Hub
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav
+        style={{
+          flex: 1,
+          padding: collapsed ? "8px" : "16px",
+          overflowY: "auto",
+          transition: "all 0.3s ease"
+        }}
+      >
+        <SidebarSection
+          items={visibleMenuItems}
+          activeView={activeView}
+          collapsed={collapsed}
+          openMenus={openMenus}
+          toggleMenu={toggleMenu}
+          handleMenuClick={handleMenuClick}
+        />
+
+        <div style={{ margin: "24px 0", height: "1px", background: "rgba(100,116,139,0.3)" }} />
+
+        {/* Logout */}
+        <Button
+          variant="ghost"
+          onClick={logout}
+          title={collapsed ? "Logout" : undefined}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            width: "100%",
+            padding: collapsed ? 0 : "0 16px",
+            height: collapsed ? "40px" : "44px",
+            gap: collapsed ? 0 : "12px",
+            borderRadius: "12px",
+            fontSize: "16px",
+            color: "#cbd5e1",
+            background: "transparent",
+            border: "1px solid transparent",
+            transition: "all 0.2s ease",
+            cursor: "pointer"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#f87171";
+            e.currentTarget.style.background = "rgba(239,68,68,0.1)";
+            e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "#cbd5e1";
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "transparent";
+          }}
+        >
+          <LogOut style={{ width: "16px", height: "16px" }} />
+          {!collapsed && <span style={{ fontWeight: 500 }}>Logout</span>}
+        </Button>
+      </nav>
+
+      {!collapsed && (
+        <div
+          style={{
+            padding: "16px",
+            borderTop: "1px solid rgba(100,116,139,0.3)"
+          }}
+        >
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#64748b",
+              textAlign: "center"
+            }}
+          >
+            © 2025 Data Library v2.1.0
           </div>
         </div>
       )}
-
-      {user && collapsed && (
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
-          <Avatar style={{ width: "32px", height: "32px" }}>
-            <AvatarImage src={user.picture} />
-            <AvatarFallback
-              style={{
-                background: "linear-gradient(to right, #3b82f6, #9333ea)",
-                color: "#fff",
-                fontSize: "14px"
-              }}
-            >
-              {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      )}
-
-      {/* Project Hub */}
-      <div
-        onClick={() => handleMenuClick("digitalrecordings_gsheet")}
-        title="Project Hub"
-        onMouseEnter={(e) => {
-          if (!isProjectHubActive) {
-            e.currentTarget.style.background = "rgba(59,130,246,0.1)";
-            e.currentTarget.style.borderColor = "rgba(59,130,246,0.15)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isProjectHubActive) {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "transparent";
-          }
-        }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: collapsed ? "center" : "flex-start",
-          gap: collapsed ? 0 : "12px",
-          padding: collapsed ? "4px" : "8px",
-          borderRadius: "12px",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-          ...(isProjectHubActive
-            ? {
-                background:
-                  "linear-gradient(to right, rgba(59,130,246,0.2), rgba(147,51,234,0.2))",
-                border: "1px solid rgba(59,130,246,0.3)",
-                boxShadow: "0 0 10px rgba(59,130,246,0.25)"
-              }
-            : {
-                border: "1px solid transparent",
-                background: "transparent"
-              })
-        }}
-      >
-        <div
-          style={{
-            width: collapsed ? "32px" : "40px",
-            height: collapsed ? "32px" : "40px",
-            borderRadius: "12px",
-            background: "linear-gradient(to bottom right, #ec4899, #8b5cf6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            border: "1px solid rgba(255,255,255,0.1)"
-          }}
-        >
-          <LayoutGrid
-            style={{
-              width: collapsed ? "16px" : "20px",
-              height: collapsed ? "16px" : "20px"
-            }}
-          />
-        </div>
-
-        {!collapsed && (
-          <span
-            style={{
-              fontSize: "14px",
-              fontWeight: 500,
-              color: isProjectHubActive ? "#fff" : "#94a3b8"
-            }}
-          >
-            Project Hub
-          </span>
-        )}
-      </div>
     </div>
-
-    {/* Navigation */}
-    <nav
-      style={{
-        flex: 1,
-        padding: collapsed ? "8px" : "16px",
-        overflowY: "auto",
-        transition: "all 0.3s ease"
-      }}
-    >
-      <SidebarSection
-        items={visibleMenuItems}
-        activeView={activeView}
-        collapsed={collapsed}
-        openMenus={openMenus}
-        toggleMenu={toggleMenu}
-        handleMenuClick={handleMenuClick}
-      />
-
-      <div style={{ margin: "24px 0", height: "1px", background: "rgba(100,116,139,0.3)" }} />
-
-      {/* Logout */}
-      <Button
-        variant="ghost"
-        onClick={logout}
-        title={collapsed ? "Logout" : undefined}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: collapsed ? "center" : "flex-start",
-          width: "100%",
-          padding: collapsed ? 0 : "0 16px",
-          height: collapsed ? "40px" : "44px",
-          gap: collapsed ? 0 : "12px",
-          borderRadius: "12px",
-          fontSize: "16px",
-          color: "#cbd5e1",
-          background: "transparent",
-          border: "1px solid transparent",
-          transition: "all 0.2s ease",
-          cursor: "pointer"
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = "#f87171";
-          e.currentTarget.style.background = "rgba(239,68,68,0.1)";
-          e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = "#cbd5e1";
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.borderColor = "transparent";
-        }}
-      >
-        <LogOut style={{ width: "16px", height: "16px" }} />
-        {!collapsed && <span style={{ fontWeight: 500 }}>Logout</span>}
-      </Button>
-    </nav>
-
-    {!collapsed && (
-      <div
-        style={{
-          padding: "16px",
-          borderTop: "1px solid rgba(100,116,139,0.3)"
-        }}
-      >
-        <div
-          style={{
-            fontSize: "12px",
-            color: "#64748b",
-            textAlign: "center"
-          }}
-        >
-          © 2025 Data Library v2.1.0
-        </div>
-      </div>
-    )}
-  </div>
+  </>
 );
 
   // Conditional Return: Render mobile view if on a phone, desktop view if on a laptop
