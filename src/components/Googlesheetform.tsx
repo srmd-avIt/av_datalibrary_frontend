@@ -324,6 +324,8 @@ const SearchableSelect = ({ label, name, options, value, onChange, theme, requir
 // ============================================================================
 const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
   const { user } = useAuth();
+  const { width: windowWidth } = useWindowSize(); // <-- ADDED for mobile detection
+  const isMobile = windowWidth < 768; // <-- ADDED for mobile detection
   
   // Base configuration of tabs with their required permissions
   const allTabs = useMemo(() => [
@@ -381,18 +383,20 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
       <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: "16px", marginTop: "10px", overflow: "hidden" }}>
         {visibleTabs.length > 0 ? (
           <>
-            {/* Top Navigation Tabs - Made Smaller and Centered */}
-            <div 
+            {/* Top Navigation Tabs - Fixed for Mobile */}
+          <div 
               style={{ 
                 display: "flex", 
                 flexDirection: "row", 
-                gap: "8px",           // Tighter spacing between tabs
+                gap: isMobile ? "8px" : "4px", // Reduced gap for laptop          
                 overflowX: "auto", 
-                paddingBottom: "4px", 
+                padding: isMobile ? "0 10px 12px 10px" : "0 4px 8px 4px", 
+                justifyContent: "flex-start", // Changed to flex-start to prevent cutoff bug
                 flexShrink: 0,
-                justifyContent: "center" // Centers the tabs horizontally
+                WebkitOverflowScrolling: "touch",
+                width: "100%"
               }} 
-              className="hide-scrollbar"
+              className="custom-scrollbar" // Allows elegant scrolling if screen is split/tiny
             >
               {visibleTabs.map((tab) => (
                 <button
@@ -400,16 +404,17 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
                   onClick={() => setActiveTab(tab.id)}
                   style={{
                     display: "flex", alignItems: "center", gap: "6px",
-                    padding: "8px 16px",    // Smaller padding
-                    fontSize: "0.85rem",    // Smaller font size
-                    borderRadius: "8px",    // Sharper, smaller corners
+                    padding: isMobile ? "10px 16px" : "6px 10px", // Smaller padding for laptop
+                    fontSize: isMobile ? "0.9rem" : "0.75rem",    // Smaller font for laptop
+                    borderRadius: "8px",    
                     border: "1px solid",
                     borderColor: activeTab === tab.id ? "rgba(59, 130, 246, 0.5)" : "transparent",
                     background: activeTab === tab.id ? "rgba(59, 130, 246, 0.1)" : "rgba(30, 41, 59, 0.5)",
                     color: activeTab === tab.id ? "#fff" : "#94a3b8",
                     cursor: "pointer", transition: "all 0.2s", textAlign: "center",
                     fontWeight: activeTab === tab.id ? 600 : 500,
-                    whiteSpace: "nowrap"
+                    whiteSpace: "nowrap",
+                    flexShrink: 0 
                   }}
                   onMouseEnter={(e) => {
                     if (activeTab !== tab.id) {
@@ -422,13 +427,13 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
                     }
                   }}
                 >
-                  <tab.icon size={16} color={activeTab === tab.id ? "#3b82f6" : "#64748b"} /> {/* Smaller Icon */}
+                  <tab.icon size={isMobile ? 16 : 14} color={activeTab === tab.id ? "#3b82f6" : "#64748b"} /> 
                   {tab.label}
                 </button>
               ))}
             </div>
 
-            {/* Content Area (Takes up the rest of the space below the tabs) */}
+            {/* Content Area */}
             <div style={{ flex: 1, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden" }} className="custom-scrollbar">
               {activeTab === "check-ml-reference" && <CheckMLReference />}
               {activeTab === "search-new-ml-event-code" && <SearchNewMLEventCode />}
@@ -470,6 +475,9 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   // --- NEW: State to control the duplicate recording code modal ---
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   
+  // --- NEW: State for Mobile View specific overrides
+  const [showMobileForm, setShowMobileForm] = useState(false);
+
   const canViewAudioMerge = useMemo(() => {
     if (!loggedInUser) return false;
     if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
@@ -901,7 +909,12 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     }
   };
 
-  const handleSelectEntry = (item: any) => { setFormData(item); setActiveCommentId(item._id); setEditingId(null); };
+  const handleSelectEntry = (item: any) => { 
+      setFormData(item); 
+      setActiveCommentId(item._id); 
+      setEditingId(null); 
+      setShowMobileForm(false); 
+  };
   
   const handleEditClick = (item: any, e: any) => { 
       e.stopPropagation(); 
@@ -916,9 +929,14 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       setFormData(item); 
       setActiveCommentId(item._id); 
       setEditingId(item._id); 
+      if (isMobile) setShowMobileForm(true);
   };
   
-  const enableEditing = () => { if(activeCommentId) setEditingId(activeCommentId); };
+  const enableEditing = () => { 
+    if(activeCommentId) setEditingId(activeCommentId); 
+    if(isMobile) setShowMobileForm(true);
+  };
+  
   const handleStatusClick = (id: number, e: any) => { e.stopPropagation(); if (openStatusDropdown === id) setOpenStatusDropdown(null); else setOpenStatusDropdown(id); };
 
   // --- UPDATED updateStatus: Syncs with Backend via API ---
@@ -1115,6 +1133,7 @@ const updateStatus = async (id: number, newStatus: string, e: any) => {
         setEditingId(null); 
         setFormData(initialFormState); 
         setActiveCommentId(null); 
+        setShowMobileForm(false);
         
     } else {
         // CREATE NEW ENTRY
@@ -1147,12 +1166,20 @@ const updateStatus = async (id: number, newStatus: string, e: any) => {
         setQueue(prev => [newItem, ...prev]);
         toast.success("Added to Queue");
         setFormData(initialFormState);
+        setShowMobileForm(false);
     }
   };
 
   const handleResetForm = () => { setIsResetting(true); setFormData(initialFormState); setTimeout(() => setIsResetting(false), 700); };
-  const handleCancelSelection = () => { setEditingId(null); setActiveCommentId(null); setFormData(initialFormState); };
-const handleCloseComments = () => { 
+  
+  const handleCancelSelection = () => { 
+      setEditingId(null); 
+      setActiveCommentId(null); 
+      setFormData(initialFormState); 
+      setShowMobileForm(false); 
+  };
+  
+  const handleCloseComments = () => { 
       setActiveCommentId(null); 
       setEditingId(null); // Exit edit mode if active
       setFormData(initialFormState); // Reset form to blank/initial state
@@ -1326,6 +1353,7 @@ const handleSendComment = async () => {
   
   const isEditing = !!editingId;
   const isViewing = !!activeCommentId && !isEditing;
+  
   const getGridTemplate = () => { 
       if (isTableView) {
         return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
@@ -1912,12 +1940,37 @@ const handleSendComment = async () => {
 
       <input type="file" ref={fileInputRef} onChange={handleFileScan} style={{ display: "none" }} multiple />
 
-      <div style={{ ...styles.mainContainer, gridTemplateColumns: getGridTemplate(), gap: isCompact ? "12px" : "20px" }}>
+      <div style={{ 
+          ...styles.mainContainer, 
+          display: isMobile ? "flex" : "grid",
+          flexDirection: isMobile ? "column" : "row",
+          gridTemplateColumns: isMobile ? "none" : getGridTemplate(), 
+          gap: isCompact ? "12px" : "20px",
+          position: "relative"
+      }}>
         
-        {!isTableView && (
-            <div style={{...styles.columnScroll, display: isMobile && isCommentsOpen ? 'none' : 'block' }} className="hide-scrollbar">
+        {/* COLUMN 1: FORM */}
+        {(!isTableView || (isMobile && (showMobileForm || isEditing))) && (
+            <div style={{
+                ...styles.columnScroll,
+                display: isMobile ? ((showMobileForm || isEditing) ? 'block' : 'none') : 'block',
+                width: isMobile ? "100%" : "auto",
+                paddingBottom: isMobile ? "20px" : "100px" 
+            }} className="hide-scrollbar">
                 <div style={styles.unifiedCard(isCompact)}>
                     
+                    {isMobile && (
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            <button 
+                                type="button"
+                                onClick={() => { setShowMobileForm(false); handleCancelSelection(); }}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}
+                            >
+                                <ArrowLeft size={20} /> Back to Queue
+                            </button>
+                        </div>
+                    )}
+
                     {isEditing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", borderRadius: 8, color: "#f59e0b", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Pencil size={14}/> Editing Mode - Changes will update the entry</div>}
                     {isViewing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(59, 130, 246, 0.1)", border: "1px solid #3b82f6", borderRadius: 8, color: "#3b82f6", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Eye size={14}/> View Mode - Read Only</div>}
 
@@ -1999,7 +2052,14 @@ const handleSendComment = async () => {
         )}
 
         {/* COLUMN 2: PENDING QUEUE */}
-        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", display: isMobile && isCommentsOpen ? 'none' : 'block' }} className="hide-scrollbar">
+        <div style={{ 
+            ...styles.columnScroll, 
+            height: "100%", 
+            overflowY: "auto", 
+            gridColumn: isTableView && !isMobile ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", 
+            display: isMobile ? ((!showMobileForm && !isEditing && !isCommentsOpen) ? 'block' : 'none') : 'block',
+            width: isMobile ? "100%" : "auto"
+        }} className="hide-scrollbar">
             <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
                 
                 <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
@@ -2093,16 +2153,39 @@ const handleSendComment = async () => {
                         </div>
                     )
                 )}
+
+                {/* Mobile FAB to Add New */}
+                {isMobile && !showMobileForm && !isEditing && !isCommentsOpen && hasEditAccess && (
+                     <button 
+                         onClick={() => setShowMobileForm(true)}
+                         style={{ position: "fixed", bottom: queue.length > 0 && selectedIndices.size > 0 ? "90px" : "30px", right: "20px", width: "56px", height: "56px", borderRadius: "28px", background: "linear-gradient(to right, #6366f1, #a855f7)", color: "white", border: "none", boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, cursor: "pointer" }}
+                     >
+                         <Plus size={28} />
+                     </button>
+                )}
             </div>
         </div>
 
         {/* COLUMN 3: COMMUNICATION / DETAILS */}
-        {isCommentsOpen ? (
-            <div style={{...styles.commentCard, gridColumn: isMobile ? '1' : isTablet ? '2' : 'auto', zIndex: 50}}>
+        {isCommentsOpen && !(isMobile && (showMobileForm || isEditing)) ? (
+            <div style={{
+                ...styles.commentCard, 
+                gridColumn: isMobile ? '1' : isTablet ? '2' : 'auto', 
+                zIndex: 100,
+                ...(isMobile ? {
+                    position: 'fixed',
+                    inset: 0,
+                    borderRadius: 0,
+                    height: '100dvh',
+                    background: '#0b1120'
+                } : {})
+            }}>
                 <div style={styles.chatHeader}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
                         <div><h4 style={{margin: 0, color: '#fff', fontSize: '0.95rem', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{activeEntry.EventName}</h4><span style={{fontSize: '0.75rem', color: '#3b82f6'}}>{activeEntry.fkEventCode}</span></div>
-                        <button onClick={handleCloseComments} style={{background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer'}}><X size={18} /></button>
+                        <button onClick={handleCloseComments} style={{background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6}}>
+                            {isMobile ? <><ArrowLeft size={18} /> Back</> : <X size={18} />}
+                        </button>
                     </div>
                     <div style={{marginTop: 15, padding: 10, background: 'rgba(0,0,0,0.2)', borderRadius: 8, fontSize: '0.75rem', color: '#cbd5e1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8}}>
                             <div><span style={{color:'#64748b'}}>DRCode:</span> {activeEntry.RecordingCode}</div> 
@@ -2185,7 +2268,15 @@ const handleSendComment = async () => {
       </div>
 
       {queue.length > 0 && (
-        <div style={styles.actionBar}>
+        <div style={{
+            ...styles.actionBar,
+            bottom: isMobile ? "20px" : "30px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: isMobile ? "calc(100% - 40px)" : "auto",
+            justifyContent: "space-between",
+            padding: isMobile ? "10px 15px" : "10px 20px"
+        }}>
             <span style={{ color: "#fff", fontSize: "0.9rem", fontWeight: 600 }}>{selectedIndices.size} Selected</span>
             <button type="button" onClick={handleUploadSelected} disabled={isSubmitting || selectedIndices.size === 0 || !canApprove} style={{ background: `linear-gradient(to right, #10b981, #059669)`, border: "none", borderRadius: "100px", padding: "0 30px", height: "44px", fontSize: "0.9rem", fontWeight: "600", color: "white", display: "flex", alignItems: "center", gap: "8px", cursor: selectedIndices.size === 0 || !canApprove ? 'not-allowed' : 'pointer', opacity: selectedIndices.size === 0 || !canApprove ? 0.5 : 1, boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)", }} title={!canApprove ? "Only users with edit access can approve" : ""}>
                 {isSubmitting ? ( <> <Activity className="animate-spin" size={18} /> Processing... </> ) : ( <> <UploadCloud size={18} /> Approve Selected </> )}

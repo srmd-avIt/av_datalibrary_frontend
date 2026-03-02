@@ -189,21 +189,21 @@ function SimplePagination({ currentPage, totalPages, onPageChange }: { currentPa
   };
 
   const renderMobile = () => (
-    <div className="flex flex-col gap-3 w-full px-2">
-      <div className="text-center text-sm text-slate-400">
+    <div className="flex flex-col gap-1 w-full px-1">
+      <div className="text-center text-[11px] text-slate-400 mb-1">
         Page <strong className="text-white">{currentPage}</strong> of <strong className="text-white">{Math.max(1, totalPages)}</strong>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <Button size="sm" onClick={() => go(currentPage - 1)} disabled={currentPage <= 1} style={{ flex: 1, backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", borderRadius: "8px" }}>
+        <Button size="sm" onClick={() => go(currentPage - 1)} disabled={currentPage <= 1} style={{ flex: 1, height: "26px", fontSize: "11px", backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", borderRadius: "6px", padding: "0 6px" }}>
           Prev
         </Button>
         <div className="flex items-center gap-1 min-w-0">
-          <Input type="number" min={1} max={Math.max(1, totalPages)} placeholder="Pg" value={jump} onChange={(e: any) => setJump(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { go(Number(jump)); setJump(''); } }} style={{ width: "60px", height: "36px", textAlign: "center", backgroundColor: "#0f172a", border: "1px solid #334155", color: "white", borderRadius: "8px" }} />
-          <Button size="sm" onClick={() => { go(Number(jump)); setJump(''); }} style={{ height: "36px", backgroundColor: "#3b82f6", color: "white", borderRadius: "8px" }}>
+          <Input type="number" min={1} max={Math.max(1, totalPages)} placeholder="Pg" value={jump} onChange={(e: any) => setJump(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') { go(Number(jump)); setJump(''); } }} style={{ width: "45px", height: "26px", fontSize: "11px", textAlign: "center", backgroundColor: "#0f172a", border: "1px solid #334155", color: "white", borderRadius: "6px", padding: "0 4px" }} />
+          <Button size="sm" onClick={() => { go(Number(jump)); setJump(''); }} style={{ height: "26px", fontSize: "11px", backgroundColor: "#3b82f6", color: "white", borderRadius: "6px", padding: "0 8px" }}>
             Go
           </Button>
         </div>
-        <Button size="sm" onClick={() => go(currentPage + 1)} disabled={currentPage >= Math.max(1, totalPages)} style={{ flex: 1, backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", borderRadius: "8px" }}>
+        <Button size="sm" onClick={() => go(currentPage + 1)} disabled={currentPage >= Math.max(1, totalPages)} style={{ flex: 1, height: "26px", fontSize: "11px", backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", borderRadius: "6px", padding: "0 6px" }}>
           Next
         </Button>
       </div>
@@ -260,7 +260,7 @@ export function ClickUpListViewUpdated({
   groupEnabled,
   initialFilters,
   onViewChange,
-  onOpenSidebar // Optional prop added to open sidebar on mobile
+  onOpenSidebar
 }: {
   title: string;
   columns: Column[];
@@ -294,20 +294,27 @@ export function ClickUpListViewUpdated({
   
   // State to track which specific ENTIRE COLUMNS are expanded on mobile
   const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
+  
 
   useEffect(() => {
     const checkMobile = () => {
       const mobileState = window.innerWidth <= 768;
       setIsMobile(mobileState);
-      // Dark theme background for mobile view
-      if (mobileState) document.body.style.backgroundColor = "#0b1120";
-      else document.body.style.backgroundColor = "";
+      // Dark theme background & class for mobile view targeting
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+        document.body.classList.add('mobile-app-view');
+      } else {
+        document.body.style.backgroundColor = "";
+        document.body.classList.remove('mobile-app-view');
+      }
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => {
       window.removeEventListener('resize', checkMobile);
       document.body.style.backgroundColor = "";
+      document.body.classList.remove('mobile-app-view');
     };
   }, []);
   
@@ -478,7 +485,7 @@ export function ClickUpListViewUpdated({
     else if (effectiveApiEndpoint.includes("newcountries")) { endpoint = "/new-countries"; rowId = updatedRow.CountryID; }
     else if (effectiveApiEndpoint.includes("newstates")) { endpoint = "/new-states"; rowId = updatedRow.StateID; }
     else if (effectiveApiEndpoint.includes("occasions")) { endpoint = "/occasions"; rowId = updatedRow.OccasionID; }
-    else if (effectiveApiEndpoint.includes("topicnumbersource")) { endpoint = "/topic-number-source"; rowId = updatedRow.TNID; }
+    else if (effectiveApiEndpoint.includes("topicnumbersource")) { endpoint = "/topicnumbersource"; rowId = updatedRow.TNID; }
     else if (effectiveApiEndpoint.includes("time-of-day")) { endpoint = "/time-of-day"; rowId = updatedRow.TimeID; }  
     else if (effectiveApiEndpoint.includes("aux-file-type")) { endpoint = "/aux-file-type"; rowId = updatedRow.AuxTypeID; }
     else if (effectiveApiEndpoint.includes("topic-given-by")) { endpoint = "/topic-given-by"; rowId = updatedRow.TGBID; }
@@ -1160,8 +1167,9 @@ export function ClickUpListViewUpdated({
             <td
               key={col.key}
               style={{
-                padding: "12px 16px",
+                padding: "6px 8px", // Reduced padding for compactness
                 color: "#cbd5e1",
+                fontSize: "12px", // Reduced font size to see more data
                 position: cIndex === 0 ? "sticky" : "static",
                 left: cIndex === 0 ? 0 : undefined,
                 backgroundColor: cIndex === 0 ? "#0b1120" : undefined,
@@ -1171,8 +1179,8 @@ export function ClickUpListViewUpdated({
                 // Dynamic styling for column expansion
                 whiteSpace: isColumnExpanded ? "normal" : "nowrap",
                 wordBreak: isColumnExpanded ? "break-word" : "normal",
-                minWidth: isColumnExpanded ? "250px" : undefined, // widen when expanded
-                maxWidth: isColumnExpanded ? "85vw" : (cIndex === 0 ? 160 : 200),
+                minWidth: isColumnExpanded ? "200px" : undefined, // widen when expanded
+                maxWidth: isColumnExpanded ? "85vw" : (cIndex === 0 ? 110 : 140), // narrower non-expanded widths
                 overflow: isColumnExpanded ? "visible" : "hidden",
                 textOverflow: isColumnExpanded ? "clip" : "ellipsis",
                 verticalAlign: isColumnExpanded ? "top" : "middle",
@@ -1180,8 +1188,8 @@ export function ClickUpListViewUpdated({
               }}
             >
               {cIndex === 0 ? (
-                <div style={{ display: "flex", alignItems: isColumnExpanded ? "flex-start" : "center", gap: 10 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#3b82f6", flexShrink: 0, marginTop: isColumnExpanded ? 8 : 0 }} />
+                <div style={{ display: "flex", alignItems: isColumnExpanded ? "flex-start" : "center", gap: 6 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#3b82f6", flexShrink: 0, marginTop: isColumnExpanded ? 4 : 0 }} />
                   <span style={{ fontWeight: 500, color: "#f1f5f9" }}>
                     {cellValue}
                   </span>
@@ -1216,8 +1224,9 @@ export function ClickUpListViewUpdated({
               <td 
                 colSpan={visibleColumns.length} 
                 style={{ 
-                  padding: "12px 16px", // Adjusted padding to match rows
-                  textAlign: "left",    // <--- Moved to the left
+                  padding: "6px 8px", // Adjusted padding to match rows
+                  textAlign: "left",
+                  fontSize: "12px",
                   position: "sticky", 
                   left: 0,
                   borderBottom: "1px solid #1e293b"
@@ -1257,8 +1266,9 @@ export function ClickUpListViewUpdated({
               <td
                 colSpan={visibleColumns.length}
                 style={{
-                  padding: "12px 16px",
+                  padding: "6px 8px", // Reduced padding
                   fontWeight: 600,
+                  fontSize: "12px",
                   color: "#f8fafc",
                   position: "sticky",
                   left: 0,
@@ -1267,15 +1277,15 @@ export function ClickUpListViewUpdated({
                   borderRight: "none"
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", paddingLeft: level * 16 }}>
+                <div style={{ display: "flex", alignItems: "center", paddingLeft: level * 12 }}>
                   {isExpanded ? (
-                    <ChevronDown style={{ width: 18, height: 18, color: "#cbd5e1", marginRight: 8 }} />
+                    <ChevronDown style={{ width: 14, height: 14, color: "#cbd5e1", marginRight: 4 }} />
                   ) : (
-                    <ChevronRight style={{ width: 18, height: 18, color: "#cbd5e1", marginRight: 8 }} />
+                    <ChevronRight style={{ width: 14, height: 14, color: "#cbd5e1", marginRight: 4 }} />
                   )}
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#3b82f6", marginRight: 10 }} />
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#3b82f6", marginRight: 6 }} />
                   <span>{currentField}: {key}</span>
-                  <Badge variant="outline" style={{ marginLeft: 8, backgroundColor: "#1e293b", color: "#94a3b8", border: "none" }}>
+                  <Badge variant="outline" style={{ marginLeft: 6, backgroundColor: "#1e293b", color: "#94a3b8", border: "none", fontSize: "10px", padding: "0 4px", height: "18px" }}>
                     {Array.isArray(value) ? value.length : (typeof value === 'object' && value !== null ? Object.keys(value as object).length : 0)}
                   </Badge>
                 </div>
@@ -1304,159 +1314,223 @@ export function ClickUpListViewUpdated({
       position: "relative"
     }}
   >
-    {/* Global styles for the spinner so it works inline */}
+    {/* Global styles for the spinner so it works inline, and aggressively shrinking internal popups */}
     <style>{`
       @keyframes inline-spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
+      
+      /* Force the internal filter button of AdvancedFiltersClickUp to match our new smaller pill icon buttons */
+      .mobile-filter-container button {
+        width: auto !important;
+        height: 26px !important;
+        padding: 0 8px !important;
+        border-radius: 13px !important;
+        background-color: ${advancedFilters.length > 0 ? '#3b82f6' : '#1e293b'} !important;
+        border-color: ${advancedFilters.length > 0 ? '#2563eb' : '#334155'} !important;
+        color: white !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 12px !important; 
+        gap: 4px !important;
+      }
+      .mobile-filter-container button svg {
+        width: 12px !important;
+        height: 12px !important;
+        margin: 0 !important;
+      }
+
+      /* ---------------------------------------------------- */
+      /* SHRINK ALL POPOVERS AND DIALOGS IN MOBILE VIEW      */
+      /* ---------------------------------------------------- */
+      .mobile-app-view [data-radix-popper-content-wrapper] {
+        max-width: 95vw !important;
+        z-index: 150 !important;
+      }
+      .mobile-app-view [data-radix-popper-content-wrapper] .bg-popover,
+      .mobile-app-view [data-radix-popper-content-wrapper] [role="dialog"],
+      .mobile-app-view [data-state="open"][role="dialog"],
+      .mobile-app-view .dialog-content {
+        padding: 12px !important;
+        border-radius: 12px !important;
+      }
+
+      /* Make inputs, selects, and internal buttons smaller */
+      .mobile-app-view [data-radix-popper-content-wrapper] input,
+      .mobile-app-view [data-radix-popper-content-wrapper] button:not(.mobile-filter-container button),
+      .mobile-app-view [data-radix-popper-content-wrapper] [role="combobox"],
+      .mobile-app-view [data-radix-popper-content-wrapper] select,
+      .mobile-app-view [data-state="open"][role="dialog"] input,
+      .mobile-app-view [data-state="open"][role="dialog"] button:not(.mobile-filter-container button),
+      .mobile-app-view [data-state="open"][role="dialog"] [role="combobox"] {
+        height: 28px !important;
+        min-height: 28px !important;
+        font-size: 12px !important;
+        padding: 0 8px !important;
+        border-radius: 6px !important;
+      }
+
+      /* Shrink text */
+      .mobile-app-view [data-radix-popper-content-wrapper] label,
+      .mobile-app-view [data-radix-popper-content-wrapper] .text-sm,
+      .mobile-app-view [data-state="open"][role="dialog"] label,
+      .mobile-app-view [data-state="open"][role="dialog"] .text-sm {
+        font-size: 12px !important;
+        line-height: 1.2 !important;
+      }
+
+      /* Reduce layout gaps */
+      .mobile-app-view [data-radix-popper-content-wrapper] .space-y-4 > * + *,
+      .mobile-app-view [data-state="open"][role="dialog"] .space-y-4 > * + * {
+        margin-top: 8px !important;
+      }
+      .mobile-app-view [data-radix-popper-content-wrapper] .gap-4,
+      .mobile-app-view [data-state="open"][role="dialog"] .gap-4 {
+        gap: 8px !important;
+      }
+      .mobile-app-view [data-radix-popper-content-wrapper] .p-4,
+      .mobile-app-view [data-state="open"][role="dialog"] .p-4 {
+        padding: 10px !important;
+      }
     `}</style>
 
-    
-
-    {/* Horizontal Pills */}
+    {/* Top Control Bar - Collapsible Search & Icon Buttons */}
     <div
       style={{
         display: "flex",
-        overflowX: "auto",
-        gap: 8,
-        padding: "12px 16px",
+        alignItems: "center",
+        justifyContent: showMobileSearch ? "flex-start" : "flex-end",
+        gap: 6,
+        padding: "6px 8px",
         backgroundColor: "#0b1120",
         borderBottom: "1px solid rgba(30,41,59,0.5)",
         flexShrink: 0,
-        scrollbarWidth: "none", /* Firefox */
-        msOverflowStyle: "none" /* IE/Edge */
+        overflowX: "auto",
+        scrollbarWidth: "none",
+        msOverflowStyle: "none"
       }}
     >
-      <button
-        onClick={handleExport}
-        disabled={isExporting}
-        style={{
-          flexShrink: 0,
-          height: 36,
-          borderRadius: 20,
-          backgroundColor: "#1e293b",
-          border: "1px solid #334155",
-          color: "#ffffff",
-          padding: "0 14px",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          cursor: "pointer"
-        }}
-      >
-        {isExporting ? (
-          <Loader2 style={{ width: 16, height: 16, animation: "inline-spin 1s linear infinite" }} />
-        ) : (
-          <Download style={{ width: 16, height: 16 }} />
-        )}
-        Export
-      </button>
-
-      {/* Group Popover */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" style={{ flexShrink: 0, height: "36px", borderRadius: "20px", backgroundColor: "#1e293b", borderColor: "#334155", color: "white" }}>
-            <Users style={{ width: 16, height: 16, marginRight: 4 }} /> {groupByFields[0] !== "none" ? "Grouped" : "Group"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent 
-          style={{ width: 288, padding: 16, backgroundColor: "#0f172a", border: "1px solid #334155", color: "#ffffff", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }} 
-          align="start"
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "#e2e8f0" }}>Group by field</div>
-            <Select value={groupByFields[0] || 'none'} onValueChange={(v: string) => { setGroupByFields(v === 'none' ? [] : [v]); setGroupDirections(prev => ({ ...prev, [v]: "asc" })); }}>
-              <SelectTrigger style={{ height: 40, backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <SelectValue placeholder="Select field" />
-              </SelectTrigger>
-              <SelectContent style={{ backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6 }}>
-                <SelectItem value="none">No grouping</SelectItem>
-                {getAvailableGroupByFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-            {groupByFields[0] !== "none" && (
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                style={{ width: "100%", backgroundColor: "#dc2626", color: "#ffffff", border: "none", height: 36, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} 
-                onClick={() => setGroupByFields([])}
-              >
-                <X style={{ width: 16, height: 16, marginRight: 8 }} /> Clear Grouping
-              </Button>
+      {showMobileSearch ? (
+        <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 8 }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <Search
+              style={{
+                position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#94a3b8"
+              }}
+            />
+            <Input
+              autoFocus
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              placeholder="Search..."
+              style={{
+                width: "100%", paddingLeft: 30, paddingRight: 30, height: 30, fontSize: 13, borderRadius: 15, border: "1px solid #334155", backgroundColor: "#1e293b", color: "#ffffff", boxShadow: "none"
+              }}
+            />
+            {searchTerm && (
+              <X
+                onClick={() => setSearchTerm("")}
+                style={{
+                  position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "#94a3b8", cursor: "pointer"
+                }}
+              />
             )}
           </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* Sort Popover */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" style={{ flexShrink: 0, height: "36px", borderRadius: "20px", backgroundColor: "#1e293b", borderColor: "#334155", color: "white" }}>
-            <ArrowUpDown style={{ width: 16, height: 16, marginRight: 4 }} /> {sortByFields.length > 0 ? "Sorted" : "Sort"}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowMobileSearch(false)}
+            style={{ color: "#94a3b8", padding: "0 4px", height: 30 }}
+          >
+            Cancel
           </Button>
-        </PopoverTrigger>
-        <PopoverContent 
-          style={{ width: 288, padding: 16, backgroundColor: "#0f172a", border: "1px solid #334155", color: "#ffffff", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" }} 
-          align="start"
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "#e2e8f0" }}>Sort by field</div>
-            <Select value={sortByFields[0]?.key || 'none'} onValueChange={(v: string) => { if (v === 'none') setSortByFields([]); else setSortByFields([{ key: v, direction: 'asc' }]); }}>
-              <SelectTrigger style={{ height: 40, backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6, padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <SelectValue placeholder="Select field" />
-              </SelectTrigger>
-              <SelectContent style={{ backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6 }}>
-                <SelectItem value="none">No sorting</SelectItem>
-                {getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-
-    {/* Expandable Search Bar */}
-    {showMobileSearch && (
-      <div
-        style={{
-          padding: "12px 16px",
-          backgroundColor: "#0b1120",
-          borderBottom: "1px solid #1e293b",
-          flexShrink: 0
-        }}
-      >
-        <div style={{ position: "relative" }}>
-          <Search
-            style={{
-              position: "absolute",
-              left: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 16,
-              height: 16,
-              color: "#94a3b8"
-            }}
-          />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            placeholder="Search..."
-            style={{
-              width: "100%",
-              paddingLeft: 36,
-              height: 40,
-              borderRadius: 8,
-              border: "1px solid #334155",
-              backgroundColor: "#1e293b",
-              color: "#ffffff",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
-              fontSize: 16
-            }}
-          />
         </div>
-      </div>
-    )}
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {/* Search Toggle Icon (Circle) */}
+          <Button 
+            variant="outline" 
+            onClick={() => setShowMobileSearch(true)}
+            style={{ 
+              flexShrink: 0, width: 26, height: 26, padding: 0, borderRadius: "50%", backgroundColor: searchTerm ? "#3b82f6" : "#1e293b", borderColor: searchTerm ? "#2563eb" : "#334155", color: "white" 
+            }}
+          >
+            <Search style={{ width: 12, height: 12 }} />
+          </Button>
+
+          {/* Filter Component - Rendered Directly (Custom CSS makes it a pill with text) */}
+          <div className="mobile-filter-container" style={{ flexShrink: 0 }}>
+            <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} onSaveFilter={handleSaveFilter} />
+          </div>
+
+          {/* Sort Popover (Pill) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" style={{ flexShrink: 0, height: 26, padding: "0 8px", borderRadius: "13px", backgroundColor: sortByFields.length > 0 ? "#3b82f6" : "#1e293b", borderColor: sortByFields.length > 0 ? "#2563eb" : "#334155", color: "white", fontSize: "12px", display: "flex", gap: "4px" }}>
+                <ArrowUpDown style={{ width: 12, height: 12 }} />
+                Sort
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              style={{ width: 260, padding: 12, backgroundColor: "#0f172a", border: "1px solid #334155", color: "#ffffff", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }} 
+              align="end" side="bottom"
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 12, color: "#e2e8f0" }}>Sort by field</div>
+                <Select value={sortByFields[0]?.key || 'none'} onValueChange={(v: string) => { if (v === 'none') setSortByFields([]); else setSortByFields([{ key: v, direction: 'asc' }]); }}>
+                  <SelectTrigger style={{ height: 28, fontSize: 12, backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6, padding: "0 10px" }}>
+                    <SelectValue placeholder="Select field" />
+                  </SelectTrigger>
+                  <SelectContent style={{ backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6 }}>
+                    <SelectItem value="none">No sorting</SelectItem>
+                    {getAvailableSortFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Group Popover (Pill) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" style={{ flexShrink: 0, height: 26, padding: "0 8px", borderRadius: "13px", backgroundColor: groupByFields[0] !== "none" && groupByFields.length > 0 ? "#3b82f6" : "#1e293b", borderColor: groupByFields[0] !== "none" && groupByFields.length > 0 ? "#2563eb" : "#334155", color: "white", fontSize: "12px", display: "flex", gap: "4px" }}>
+                <Users style={{ width: 12, height: 12 }} />
+                Group
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              style={{ width: 260, padding: 12, backgroundColor: "#0f172a", border: "1px solid #334155", color: "#ffffff", borderRadius: 8, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }} 
+              align="end" side="bottom"
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 12, color: "#e2e8f0" }}>Group by field</div>
+                <Select value={groupByFields[0] || 'none'} onValueChange={(v: string) => { setGroupByFields(v === 'none' ? [] : [v]); setGroupDirections(prev => ({ ...prev, [v]: "asc" })); }}>
+                  <SelectTrigger style={{ height: 28, fontSize: 12, backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6, padding: "0 10px" }}>
+                    <SelectValue placeholder="Select field" />
+                  </SelectTrigger>
+                  <SelectContent style={{ backgroundColor: "#1e293b", border: "1px solid #475569", color: "#e2e8f0", borderRadius: 6 }}>
+                    <SelectItem value="none">No grouping</SelectItem>
+                    {getAvailableGroupByFields().map((field) => (<SelectItem key={field.value} value={field.value}>{field.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                {groupByFields[0] && groupByFields[0] !== "none" && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    style={{ width: "100%", backgroundColor: "#dc2626", color: "#ffffff", border: "none", height: 28, fontSize: 12, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} 
+                    onClick={() => setGroupByFields([])}
+                  >
+                    <X style={{ width: 12, height: 12, marginRight: 6 }} /> Clear Grouping
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+    </div>
 
     {/* Table Area */}
     <div
@@ -1508,7 +1582,7 @@ export function ClickUpListViewUpdated({
             width: "100%",
             borderCollapse: "collapse",
             whiteSpace: "nowrap",
-            fontSize: 14
+            fontSize: 12 // Reduced to see more data
           }}
         >
           <thead
@@ -1529,7 +1603,7 @@ export function ClickUpListViewUpdated({
                     setExpandedColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }));
                   }}
                   style={{
-                    padding: "12px 16px",
+                    padding: "6px 8px", // Reduced header padding
                     fontWeight: 600,
                     borderBottom: "1px solid #334155",
                     letterSpacing: 0.5,
@@ -1540,7 +1614,7 @@ export function ClickUpListViewUpdated({
                     zIndex: index === 0 ? 40 : undefined,
                     cursor: "pointer",
                     whiteSpace: expandedColumns[col.key] ? "normal" : "nowrap",
-                    minWidth: expandedColumns[col.key] ? "250px" : undefined, // expand header width too
+                    minWidth: expandedColumns[col.key] ? "200px" : undefined, // expand header width too
                     transition: "all 0.2s ease-in-out"
                   }}
                 >
@@ -1561,11 +1635,11 @@ export function ClickUpListViewUpdated({
       )}
     </div>
 
-    {/* Sticky Pagination placed above the bottom bar */}
+    {/* Sticky Pagination */}
     {finalItems.length > 0 && !(isLoading || isGroupingDataLoading) && (
       <div
         style={{
-          padding: "12px 16px 76px 16px", // Space allocated to clear the bottom bar securely
+          padding: Object.keys(pendingChanges).length > 0 ? "6px 10px 56px 10px" : "6px 10px",
           backgroundColor: "#0f172a",
           borderTop: "1px solid #1e293b",
           zIndex: 30,
@@ -1576,80 +1650,40 @@ export function ClickUpListViewUpdated({
       </div>
     )}
 
-    {/* Bottom Bar */}
-    <div
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        width: "100%",
-        backgroundColor: "rgba(30,41,59,0.95)",
-        backdropFilter: "blur(8px)",
-        borderTop: "1px solid #1e293b",
-        padding: "12px 16px",
-        display: "flex",
-        justifyContent: "center", 
-        alignItems: "center",
-        gap: "32px", 
-        zIndex: 40,
-        boxShadow: "0 -4px 10px rgba(0,0,0,0.5)"
-      }}
-    >
-      {Object.keys(pendingChanges).length > 0 ? (
-        // Bulk Edit Mode Bar
-        <div style={{ display: "flex", gap: 8, width: "100%" }}>
-          <Button
-            onClick={handleDiscardChanges}
-            style={{
-              flex: 1,
-              height: 40,
-              backgroundColor: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.5)",
-              color: "#f87171",
-              borderRadius: 8,
-              cursor: "pointer"
-            }}
-          >Discard</Button>
-          <Button
-            onClick={handleBulkUpdate}
-            style={{
-              flex: 1,
-              height: 40,
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: 8,
-              cursor: "pointer"
-            }}
-          >Save ({Object.keys(pendingChanges).length})</Button>
-        </div>
-      ) : (
-        // Standard Bottom Bar Mode
-        <>
-          <button
-            onClick={() => setShowMobileSearch(!showMobileSearch)}
-            style={{ padding: 6, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", color: "#94a3b8" }}
-          >
-            <Search style={{ width: 24, height: 24 }} />
-          </button>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <button style={{ padding: 6, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", color: "#94a3b8" }}>
-                <Settings2 style={{ width: 24, height: 24 }} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent 
-              style={{ width: "90vw", padding: 16, backgroundColor: "#0f172a", borderRadius: 12, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #334155", marginLeft: 16, marginBottom: 8 }} 
-              align="center" side="top"
-            >
-              <h3 style={{ fontWeight: 600, color: "#ffffff", marginBottom: 16, fontSize: 16 }}>Filters & Sorting</h3>
-              <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} onSaveFilter={handleSaveFilter} />
-            </PopoverContent>
-          </Popover>
-        </>
-      )}
-    </div>
+    {/* Bulk Edit Action Bar (Only visible if pending changes exist) */}
+    {Object.keys(pendingChanges).length > 0 && (
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          backgroundColor: "rgba(30,41,59,0.95)",
+          backdropFilter: "blur(8px)",
+          borderTop: "1px solid #1e293b",
+          padding: "12px 16px",
+          display: "flex",
+          justifyContent: "center", 
+          alignItems: "center",
+          gap: "8px", 
+          zIndex: 40,
+          boxShadow: "0 -4px 10px rgba(0,0,0,0.5)"
+        }}
+      >
+        <Button
+          onClick={handleDiscardChanges}
+          style={{
+            flex: 1, height: 40, backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.5)", color: "#f87171", borderRadius: 8, cursor: "pointer"
+          }}
+        >Discard</Button>
+        <Button
+          onClick={handleBulkUpdate}
+          style={{
+            flex: 1, height: 40, backgroundColor: "#2563eb", color: "#ffffff", border: "none", borderRadius: 8, cursor: "pointer"
+          }}
+        >Save ({Object.keys(pendingChanges).length})</Button>
+      </div>
+    )}
   </div>
   </>
 );

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Search, X, MapPin, ArrowRight } from "lucide-react";
+import { Search, X, MapPin, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 
@@ -149,21 +149,50 @@ const SEARCH_COLUMNS = [
 ];
 
 export function SearchNewMLEventCode() {
+  const [isMobile, setIsMobile] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
+  const [showMobileResults, setShowMobileResults] = useState(false); // Controls mobile result page view
+
+  // --- Check mobile sizing ---
+  useEffect(() => {
+    const checkIsMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+      } else {
+        document.body.style.backgroundColor = "";
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       setAppliedFilter(undefined);
+      setShowMobileResults(false);
       return;
     }
     // Set the filter to trigger the backend query with EventCode
     setAppliedFilter({ EventCode: searchTerm.trim() });
+    
+    if (isMobile) {
+      setShowMobileResults(true);
+      window.scrollTo(0, 0);
+    }
   };
 
   const handleClear = () => {
     setSearchTerm("");
     setAppliedFilter(undefined);
+    setShowMobileResults(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -172,247 +201,386 @@ export function SearchNewMLEventCode() {
     }
   };
 
-  return (
-   <div
-  style={{
-    width: "100%",
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    background: "rgba(2,6,23,0.5)",
-    padding: "24px 40px"
-  }}
->
-  {/* Search Header Section */}
-  <div
-    style={{
-      maxWidth: "1600px",
-      margin: "0 auto",
-      width: "100%",
-      display: "flex",
-      flexDirection: "column",
-      gap: "32px"
-    }}
-  >
-    <Card
-      style={{
-        border: "1px solid #1e293b",
-        background:
-          "linear-gradient(to bottom right,#0f172a,#0f172a,#020617)",
-        boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-        margin: "0 8px",
-        borderRadius: "16px"
-      }}
-    >
-      {/* Header */}
-      <CardHeader
-        style={{
-          borderBottom: "1px solid rgba(30,41,59,0.5)",
-          padding: "28px 32px"
-        }}
-      >
+  // ==========================================
+  // 📱 MOBILE APP UI
+  // ==========================================
+  const renderMobileView = () => {
+
+    // VIEW 1: Search Results Page (Full Screen Overlay)
+    if (showMobileResults && appliedFilter) {
+      return (
         <div
           style={{
+            position: "fixed", 
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100dvh",
+            zIndex: 40, // Lower z-index so ClickUpListViewUpdated popovers (z-50) work properly
             display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            flexWrap: "wrap"
+            flexDirection: "column",
+            backgroundColor: "#0b1120",
+            color: "white",
           }}
         >
+          {/* Back Header */}
           <div
             style={{
-              padding: "10px",
-              borderRadius: "12px",
-              background: "rgba(168,85,247,0.1)",
-              border: "1px solid rgba(168,85,247,0.2)"
+              padding: "16px 20px",
+              backgroundColor: "rgba(15,23,42,0.6)",
+              borderBottom: "1px solid rgba(30,41,59,0.8)",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              backdropFilter: "blur(12px)",
+              flexShrink: 0
             }}
           >
-            <MapPin style={{ width: "24px", height: "24px", color: "#c084fc" }} />
+            <button
+              onClick={() => setShowMobileResults(false)}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "none",
+                color: "white",
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              <ArrowLeft style={{ width: 22, height: 22 }} />
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: "white" }}>
+                Search Results
+              </h1>
+              <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                Event Code: {appliedFilter.EventCode}
+              </p>
+            </div>
           </div>
 
-          <div>
-            <CardTitle
-              style={{
-                fontSize: "24px",
-                fontWeight: "bold",
-                background: "linear-gradient(to right,#fff,#94a3b8)",
-                WebkitBackgroundClip: "text",
-                color: "transparent"
-              }}
-            >
-              Search ML by Event Code
-            </CardTitle>
-
-            <CardDescription
-              style={{
-                color: "#94a3b8",
-                marginTop: "4px"
-              }}
-            >
-              Retrieve all media log entries associated with a specific Event Code
-            </CardDescription>
+          {/* Results List Area */}
+          <div className="hide-results-bottom-bar" style={{ flex: 1, width: "100%", overflow: "hidden", backgroundColor: "#0f172a", display: "flex", flexDirection: "column" }}>
+             <style>{`
+               .hide-results-bottom-bar div[style*="position: fixed"][style*="bottom"] {
+                 display: none !important;
+               }
+             `}</style>
+             <ClickUpListViewUpdated
+                title=""
+                viewId="search-new-ml-event-code"
+                apiEndpoint="/search-new-ml-event-code"
+                idKey="MLUniqueID"
+                columns={SEARCH_COLUMNS}
+                initialFilters={appliedFilter}
+                onViewChange={() => {}}
+                showAddButton={false}
+             />
           </div>
         </div>
-      </CardHeader>
+      );
+    }
 
-      {/* Content */}
-      <CardContent style={{ padding: "32px" }}>
-        <div style={{ maxWidth: "768px" }}>
-          <label
-            htmlFor="searchEventCode"
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "#cbd5f5",
-              marginBottom: "10px",
-              marginLeft: "4px"
-            }}
-          >
+    // VIEW 2: Search Input Page
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", backgroundColor: "#0b1120", color: "white" }}>
+        {/* Mobile Header */}
+        <div style={{ padding: "24px 20px 16px", backgroundColor: "rgba(15,23,42,0.6)", borderBottom: "1px solid rgba(30,41,59,0.8)", backdropFilter: "blur(12px)", flexShrink: 0 }}>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>
+            <MapPin style={{ width: "20px", height: "20px", color: "#c084fc" }} /> 
+            Search ML by Event Code
+          </h1>
+          <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px" }}>Retrieve all media log entries associated with a specific Event Code</p>
+        </div>
+
+        {/* Mobile Search Box */}
+        <div style={{ padding: "20px", flexShrink: 0 }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#cbd5e1", marginBottom: "8px" }}>
             Enter Event Code
           </label>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "12px"
-            }}
-          >
-            {/* Input */}
-            <div style={{ position: "relative", flex: 1 }}>
-              <div
-                style={{
-                  position: "absolute",
-                  left: "14px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#64748b"
-                }}
-              >
-                <Search style={{ width: "20px", height: "20px" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }}>
+                <Search style={{ width: "18px", height: "18px" }} />
               </div>
-
               <Input
-                id="searchEventCode"
                 placeholder="e.g. E007320"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleKeyDown}
-                style={{
-                  paddingLeft: "44px",
-                  paddingRight: "40px",
-                  height: "48px",
-                  background: "rgba(2,6,23,0.5)",
-                  border: "1px solid #334155",
-                  color: "#e2e8f0",
-                  borderRadius: "12px",
-                  width: "100%"
-                }}
+                style={{ paddingLeft: "42px", paddingRight: "40px", height: "48px", background: "#1e293b", border: "1px solid #334155", color: "#fff", borderRadius: "10px", fontSize: "16px" }}
               />
-
               {searchTerm && (
                 <button
                   onClick={handleClear}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    padding: "4px",
-                    borderRadius: "50%",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#64748b"
-                  }}
+                  style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#94a3b8", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                 >
-                  <X style={{ width: "16px", height: "16px" }} />
+                  <X style={{ width: "18px", height: "18px" }} />
                 </button>
               )}
             </div>
-
-            {/* Button */}
             <Button
-              size="lg"
               onClick={handleSearch}
-              style={{
-                height: "48px",
-                padding: "0 32px",
-                background: "#9333ea",
-                color: "#fff",
-                borderRadius: "12px",
-                border: "none",
-                cursor: "pointer",
-                boxShadow: "0 10px 20px rgba(88,28,135,0.3)",
-                display: "flex",
-                alignItems: "center"
-              }}
+              style={{ height: "48px", background: "#9333ea", color: "#fff", borderRadius: "10px", fontWeight: 600, fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
             >
-              <span style={{ fontWeight: 500 }}>Search</span>
-              <ArrowRight style={{ width: "16px", height: "16px", marginLeft: "8px" }} />
+              Search
+              <ArrowRight style={{ width: "18px", height: "18px" }} />
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    );
+  };
 
-    {/* Results Section */}
-    <div style={{ minHeight: "420px", marginTop: "8px" }}>
-      {appliedFilter ? (
-        <ClickUpListViewUpdated
-          title={`Results for Event Code: ${appliedFilter.EventCode}`}
-          viewId="search-new-ml-event-code"
-          apiEndpoint="/search-new-ml-event-code"
-          idKey="MLUniqueID"
-          columns={SEARCH_COLUMNS}
-          initialFilters={appliedFilter}
-          onViewChange={() => {}}
-          showAddButton={false}
-        />
-      ) : (
-        <div
+  // ==========================================
+  // 💻 DESKTOP UI (Exactly as provided)
+  // ==========================================
+  const renderDesktopView = () => (
+    <div
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "rgba(2,6,23,0.5)",
+        padding: "24px 40px"
+      }}
+    >
+      {/* Search Header Section */}
+      <div
+        style={{
+          maxWidth: "1600px",
+          margin: "0 auto",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: "32px"
+        }}
+      >
+        <Card
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "420px",
-            borderRadius: "16px",
-            border: "2px dashed #1e293b",
-            background: "rgba(15,23,42,0.2)",
-            textAlign: "center",
-            padding: "40px"
+            border: "1px solid #1e293b",
+            background:
+              "linear-gradient(to bottom right,#0f172a,#0f172a,#020617)",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+            margin: "0 8px",
+            borderRadius: "16px"
           }}
         >
-          <div
+          {/* Header */}
+          <CardHeader
             style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "50%",
-              background: "rgba(30,41,59,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "16px"
+              borderBottom: "1px solid rgba(30,41,59,0.5)",
+              padding: "28px 32px"
             }}
           >
-            <MapPin style={{ width: "32px", height: "32px", color: "#475569" }} />
-          </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap"
+              }}
+            >
+              <div
+                style={{
+                  padding: "10px",
+                  borderRadius: "12px",
+                  background: "rgba(168,85,247,0.1)",
+                  border: "1px solid rgba(168,85,247,0.2)"
+                }}
+              >
+                <MapPin style={{ width: "24px", height: "24px", color: "#c084fc" }} />
+              </div>
 
-          <h3 style={{ fontSize: "18px", fontWeight: 500, color: "#cbd5f5", marginBottom: "4px" }}>
-            No Event Code selected
-          </h3>
+              <div>
+                <CardTitle
+                  style={{
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                    background: "linear-gradient(to right,#fff,#94a3b8)",
+                    WebkitBackgroundClip: "text",
+                    color: "transparent"
+                  }}
+                >
+                  Search ML by Event Code
+                </CardTitle>
 
-          <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "320px" }}>
-            Enter an Event Code in the search bar above to see all associated Media Log entries.
-          </p>
+                <CardDescription
+                  style={{
+                    color: "#94a3b8",
+                    marginTop: "4px"
+                  }}
+                >
+                  Retrieve all media log entries associated with a specific Event Code
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          {/* Content */}
+          <CardContent style={{ padding: "32px" }}>
+            <div style={{ maxWidth: "768px" }}>
+              <label
+                htmlFor="searchEventCode"
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#cbd5f5",
+                  marginBottom: "10px",
+                  marginLeft: "4px"
+                }}
+              >
+                Enter Event Code
+              </label>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "12px"
+                }}
+              >
+                {/* Input */}
+                <div style={{ position: "relative", flex: 1 }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "14px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#64748b"
+                    }}
+                  >
+                    <Search style={{ width: "20px", height: "20px" }} />
+                  </div>
+
+                  <Input
+                    id="searchEventCode"
+                    placeholder="e.g. E007320"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    style={{
+                      paddingLeft: "44px",
+                      paddingRight: "40px",
+                      height: "48px",
+                      background: "rgba(2,6,23,0.5)",
+                      border: "1px solid #334155",
+                      color: "#e2e8f0",
+                      borderRadius: "12px",
+                      width: "100%"
+                    }}
+                  />
+
+                  {searchTerm && (
+                    <button
+                      onClick={handleClear}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        padding: "4px",
+                        borderRadius: "50%",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#64748b"
+                      }}
+                    >
+                      <X style={{ width: "16px", height: "16px" }} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Button */}
+                <Button
+                  size="lg"
+                  onClick={handleSearch}
+                  style={{
+                    height: "48px",
+                    padding: "0 32px",
+                    background: "#9333ea",
+                    color: "#fff",
+                    borderRadius: "12px",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 10px 20px rgba(88,28,135,0.3)",
+                    display: "flex",
+                    alignItems: "center"
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>Search</span>
+                  <ArrowRight style={{ width: "16px", height: "16px", marginLeft: "8px" }} />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Results Section */}
+        <div style={{ minHeight: "420px", marginTop: "8px" }}>
+          {appliedFilter ? (
+            <ClickUpListViewUpdated
+              title={`Results for Event Code: ${appliedFilter.EventCode}`}
+              viewId="search-new-ml-event-code"
+              apiEndpoint="/search-new-ml-event-code"
+              idKey="MLUniqueID"
+              columns={SEARCH_COLUMNS}
+              initialFilters={appliedFilter}
+              onViewChange={() => {}}
+              showAddButton={false}
+            />
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "420px",
+                borderRadius: "16px",
+                border: "2px dashed #1e293b",
+                background: "rgba(15,23,42,0.2)",
+                textAlign: "center",
+                padding: "40px"
+              }}
+            >
+              <div
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "50%",
+                  background: "rgba(30,41,59,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "16px"
+                }}
+              >
+                <MapPin style={{ width: "32px", height: "32px", color: "#475569" }} />
+              </div>
+
+              <h3 style={{ fontSize: "18px", fontWeight: 500, color: "#cbd5f5", marginBottom: "4px" }}>
+                No Event Code selected
+              </h3>
+
+              <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "320px" }}>
+                Enter an Event Code in the search bar above to see all associated Media Log entries.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
-  </div>
-</div>
-
-
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

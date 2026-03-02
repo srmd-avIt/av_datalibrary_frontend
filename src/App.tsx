@@ -748,12 +748,12 @@ const VIEW_CONFIGS: Record<string, any> = {
   },
 
 digitalrecordings_gsheet: {
-  title: "Digital Recordings (Google Sheet)",
+  title: "Project Hub",
   apiEndpoint: "/google-sheet/digital-recordings", 
   idKey: "RecordingCode", 
   detailsType: "digitalrecording",
   disableRowClick: false,
-  showAddButton: true, 
+  showAddButton: true,   
   keyMap: {
     "Event Code": "fkEventCode",
     "Recording Name": "RecordingName",

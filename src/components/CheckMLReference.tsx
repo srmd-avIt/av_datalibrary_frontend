@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Search, X, Edit, ArrowRight } from "lucide-react";
+import { Search, X, Edit, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 
@@ -10,7 +10,6 @@ import { getColorForString } from "./ui/utils";
 const centeredTextRenderer = (value: any) => {
   return (
     <div className="w-full flex items-center justify-center text-center">
-      {/* CHANGED: Render value, or an empty string if null/undefined */}
       {value || ""}
     </div>
   );
@@ -18,7 +17,6 @@ const centeredTextRenderer = (value: any) => {
 
 // --- Helper Renderer for Tags (Updated to Center) ---
 const categoryTagRenderer = (value: string | null | undefined) => {
-  // CHANGED: Removed the "-" so it renders completely blank when empty
   if (!value) return <div className="w-full flex items-center justify-center text-slate-500"></div>;
   
   const getTextColorForBg = (hex: string): string => {
@@ -149,21 +147,49 @@ const CHECK_ML_COLUMNS = [
 ];
 
 export function CheckMLReference() {
+  const [isMobile, setIsMobile] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
+  const [showMobileResults, setShowMobileResults] = useState(false); // Controls mobile result page view
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+      } else {
+        document.body.style.backgroundColor = "";
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       setAppliedFilter(undefined);
+      setShowMobileResults(false);
       return;
     }
     // Set the filter to trigger the backend query
     setAppliedFilter({ MLUniqueID: searchTerm.trim() });
+    
+    if (isMobile) {
+      setShowMobileResults(true);
+      window.scrollTo(0, 0);
+    }
   };
 
   const handleClear = () => {
     setSearchTerm("");
     setAppliedFilter(undefined);
+    setShowMobileResults(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -172,246 +198,386 @@ export function CheckMLReference() {
     }
   };
 
-  return (
-   <div
-  style={{
-    width: "100%",
-    height: "100%", // <-- Changed to 100% so it behaves properly inside the parent scrollable container
-    display: "flex",
-    flexDirection: "column",
-    background: "rgba(2,6,23,0.5)",
-    padding: "24px 40px" // ✅ Added outer margin spacing
-  }}
->
-  {/* Search Header Section */}
-  <div
-    style={{
-      maxWidth: "1600px", // ✅ Centered dashboard width
-      margin: "0 auto",
-      width: "100%",
-      display: "flex",
-      flexDirection: "column",
-      gap: "32px" // ✅ More breathing space
-    }}
-  >
-    <Card
-      style={{
-        border: "1px solid #1e293b",
-        background:
-          "linear-gradient(to bottom right,#0f172a,#0f172a,#020617)",
-        boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-        borderRadius: "16px",
-        margin: "0 6px"
-      }}
-    >
-      {/* Header */}
-      <CardHeader
-        style={{
-          borderBottom: "1px solid rgba(30,41,59,0.5)",
-          padding: "26px 32px" // ✅ Balanced padding
-        }}
-      >
+  // ==========================================
+  // 📱 MOBILE APP UI 
+  // ==========================================
+  const renderMobileView = () => {
+
+    // VIEW 1: Search Results Page (Full Screen Overlay)
+    if (showMobileResults && appliedFilter) {
+      return (
         <div
           style={{
+            position: "fixed", 
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100dvh",
+            zIndex: 40,
             display: "flex",
-            justifyContent: "space-between",
-            gap: "16px",
-            alignItems: "center"
+            flexDirection: "column",
+            backgroundColor: "#0b1120",
+            color: "white",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div
-              style={{
-                padding: "10px",
-                borderRadius: "12px",
-                background: "rgba(59,130,246,0.1)",
-                border: "1px solid rgba(59,130,246,0.2)"
-              }}
-            >
-              <Edit style={{ width: "24px", height: "24px", color: "#60a5fa" }} />
-            </div>
-
-            <div>
-              <CardTitle
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  background: "linear-gradient(to right,#ffffff,#94a3b8)",
-                  WebkitBackgroundClip: "text",
-                  color: "transparent"
-                }}
-              >
-                Enter ML Ref
-              </CardTitle>
-
-              <CardDescription
-                style={{
-                  color: "#94a3b8",
-                  marginTop: "4px"
-                }}
-              >
-                Search MLID to see entry details
-              </CardDescription>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-
-      {/* Content */}
-      <CardContent
-        style={{
-          padding: "30px 32px" // ✅ Increased spacing
-        }}
-      >
-        <div style={{ maxWidth: "720px" }}>
-          <label
-            htmlFor="searchMLID"
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "#cbd5f5",
-              marginBottom: "12px",
-              marginLeft: "4px"
-            }}
-          >
-            Enter ML Unique ID
-          </label>
-
+          {/* Back Header */}
           <div
             style={{
+              padding: "16px 20px",
+              backgroundColor: "rgba(15,23,42,0.6)",
+              borderBottom: "1px solid rgba(30,41,59,0.8)",
               display: "flex",
-              gap: "12px"
+              alignItems: "center",
+              gap: "16px",
+              backdropFilter: "blur(12px)",
+              flexShrink: 0
             }}
           >
-            <div style={{ position: "relative", flex: 1 }}>
-              <div
-                style={{
-                  position: "absolute",
-                  left: "14px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#64748b"
-                }}
-              >
-                <Search style={{ width: "20px", height: "20px" }} />
-              </div>
+            <button
+              onClick={() => setShowMobileResults(false)}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "none",
+                color: "white",
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              <ArrowLeft style={{ width: 22, height: 22 }} />
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: "white" }}>
+                Search Results
+              </h1>
+              <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                MLID: {appliedFilter.MLUniqueID}
+              </p>
+            </div>
+          </div>
 
+          {/* Results List Area */}
+          <div className="hide-results-bottom-bar" style={{ flex: 1, width: "100%", overflow: "hidden", backgroundColor: "#0f172a", display: "flex", flexDirection: "column" }}>
+             <style>{`
+               .hide-results-bottom-bar div[style*="position: fixed"][style*="bottom"] {
+                 display: none !important;
+               }
+             `}</style>
+             <ClickUpListViewUpdated
+               title=""
+               viewId="check_ml_reference"
+               apiEndpoint="/check-ml-reference"
+               idKey="MLUniqueID"
+               columns={CHECK_ML_COLUMNS}
+               initialFilters={appliedFilter}
+               onViewChange={() => {}}
+               showAddButton={false}
+             />
+          </div>
+        </div>
+      );
+    }
+
+    // VIEW 2: Search Input Page
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", backgroundColor: "#0b1120", color: "white" }}>
+        {/* Mobile Header */}
+        <div style={{ padding: "24px 20px 16px", backgroundColor: "rgba(15,23,42,0.6)", borderBottom: "1px solid rgba(30,41,59,0.8)", backdropFilter: "blur(12px)", flexShrink: 0 }}>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>
+            <Edit style={{ width: "20px", height: "20px", color: "#3b82f6" }} /> 
+            Check ML Reference
+          </h1>
+          <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px" }}>Search MLID to see entry details</p>
+        </div>
+
+        {/* Mobile Search Box */}
+        <div style={{ padding: "20px", flexShrink: 0 }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#cbd5e1", marginBottom: "8px" }}>
+            Enter ML Unique ID
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }}>
+                <Search style={{ width: "18px", height: "18px" }} />
+              </div>
               <Input
-                id="searchMLID"
                 placeholder="e.g. DE0836_1a.1"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleKeyDown}
-                style={{
-                  paddingLeft: "44px",
-                  paddingRight: "40px",
-                  height: "48px",
-                  background: "rgba(2,6,23,0.5)",
-                  border: "1px solid #334155",
-                  color: "#e2e8f0",
-                  borderRadius: "12px"
-                }}
+                style={{ paddingLeft: "42px", paddingRight: "40px", height: "48px", background: "#1e293b", border: "1px solid #334155", color: "#fff", borderRadius: "10px", fontSize: "16px" }}
               />
-
               {searchTerm && (
                 <button
                   onClick={handleClear}
+                  style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#94a3b8", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <X style={{ width: "18px", height: "18px" }} />
+                </button>
+              )}
+            </div>
+            <Button
+              onClick={handleSearch}
+              style={{ height: "48px", background: "#3b82f6", color: "#fff", borderRadius: "10px", fontWeight: 600, fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+            >
+              Search
+              <ArrowRight style={{ width: "18px", height: "18px" }} />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 💻 DESKTOP UI (Exactly as provided)
+  // ==========================================
+  const renderDesktopView = () => (
+    <div
+      style={{
+        width: "100%",
+        height: "100%", 
+        display: "flex",
+        flexDirection: "column",
+        background: "rgba(2,6,23,0.5)",
+        padding: "24px 40px" 
+      }}
+    >
+      {/* Search Header Section */}
+      <div
+        style={{
+          maxWidth: "1600px", 
+          margin: "0 auto",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: "32px" 
+        }}
+      >
+        <Card
+          style={{
+            border: "1px solid #1e293b",
+            background:
+              "linear-gradient(to bottom right,#0f172a,#0f172a,#020617)",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+            borderRadius: "16px",
+            margin: "0 6px"
+          }}
+        >
+          {/* Header */}
+          <CardHeader
+            style={{
+              borderBottom: "1px solid rgba(30,41,59,0.5)",
+              padding: "26px 32px" 
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "16px",
+                alignItems: "center"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
                   style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    padding: "4px",
-                    borderRadius: "50%",
-                    color: "#64748b",
-                    background: "transparent",
+                    padding: "10px",
+                    borderRadius: "12px",
+                    background: "rgba(59,130,246,0.1)",
+                    border: "1px solid rgba(59,130,246,0.2)"
+                  }}
+                >
+                  <Edit style={{ width: "24px", height: "24px", color: "#60a5fa" }} />
+                </div>
+
+                <div>
+                  <CardTitle
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      background: "linear-gradient(to right,#ffffff,#94a3b8)",
+                      WebkitBackgroundClip: "text",
+                      color: "transparent"
+                    }}
+                  >
+                    Enter ML Ref
+                  </CardTitle>
+
+                  <CardDescription
+                    style={{
+                      color: "#94a3b8",
+                      marginTop: "4px"
+                    }}
+                  >
+                    Search MLID to see entry details
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          {/* Content */}
+          <CardContent
+            style={{
+              padding: "30px 32px" 
+            }}
+          >
+            <div style={{ maxWidth: "720px" }}>
+              <label
+                htmlFor="searchMLID"
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#cbd5f5",
+                  marginBottom: "12px",
+                  marginLeft: "4px"
+                }}
+              >
+                Enter ML Unique ID
+              </label>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px"
+                }}
+              >
+                <div style={{ position: "relative", flex: 1 }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "14px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#64748b"
+                    }}
+                  >
+                    <Search style={{ width: "20px", height: "20px" }} />
+                  </div>
+
+                  <Input
+                    id="searchMLID"
+                    placeholder="e.g. DE0836_1a.1"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    style={{
+                      paddingLeft: "44px",
+                      paddingRight: "40px",
+                      height: "48px",
+                      background: "rgba(2,6,23,0.5)",
+                      border: "1px solid #334155",
+                      color: "#e2e8f0",
+                      borderRadius: "12px"
+                    }}
+                  />
+
+                  {searchTerm && (
+                    <button
+                      onClick={handleClear}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        padding: "4px",
+                        borderRadius: "50%",
+                        color: "#64748b",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <X style={{ width: "16px", height: "16px" }} />
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  size="lg"
+                  onClick={handleSearch}
+                  style={{
+                    height: "48px",
+                    padding: "0 32px",
+                    background: "#3b82f6",
+                    color: "#fff",
+                    borderRadius: "12px",
+                    boxShadow: "0 10px 20px rgba(37,99,235,0.3)",
                     border: "none",
                     cursor: "pointer"
                   }}
                 >
-                  <X style={{ width: "16px", height: "16px" }} />
-                </button>
-              )}
+                  <span style={{ fontWeight: 500 }}>Search</span>
+                  <ArrowRight style={{ width: "16px", height: "16px", marginLeft: "8px" }} />
+                </Button>
+              </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <Button
-              size="lg"
-              onClick={handleSearch}
+        {/* Results Section */}
+        <div style={{ minHeight: "420px", marginTop: "6px" }}>
+          {appliedFilter ? (
+            <ClickUpListViewUpdated
+              title={`Results for MLID: ${appliedFilter.MLUniqueID}`}
+              viewId="check_ml_reference"
+              apiEndpoint="/check-ml-reference"
+              idKey="MLUniqueID"
+              columns={CHECK_ML_COLUMNS}
+              initialFilters={appliedFilter}
+              onViewChange={() => {}}
+              showAddButton={false}
+            />
+          ) : (
+            <div
               style={{
-                height: "48px",
-                padding: "0 32px",
-                background: "#3b82f6",
-                color: "#fff",
-                borderRadius: "12px",
-                boxShadow: "0 10px 20px rgba(37,99,235,0.3)",
-                border: "none",
-                cursor: "pointer"
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "300px", 
+                borderRadius: "16px",
+                border: "2px dashed #1e293b",
+                background: "rgba(15,23,42,0.2)",
+                textAlign: "center",
+                padding: "36px" 
               }}
             >
-              <span style={{ fontWeight: 500 }}>Search</span>
-              <ArrowRight style={{ width: "16px", height: "16px", marginLeft: "8px" }} />
-            </Button>
-          </div>
+              <div
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "50%",
+                  background: "rgba(30,41,59,0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "16px"
+                }}
+              >
+                <Edit style={{ width: "32px", height: "32px", color: "#475569" }} />
+              </div>
+
+              <h3 style={{ fontSize: "18px", fontWeight: 500, color: "#cbd5f5", marginBottom: "4px" }}>
+                No MLID selected
+              </h3>
+
+              <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "320px" }}>
+                Enter an MLID in the search bar above to see entry details.
+              </p>
+            </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
-
-    {/* Results Section */}
-    <div style={{ minHeight: "420px", marginTop: "6px" }}>
-      {appliedFilter ? (
-        <ClickUpListViewUpdated
-          title={`Results for MLID: ${appliedFilter.MLUniqueID}`}
-          viewId="check_ml_reference"
-          apiEndpoint="/check-ml-reference"
-          idKey="MLUniqueID"
-          columns={CHECK_ML_COLUMNS}
-          initialFilters={appliedFilter}
-          onViewChange={() => {}}
-          showAddButton={false}
-        />
-      ) : (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "300px", // ✅ Taller empty panel
-            borderRadius: "16px",
-            border: "2px dashed #1e293b",
-            background: "rgba(15,23,42,0.2)",
-            textAlign: "center",
-            padding: "36px" // ✅ More breathing space
-          }}
-        >
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "50%",
-              background: "rgba(30,41,59,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "16px"
-            }}
-          >
-            <Edit style={{ width: "32px", height: "32px", color: "#475569" }} />
-          </div>
-
-          <h3 style={{ fontSize: "18px", fontWeight: 500, color: "#cbd5f5", marginBottom: "4px" }}>
-            No MLID selected
-          </h3>
-
-          <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "320px" }}>
-            Enter an MLID in the search bar above to see entry details.
-          </p>
-        </div>
-      )}
+      </div>
     </div>
-  </div>
-</div>
-
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

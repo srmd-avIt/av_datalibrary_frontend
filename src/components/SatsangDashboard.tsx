@@ -327,6 +327,9 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
+      // Add these right after { key: "ContentTo", ... }
+      { key: "NewEventFrom", label: "Event From Date", sortable: true, editable: true },
+      { key: "NewEventTo", label: "Event To Date", sortable: true, editable: true },
     ],
   },
 };
@@ -824,6 +827,33 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
           </div>
 
           {/* Event From & To */}
+
+          {/* New Event From & To */}
+         {/* New Event From & To */}
+          <div style={{ display: "flex", gap: "12px" }}>
+            <div style={{ flex: 1 }}>
+              <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+                Event From
+              </Label>
+              <Input
+                placeholder="dd-mm-yyyy"
+                value={searchFilters.NewEventFrom || ""} // <-- Changed
+                onChange={(e) => handleInputChange("NewEventFrom", e.target.value)} // <-- Changed
+                style={{ width: "100%", minHeight: "46px", borderRadius: "10px", backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", fontSize: "16px", padding: "10px 12px" }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Label style={{ marginBottom: "8px", display: "block", fontWeight: 500, color: "#cbd5e1" }}>
+                Event To
+              </Label>
+              <Input
+                placeholder="dd-mm-yyyy"
+                value={searchFilters.NewEventTo || ""} // <-- Changed
+                onChange={(e) => handleInputChange("NewEventTo", e.target.value)} // <-- Changed
+                style={{ width: "100%", minHeight: "46px", borderRadius: "10px", backgroundColor: "#1e293b", border: "1px solid #334155", color: "white", fontSize: "16px", padding: "10px 12px" }}
+              />
+            </div>
+          </div>
         
 
           {/* Year */}
@@ -975,13 +1005,13 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
               <Label htmlFor="ContentFrom" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>ML Content Date</Label>
               <Input id="ContentFrom" placeholder="e.g., dd.mm.yyyy" value={searchFilters.ContentFrom || ''} onChange={e => handleInputChange('ContentFrom', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
             </div>
-            <div>
-              <Label htmlFor="FromDate" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Event From</Label>
-              <Input id="FromDate" placeholder="e.g., dd-mm-yyyy" value={searchFilters.FromDate || ''} onChange={e => handleInputChange('FromDate', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+           <div>
+              <Label htmlFor="EventFrom" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>New Event From</Label>
+              <Input id="EventFrom" placeholder="e.g., dd-mm-yyyy" value={searchFilters.NewEventFrom || ''} onChange={e => handleInputChange('NewEventFrom', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
             </div>
             <div>
-              <Label htmlFor="ToDate" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Event To</Label>
-              <Input id="ToDate" placeholder="e.g., dd-mm-yyyy" value={searchFilters.ToDate || ''} onChange={e => handleInputChange('ToDate', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+              <Label htmlFor="EventTo" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>New Event To</Label>
+              <Input id="EventTo" placeholder="e.g., dd-mm-yyyy" value={searchFilters.NewEventTo || ''} onChange={e => handleInputChange('NewEventTo', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
             </div>
             <div>
               <Label htmlFor="MLUniqueID" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>MLUniqueID</Label>

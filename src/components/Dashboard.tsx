@@ -5,11 +5,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // Gurudev images for the slider from the public folder
 const gurudevImages = [
-  { src: "/images/Image1.jpg", title: "Peace & Harmony", subtitle: "Join the movement" },
-  { src: "/images/Image2.jpg", title: "Meditation", subtitle: "Find your inner self" },
-  { src: "/images/Image3.jpg", title: "Wisdom", subtitle: "Daily quotes" },
-  { src: "/images/Image4.jpg", title: "Community", subtitle: "Together we grow" },
-  { src: "/images/Image5.jpg", title: "Events", subtitle: "Upcoming gatherings" }
+  { src: "/images/Image1.jpg" },
+  { src: "/images/Image2.jpg" },
+  { src: "/images/Image3.jpg" },
+  { src: "/images/Image4.jpg" },
+  { src: "/images/Image5.jpg" }
 ];
 
 export function Dashboard() {
@@ -22,12 +22,10 @@ export function Dashboard() {
       const mobileState = window.innerWidth <= 768;
       setIsMobile(mobileState);
       
-      // ✨ FIX: This forces the entire browser body to be dark on mobile, 
-      // completely eliminating any white space at the bottom or when scrolling.
       if (mobileState) {
-        document.body.style.backgroundColor = "#0b1120"; // Matches your dark header
+        document.body.style.backgroundColor = "#0b1120";
       } else {
-        document.body.style.backgroundColor = ""; // Resets for desktop
+        document.body.style.backgroundColor = "";
       }
     };
     
@@ -36,7 +34,7 @@ export function Dashboard() {
     
     return () => {
       window.removeEventListener("resize", checkIsMobile);
-      document.body.style.backgroundColor = ""; // Cleanup
+      document.body.style.backgroundColor = "";
     };
   }, []);
 
@@ -60,18 +58,17 @@ export function Dashboard() {
   // 📱 MOBILE UI
   // ==========================================
   const renderMobileView = () => (
-    // ✨ FIX: Added explicit inline styles for minHeight to guarantee screen fill
     <div 
       className="text-white pb-20"
       style={{
         minHeight: "100vh",
-        backgroundColor: "#0b1120", // Matches your exact dark theme from the screenshot
+        backgroundColor: "#0b1120",
         display: "flex",
         flexDirection: "column"
       }}
     >
       {/* Mobile Header */}
-      <div className="px-5 pt-8 pb-4">
+      <div className="px-5 pt-4 pb-2">
         <h1 className="text-2xl font-bold tracking-tight">Home</h1>
         <p className="text-gray-400 text-sm mt-1">Welcome to our data library</p>
       </div>
@@ -80,22 +77,12 @@ export function Dashboard() {
       <div className="relative w-full h-[380px] bg-slate-900 mt-2">
         <img
           src={gurudevImages[currentImageIndex].src}
-          alt={gurudevImages[currentImageIndex].title}
+          alt="Slider"
           className="w-full h-full object-cover transition-opacity duration-500"
         />
         
-        {/* Dark Gradient Overlay for text readability */}
+        {/* Dark Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b1120] via-black/40 to-transparent" />
-
-        {/* Mobile Text */}
-        <div className="absolute bottom-10 left-0 w-full px-5 text-center">
-          <h2 className="text-2xl font-bold text-white mb-1 shadow-sm">
-            {gurudevImages[currentImageIndex].title}
-          </h2>
-          <p className="text-sm text-[#eab308] font-medium"> {/* Yellow color from your screenshot */}
-            {gurudevImages[currentImageIndex].subtitle}
-          </p>
-        </div>
 
         {/* Mobile Dots */}
         <div className="absolute bottom-4 w-full flex justify-center gap-3">
@@ -114,7 +101,7 @@ export function Dashboard() {
   );
 
   // ==========================================
-  // 💻 DESKTOP UI (Kept exactly as it was)
+  // 💻 DESKTOP UI
   // ==========================================
   const renderDesktopView = () => (
     <div className="p-6 space-y-6">
@@ -143,7 +130,7 @@ export function Dashboard() {
           >
             <img
               src={gurudevImages[currentImageIndex].src}
-              alt={gurudevImages[currentImageIndex].title}
+              alt="Slider"
               style={{
                 maxWidth: "100%", maxHeight: "400px", width: "auto", height: "auto",
                 display: "block", margin: "0 auto",
@@ -156,15 +143,6 @@ export function Dashboard() {
                 pointerEvents: "none",
               }}
             />
-          </div>
-
-          <div style={{ position: "absolute", bottom: "1.5rem", left: "1.5rem", color: "#ffffff" }}>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-              {gurudevImages[currentImageIndex].title}
-            </h2>
-            <p style={{ color: "rgba(255,255,255,0.9)" }}>
-              {gurudevImages[currentImageIndex].subtitle}
-            </p>
           </div>
 
           <Button

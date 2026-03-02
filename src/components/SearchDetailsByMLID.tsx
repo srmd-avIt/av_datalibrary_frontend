@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Search, X, Eye, ArrowRight } from "lucide-react";
+import { Search, X, Eye, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 
@@ -154,37 +154,62 @@ const SEARCH_COLUMNS = [
 ];
 
 export function SearchDetailsByMLID() {
+  const [isMobile, setIsMobile] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
+  const [showMobileResults, setShowMobileResults] = useState(false); // Controls mobile result page view
 
-  // --- NEW: Debounce Logic to trigger search while typing ---
+  // --- Check mobile sizing ---
   useEffect(() => {
-    // 1. Create a timeout to wait for user to stop typing
+    const checkIsMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+      } else {
+        document.body.style.backgroundColor = "";
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
+
+  // --- Debounce Logic to trigger search while typing ---
+  useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchTerm.trim()) {
-        // If there is text, trigger the search
         setAppliedFilter({ search: searchTerm.trim() });
       } else {
-        // If text is cleared, reset the filter (shows empty state)
         setAppliedFilter(undefined);
       }
-    }, 500); // 500ms delay
+    }, 500); 
 
-    // 2. Cleanup function clears the timeout if the user types again before 500ms
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]); // Re-run this effect whenever searchTerm changes
+  }, [searchTerm]); 
 
   const handleManualSearch = () => {
     if (!searchTerm.trim()) {
       setAppliedFilter(undefined);
+      setShowMobileResults(false);
       return;
     }
     setAppliedFilter({ search: searchTerm.trim() });
+    
+    if (isMobile) {
+      setShowMobileResults(true);
+      window.scrollTo(0, 0);
+    }
   };
 
   const handleClear = () => {
     setSearchTerm("");
     setAppliedFilter(undefined);
+    setShowMobileResults(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -193,7 +218,147 @@ export function SearchDetailsByMLID() {
     }
   };
 
-  return (
+  // ==========================================
+  // 📱 MOBILE APP UI
+  // ==========================================
+  const renderMobileView = () => {
+    
+    // VIEW 1: Search Results Page (Full Screen Overlay)
+    if (showMobileResults && appliedFilter) {
+      return (
+        <div
+          style={{
+            position: "fixed", 
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100dvh",
+            zIndex: 40,
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "#0b1120",
+            color: "white",
+          }}
+        >
+          {/* Back Header */}
+          <div
+            style={{
+              padding: "16px 20px",
+              backgroundColor: "rgba(15,23,42,0.6)",
+              borderBottom: "1px solid rgba(30,41,59,0.8)",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              backdropFilter: "blur(12px)",
+              flexShrink: 0
+            }}
+          >
+            <button
+              onClick={() => setShowMobileResults(false)}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "none",
+                color: "white",
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              <ArrowLeft style={{ width: 22, height: 22 }} />
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: "white" }}>
+                Search Results
+              </h1>
+              <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                For: {appliedFilter.search}
+              </p>
+            </div>
+          </div>
+
+          {/* Results List Area */}
+          {/* We add a specific class to target and hide the ClickUp bottom bar via CSS */}
+          <div className="hide-results-bottom-bar" style={{ flex: 1, width: "100%", overflow: "hidden", backgroundColor: "#0f172a", display: "flex", flexDirection: "column" }}>
+             <style>{`
+               .hide-results-bottom-bar div[style*="position: fixed"][style*="bottom"] {
+                 display: none !important;
+               }
+             `}</style>
+             <ClickUpListViewUpdated
+               title=""
+               viewId="search-details-by-mlid"
+               apiEndpoint="/search-details-global"
+               idKey="MLUniqueID"
+               columns={SEARCH_COLUMNS}
+               initialFilters={appliedFilter}
+               onViewChange={() => {}}
+               showAddButton={false}
+             />
+          </div>
+        </div>
+      );
+    }
+
+    // VIEW 2: Search Filters Page
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", backgroundColor: "#0b1120", color: "white" }}>
+        {/* Mobile Header */}
+        <div style={{ padding: "24px 20px 16px", backgroundColor: "rgba(15,23,42,0.6)", borderBottom: "1px solid rgba(30,41,59,0.8)", backdropFilter: "blur(12px)", flexShrink: 0 }}>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>
+            <Eye style={{ width: "20px", height: "20px", color: "#22d3ee" }} /> 
+            Search Details
+          </h1>
+          <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px" }}>Search by Detail, remarks, speaker singer...</p>
+        </div>
+
+        {/* Mobile Search Box */}
+        <div style={{ padding: "20px", flexShrink: 0 }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#cbd5e1", marginBottom: "8px" }}>
+            Enter Search Text
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }}>
+                <Search style={{ width: "18px", height: "18px" }} />
+              </div>
+              <Input
+                placeholder="Search details..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleKeyDown}
+                style={{ paddingLeft: "42px", paddingRight: "40px", height: "48px", background: "#1e293b", border: "1px solid #334155", color: "#fff", borderRadius: "10px", fontSize: "16px" }}
+              />
+              {searchTerm && (
+                <button
+                  onClick={handleClear}
+                  style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#94a3b8", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <X style={{ width: "18px", height: "18px" }} />
+                </button>
+              )}
+            </div>
+            <Button
+              onClick={handleManualSearch}
+              style={{ height: "48px", background: "#06b6d4", color: "#fff", borderRadius: "10px", fontWeight: 600, fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+            >
+              Search
+              <ArrowRight style={{ width: "18px", height: "18px" }} />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 💻 DESKTOP UI
+  // ==========================================
+  const renderDesktopView = () => (
     <div
       style={{
         width: "100%",
@@ -456,4 +621,6 @@ export function SearchDetailsByMLID() {
       </div>
     </div>
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

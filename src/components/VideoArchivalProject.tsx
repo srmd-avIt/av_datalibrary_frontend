@@ -504,101 +504,110 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     };
   };
 
-  const columnDefs: ColumnDef[] = useMemo(() => [
-     {
-      key: 'Action',
-      label: 'Action',
-      width: 100,
-      render: (item) => {
-        const isLocked = item.LockStatus === 'Locked';
-        const currentUserEmail = user?.email?.toLowerCase() || userEmail?.toLowerCase() || '';
-        const lockerEmail = item.LockedBy ? item.LockedBy.toLowerCase() : '';
-        const lockedByMe = isLocked && (lockerEmail === currentUserEmail);
-        const lockedByOther = isLocked && !lockedByMe;
+ const columnDefs: ColumnDef[] = useMemo(() => {
+    const baseColumns: ColumnDef[] = [
+      {
+        key: 'Action',
+        label: 'Action',
+        width: 100,
+        render: (item) => {
+          const isLocked = item.LockStatus === 'Locked';
+          const currentUserEmail = user?.email?.toLowerCase() || userEmail?.toLowerCase() || '';
+          const lockerEmail = item.LockedBy ? item.LockedBy.toLowerCase() : '';
+          const lockedByMe = isLocked && (lockerEmail === currentUserEmail);
+          const lockedByOther = isLocked && !lockedByMe;
 
-        return (
-          <button 
-            onClick={() => openLockConfirmation(item.MLUniqueID, item.LockStatus)}
-            disabled={!canEdit || lockedByOther}
-            style={{
-              background: !canEdit ? 'transparent' : lockedByOther ? 'transparent' : (lockedByMe ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)'), 
-              border: !canEdit ? '1px solid rgba(255,255,255,0.05)' : lockedByOther ? '1px solid rgba(255,255,255,0.1)' : (lockedByMe ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)'),
-              color: !canEdit ? '#64748b' : lockedByOther ? '#64748b' : (lockedByMe ? '#f87171' : '#34d399'),
-              padding: '4px 12px', borderRadius: 6, cursor: (!canEdit || lockedByOther) ? 'not-allowed' : 'pointer',
-              fontSize: '0.7rem', fontWeight: 600, opacity: (!canEdit || lockedByOther) ? 0.6 : 1, width: '100%', transition: 'all 0.2s'
-            }}
-          >
-            {!canEdit ? (isLocked ? "Locked" : "View Only") : (lockedByOther ? "Locked" : (lockedByMe ? "Unpick" : "Pick"))}
-          </button>
-        );
-      }
-    },
-    {
-      key: 'LockStatus',
-      label: 'Status',
-      width: 140,
-      render: (item) => {
-        const isLocked = item.LockStatus === 'Locked';
-        const currentUserEmail = user?.email?.toLowerCase() || userEmail?.toLowerCase() || '';
-        const lockerEmail = item.LockedBy ? item.LockedBy.toLowerCase() : '';
-        const lockedByMe = isLocked && (lockerEmail === currentUserEmail);
-        const lockedByOther = isLocked && !lockedByMe;
-
-        if (isLocked) {
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: lockedByMe ? '#10b981' : '#f59e0b', fontSize: '0.75rem', fontWeight: 600 }}>
-                {lockedByMe ? <UserCheck size={14} /> : <Lock size={14} />} {lockedByMe ? "Picked" : "Locked"}
-              </span>
-              {lockedByOther && <span style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 2 }}>by {item.LockedBy?.split('@')[0]}</span>}
-            </div>
-          );
-        }
-        return <span style={{ color: '#94a3b8', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}><Unlock size={12} /> Available</span>;
-      }
-    },
-    { key: 'LockedBy', label: 'LockedBy', width: 180 },
-    { key: 'MLUniqueID', label: 'MLUniqueID', width: 120 },
-    {
-      key: 'ParentEventRefMLID',
-      label: 'Parent EventRefMLID',
-      width: 150,
-      render: (item) => <span style={{ fontWeight: 700, color: '#fbbf24' }}>{item.ParentEventRefMLID}</span>
-    },
-    {
-      key: 'Reels',
-      label: 'Reels',
-      width: 100,
-      render: (item) => {
-        if (activeTab === 'used') {
           return (
             <button 
-              onClick={() => handleViewRelated(item.EventRefMLID)}
-              style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#60a5fa', cursor: 'pointer' }}
+              onClick={() => openLockConfirmation(item.MLUniqueID, item.LockStatus)}
+              disabled={!canEdit || lockedByOther}
+              style={{
+                background: !canEdit ? 'transparent' : lockedByOther ? 'transparent' : (lockedByMe ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)'), 
+                border: !canEdit ? '1px solid rgba(255,255,255,0.05)' : lockedByOther ? '1px solid rgba(255,255,255,0.1)' : (lockedByMe ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)'),
+                color: !canEdit ? '#64748b' : lockedByOther ? '#64748b' : (lockedByMe ? '#f87171' : '#34d399'),
+                padding: '4px 12px', borderRadius: 6, cursor: (!canEdit || lockedByOther) ? 'not-allowed' : 'pointer',
+                fontSize: '0.7rem', fontWeight: 600, opacity: (!canEdit || lockedByOther) ? 0.6 : 1, width: '100%', transition: 'all 0.2s'
+              }}
             >
-              {item.ReelCount}
+              {!canEdit ? (isLocked ? "Locked" : "View Only") : (lockedByOther ? "Locked" : (lockedByMe ? "Unpick" : "Pick"))}
             </button>
           );
         }
-        return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>-</span>;
-      }
-    },
-    { key: 'ContentFrom', label: 'ContentFrom', width: 150 },
-    { key: 'CounterFrom', label: 'CounterFrom', width: 150 },
-    { key: 'CounterTo', label: 'CounterTo', width: 150 },
-    { key: 'EventName', label: 'Parent EventName', width: 200 },
-    { key: 'RecordingName', label: 'Recording Name', width: 200 },
-    { key: 'Yr', label: 'Year', width: 150 },
-    { key: 'Detail', label: 'Details', width: 250 },
-    { key: 'Dimension', label: 'Dimension', width: 150 },
-    { key: 'Topic', label: 'Topic', width: 200 },
-    {
-      key: 'ProductionBucket',
-      label: 'Production Bucket',
-      width: 200,
-      render: (item) => <span style={getBucketBadgeStyle(item.ProductionBucket)}>{item.ProductionBucket || ''}</span>
-    },
-  ], [user, canEdit, activeTab, userEmail]);
+      },
+      {
+        key: 'LockStatus',
+        label: 'Status',
+        width: 140,
+        render: (item) => {
+          const isLocked = item.LockStatus === 'Locked';
+          const currentUserEmail = user?.email?.toLowerCase() || userEmail?.toLowerCase() || '';
+          const lockerEmail = item.LockedBy ? item.LockedBy.toLowerCase() : '';
+          const lockedByMe = isLocked && (lockerEmail === currentUserEmail);
+          const lockedByOther = isLocked && !lockedByMe;
+
+          if (isLocked) {
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: lockedByMe ? '#10b981' : '#f59e0b', fontSize: '0.75rem', fontWeight: 600 }}>
+                  {lockedByMe ? <UserCheck size={14} /> : <Lock size={14} />} {lockedByMe ? "Picked" : "Locked"}
+                </span>
+                {lockedByOther && <span style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 2 }}>by {item.LockedBy?.split('@')[0]}</span>}
+              </div>
+            );
+          }
+          return <span style={{ color: '#94a3b8', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}><Unlock size={12} /> Available</span>;
+        }
+      },
+      { key: 'LockedBy', label: 'LockedBy', width: 180 },
+      { key: 'MLUniqueID', label: 'MLUniqueID', width: 120 },
+      {
+        key: 'ParentEventRefMLID',
+        label: 'Parent EventRefMLID',
+        width: 150,
+        render: (item) => <span style={{ fontWeight: 700, color: '#fbbf24' }}>{item.ParentEventRefMLID}</span>
+      },
+      {
+        key: 'Reels',
+        label: 'Reels',
+        width: 100,
+        render: (item) => {
+          if (activeTab === 'used') {
+            return (
+              <button 
+                onClick={() => handleViewRelated(item.EventRefMLID)}
+                style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#60a5fa', cursor: 'pointer' }}
+              >
+                {item.ReelCount}
+              </button>
+            );
+          }
+          return <span style={{ color: '#64748b', fontSize: '0.75rem' }}>-</span>;
+        }
+      },
+      { key: 'ContentFrom', label: 'ContentFrom', width: 150 },
+      { key: 'CounterFrom', label: 'CounterFrom', width: 150 },
+      { key: 'CounterTo', label: 'CounterTo', width: 150 },
+      { key: 'EventName', label: 'Parent EventName', width: 200 },
+      { key: 'RecordingName', label: 'Recording Name', width: 200 },
+      { key: 'Yr', label: 'Year', width: 150 },
+      { key: 'Detail', label: 'Details', width: 250 },
+      { key: 'Dimension', label: 'Dimension', width: 150 },
+      { key: 'Topic', label: 'Topic', width: 200 },
+      {
+        key: 'ProductionBucket',
+        label: 'Production Bucket',
+        width: 200,
+        render: (item) => <span style={getBucketBadgeStyle(item.ProductionBucket)}>{item.ProductionBucket || ''}</span>
+      },
+    ];
+
+    // Filter out Action, Status, and LockedBy columns when on the "Used for Reels" tab
+    if (activeTab === 'used') {
+      return baseColumns.filter(col => col.key !== 'Action' && col.key !== 'LockStatus' && col.key !== 'LockedBy');
+    }
+
+    return baseColumns;
+  }, [user, canEdit, activeTab, userEmail]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -977,7 +986,296 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     </tr>
   );
 
-  return (
+
+  // ==========================================
+  // 📱 MOBILE VIEW
+  // ==========================================
+  // ==========================================
+  // 📱 MOBILE VIEW
+  // ==========================================
+  const renderMobileView = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0b1120', color: '#fff' }}>
+      
+      {/* Fixed Global CSS for Mobile Scrollbars */}
+      <style>{`
+        .mobile-hide-scroll::-webkit-scrollbar { display: none; }
+        .mobile-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .mobile-table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .mobile-table-scroll::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        .mobile-table-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .mobile-table-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        @keyframes spinLoader { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '16px', background: '#0f172a', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: 'transparent', border: 'none', color: '#cbd5e1', marginRight: '12px' }}>
+          <ArrowLeft size={24} />
+        </button>
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Wisdom Reels Archival</h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: 0 }}>Mobile View</p>
+        </div>
+      </div>
+
+      {/* Scrollable Action Pills - ADDED GROUP BY & FREEZE HERE */}
+      <div className="mobile-hide-scroll" style={{ display: 'flex', gap: '10px', padding: '12px 16px', overflowX: 'auto', background: '#0b1120', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
+        <button onClick={() => setActiveTab('used')} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: activeTab === 'used' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)', color: activeTab === 'used' ? '#60a5fa' : '#cbd5e1', border: activeTab === 'used' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          <PlayCircle size={16} /> Used for Reels
+        </button>
+        
+        <button onClick={() => setActiveTab('unused')} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: activeTab === 'unused' ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255,255,255,0.05)', color: activeTab === 'unused' ? '#f43f5e' : '#cbd5e1', border: activeTab === 'unused' ? '1px solid rgba(244, 63, 94, 0.4)' : '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          <Film size={16} /> Not Used Yet
+        </button>
+
+        {/* Group By Dropdown for Mobile */}
+        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', padding: '0 12px', flexShrink: 0 }}>
+          <Layers size={14} color="#cbd5e1" style={{ marginRight: 6 }} />
+          <select 
+            value={currentGroupBy} 
+            onChange={(e) => { const newVal = e.target.value; setGroupByState(prev => ({...prev, [activeTab]: newVal })); }} 
+            style={{ background: 'transparent', color: '#cbd5e1', border: 'none', outline: 'none', fontSize: '0.85rem', fontWeight: 600, padding: '8px 0', cursor: 'pointer' }}
+          >
+            <option value="none" style={{ background: '#0f172a' }}>Group By</option>
+            <option value="Detail" style={{ background: '#0f172a' }}>Details</option>
+            <option value="EventRefMLID" style={{ background: '#0f172a' }}>EventRefMLID</option>
+            <option value="EventName" style={{ background: '#0f172a' }}>Event Name</option>
+            <option value="Yr" style={{ background: '#0f172a' }}>Year</option>
+            <option value="Topic" style={{ background: '#0f172a' }}>Topic</option>
+            <option value="ProductionBucket" style={{ background: '#0f172a' }}>Production Bucket</option>
+          </select>
+        </div>
+
+        {/* Freeze Column Dropdown for Mobile */}
+        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', padding: '0 12px', flexShrink: 0 }}>
+          <Columns size={14} color="#cbd5e1" style={{ marginRight: 6 }} />
+          <select 
+            value={frozenColumn} 
+            onChange={(e) => setFrozenColumn(e.target.value)} 
+            style={{ background: 'transparent', color: '#cbd5e1', border: 'none', outline: 'none', fontSize: '0.85rem', fontWeight: 600, padding: '8px 0', cursor: 'pointer' }}
+          >
+            <option value="none" style={{ background: '#0f172a' }}>Freeze Col</option>
+            {columnDefs.map(col => (<option key={col.key} value={col.key} style={{ background: '#0f172a' }}>{col.label}</option>))}
+          </select>
+        </div>
+
+        <button onClick={() => setShowFilterModal(true)} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: appliedRules.length > 0 ? '#3b82f6' : 'rgba(255,255,255,0.05)', color: appliedRules.length > 0 ? '#fff' : '#cbd5e1', border: '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          <Filter size={16} /> Filter {appliedRules.length > 0 && `(${appliedRules.length})`}
+        </button>
+
+        <button onClick={handleExportCSV} disabled={isExporting} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+          {isExporting ? <Loader2 size={16} style={{ animation: "spinLoader 1s linear infinite" }} /> : <Download size={16} />} 
+          Export
+        </button>
+      </div>
+
+      {/* Table Container (Allows horizontal scroll) */}
+      <div className="mobile-table-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto', background: '#0b1120', position: 'relative', paddingBottom: '16px' }}>
+        {loading ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
+            <Loader2 size={32} style={{ animation: 'spinLoader 1s linear infinite' }} />
+          </div>
+        ) : (
+          <table style={{ width: 'max-content', borderCollapse: 'separate', borderSpacing: 0, minWidth: '100%' }}>
+            <thead><HeaderRow /></thead>
+            <tbody>
+              {data.length === 0 && (<tr><td colSpan={15} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No records found.</td></tr>)}
+              {!processedData.isGrouped && processedData.items?.map((item, idx) => renderItemRow(item, idx))}
+              
+              {/* Grouping Logic for Mobile */}
+              {processedData.isGrouped && processedData.groups?.map((group) => {
+                const groupKey = group.key;
+                const isExpanded = expandedGroups[groupKey];
+                const count = group.items.length;
+                const limit = groupPageCounts[groupKey] || GROUP_INNER_PAGE_SIZE;
+                const visibleItems = isExpanded ? group.items.slice(0, limit) : [];
+                const hasMore = isExpanded && count > limit;
+
+                return (
+                  <React.Fragment key={groupKey}>
+                    <tr onClick={() => toggleGroup(groupKey)} style={styles.groupRow}>
+                      <td colSpan={15} style={styles.groupCell}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          <span>{groupKey || "Unknown"}</span>
+                          <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 12, fontSize: '0.7rem', color: '#e2e8f0', fontWeight: 400 }}>{count} items</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <>
+                        {visibleItems.map((item, idx) => renderItemRow(item, idx))}
+                        {hasMore && (
+                          <tr>
+                            <td colSpan={15} onClick={() => loadMoreForGroup(groupKey)} style={{ ...styles.tableCell, ...styles.loadMoreRow }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#60a5fa', fontSize: '0.8rem', fontWeight: 600 }}>
+                                <Download size={14} /> Show more
+                              </div>
+                             </td>
+                          </tr>
+                        )}
+                      </>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Simplified Mobile Pagination */}
+      {!loading && !processedData.isGrouped && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#0f172a', borderTop: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+          <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} style={{ ...styles.pageButton, padding: '8px 12px', opacity: page === 1 ? 0.3 : 1 }}>
+            <ChevronLeft size={16} /> Prev
+          </button>
+          
+          <span style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
+            Page <strong style={{ color: '#fff' }}>{page}</strong> of {processedData.totalPages}
+          </span>
+          
+          <button onClick={() => handlePageChange(page + 1)} disabled={page === processedData.totalPages} style={{ ...styles.pageButton, padding: '8px 12px', opacity: page === processedData.totalPages ? 0.3 : 1 }}>
+            Next <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* MODALS LAYER */}
+      
+      {/* 1. Show Filter Modal */}
+      {showFilterModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowFilterModal(false)}>
+           <div 
+             onClick={(e) => e.stopPropagation()}
+             style={{ background: '#0f172a', width: '90%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}
+           >
+              <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, color: '#f1f5f9', fontSize: '1rem', fontWeight: 600 }}>Filters</h3>
+                <button onClick={() => setShowFilterModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b' }}><X size={20} /></button>
+              </div>
+              <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
+                 {filterRules.map((rule) => (
+                    <div key={rule.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                      <select value={rule.field} onChange={(e) => handleUpdateRule(rule.id, 'field', e.target.value)} style={{ ...styles.select, width: '100%' }}>
+                        {FILTER_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                      </select>
+                      <select value={rule.operator} onChange={(e) => handleUpdateRule(rule.id, 'operator', e.target.value)} style={{ ...styles.select, width: '100%' }}>
+                        {OPERATORS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
+                      </select>
+                      {FILTER_FIELDS.find(f => f.value === rule.field)?.type === 'select' ? (
+                         <select value={rule.value} onChange={(e) => handleUpdateRule(rule.id, 'value', e.target.value)} style={{ ...styles.select, width: '100%', background: '#020617' }}>
+                            <option value="">Select...</option>
+                            {FILTER_FIELDS.find(f => f.value === rule.field)?.options?.map(opt => ( <option key={opt} value={opt}>{opt}</option> ))}
+                         </select>
+                      ) : (
+                        <input type="text" placeholder="Value..." value={rule.value} onChange={(e) => handleUpdateRule(rule.id, 'value', e.target.value)} style={{ ...styles.select, width: '100%', background: '#020617' }} />
+                      )}
+                    </div>
+                  ))}
+              </div>
+              <div style={{ padding: '16px', display: 'flex', gap: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                 <button onClick={handleClearFilters} style={{ ...styles.secondaryBtn, flex: 1 }}>Clear</button>
+                 <button onClick={handleApplyFilters} style={{ ...styles.primaryBtn, flex: 2 }}>Apply</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* 2. Show Confirm Dialog */}
+      {confirmDialog.isOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.confirmBox}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: 10, borderRadius: '50%' }}>
+                <AlertTriangle size={24} color="#fbbf24" />
+              </div>
+              <h3 style={{ margin: 0, color: '#f1f5f9', fontSize: '1.1rem', fontWeight: 700 }}>Confirmation</h3>
+            </div>
+            <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5 }}>{confirmDialog.message}</p>
+            <div style={styles.confirmButtons}>
+              <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} style={styles.secondaryBtn}>Cancel</button>
+              <button onClick={executeLockAction} style={{...styles.primaryBtn, background: confirmDialog.actionType === 'unlock' ? '#ef4444' : '#10b981'}}>
+                {confirmDialog.actionType === 'unlock' ? 'Unpick' : 'Pick Entry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Show Related Reels Child Modal (ADDED BACK IN FOR MOBILE) */}
+      {showRelatedModal && (
+        <div onClick={() => setShowRelatedModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: '10px' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", height: "85vh", background: "#0f172a", borderRadius: 16, display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+            
+            <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, color: "#fff", fontSize: "1.1rem", fontWeight: 700 }}>Reels from Source</h3>
+                <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.8rem" }}>Parent MLID: <strong style={{ color: "#60a5fa" }}>{selectedSourceId}</strong></p>
+              </div>
+              <button onClick={() => setShowRelatedModal(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mobile-table-scroll" style={{ flex: 1, overflow: "auto", position: "relative" }}>
+              {modalLoading ? (
+                <div style={{ padding: 40, display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: 12, color: "#94a3b8" }}>
+                  <Loader2 size={32} style={{ animation: "spinLoader 1s linear infinite" }} />
+                  <span>Loading details...</span>
+                </div>
+              ) : (
+                <table style={{ width: "max-content", borderCollapse: "collapse", minWidth: "100%" }}>
+                  <thead style={{ position: "sticky", top: 0, background: "#1e293b", zIndex: 10 }}>
+                    <tr>
+                      {["Type", "MLUniqueID", "EventRefMLID", "ContentFrom", "CounterFrom", "CounterTo", "Event Name", "Details", "Dimension", "Topic", "Production Bucket"].map((header) => (
+                        <th key={header} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: 600, color: "#cbd5e1", borderBottom: "1px solid rgba(255,255,255,0.1)", whiteSpace: "nowrap" }}>
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {relatedReels.length === 0 && (
+                      <tr><td colSpan={11} style={{ padding: 20, textAlign: "center", color: "#64748b" }}>No records found.</td></tr>
+                    )}
+
+                    {parentReel && renderModalRow(parentReel, 0, true)}
+
+                    {groupedChildReels.map((group) => {
+                      const isExpanded = expandedModalGroups[group.topic];
+                      return (
+                        <React.Fragment key={group.topic}>
+                          <tr onClick={() => toggleModalGroup(group.topic)} style={{ background: "rgba(59,130,246,0.1)", cursor: "pointer" }}>
+                            <td colSpan={11} style={{ padding: "10px 16px", color: "#60a5fa", fontWeight: 600 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                <span>Topic: {group.topic}</span>
+                                <span style={{ background: "rgba(255,255,255,0.1)", padding: "2px 8px", borderRadius: 12, fontSize: "0.7rem", color: "#e2e8f0", fontWeight: 400 }}>{group.items.length} child items</span>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && group.items.map((item, idx) => renderModalRow(item, idx, false))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+
+  // ==========================================
+  // 💻 DESKTOP VIEW (Kept 100% exactly as it was)
+  // ==========================================
+  const renderDesktopView = () => (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col relative">
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1349,19 +1647,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
 
                 <div 
                   className="animate-in zoom-in-95 duration-200"
-                  style={isMobile ? {
-                     position: 'fixed',
-                     top: '50%',
-                     left: '50%',
-                     transform: 'translate(-50%, -50%)',
-                     zIndex: 50,
-                     background: '#0f172a',
-                     border: '1px solid rgba(255,255,255,0.1)',
-                     borderRadius: '12px',
-                     width: '90%',
-                     maxWidth: '400px',
-                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                  } : { 
+                  style={{ 
                     position: 'absolute',
                     top: '100%',
                     right: 0, 
@@ -1406,7 +1692,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
                             <select 
                               value={rule.operator}
                               onChange={(e) => handleUpdateRule(rule.id, 'operator', e.target.value)}
-                              style={{ ...styles.select, width: isMobile ? '100%' : '100px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{ ...styles.select, width: '100px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)' }}
                             >
                               {OPERATORS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
                             </select>
@@ -1569,10 +1855,12 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
                   </div>
                 </>
               )}
-            </div>
+            </div> 
           </>
         )}
       </div>
     </div>
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }

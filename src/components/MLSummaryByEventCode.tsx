@@ -1,14 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Search, X, ListTree, ArrowRight } from "lucide-react";
+import { Search, X, ListTree, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 
-
 const categoryTagRenderer = (value: string | null | undefined) => {
-  // CHANGED: Removed the "-" so it renders completely blank when empty
   if (!value) return <div style={{ textAlign: "center", width: "100%" }}></div>;
   
   const getTextColorForBg = (hex: string): string => {
@@ -46,7 +44,6 @@ const categoryTagRenderer = (value: string | null | undefined) => {
 const centeredTextRenderer = (value: any) => {
   return (
     <div className="w-full flex items-center justify-center text-center">
-      {/* CHANGED: Render value, or an empty string if null/undefined */}
       {value || ""}
     </div>
   );
@@ -107,22 +104,50 @@ const ML_SUMMARY_COLUMNS = [
 ];
 
 export function MLSummaryByEventCode() {
+  const [isMobile, setIsMobile] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
+  const [showMobileResults, setShowMobileResults] = useState(false);
+
+  // --- Check mobile sizing ---
+  useEffect(() => {
+    const checkIsMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+      } else {
+        document.body.style.backgroundColor = "";
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => {
+      window.removeEventListener("resize", checkIsMobile);
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       setAppliedFilter(undefined);
+      setShowMobileResults(false);
       return;
     }
     // Set the filter to trigger the backend query for the specific Event Code
-    // We use fkEventCode as it's the standard relation key for Event Codes in the Media Log
     setAppliedFilter({ fkEventCode: searchTerm.trim() });
+    
+    if (isMobile) {
+      setShowMobileResults(true);
+      window.scrollTo(0, 0);
+    }
   };
 
   const handleClear = () => {
     setSearchTerm("");
     setAppliedFilter(undefined);
+    setShowMobileResults(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -131,7 +156,148 @@ export function MLSummaryByEventCode() {
     }
   };
 
-  return (
+  // ==========================================
+  // 📱 MOBILE APP UI
+  // ==========================================
+  const renderMobileView = () => {
+    
+    // VIEW 1: Search Results Page (Full Screen Overlay)
+    if (showMobileResults && appliedFilter) {
+      return (
+        <div
+          style={{
+            position: "fixed", 
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100dvh",
+            zIndex: 40,
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "#0b1120",
+            color: "white",
+          }}
+        >
+          {/* Back Header */}
+          <div
+            style={{
+              padding: "16px 20px",
+              backgroundColor: "rgba(15,23,42,0.6)",
+              borderBottom: "1px solid rgba(30,41,59,0.8)",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              backdropFilter: "blur(12px)",
+              flexShrink: 0
+            }}
+          >
+            <button
+              onClick={() => setShowMobileResults(false)}
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "none",
+                color: "white",
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0
+              }}
+            >
+              <ArrowLeft style={{ width: 22, height: 22 }} />
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 700, margin: 0, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                Summary
+              </h1>
+              <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                Event Code: {appliedFilter.fkEventCode}
+              </p>
+            </div>
+          </div>
+
+          {/* Results List Area */}
+          <div className="hide-results-bottom-bar" style={{ flex: 1, width: "100%", overflow: "hidden", backgroundColor: "#0f172a", display: "flex", flexDirection: "column" }}>
+             <style>{`
+               .hide-results-bottom-bar div[style*="position: fixed"][style*="bottom"] {
+                 display: none !important;
+               }
+             `}</style>
+             <ClickUpListViewUpdated
+              title=""
+              viewId="ml_summary_event_code"
+              apiEndpoint="/ml-summary-event-code"
+              idKey="MLUniqueID"
+              columns={ML_SUMMARY_COLUMNS}
+              initialFilters={appliedFilter}
+              onViewChange={() => {}}
+              showAddButton={false}
+             />
+          </div>
+        </div>
+      );
+    }
+
+    // VIEW 2: Search Input Page
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", backgroundColor: "#0b1120", color: "white" }}>
+        {/* Mobile Header */}
+        <div style={{ padding: "24px 20px 16px", backgroundColor: "rgba(15,23,42,0.6)", borderBottom: "1px solid rgba(30,41,59,0.8)", backdropFilter: "blur(12px)", flexShrink: 0 }}>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>
+            <ListTree style={{ width: "20px", height: "20px", color: "#34d399" }} /> 
+            ML Summary
+          </h1>
+          <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px", lineHeight: 1.4 }}>
+            Enter an Event Code to view all related Media Log entries.
+          </p>
+        </div>
+
+        {/* Mobile Search Box */}
+        <div style={{ padding: "20px", flexShrink: 0 }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#cbd5e1", marginBottom: "8px" }}>
+            Enter Event Code
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }}>
+                <Search style={{ width: "18px", height: "18px" }} />
+              </div>
+              <Input
+                placeholder="e.g. E003945"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleKeyDown}
+                style={{ paddingLeft: "42px", paddingRight: "40px", height: "48px", background: "#1e293b", border: "1px solid #334155", color: "#fff", borderRadius: "10px", fontSize: "16px" }}
+              />
+              {searchTerm && (
+                <button
+                  onClick={handleClear}
+                  style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "#94a3b8", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <X style={{ width: "18px", height: "18px" }} />
+                </button>
+              )}
+            </div>
+            <Button
+              onClick={handleSearch}
+              style={{ height: "48px", background: "#10b981", color: "#fff", borderRadius: "10px", fontWeight: 600, fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+            >
+              Search
+              <ArrowRight style={{ width: "18px", height: "18px" }} />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 💻 DESKTOP UI
+  // ==========================================
+  const renderDesktopView = () => (
     <div
       style={{
         width: "100%",
@@ -371,4 +537,6 @@ export function MLSummaryByEventCode() {
       </div>
     </div>
   );
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 }
