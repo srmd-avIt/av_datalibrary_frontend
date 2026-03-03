@@ -24,13 +24,10 @@ import {
   X,
   AlertTriangle,
   Search,
-  Columns,
-  Filter, 
-  Plus,         
-  Trash2,       
-  Save,
-  XCircle          
+  Columns
 } from "lucide-react";
+
+import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 
 // --- TYPES & INTERFACES ---
 
@@ -69,12 +66,10 @@ interface ColumnDef {
   render?: (item: ArchivalItem, idx: number) => React.ReactNode;
 }
 
-interface FilterRule {
-  id: string;
-  field: string;
-  operator: string;
-  value: string;
-}
+// New Filter Interfaces for AdvancedFiltersClickUp
+interface FilterGroup { id: string; rules: FilterRule[]; logic: "AND" | "OR"; }
+interface FilterRule { id: string; field: string; operator: string; value: any; logic?: "AND" | "OR"; }
+interface FilterConfig { key: string; label: string; type: "text" | "select" | "date" | "number"; options?: { value: string; label: string; }[]; }
 
 // --- CONFIGURATION ---
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -82,17 +77,12 @@ const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 const SERVER_PAGE_SIZE = 50;
 const GROUP_INNER_PAGE_SIZE = 50; 
 
-const FILTER_FIELDS = [
-  { label: 'Year', value: 'Yr', type: 'text' },
-  { label: 'Event Name', value: 'EventName', type: 'text' },
-  { label: 'Topic', value: 'Topic', type: 'text' },
-  { label: 'Production Bucket', value: 'ProductionBucket', type: 'select', options: ['Wisdom Reels', 'Wisdom Clips/Reels'] },
-  { label: 'ML Unique ID', value: 'MLUniqueID', type: 'text' },
-];
-
-const OPERATORS = [
-  { label: 'Contains', value: 'contains' },
-  { label: 'Equals', value: 'equals' },
+const FILTER_CONFIGS: FilterConfig[] = [
+  { key: 'Yr', label: 'Year', type: 'text' },
+  { key: 'EventName', label: 'Event Name', type: 'text' },
+  { key: 'Topic', label: 'Topic', type: 'text' },
+  { key: 'ProductionBucket', label: 'Production Bucket', type: 'select', options: [{value: 'Wisdom Reels', label: 'Wisdom Reels'}, {value: 'Wisdom Clips/Reels', label: 'Wisdom Clips/Reels'}] },
+  { key: 'MLUniqueID', label: 'ML Unique ID', type: 'text' },
 ];
 
 // --- STYLES ---
@@ -256,17 +246,6 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'center',
     backdropFilter: 'blur(5px)'
   },
-  modalContent: {
-    background: '#1e293b',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '16px',
-    width: '90%',
-    maxWidth: '1200px', 
-    maxHeight: '85vh',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-  },
   confirmBox: {
     background: '#1e293b',
     border: '1px solid rgba(255,255,255,0.1)',
@@ -309,6 +288,69 @@ const styles: Record<string, CSSProperties> = {
   }
 };
 
+// --- BULLETPROOF LOCAL FILTERING ENGINE ---
+const evaluateRule = (item: any, rule: FilterRule) => {
+  const itemValue = String(item[rule.field] ?? "").toLowerCase().trim();
+  const ruleValue = String(rule.value ?? "").toLowerCase().trim();
+
+  // Normalize operator formats (converts 'not_contains' to 'not contains')
+  const op = (rule.operator || "").toLowerCase().replace(/_/g, " ");
+
+  switch (op) {
+    case "contains": 
+      return itemValue.includes(ruleValue);
+    case "does not contain": 
+    case "not contains": 
+      return !itemValue.includes(ruleValue);
+    case "equals": 
+    case "equal": 
+      return itemValue === ruleValue;
+    case "does not equal": 
+    case "not equals": 
+    case "not equal": 
+      return itemValue !== ruleValue;
+    case "starts with": 
+      return itemValue.startsWith(ruleValue);
+    case "ends with": 
+      return itemValue.endsWith(ruleValue);
+    case "is empty":
+    case "empty": 
+      return itemValue === "";
+    case "is not empty":
+    case "not empty": 
+      return itemValue !== "";
+    default: 
+      return true; // If operator isn't recognized, ignore rule
+  }
+};
+
+const evaluateGroup = (item: any, group: FilterGroup) => {
+  if (group.rules.length === 0) return true;
+  
+  // Only process rules that are fully filled out (or are checking for empty/not empty)
+  const validRules = group.rules.filter(r => 
+    r.field && r.operator && (r.operator.toLowerCase().includes('empty') || (r.value !== undefined && r.value !== null && String(r.value).trim() !== ''))
+  );
+  
+  if (validRules.length === 0) return true;
+
+  if (group.logic === "OR") {
+    return validRules.some(rule => evaluateRule(item, rule));
+  } else {
+    return validRules.every(rule => evaluateRule(item, rule));
+  }
+};
+
+const applyAdvancedFilters = (items: ArchivalItem[], filters: FilterGroup[]) => {
+  const validGroups = filters.filter(g => 
+    g.rules.some(r => r.field && r.operator && (r.operator.toLowerCase().includes('empty') || (r.value !== undefined && r.value !== null && String(r.value).trim() !== '')))
+  );
+  if (validGroups.length === 0) return items;
+
+  return items.filter(item => validGroups.every(group => evaluateGroup(item, group)));
+};
+
+
 export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProjectProps) {
   const { user } = useAuth();
 
@@ -323,6 +365,13 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     unused: ""
   });
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Filter State - Advanced Filters ClickUp
+  const [advancedFilters, setAdvancedFilters] = useState<FilterGroup[]>([]);
+
+  const hasValidFilters = useMemo(() => {
+    return advancedFilters.some(g => g.rules.some(r => r.field && r.operator && (r.operator.toLowerCase().includes('empty') || (r.value !== undefined && r.value !== null && String(r.value).trim() !== ''))));
+  }, [advancedFilters]);
 
   // Pagination State
   const [page, setPage] = useState(1);
@@ -361,14 +410,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     message: ""
   });
 
-  // --- FILTER STATE & LOGIC ---
-  const [showFilterModal, setShowFilterModal] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768); 
-
-  const [filterRules, setFilterRules] = useState<FilterRule[]>([
-    { id: '1', field: 'Yr', operator: 'contains', value: '' }
-  ]);
-  const [appliedRules, setAppliedRules] = useState<FilterRule[]>([]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -397,14 +439,14 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
         : '/api/video-archival/unused-satsangs';
 
       const queryParams = new URLSearchParams({
-        limit: '10000', // Fetch up to 10k records to ensure all filtered data is included
+        limit: '10000', // Fetch max to ensure all filtered data is included
         page: '1'
       });
 
       if (debouncedSearch) queryParams.append('search', debouncedSearch);
-      appliedRules.forEach(rule => {
-        if (rule.value && rule.value.trim() !== '') queryParams.append(rule.field, rule.value);
-      });
+
+      // Note: We deliberately do NOT send advancedFilters to the backend here to prevent crashes.
+      // We fetch all records and apply our robust local filter engine below.
 
       const res = await fetch(`${cleanBaseUrl}${endpoint}?${queryParams}`, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -413,7 +455,10 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       if (!res.ok) throw new Error("Failed to fetch export data");
       
       const result = await res.json();
-      const exportData = result.data || [];
+      const rawData = result.data || [];
+      
+      // Apply advanced filters locally
+      const exportData = applyAdvancedFilters(rawData, advancedFilters);
 
       if (exportData.length === 0) {
         toast.dismiss(loadingToast);
@@ -630,15 +675,17 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
 
   useEffect(() => {
     fetchData();
-  }, [page, activeTab, currentGroupBy, debouncedSearch, appliedRules]);
+  }, [page, activeTab, currentGroupBy, debouncedSearch, advancedFilters]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('app-token');
+      
+      // Fetch everything if we have filters OR groupings, so our local engine works flawlessly
       const isGrouping = currentGroupBy !== 'none';
-      const limit = isGrouping ? 5000 : SERVER_PAGE_SIZE;
-      const apiPage = isGrouping ? 1 : page;
+      const limit = (isGrouping || hasValidFilters) ? 10000 : SERVER_PAGE_SIZE;
+      const apiPage = (isGrouping || hasValidFilters) ? 1 : page;
 
       const endpoint = activeTab === 'used' 
         ? '/api/video-archival/satsang-reels'
@@ -653,11 +700,8 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
         queryParams.append('search', debouncedSearch);
       }
 
-      appliedRules.forEach(rule => {
-        if (rule.value && rule.value.trim() !== '') {
-          queryParams.append(rule.field, rule.value);
-        }
-      });
+      // DO NOT send advanced_filters to the backend API here. The backend doesn't support them properly.
+      // We are fetching all 10,000 records and running our bulletproof local filter logic instead.
 
       const res = await fetch(`${cleanBaseUrl}${endpoint}?${queryParams}`, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -682,38 +726,6 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleAddRule = () => {
-    const newRule: FilterRule = {
-      id: Date.now().toString(),
-      field: 'Yr',
-      operator: 'contains',
-      value: ''
-    };
-    setFilterRules([...filterRules, newRule]);
-  };
-
-  const handleRemoveRule = (id: string) => {
-    setFilterRules(filterRules.filter(r => r.id !== id));
-  };
-
-  const handleUpdateRule = (id: string, key: keyof FilterRule, value: string) => {
-    setFilterRules(filterRules.map(r => 
-      r.id === id ? { ...r, [key]: value } : r
-    ));
-  };
-
-  const handleApplyFilters = () => {
-    setPage(1);
-    setAppliedRules(filterRules);
-    setShowFilterModal(false);
-  };
-
-  const handleClearFilters = () => {
-    setFilterRules([{ id: Date.now().toString(), field: 'Yr', operator: 'contains', value: '' }]);
-    setAppliedRules([]);
-    setPage(1);
   };
 
   const handleViewRelated = async (sourceMLID: string) => {
@@ -808,13 +820,29 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     }
   };
 
-  // --- Main Table Grouping Logic ---
+  // --- Main Table Grouping & Filtering Logic ---
   const processedData = useMemo(() => {
+    // 1. Apply robust local filtering
+    const filteredData = applyAdvancedFilters(data, advancedFilters);
+
+    // 2. If no grouping, calculate standard pagination based on the locally filtered results
     if (currentGroupBy === 'none') {
-      return { isGrouped: false, items: data, totalPages: Math.ceil(serverTotalRecords / SERVER_PAGE_SIZE), groups: [] };
+      const isClientPaginated = hasValidFilters;
+      const totalRecs = isClientPaginated ? filteredData.length : serverTotalRecords;
+      const totalPgs = Math.ceil(totalRecs / SERVER_PAGE_SIZE) || 1;
+      
+      let pagedItems = filteredData;
+      if (isClientPaginated) {
+         const start = (page - 1) * SERVER_PAGE_SIZE;
+         pagedItems = filteredData.slice(start, start + SERVER_PAGE_SIZE);
+      }
+      
+      return { isGrouped: false, items: pagedItems, totalPages: totalPgs, totalRecords: totalRecs, groups: [] };
     }
+
+    // 3. Handle Grouping
     const groups: Record<string, ArchivalItem[]> = {};
-    data.forEach(item => {
+    filteredData.forEach(item => {
       let key = item[currentGroupBy];
       if (!key) key = "Unknown / Other";
       if (!groups[key]) groups[key] = [];
@@ -822,8 +850,8 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     });
     const groupKeys = Object.keys(groups).sort();
     const groupList = groupKeys.map(key => ({ key, items: groups[key] }));
-    return { isGrouped: true, groups: groupList, totalRecords: data.length, totalPages: 1 };
-  }, [data, currentGroupBy, serverTotalRecords]);
+    return { isGrouped: true, groups: groupList, totalRecords: filteredData.length, totalPages: 1 };
+  }, [data, currentGroupBy, serverTotalRecords, advancedFilters, page, hasValidFilters]);
 
   // --- Modal Grouping Logic: Separate Parent vs Child ---
   const parentReel = useMemo(() => {
@@ -986,17 +1014,13 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
     </tr>
   );
 
-
-  // ==========================================
-  // 📱 MOBILE VIEW
-  // ==========================================
   // ==========================================
   // 📱 MOBILE VIEW
   // ==========================================
   const renderMobileView = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0b1120', color: '#fff' }}>
       
-      {/* Fixed Global CSS for Mobile Scrollbars */}
+      {/* Fixed Global CSS for Mobile Scrollbars & Advanced Filter Override */}
       <style>{`
         .mobile-hide-scroll::-webkit-scrollbar { display: none; }
         .mobile-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -1007,6 +1031,26 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
         .mobile-table-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
         
         @keyframes spinLoader { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .mobile-filter-container button {
+          width: auto !important;
+          height: 36px !important;
+          padding: 0 16px !important;
+          border-radius: 20px !important;
+          background-color: ${hasValidFilters ? '#3b82f6' : 'rgba(255,255,255,0.05)'} !important;
+          border-color: transparent !important;
+          color: ${hasValidFilters ? '#fff' : '#cbd5e1'} !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-size: 0.85rem !important; 
+          font-weight: 600 !important;
+          gap: 6px !important;
+        }
+        .mobile-filter-container button svg {
+          width: 16px !important;
+          height: 16px !important;
+        }
       `}</style>
 
       {/* Header */}
@@ -1020,7 +1064,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
         </div>
       </div>
 
-      {/* Scrollable Action Pills - ADDED GROUP BY & FREEZE HERE */}
+      {/* Scrollable Action Pills */}
       <div className="mobile-hide-scroll" style={{ display: 'flex', gap: '10px', padding: '12px 16px', overflowX: 'auto', background: '#0b1120', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
         <button onClick={() => setActiveTab('used')} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: activeTab === 'used' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)', color: activeTab === 'used' ? '#60a5fa' : '#cbd5e1', border: activeTab === 'used' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
           <PlayCircle size={16} /> Used for Reels
@@ -1061,9 +1105,15 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
           </select>
         </div>
 
-        <button onClick={() => setShowFilterModal(true)} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: appliedRules.length > 0 ? '#3b82f6' : 'rgba(255,255,255,0.05)', color: appliedRules.length > 0 ? '#fff' : '#cbd5e1', border: '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-          <Filter size={16} /> Filter {appliedRules.length > 0 && `(${appliedRules.length})`}
-        </button>
+        {/* Filter Trigger via ClickUp Component */}
+        <div className="mobile-filter-container" style={{ flexShrink: 0 }}>
+          <AdvancedFiltersClickUp 
+            filters={FILTER_CONFIGS} 
+            onFiltersChange={setAdvancedFilters} 
+            data={data} 
+            onSaveFilter={undefined} // Hides save functionality
+          />
+        </div>
 
         <button onClick={handleExportCSV} disabled={isExporting} style={{ flexShrink: 0, padding: '8px 16px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid transparent', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
           {isExporting ? <Loader2 size={16} style={{ animation: "spinLoader 1s linear infinite" }} /> : <Download size={16} />} 
@@ -1081,7 +1131,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
           <table style={{ width: 'max-content', borderCollapse: 'separate', borderSpacing: 0, minWidth: '100%' }}>
             <thead><HeaderRow /></thead>
             <tbody>
-              {data.length === 0 && (<tr><td colSpan={15} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No records found.</td></tr>)}
+              {processedData.items?.length === 0 && processedData.groups?.length === 0 && (<tr><td colSpan={15} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No records found matching filters.</td></tr>)}
               {!processedData.isGrouped && processedData.items?.map((item, idx) => renderItemRow(item, idx))}
               
               {/* Grouping Logic for Mobile */}
@@ -1144,45 +1194,6 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
       )}
 
       {/* MODALS LAYER */}
-      
-      {/* 1. Show Filter Modal */}
-      {showFilterModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowFilterModal(false)}>
-           <div 
-             onClick={(e) => e.stopPropagation()}
-             style={{ background: '#0f172a', width: '90%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}
-           >
-              <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, color: '#f1f5f9', fontSize: '1rem', fontWeight: 600 }}>Filters</h3>
-                <button onClick={() => setShowFilterModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b' }}><X size={20} /></button>
-              </div>
-              <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
-                 {filterRules.map((rule) => (
-                    <div key={rule.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                      <select value={rule.field} onChange={(e) => handleUpdateRule(rule.id, 'field', e.target.value)} style={{ ...styles.select, width: '100%' }}>
-                        {FILTER_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                      </select>
-                      <select value={rule.operator} onChange={(e) => handleUpdateRule(rule.id, 'operator', e.target.value)} style={{ ...styles.select, width: '100%' }}>
-                        {OPERATORS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
-                      </select>
-                      {FILTER_FIELDS.find(f => f.value === rule.field)?.type === 'select' ? (
-                         <select value={rule.value} onChange={(e) => handleUpdateRule(rule.id, 'value', e.target.value)} style={{ ...styles.select, width: '100%', background: '#020617' }}>
-                            <option value="">Select...</option>
-                            {FILTER_FIELDS.find(f => f.value === rule.field)?.options?.map(opt => ( <option key={opt} value={opt}>{opt}</option> ))}
-                         </select>
-                      ) : (
-                        <input type="text" placeholder="Value..." value={rule.value} onChange={(e) => handleUpdateRule(rule.id, 'value', e.target.value)} style={{ ...styles.select, width: '100%', background: '#020617' }} />
-                      )}
-                    </div>
-                  ))}
-              </div>
-              <div style={{ padding: '16px', display: 'flex', gap: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                 <button onClick={handleClearFilters} style={{ ...styles.secondaryBtn, flex: 1 }}>Clear</button>
-                 <button onClick={handleApplyFilters} style={{ ...styles.primaryBtn, flex: 2 }}>Apply</button>
-              </div>
-           </div>
-        </div>
-      )}
 
       {/* 2. Show Confirm Dialog */}
       {confirmDialog.isOpen && (
@@ -1205,7 +1216,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
         </div>
       )}
 
-      {/* 3. Show Related Reels Child Modal (ADDED BACK IN FOR MOBILE) */}
+      {/* 3. Show Related Reels Child Modal */}
       {showRelatedModal && (
         <div onClick={() => setShowRelatedModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000, padding: '10px' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", height: "85vh", background: "#0f172a", borderRadius: 16, display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -1273,7 +1284,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
   );
 
   // ==========================================
-  // 💻 DESKTOP VIEW (Kept 100% exactly as it was)
+  // 💻 DESKTOP VIEW
   // ==========================================
   const renderDesktopView = () => (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full flex flex-col relative">
@@ -1617,148 +1628,13 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
             {isExporting ? "Exporting..." : "Export"}
           </button>
 
-          {/* --- POPOVER FILTER BUTTON & DROPDOWN --- */}
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setShowFilterModal(!showFilterModal)}
-              style={{
-                background: appliedRules.length > 0 ? '#3b82f6' : '#1e293b',
-                color: appliedRules.length > 0 ? '#fff' : '#94a3b8',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 6,
-                padding: '6px 12px',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-                fontSize: '0.85rem'
-              }}
-            >
-              <Filter size={14} /> Filter 
-              {appliedRules.length > 0 && <span style={{ background: 'rgba(255,255,255,0.2)', padding: '0 5px', borderRadius: 4, fontSize: '0.7rem' }}>{appliedRules.length}</span>}
-            </button>
-
-            {/* THE DROPDOWN MODAL */}
-            {showFilterModal && (
-              <>
-                {/* Invisible backdrop to close on click outside */}
-                <div 
-                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} 
-                  onClick={() => setShowFilterModal(false)}
-                />
-
-                <div 
-                  className="animate-in zoom-in-95 duration-200"
-                  style={{ 
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0, 
-                    zIndex: 50,
-                    marginTop: 8,
-                    background: '#0f172a',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                    width: '600px',
-                    transformOrigin: 'top right',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  {/* Filter Modal Header */}
-                  <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, color: '#f1f5f9', fontSize: '0.95rem', fontWeight: 600 }}>Advanced Filters</h3>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <button onClick={handleClearFilters} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <XCircle size={14} /> Clear All
-                      </button>
-                      <button onClick={() => setShowFilterModal(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}>
-                        <X size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Filter Modal Body */}
-                  <div style={{ padding: '16px', maxHeight: '60vh', overflowY: 'auto' }} className="custom-scrollbar">
-                    <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', background: 'rgba(30, 41, 59, 0.3)' }}>
-                      <h4 style={{ margin: '0 0 12px 0', color: '#cbd5e1', fontSize: '0.8rem', fontWeight: 600 }}>Filter Group 1</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {filterRules.map((rule) => (
-                          <div key={rule.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <select 
-                              value={rule.field}
-                              onChange={(e) => handleUpdateRule(rule.id, 'field', e.target.value)}
-                              style={{ ...styles.select, flex: '1 1 120px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)' }}
-                            >
-                              {FILTER_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                            </select>
-
-                            <select 
-                              value={rule.operator}
-                              onChange={(e) => handleUpdateRule(rule.id, 'operator', e.target.value)}
-                              style={{ ...styles.select, width: '100px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)' }}
-                            >
-                              {OPERATORS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
-                            </select>
-
-                            {FILTER_FIELDS.find(f => f.value === rule.field)?.type === 'select' ? (
-                               <select
-                                  value={rule.value}
-                                  onChange={(e) => handleUpdateRule(rule.id, 'value', e.target.value)}
-                                  style={{ ...styles.select, flex: '1 1 120px', background: '#020617', border: '1px solid rgba(255,255,255,0.1)' }}
-                               >
-                                  <option value="">Select...</option>
-                                  {FILTER_FIELDS.find(f => f.value === rule.field)?.options?.map(opt => (
-                                      <option key={opt} value={opt}>{opt}</option>
-                                  ))}
-                               </select>
-                            ) : (
-                              <input 
-                                type="text" 
-                                placeholder="Enter value" 
-                                value={rule.value}
-                                onChange={(e) => handleUpdateRule(rule.id, 'value', e.target.value)}
-                                style={{ ...styles.select, flex: '1 1 120px', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', cursor: 'text' }}
-                              />
-                            )}
-
-                            <button 
-                              onClick={() => handleRemoveRule(rule.id)}
-                              disabled={filterRules.length === 1}
-                              style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4, opacity: filterRules.length === 1 ? 0.3 : 1 }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-
-                        <button 
-                          onClick={handleAddRule}
-                          style={{ 
-                            marginTop: 8,
-                            background: 'transparent', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '6px', 
-                            color: '#94a3b8', padding: '8px', fontSize: '0.8rem', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-                          }}
-                        >
-                          <Plus size={14} /> Add Rule
-                        </button>
-                      </div>
-                    </div>
-                    
-                   
-                  </div>
-
-                  {/* Filter Modal Footer */}
-                  <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a', borderRadius: '0 0 12px 12px' }}>
-                     <button onClick={handleApplyFilters} style={{ ...styles.primaryBtn, width: '100%', padding: '8px' }}>
-                       Apply Filters ({filterRules.filter(r => r.value).length})
-                     </button>
-                     <div style={{ display: 'flex', gap: 8, marginLeft: 12 }}>
-                        
-                        <button onClick={handleClearFilters} style={styles.secondaryBtn}>Clear</button>
-                     </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          {/* Advanced Filter Component */}
+          <AdvancedFiltersClickUp 
+            filters={FILTER_CONFIGS} 
+            onFiltersChange={setAdvancedFilters} 
+            data={data} 
+            onSaveFilter={undefined} // Explicitly undefined to hide save option
+          />
 
           {/* Freeze & Group By Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: '0.85rem', marginLeft: 10 }}>
@@ -1795,7 +1671,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
                 {!processedData.isGrouped && (<thead><HeaderRow isInner={false} /></thead>)}
                 <tbody>
-                  {data.length === 0 && (<tr><td colSpan={15} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No records found.</td></tr>)}
+                  {processedData.items?.length === 0 && processedData.groups?.length === 0 && (<tr><td colSpan={15} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No records found matching filters.</td></tr>)}
                   {!processedData.isGrouped && processedData.items?.map((item, idx) => renderItemRow(item, idx))}
                   {processedData.isGrouped && processedData.groups?.map((group) => {
                     const groupKey = group.key;
@@ -1839,7 +1715,7 @@ export function VideoArchivalProject({ onBack, userEmail }: VideoArchivalProject
 
             {/* Pagination Controls */}
             <div style={styles.paginationContainer}>
-              <span style={{ marginRight: 'auto', paddingLeft: 10 }}>{processedData.isGrouped ? `Showing All Groups (${processedData.groups?.length || 0})` : `Total: ${serverTotalRecords} records`}</span>
+              <span style={{ marginRight: 'auto', paddingLeft: 10 }}>{processedData.isGrouped ? `Showing All Groups (${processedData.groups?.length || 0})` : `Total: ${processedData.totalRecords} records`}</span>
               {!processedData.isGrouped && (
                 <>
                   <button onClick={() => handlePageChange(1)} disabled={page === 1} style={{ ...styles.pageButton, opacity: page === 1 ? 0.5 : 1 }}> <ChevronsLeft size={16} /> First</button>

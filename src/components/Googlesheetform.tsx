@@ -535,6 +535,7 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   
   // NEW: State for Wisdom Users and Picked Count
   const [wisdomUserList, setWisdomUserList] = useState<{name: string, email: string}[]>([]);
+  const [submittersMLUserList, setSubmittersMLUserList] = useState<{name: string, email: string}[]>([]);
   const [wisdomPickedCount, setWisdomPickedCount] = useState(0);
   const [wisdomTotalCount, setWisdomTotalCount] = useState(0); // Add total count state
 
@@ -638,9 +639,29 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         }
       };
 
+      const fetchSubmittersMLUsers = async () => {
+        try {
+            const token = localStorage.getItem('app-token');
+            const res = await fetch(`${cleanBaseUrl}/api/users/submitters-ml-list`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+                }
+            });
+            if (res.ok) {
+                setSubmittersMLUserList(await res.json());
+            } else {
+                 setSubmittersMLUserList([]);
+            }
+        } catch (e) {
+            console.error("Error fetching submitters ML users", e);
+        }
+      };
+
       fetchData();
       fetchUsers();
       fetchWisdomUsers();
+      fetchSubmittersMLUsers();
   }, []);
 
   useEffect(() => {
@@ -1691,7 +1712,7 @@ const handleSendComment = async () => {
         icon: Users, 
         color: colors.success, 
         stats: { label: 'Modules', value: 5 }, 
-        progress: 100, 
+        
         tags: ['ML', 'Search'], 
         status: "APPROVED",
         isVisible: canViewSubmittersML 
@@ -1811,18 +1832,22 @@ const handleSendComment = async () => {
               <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: 'auto', fontWeight: 500 }}>{project.description}</p>
               
               <div style={{ marginTop: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' }}>
-                    <span>Completion Status</span>
-                    <span style={{ color: 'white' }}>{project.progress}%</span>
-                </div>
-                <div style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '9999px', height: '0.35rem', overflow: 'hidden' }}>
-                    <div style={{ 
-                        width: `${project.progress}%`, 
-                        height: '100%', 
-                        background: '#f59e0b',
-                    }} />
-                </div>
-              </div>
+  {project.id !== 'submitters_ml' && (  // ✅ ADD THIS CONDITION
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' }}>
+          <span>Completion Status</span>
+          <span style={{ color: 'white' }}>{project.progress}%</span>
+      </div>
+      <div style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '9999px', height: '0.35rem', overflow: 'hidden' }}>
+          <div style={{ 
+              width: `${project.progress}%`, 
+              height: '100%', 
+              background: '#f59e0b',
+          }} />
+      </div>
+    </>
+  )}
+</div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
                  <div style={{ display: 'flex' }}>
@@ -1858,7 +1883,24 @@ const handleSendComment = async () => {
                                 <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div>
                             )}
                         </>
-
+                    ) : project.id === 'submitters_ml' ? (
+                        /* --- SUBMITTERS ML CARD (Uses 'submittersMLUserList') --- */
+                        <>
+                            {submittersMLUserList.length > 0 ? (
+                                <>
+                                    {submittersMLUserList.slice(0, 3).map((u, i) => (
+                                        <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
+                                            {getInitials(u.name)}
+                                        </div>
+                                    ))}
+                                    {submittersMLUserList.length > 3 && (
+                                        <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{submittersMLUserList.length - 3}</div>
+                                    )}
+                                </>
+                            ) : (
+                                <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div>
+                            )}
+                        </>
                     ) : (
                         /* --- OTHER CARDS (Fallbacks) --- */
                         <>

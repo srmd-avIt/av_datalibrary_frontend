@@ -787,7 +787,7 @@ function DigitalRecordingDataTableView({
   const [error, setError] = useState<string | null>(null);
 
   // --- Columns Definitions (kept same as original) ---
-  const eventColumns = [ { key: "Yr", label: "Year" }, { key: "NewEventCategory", label: "New Event Category" }, { key: "FromDate", label: "From Date" }, { key: "ToDate", label: "To Date" }, { key: "EventName", label: "Event Name" }, { key: "EventCode", label: "Event Code" }, { key: "EventRemarks", label: "Event Remarks" }, ];
+  const eventColumns = [ { key: "Yr", label: "Year" }, { key: "NewEventCategory", label: "New Event Category" }, { key: "NewEventFrom", label: "Event From" }, { key: "NewEventTo", label: "Event To" }, { key: "EventName", label: "Event Name" }, { key: "EventCode", label: "Event Code" }, { key: "EventRemarks", label: "Event Remarks" }, ];
   const mediaLogColumns = [ { key: "Yr", label: "Year" }, { key: "EventDisplay", label: "Event Name - EventCode" }, { key: "EventCode", label: "Event Code" }, { key: "fkDigitalRecordingCode", label: "DR Code" }, { key: "ContentFrom", label: "Content From" }, { key: "ContentTo", label: "Content To" }, { key: "DetailSub", label: "Detail - SubDetail" }, { key: "EditingStatus", label: "Editing Status" }, { key: "FootageType", label: "Footage Type" }, { key: "fkOccasion", label: "Occasion" }, { key: "Segment Category", label: "Segment Category" }, { key: "CounterFrom", label: "Counter From" }, { key: "CounterTo", label: "Counter To" }, { key: "SubDuration", label: "Sub Duration" }, { key: "Language", label: "Language" }, { key: "SpeakerSinger", label: "Speaker / Singer" }, { key: "fkOrganization", label: "Organization" }, { key: "Designation", label: "Designation" }, { key: "fkCountry", label: "Country" }, { key: "fkState", label: "State" }, { key: "fkCity", label: "City" }, { key: "Venue", label: "Venue" }, { key: "MLUniqueID", label: "MLUniqueID" }, { key: "FootageSrNo", label: "FootageSrNo" }, { key: "LogSerialNo", label: "LogSerialNo" }, { key: "IsAudioRecorded", label: "IsAudioRecorded" }, { key: "AudioMP3Distribution", label: "AudioMP3Distribution" }, { key: "AudioWAVDistribution", label: "AudioWAVDistribution" }, { key: "AudioMP3DRCode", label: "AudioMP3DRCode" }, { key: "AudioWAVDRCode", label: "AudioWAVDRCode" }, { key: "FullWAVDRCode", label: "FullWAVDRCode" }, { key: "Remarks", label: "Remarks" }, { key: "IsStartPage", label: "IsStartPage" }, { key: "EndPage", label: "EndPage" }, { key: "IsInformal", label: "IsInformal" }, { key: "IsPPGNotPresent", label: "IsPPGNotPresent" }, { key: "Guidance", label: "Guidance" }, { key: "DiskMasterDuration", label: "DiskMasterDuration" }, { key: "EventRefRemarksCounters", label: "EventRefRemarksCounters" }, { key: "EventRefMLID", label: "EventRefMLID" }, { key: "ContentFromDetailCity", label: "Content - Detail - City" }, { key: "EventRefMLID2", label: "EventRefMLID2" }, { key: "DubbedLanguage", label: "DubbedLanguage" }, { key: "DubbingArtist", label: "DubbingArtist" }, { key: "HasSubtitle", label: "HasSubtitle" }, { key: "SubTitlesLanguage", label: "SubTitlesLanguage" }, { key: "EditingDeptRemarks", label: "EditingDeptRemarks" }, { key: "EditingType", label: "EditingType" }, { key: "BhajanType", label: "BhajanType" }, { key: "IsDubbed", label: "IsDubbed" }, { key: "NumberSource", label: "NumberSource" }, { key: "TopicSource", label: "TopicSource" }, { key: "LastModifiedTimestamp", label: "LastModifiedTimestamp" }, { key: "LastModifiedBy", label: "LastModifiedBy" }, { key: "Synopsis", label: "Synopsis" }, { key: "LocationWithinAshram", label: "LocationWithinAshram" }, { key: "Keywords", label: "Keywords" }, { key: "Grading", label: "Grading" }, { key: "Segment Duration", label: "Segment Duration" }, { key: "TopicGivenBy", label: "TopicGivenBy" }, { key: "RecordingName", label: "Recording Name" }, { key: "Masterquality", label: "DR Master Quality" }, ];
   const mediaLogColumnRenderers: { [key: string]: (v: any, row: any) => React.ReactNode } = {
     'EventDisplay': (_v, row) => `${row.EventName||""}${row.EventName&&row.EventCode?" - ":""}${row.EventCode||row.fkEventCode||""}`,
@@ -2130,8 +2130,8 @@ export function DetailsSidebar({
                 <FieldRow label="Year" value={data.Yr} />
                 <FieldRow label="EventName" value={data.EventName}><span className="font-medium text-right break-words">{data.EventName}</span></FieldRow>
                 <Separator />
-                <FieldRow label="From Date" value={data.FromDate}><span className="font-medium">{data.FromDate}</span></FieldRow>
-                <FieldRow label="To Date" value={data.ToDate}><span className="font-medium">{data.ToDate }</span></FieldRow>
+                <FieldRow label="Event From " value={data.NewEventFrom}><span className="font-medium">{data.NewEventFrom}</span></FieldRow>
+                <FieldRow label="Event To " value={data.NewEventTo}><span className="font-medium">{data.NewEventTo}</span></FieldRow>
                 <FieldRow label="NewEventCategory" value={data.NewEventCategory}><span className="font-medium">{data.NewEventCategory}</span></FieldRow>
                 <Separator />
                 <div><span className="text-muted-foreground">Remarks</span><p className="mt-1 text-sm bg-muted p-3 rounded-lg">{data.EventRemarks || "No remarks provided."}</p></div>
@@ -3610,8 +3610,8 @@ case "non_event_production": {
   </FieldRow>
   
   <Separator />
-  <FieldRow label="From Date" value={data.FromDate ? new Date(data.FromDate).toLocaleDateString() : undefined} />
-  <FieldRow label="To Date" value={data.ToDate ? new Date(data.ToDate).toLocaleDateString() : undefined} />
+  <FieldRow label="Event From" value={data.NewEventFrom ? new Date(data.NewEventFrom).toLocaleDateString() : undefined} />
+  <FieldRow label="Event To" value={data.NewEventTo ? new Date(data.NewEventTo).toLocaleDateString() : undefined} />
   <FieldRow label="Year" value={data.Yr} />
 </CardContent>
 

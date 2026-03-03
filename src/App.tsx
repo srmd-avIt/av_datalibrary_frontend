@@ -60,6 +60,8 @@ const VIEW_CONFIGS: Record<string, any> = {
     columns: [
        { key: "Yr", label: "Year", sortable: true, editable: true }, 
         { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true },
+        {key:"NewEventFrom", label:"Event From", sortable:true, editable:true},
+        { key: "NewEventTo", label: "Event To", sortable: true, editable: true },
        { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
        { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
        { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
@@ -1537,33 +1539,19 @@ case "column-management":
 
  case "satsang_dashboard":
   return (
-    <div style={{ padding: "16px 24px" }}>
-      <h1
-        style={{
-          fontSize: "28px",
-          fontWeight: 700,
-          color: "#ffffff",
-          marginBottom: "8px"
-        }}
-      >
-        {VIEW_CONFIGS.satsang_dashboard.title}
-      </h1>
-
-      <p
-        style={{
-          color: "#94a3b8",
-          marginBottom: "24px",
-          fontSize: "15px",
-          maxWidth: "960px",
-          lineHeight: 1.6
-        }}
-      >
-        Search and explore Satsang media logs using advanced filters such as
-        event category, segment type, location, granth, dates, and identifiers.
-        Refine results to quickly locate recordings and review detailed media
-        information.
-      </p>
-
+    <div style={{ padding: isMobile ? "0px" : "16px 24px" }}>
+      {!isMobile && (
+        <h1
+          style={{
+            fontSize: "28px",
+            fontWeight: 700,
+            color: "#ffffff",
+            marginBottom: "8px"
+          }}
+        >
+          {VIEW_CONFIGS.satsang_dashboard.title}
+        </h1>
+      )}
       <SatsangDashboard />
     </div>
   );
