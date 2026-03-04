@@ -643,7 +643,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       // Topic / Number / Granth / language / durations / categories
       { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
-      { key: "Granths", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
       { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },

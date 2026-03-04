@@ -341,7 +341,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
     fetchOptions('/cities/options', 'fkCity', setCityOptions);
     fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions);
-    fetchOptions('/occasions/options', 'fkOccasion', setOccasionOptions);
+    fetchOptions('/occasion/options', 'fkOccasion', setOccasionOptions);
     
     const specificSegmentCategories = [
       'Prasangik Udbodhan', 'SU', 'SU - GM', 'SU - Revision', 'Satsang', 
@@ -477,10 +477,7 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
     return (
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh", backgroundColor: "#0b1120", color: "white" }}>
-        <div style={{ padding: "32px 20px 16px 20px", backgroundColor: "rgba(15,23,42,0.4)", borderBottom: "1px solid rgba(30,41,59,0.8)", position: "sticky", top: 0, zIndex: 20, backdropFilter: "blur(12px)" }}>
-          <h1 style={{ fontSize: "24px", fontWeight: 700, letterSpacing: "-0.02em", margin: 0, color: "white" }}>Satsang Search</h1>
-         
-        </div>
+      
 
         <div style={{ padding: "20px 16px 128px 16px" }}>
           
