@@ -537,7 +537,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     detailsType: "medialog",
     columns: [
      { key: "Yr", label: "Year", sortable: true, editable: true },
-     
+      
       // Requested primary columns
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       {
@@ -612,6 +612,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     detailsType: "medialog",
     columns: [
       { key: "Yr", label: "Year", sortable: true, editable: true },
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       {
         key: "EventName - EventCode",
         label: "Event Name - EventCode",
@@ -1285,7 +1286,7 @@ export default function App() {
     return config.columns.map((c: any) => c.key);
   };
 
-  const activeColumns = useMemo(() => {
+ const activeColumns = useMemo(() => {
     const config = VIEW_CONFIGS[activeView];
     if (!config || !config.columns) return [];
 
@@ -1313,8 +1314,10 @@ export default function App() {
     }
 
     const knownKeys = new Set(hardcodedColumns.map((c: any) => c.key));
+    
+    // 👇 FIX: Added `key && typeof key === "string"` to ignore null/undefined keys from localStorage
     const extraColumns = savedKeys
-      .filter((key) => !knownKeys.has(key))
+      .filter((key) => key && typeof key === "string" && !knownKeys.has(key))
       .map((key) => ({
         key: key,
         label: key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim().replace(/^./, (str) => str.toUpperCase()),
@@ -1324,7 +1327,7 @@ export default function App() {
       }));
 
     return [...hardcodedColumns, ...extraColumns];
-  }, [activeView, user?.id, layoutVersion]); 
+  }, [activeView, user?.id, layoutVersion]);
 
   const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
 
