@@ -225,6 +225,7 @@ const VIEW_CONFIGS: Record<string, any> = {
     detailsType: "medialog",
     columns: [
       { key: "Yr", label: "Year", sortable: true, editable: true },
+
       {
         key: "EventName - EventCode", label: "Event Name - EventCode", sortable: true, editable: true,
         render: (_v: any, row: any) => {
@@ -233,6 +234,7 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${en}${en && ec ? " - " : ""}${ec}`;
         },
       },
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true }, 

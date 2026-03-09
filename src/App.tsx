@@ -2,6 +2,7 @@ import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
+// And change it to a named import like this:
 import { ClickUpListViewUpdated } from "./components/ClickUpListViewUpdated";
 import { AIAssistant } from "./components/AIAssistant";
 import { UserManagement } from "./components/UserManagement";
@@ -1605,7 +1606,7 @@ case "column-management":
         apiEndpoint={config.apiEndpoint}
         idKey={config.idKey}
         keyMap={config.keyMap}
-       onRowSelect={config.disableRowClick ? () => {} : (row) => handleRowSelect(row, config.detailsType)}
+       onRowSelect={config.disableRowClick ? () => {} : (row: any) => handleRowSelect(row, config.detailsType)}
         // Pass the MEMOIZED active columns
         columns={activeColumns}
         views={config.views}

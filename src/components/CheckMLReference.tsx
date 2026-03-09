@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Search, X, Edit, ArrowRight, ArrowLeft } from "lucide-react";
+// And change it to a named import like this:
+// To:
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 
