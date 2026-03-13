@@ -410,13 +410,15 @@ export function ClickUpListViewUpdated({
   );
 
   // 🚀 NEW: Fetch User Layout from Google Sheets DB on load
+ // 🚀 FETCH USING USER ID
   useEffect(() => {
     const fetchUserColumnLayout = async () => {
       if (!user?.id || !viewId) return;
       
       try {
         const token = localStorage.getItem('app-token');
-        const res = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userId=${user.id}`, {
+        // REVERTED to using userId=${user.id}
+        const res = await fetch(`${API_BASE_URL}/api/user-column-preferences?viewId=${viewId}&userId=${user.id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -426,8 +428,6 @@ export function ClickUpListViewUpdated({
 
         if (res.ok) {
           const data = await res.json();
-          
-          // If the database has saved preferences for this user, apply them!
           if (data.visible && Array.isArray(data.visible) && data.visible.length > 0) {
              setColumnOrder(data.visible); 
           }

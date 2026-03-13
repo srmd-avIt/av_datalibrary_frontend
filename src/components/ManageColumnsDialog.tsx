@@ -397,10 +397,16 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     
     const summaryText = `Visible: ${visibleKeys.join(', ')}, Hidden: ${hiddenKeys.join(', ')}`;
 
-    if (target.type === 'specific_users') {
+  if (target.type === 'specific_users') {
       try {
         const token = localStorage.getItem('app-token');
-        // FIXED: Added /api/ to the endpoint
+        
+        // Match the selected IDs back to the users array to get their names
+        const targetUsers = target.userIds.map(id => {
+          const foundUser = users.find(u => u.id === id);
+          return { id: id, name: foundUser?.name || "Unknown User" };
+        });
+
         await fetch(`${API_BASE_URL}/user-column-preferences`, {
           method: 'POST',
           headers: {
@@ -409,7 +415,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           },
           body: JSON.stringify({
             viewId,
-            userIds: target.userIds,
+            targetUsers, // Sending array of {id, name}
             visibleKeys,
             hiddenKeys,
             summaryText
