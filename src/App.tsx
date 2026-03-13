@@ -108,6 +108,10 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
+      // Topic / Number / Granth / language / durations / categories
+      { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
@@ -210,6 +214,10 @@ const VIEW_CONFIGS: Record<string, any> = {
           return `${d}${d && s ? " - " : ""}${s}`;
         },
       },
+      // Topic / Number / Granth / language / durations / categories
+      { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
@@ -1162,6 +1170,73 @@ digitalrecordings_gsheet: {
   },
 
 };
+
+const DATA_SHARING_COLUMNS = [
+  { key: "Yr", label: "Year", sortable: true, editable: true },
+  { key: "ContentFrom", label: "Content From Date", sortable: true, editable: true },
+  { key: "DetailSub", label: "Detail + Subdetail", sortable: true, editable: false },
+  { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+  { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "Number", label: "PatrankNumber", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+  { key: "EventDisplay", label: "Event Name", sortable: true, editable: false },
+  { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+  { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+  { key: "MLUniqueID", label: "ML Unique ID", sortable: true, editable: false } // Kept for reference/clicking
+];
+
+VIEW_CONFIGS.data_sharing_ps = {
+  title: "PS",
+  apiEndpoint: "/data-sharing/ps",
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  columns: DATA_SHARING_COLUMNS
+};
+
+VIEW_CONFIGS.data_sharing_su = {
+  title: "SU",
+  apiEndpoint: "/data-sharing/su",
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  columns: DATA_SHARING_COLUMNS
+};
+
+VIEW_CONFIGS.data_sharing_dyatra = {
+  title: " Dyatra Satsangs",
+  apiEndpoint: "/data-sharing/dyatra",
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  columns: DATA_SHARING_COLUMNS
+};
+
+VIEW_CONFIGS.data_sharing_gm = {
+  title: " GM (PPG Approved)",
+  apiEndpoint: "/data-sharing/gm",
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  columns: DATA_SHARING_COLUMNS
+};
+
+VIEW_CONFIGS.data_sharing_prasangik = {
+  title: "Prasangik Udbodhan",
+  apiEndpoint: "/data-sharing/prasangik",
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  columns: DATA_SHARING_COLUMNS
+};
+
+VIEW_CONFIGS.data_sharing_nemiji = {
+  title: "Nemiji Sessions",
+  apiEndpoint: "/data-sharing/nemiji",
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  columns: DATA_SHARING_COLUMNS
+};
+
 type SidebarStackItem = {
   type: string;
   data: Record<string, any>;
@@ -1564,7 +1639,8 @@ case "column-management":
     return (
        <GoogleSheetForm 
          config={VIEW_CONFIGS.digitalrecordings_gsheet} 
-         userEmail={user?.email} 
+         userEmail={user?.email}
+          
        />
     );
   }

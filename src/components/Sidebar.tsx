@@ -8,7 +8,13 @@ import {
   MapPin, Tag, Globe, Book, Film, Edit, ChevronDown, Folder, List, 
   ListFilter, Scissors, ListTree, FolderKanban, X, Columns, HardDrive, 
   LayoutGrid, CheckSquare, Search, Plus, Eye,
-  SearchCheck
+  SearchCheck,
+  Share2,
+  MessageCircle,
+  CheckCircle,
+  Mountain,
+  BookOpen,
+  Mic
 } from "lucide-react";
 
 import { Button } from "./ui/button";
@@ -232,6 +238,13 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
         { id: "medialog_all_except_satsang", label: "All Except Satsang", icon: ListFilter },
         { id: "medialog_satsang_extracted_clips", label: "Satsang Extracted Clips", icon: Scissors },
         { id: "medialog_satsang_category", label: "Satsang Category (AS IS)", icon: ListTree },
+        // --- ADDED DATA SHARING VIEWS HERE ---
+       // ---  { id: "data_sharing_ps", label: "PS", icon: Mic },
+  //{ id: "data_sharing_su", label: "SU", icon: BookOpen },
+  //{ id: "data_sharing_dyatra", label: "Dyatra Satsangs", icon: Mountain },
+  //{ id: "data_sharing_gm", label: "GM (PPG Approved)", icon: CheckCircle },
+  //{ id: "data_sharing_prasangik", label: "Prasangik Udbodhan", icon: MessageCircle },
+  //{ id: "data_sharing_nemiji", label: "Nemiji Sessions", icon: Users }
       ],
     },
     { id: "aux", label: "Aux Files", icon: FileText },

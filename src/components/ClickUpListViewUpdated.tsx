@@ -1,3 +1,4 @@
+
 /// <reference types="vite/client" />
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -31,7 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
   Search, Download, ArrowUpDown, ArrowUp, ArrowDown, Users, Table as TableIcon,
   Settings2, EyeOff, X, Funnel, Loader2, Pin, Grid, Plus, Trash2, CheckCircle2,
-  ChevronLeft, ChevronRight, ChevronDown, Menu
+  ChevronLeft, ChevronRight, ChevronDown, Menu, AlertTriangle,Send,Share2
 } from "lucide-react";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { SavedFilterTabs } from "./SavedFilterTabs"; 
@@ -79,6 +80,12 @@ interface ApiResponse {
     totalPages: number;
     totalItems: number;
   };
+}
+
+interface PushedEntryDetail {
+  id: string;
+  tab: string;
+  eventName: string;
 }
 
 // --- API Fetcher Function ---
@@ -291,36 +298,23 @@ export function ClickUpListViewUpdated({
   const [mobileSelectedRow, setMobileSelectedRow] = useState<any | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [groupLimits, setGroupLimits] = useState<Record<string, number>>({});
-  
-  // State to track which specific ENTIRE COLUMNS are expanded on mobile
   const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
-  
 
-  useEffect(() => {
-    const checkMobile = () => {
-      const mobileState = window.innerWidth <= 768;
-      setIsMobile(mobileState);
-      // Dark theme background & class for mobile view targeting
-      if (mobileState) {
-        document.body.style.backgroundColor = "#0b1120";
-        document.body.classList.add('mobile-app-view');
-      } else {
-        document.body.style.backgroundColor = "";
-        document.body.classList.remove('mobile-app-view');
-      }
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-      document.body.style.backgroundColor = "";
-      document.body.classList.remove('mobile-app-view');
-    };
-  }, []);
-  
   const [savedFilters, setSavedFilters] = useLocalStorageState<SavedFilter[]>(`global-saved-filters-${localStorageKeyPrefix}`, []);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExporting, setIsExporting] = useState(false);
+
+  // NEW STATES FOR EXTERNAL DEPARTMENT PUSH
+  const [isPushingExternal, setIsPushingExternal] = useState(false);
+  const [externalPushDialogOpen, setExternalPushDialogOpen] = useState(false);
+  const [externalPushResultOpen, setExternalPushResultOpen] = useState(false);
+  const [externalPushResultEntries, setExternalPushResultEntries] = useState<PushedEntryDetail[]>([]);
+  const [externalPushResultCount, setExternalPushResultCount] = useState<number>(0);
+  
+  // States to handle expanding the Push Result tabs independently
+  const [expandedPushTabs, setExpandedPushTabs] = useState<Record<string, boolean>>({});
+  const [pushTabLimits, setPushTabLimits] = useState<Record<string, number>>({});
+
   const [activeSavedFilterName, setActiveSavedFilterName] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useLocalStorageState<Record<string, Record<string, any>>>(`${localStorageKeyPrefix}-pendingChanges`, {});
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnKey: string } | null>(null);
@@ -340,12 +334,41 @@ export function ClickUpListViewUpdated({
   const [groupDirections, setGroupDirections] = useState<Record<string, "asc" | "desc">>({});
   const [frozenColumnKey, setFrozenColumnKey] = useState<string | null>(null);
 
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobileState = window.innerWidth <= 768;
+      setIsMobile(mobileState);
+      if (mobileState) {
+        document.body.style.backgroundColor = "#0b1120";
+        document.body.classList.add('mobile-app-view');
+      } else {
+        document.body.style.backgroundColor = "";
+        document.body.classList.remove('mobile-app-view');
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      document.body.style.backgroundColor = "";
+      document.body.classList.remove('mobile-app-view');
+    };
+  }, []);
+
   // Clear expanded state and limits if group fields change
   useEffect(() => {
     setExpandedGroups({});
     setGroupLimits({});
     setExpandedColumns({});
   }, [groupByFields]);
+
+  // Clean up push tabs modal state when closed
+  useEffect(() => {
+    if (!externalPushResultOpen) {
+      setExpandedPushTabs({});
+      setPushTabLimits({});
+    }
+  }, [externalPushResultOpen]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -421,6 +444,8 @@ export function ClickUpListViewUpdated({
     const savingToast = toast.loading(`Updating ${columnKey}...`);
     try {
       const token = localStorage.getItem('app-token');
+        let updateEndpoint = effectiveApiEndpoint;
+      if (updateEndpoint.includes('data-sharing')) updateEndpoint = '/newmedialog'; 
       const response = await fetch(`${API_BASE_URL}${effectiveApiEndpoint}/${id}`, {
         method: 'PATCH',
         headers: { 
@@ -489,6 +514,7 @@ export function ClickUpListViewUpdated({
     else if (effectiveApiEndpoint.includes("time-of-day")) { endpoint = "/time-of-day"; rowId = updatedRow.TimeID; }  
     else if (effectiveApiEndpoint.includes("aux-file-type")) { endpoint = "/aux-file-type"; rowId = updatedRow.AuxTypeID; }
     else if (effectiveApiEndpoint.includes("topic-given-by")) { endpoint = "/topic-given-by"; rowId = updatedRow.TGBID; }
+    else if (effectiveApiEndpoint.includes("newmedialog") || effectiveApiEndpoint.includes("data-sharing")) { endpoint = "/newmedialog"; rowId = updatedRow.MLUniqueID; }
     else { endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`; rowId = updatedRow[idKey]; }
 
     try {
@@ -714,32 +740,57 @@ export function ClickUpListViewUpdated({
     return recursiveGroup(sortedData, activeGroupBy, 0);
   }, [sortedData, finalItems, groupByFields, groupDirections]);
 
+  const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
+
   const handleExport = async () => {
     setIsExporting(true);
     toast.info("Preparing your export. This may take a moment for large datasets.");
     try {
-      const allDataResponse = await fetchDataFromApi({
-        apiEndpoint: effectiveApiEndpoint, page: 1, limit: 1000000, searchTerm,
-        filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
-        sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc",
-      });
-      let itemsToExport = allDataResponse.data || [];
-      if (keyMap && Object.keys(keyMap).length > 0) {
-        itemsToExport = itemsToExport.map(item => {
-          const newItem: Record<string, any> = {};
-          for (const key in item) { const newKey = keyMap[key] || key; newItem[newKey] = item[key]; }
-          if (!('id' in newItem)) newItem.id = item.id ?? item[keyMap['id']] ?? '';
-          return newItem as ListItem;
+      // Chunked Export for Massive Data
+      const CHUNK_SIZE = 10000;
+      let allItemsToExport: any[] = [];
+      let currentExportPage = 1;
+      let totalExportPages = 1;
+
+      do {
+        const pageDataResponse = await fetchDataFromApi({
+          apiEndpoint: effectiveApiEndpoint, 
+          page: currentExportPage, 
+          limit: CHUNK_SIZE, 
+          searchTerm,
+          filters: { ...activeViewFilters, ...initialFilters }, 
+          advancedFilters,
+          sortBy: activeSortBy, 
+          sortDirection: activeSortDirection as "asc" | "desc",
         });
+
+        totalExportPages = pageDataResponse.pagination?.totalPages || 1;
+        let itemsChunk = pageDataResponse.data || [];
+
+        if (keyMap && Object.keys(keyMap).length > 0) {
+          itemsChunk = itemsChunk.map(item => {
+            const newItem: Record<string, any> = {};
+            for (const key in item) { const newKey = keyMap[key] || key; newItem[newKey] = item[key]; }
+            if (!('id' in newItem)) newItem.id = item.id ?? item[keyMap['id']] ?? '';
+            return newItem as ListItem;
+          });
+        }
+        if (rowTransformer && typeof rowTransformer === "function") {
+          itemsChunk = itemsChunk.map(r => rowTransformer(r));
+        }
+
+        allItemsToExport = [...allItemsToExport, ...itemsChunk];
+        currentExportPage++;
+      } while (currentExportPage <= totalExportPages);
+
+      if (allItemsToExport.length === 0) { 
+        toast.warning("No data to export for the current filters."); 
+        setIsExporting(false); 
+        return; 
       }
-      if (rowTransformer && typeof rowTransformer === "function") {
-        itemsToExport = itemsToExport.map(r => rowTransformer(r));
-      }
-      if (itemsToExport.length === 0) { toast.warning("No data to export for the current filters."); setIsExporting(false); return; }
 
       const headers = visibleColumns.map(col => col.label);
-      const dataKeys = visibleColumns.map(col => col.key);
-
+      
       const extractText = (value: any): string => {
         if (typeof value === "string" || typeof value === "number") return String(value);
         if (React.isValidElement(value)) {
@@ -758,7 +809,7 @@ export function ClickUpListViewUpdated({
 
       const csvRows = [
         headers.map(escapeCsvValue).join(','),
-        ...itemsToExport.map(row => visibleColumns.map(col => {
+        ...allItemsToExport.map(row => visibleColumns.map(col => {
             let value = row[col.key];
             if (typeof col.render === "function") value = col.render(value, row);
             value = extractText(value);
@@ -778,7 +829,7 @@ export function ClickUpListViewUpdated({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success("Export started successfully!");
+      toast.success("Export completed successfully!");
     } catch (err) {
       console.error("Export error:", err);
       toast.error('Failed to export data. Please check the console for details.');
@@ -786,6 +837,157 @@ export function ClickUpListViewUpdated({
       setIsExporting(false);
     }
   };
+
+  const showExternalButton = (user?.role === 'Admin' || user?.role === 'Owner') &&
+    (viewId.startsWith('data_sharing_'));
+
+  const handleExternalPush = async () => {
+    setIsPushingExternal(true);
+    setExternalPushDialogOpen(false);
+    const pushingToast = toast.loading("Preparing data... This might take a few minutes for massive data.");
+    
+    try {
+      const CHUNK_SIZE = 5000;
+      
+      const firstPageResponse = await fetchDataFromApi({
+        apiEndpoint: effectiveApiEndpoint, page: 1, limit: CHUNK_SIZE, searchTerm: debouncedSearchTerm,
+        filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
+        sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc",
+      });
+
+      const totalPages = firstPageResponse.pagination?.totalPages || 1;
+      const keys = visibleColumns.map(c => c.key);
+      const labels = visibleColumns.map(c => c.label);
+
+      let totalAdded = 0;
+      let allPushedEntries: PushedEntryDetail[] = [];
+
+      const extractText = (value: any): string => {
+        if (typeof value === "string" || typeof value === "number") return String(value);
+        if (React.isValidElement(value)) {
+          const props = value.props as { children?: React.ReactNode };
+          const children = props && "children" in props ? props.children : undefined;
+          if (children === undefined || children === null) return "";
+          if (Array.isArray(children)) return children.map(extractText).join(" ");
+          return extractText(children);
+        }
+        if (Array.isArray(value)) {
+          if (value.every(v => typeof v === "string" || typeof v === "number")) return value.join(", ");
+          return value.map(extractText).join(" ");
+        }
+        return "";
+      };
+
+      const token = localStorage.getItem('app-token');
+
+      for (let p = 1; p <= totalPages; p++) {
+        toast.loading(`Processing batch ${p} of ${totalPages}...`, { id: pushingToast });
+
+        const pageResponse = p === 1 ? firstPageResponse : await fetchDataFromApi({
+          apiEndpoint: effectiveApiEndpoint, page: p, limit: CHUNK_SIZE, searchTerm: debouncedSearchTerm,
+          filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
+          sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc",
+        });
+
+        let itemsToExport = pageResponse.data || [];
+        
+        if (keyMap && Object.keys(keyMap).length > 0) {
+          itemsToExport = itemsToExport.map(item => {
+            const newItem: Record<string, any> = {};
+            for (const key in item) { const newKey = keyMap[key] || key; newItem[newKey] = item[key]; }
+            if (!('id' in newItem)) newItem.id = item.id ?? item[keyMap['id']] ?? '';
+            return newItem as ListItem;
+          });
+        }
+        if (rowTransformer && typeof rowTransformer === "function") {
+          itemsToExport = itemsToExport.map(r => rowTransformer(r));
+        }
+
+        if (itemsToExport.length === 0) continue;
+
+        const formattedRows = itemsToExport.map(row => {
+          const rowData: Record<string, any> = { ...row }; 
+          for(let k in rowData) {
+            if (rowData[k] !== null && rowData[k] !== undefined) {
+               rowData[k] = String(rowData[k]);
+            } else {
+               rowData[k] = "";
+            }
+          }
+          return rowData;
+        });
+
+        const response = await fetch(`${API_BASE_URL}/external-departments/push`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({
+            viewId,
+            idKey,
+            keys,
+            labels,
+            rows: formattedRows
+          })
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Session expired. Please log in again.");
+        }
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || errData.details || "Failed to push data to Google Sheet.");
+        }
+
+        const resData = await response.json();
+        totalAdded += resData.added || 0;
+        if (resData.pushedEntries) {
+          allPushedEntries = [...allPushedEntries, ...resData.pushedEntries];
+        }
+      }
+
+      toast.dismiss(pushingToast); 
+      setExternalPushResultEntries(allPushedEntries); 
+      setExternalPushResultCount(totalAdded);
+      
+      // Auto-expand the first tab by default
+      const groups: Record<string, any> = {};
+      allPushedEntries.forEach(e => {
+        const tab = typeof e === 'string' ? 'Unknown' : e.tab;
+        if (!groups[tab]) groups[tab] = [];
+        groups[tab].push(e);
+      });
+      const firstTab = Object.keys(groups)[0];
+      if (firstTab) {
+        setExpandedPushTabs({ [firstTab]: true });
+        setPushTabLimits({ [firstTab]: 50 });
+      }
+
+      setExternalPushResultOpen(true); 
+
+    } catch (err: any) {
+      console.error("External Push Error:", err);
+      toast.error(`Failed to push data: ${err.message}`, { id: pushingToast });
+    } finally {
+      setIsPushingExternal(false);
+    }
+  };
+
+  // Group pushed entries by Tab name for display in the Modal
+  const groupedPushedEntries = useMemo(() => {
+    const groups: Record<string, PushedEntryDetail[]> = {};
+    externalPushResultEntries.forEach(entry => {
+      // Defensive parsing just in case
+      const entryObj = typeof entry === 'string' ? { id: entry, tab: 'Unknown', eventName: 'Details not available' } : entry;
+      if (!groups[entryObj.tab]) {
+        groups[entryObj.tab] = [];
+      }
+      groups[entryObj.tab].push(entryObj);
+    });
+    return groups;
+  }, [externalPushResultEntries]);
 
   const getAvailableGroupByFields = () => { return columns.filter(col => col.filterable !== false).map(col => ({ value: col.key, label: col.label })); };
   const getAvailableSortFields = () => { return columns.filter(col => col.sortable).map(col => ({ value: col.key, label: col.label })); };
@@ -805,8 +1007,6 @@ export function ClickUpListViewUpdated({
       return [{ key: columnKey, direction: 'asc' }];
     });
   };
-
-  const visibleColumns = useMemo(() => columns.filter(col => !hiddenColumns.includes(col.key)), [columns, hiddenColumns]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addForm, setAddForm] = useState<Record<string, any>>({});
@@ -950,6 +1150,7 @@ export function ClickUpListViewUpdated({
       else if (effectiveApiEndpoint.includes("time-of-day")) { endpoint = "/time-of-day"; resolvedRowId = updatedRow.TimeID; }  
       else if (effectiveApiEndpoint.includes("aux-file-type")) { endpoint = "/aux-file-type"; resolvedRowId = updatedRow.AuxTypeID; }
       else if (effectiveApiEndpoint.includes("topic-given-by")) { endpoint = "/topic-given-by"; resolvedRowId = updatedRow.TGBID; }
+       else if (effectiveApiEndpoint.includes("newmedialog") || effectiveApiEndpoint.includes("data-sharing")) { endpoint = "/newmedialog"; resolvedRowId = updatedRow.MLUniqueID; }
       else { endpoint = effectiveApiEndpoint.startsWith("/") ? effectiveApiEndpoint : `/${effectiveApiEndpoint}`; resolvedRowId = updatedRow[idKey]; }
 
       try {
@@ -1046,7 +1247,6 @@ export function ClickUpListViewUpdated({
   const renderMobileDetailsView = () => {
     if (!mobileSelectedRow) return null;
 
-    // Try to get a title from the first visible column
     const titleVal = visibleColumns.length > 0 ? mobileSelectedRow[visibleColumns[0].key] : "Entry Details";
 
     return (
@@ -1062,7 +1262,6 @@ export function ClickUpListViewUpdated({
           height: "100dvh",
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -1097,7 +1296,6 @@ export function ClickUpListViewUpdated({
           </h2>
         </div>
 
-        {/* Content - All Columns */}
         <div
           style={{
             flex: 1,
@@ -1106,7 +1304,7 @@ export function ClickUpListViewUpdated({
             display: "flex",
             flexDirection: "column",
             gap: "12px",
-            paddingBottom: "80px", // space for bottom swiping
+            paddingBottom: "80px", 
           }}
         >
           {columns.map((col) => {
@@ -1148,10 +1346,10 @@ export function ClickUpListViewUpdated({
     return (
       <tr
         key={keyMapVal}
-        onClick={() => setMobileSelectedRow(row)} // Click anywhere to open details
+        onClick={() => setMobileSelectedRow(row)} 
         style={{
           borderBottom: "1px solid rgba(30,41,59,0.5)",
-          cursor: "pointer" // Indicate that row is clickable
+          cursor: "pointer" 
         }}
       >
         {visibleColumns.map((col, cIndex) => {
@@ -1160,27 +1358,25 @@ export function ClickUpListViewUpdated({
             cellValue = col.render(cellValue, row);
           }
 
-          // Check if this entire column is expanded
           const isColumnExpanded = expandedColumns[col.key];
 
           return (
             <td
               key={col.key}
               style={{
-                padding: "6px 8px", // Reduced padding for compactness
+                padding: "6px 8px", 
                 color: "#cbd5e1",
-                fontSize: "12px", // Reduced font size to see more data
+                fontSize: "12px", 
                 position: cIndex === 0 ? "sticky" : "static",
                 left: cIndex === 0 ? 0 : undefined,
                 backgroundColor: cIndex === 0 ? "#0b1120" : undefined,
                 borderRight: cIndex === 0 ? "1px solid #1e293b" : undefined,
                 zIndex: cIndex === 0 ? 20 : undefined,
                 
-                // Dynamic styling for column expansion
                 whiteSpace: isColumnExpanded ? "normal" : "nowrap",
                 wordBreak: isColumnExpanded ? "break-word" : "normal",
-                minWidth: isColumnExpanded ? "200px" : undefined, // widen when expanded
-                maxWidth: isColumnExpanded ? "85vw" : (cIndex === 0 ? 110 : 140), // narrower non-expanded widths
+                minWidth: isColumnExpanded ? "200px" : undefined, 
+                maxWidth: isColumnExpanded ? "85vw" : (cIndex === 0 ? 110 : 140), 
                 overflow: isColumnExpanded ? "visible" : "hidden",
                 textOverflow: isColumnExpanded ? "clip" : "ellipsis",
                 verticalAlign: isColumnExpanded ? "top" : "middle",
@@ -1210,21 +1406,19 @@ export function ClickUpListViewUpdated({
     }
 
     const renderGroup = (groupData: any, level: number, parentKey: string = "") => {
-      // Reached the end: it's an array of matching rows
       if (Array.isArray(groupData)) {
         const currentLimit = groupLimits[parentKey] || 50;
         const visibleItems = groupData.slice(0, currentLimit);
         
         const rows = visibleItems.map((row, rIndex) => renderDataRow(row, `${parentKey}-${row[idKey] || rIndex}`));
         
-      // Show "Load More" row if there are more items to show in this group
         if (groupData.length > currentLimit) {
           rows.push(
             <tr key={`${parentKey}-load-more`} style={{ backgroundColor: "#0f172a" }}>
               <td 
                 colSpan={visibleColumns.length} 
                 style={{ 
-                  padding: "6px 8px", // Adjusted padding to match rows
+                  padding: "6px 8px", 
                   textAlign: "left",
                   fontSize: "12px",
                   position: "sticky", 
@@ -1251,7 +1445,6 @@ export function ClickUpListViewUpdated({
         return rows;
       }
 
-      // Still grouping: render group headers
       return Object.entries(groupData).map(([key, value]) => {
         const groupKey = `${parentKey}-${key}`;
         const isExpanded = !!expandedGroups[groupKey];
@@ -1266,7 +1459,7 @@ export function ClickUpListViewUpdated({
               <td
                 colSpan={visibleColumns.length}
                 style={{
-                  padding: "6px 8px", // Reduced padding
+                  padding: "6px 8px", 
                   fontWeight: 600,
                   fontSize: "12px",
                   color: "#f8fafc",
@@ -1314,14 +1507,11 @@ export function ClickUpListViewUpdated({
       position: "relative"
     }}
   >
-    {/* Global styles for the spinner so it works inline, and aggressively shrinking internal popups */}
     <style>{`
       @keyframes inline-spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
-      
-      /* Force the internal filter button of AdvancedFiltersClickUp to match our new smaller pill icon buttons */
       .mobile-filter-container button {
         width: auto !important;
         height: 26px !important;
@@ -1341,10 +1531,6 @@ export function ClickUpListViewUpdated({
         height: 12px !important;
         margin: 0 !important;
       }
-
-      /* ---------------------------------------------------- */
-      /* SHRINK ALL POPOVERS AND DIALOGS IN MOBILE VIEW      */
-      /* ---------------------------------------------------- */
       .mobile-app-view [data-radix-popper-content-wrapper] {
         max-width: 95vw !important;
         z-index: 150 !important;
@@ -1356,8 +1542,6 @@ export function ClickUpListViewUpdated({
         padding: 12px !important;
         border-radius: 12px !important;
       }
-
-      /* Make inputs, selects, and internal buttons smaller */
       .mobile-app-view [data-radix-popper-content-wrapper] input,
       .mobile-app-view [data-radix-popper-content-wrapper] button:not(.mobile-filter-container button),
       .mobile-app-view [data-radix-popper-content-wrapper] [role="combobox"],
@@ -1371,8 +1555,6 @@ export function ClickUpListViewUpdated({
         padding: 0 8px !important;
         border-radius: 6px !important;
       }
-
-      /* Shrink text */
       .mobile-app-view [data-radix-popper-content-wrapper] label,
       .mobile-app-view [data-radix-popper-content-wrapper] .text-sm,
       .mobile-app-view [data-state="open"][role="dialog"] label,
@@ -1380,8 +1562,6 @@ export function ClickUpListViewUpdated({
         font-size: 12px !important;
         line-height: 1.2 !important;
       }
-
-      /* Reduce layout gaps */
       .mobile-app-view [data-radix-popper-content-wrapper] .space-y-4 > * + *,
       .mobile-app-view [data-state="open"][role="dialog"] .space-y-4 > * + * {
         margin-top: 8px !important;
@@ -1396,7 +1576,6 @@ export function ClickUpListViewUpdated({
       }
     `}</style>
 
-    {/* Top Control Bar - Collapsible Search & Icon Buttons */}
     <div
       style={{
         display: "flex",
@@ -1449,7 +1628,6 @@ export function ClickUpListViewUpdated({
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {/* Search Toggle Icon (Circle) */}
           <Button 
             variant="outline" 
             onClick={() => setShowMobileSearch(true)}
@@ -1460,12 +1638,10 @@ export function ClickUpListViewUpdated({
             <Search style={{ width: 12, height: 12 }} />
           </Button>
 
-          {/* Filter Component - Rendered Directly (Custom CSS makes it a pill with text) */}
           <div className="mobile-filter-container" style={{ flexShrink: 0 }}>
             <AdvancedFiltersClickUp filters={finalFilterConfigs} onFiltersChange={setAdvancedFilters} data={finalItems} onSaveFilter={handleSaveFilter} />
           </div>
 
-          {/* Sort Popover (Pill) */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" style={{ flexShrink: 0, height: 26, padding: "0 8px", borderRadius: "13px", backgroundColor: sortByFields.length > 0 ? "#3b82f6" : "#1e293b", borderColor: sortByFields.length > 0 ? "#2563eb" : "#334155", color: "white", fontSize: "12px", display: "flex", gap: "4px" }}>
@@ -1492,7 +1668,6 @@ export function ClickUpListViewUpdated({
             </PopoverContent>
           </Popover>
 
-          {/* Group Popover (Pill) */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" style={{ flexShrink: 0, height: 26, padding: "0 8px", borderRadius: "13px", backgroundColor: groupByFields[0] !== "none" && groupByFields.length > 0 ? "#3b82f6" : "#1e293b", borderColor: groupByFields[0] !== "none" && groupByFields.length > 0 ? "#2563eb" : "#334155", color: "white", fontSize: "12px", display: "flex", gap: "4px" }}>
@@ -1532,7 +1707,6 @@ export function ClickUpListViewUpdated({
       )}
     </div>
 
-    {/* Table Area */}
     <div
       style={{
         flex: 1,
@@ -1582,7 +1756,7 @@ export function ClickUpListViewUpdated({
             width: "100%",
             borderCollapse: "collapse",
             whiteSpace: "nowrap",
-            fontSize: 12 // Reduced to see more data
+            fontSize: 12 
           }}
         >
           <thead
@@ -1599,11 +1773,10 @@ export function ClickUpListViewUpdated({
                 <th
                   key={col.key}
                   onClick={() => {
-                    // Toggle expansion state for the entire column
                     setExpandedColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }));
                   }}
                   style={{
-                    padding: "6px 8px", // Reduced header padding
+                    padding: "6px 8px", 
                     fontWeight: 600,
                     borderBottom: "1px solid #334155",
                     letterSpacing: 0.5,
@@ -1614,7 +1787,7 @@ export function ClickUpListViewUpdated({
                     zIndex: index === 0 ? 40 : undefined,
                     cursor: "pointer",
                     whiteSpace: expandedColumns[col.key] ? "normal" : "nowrap",
-                    minWidth: expandedColumns[col.key] ? "200px" : undefined, // expand header width too
+                    minWidth: expandedColumns[col.key] ? "200px" : undefined, 
                     transition: "all 0.2s ease-in-out"
                   }}
                 >
@@ -1635,7 +1808,6 @@ export function ClickUpListViewUpdated({
       )}
     </div>
 
-    {/* Sticky Pagination */}
     {finalItems.length > 0 && !(isLoading || isGroupingDataLoading) && (
       <div
         style={{
@@ -1650,7 +1822,6 @@ export function ClickUpListViewUpdated({
       </div>
     )}
 
-    {/* Bulk Edit Action Bar (Only visible if pending changes exist) */}
     {Object.keys(pendingChanges).length > 0 && (
       <div
         style={{
@@ -1684,12 +1855,119 @@ export function ClickUpListViewUpdated({
         >Save ({Object.keys(pendingChanges).length})</Button>
       </div>
     )}
+
+    {/* External Push Result Dialog for Mobile */}
+    <Dialog open={externalPushResultOpen} onOpenChange={setExternalPushResultOpen}>
+      <DialogContent
+        style={{
+          backgroundColor: "#0f172a",
+          border: "1px solid #1e293b",
+          borderRadius: "12px",
+          padding: "20px",
+          maxWidth: "400px",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          color: "#e2e8f0",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
+          zIndex: 200 
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle style={{ fontSize: "18px", fontWeight: "600", color: "#f1f5f9" }}>
+            Push Summary
+          </DialogTitle>
+        </DialogHeader>
+        <div style={{ flex: 1, overflowY: "auto", marginTop: "12px", fontSize: "14px", paddingRight: "4px" }}>
+          {externalPushResultEntries.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <span style={{ color: "#10b981", display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
+                <CheckCircle2 style={{ width: "18px", height: "18px", flexShrink: 0, marginTop: "2px" }} />
+                <span>Successfully pushed <strong>{externalPushResultCount}</strong> new entries:</span>
+              </span>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {Object.entries(groupedPushedEntries).map(([tabName, entries]) => {
+                  const isExpanded = !!expandedPushTabs[tabName];
+                  const currentLimit = pushTabLimits[tabName] || 50;
+                  const visibleEntries = entries.slice(0, currentLimit);
+                  const remaining = entries.length - currentLimit;
+
+                  return (
+                    <div key={tabName} style={{ border: "1px solid #334155", borderRadius: "8px", overflow: "hidden", backgroundColor: "#1e293b" }}>
+                      
+                      {/* ACCORDION HEADER */}
+                      <div 
+                        onClick={() => {
+                          setExpandedPushTabs(p => ({ ...p, [tabName]: !p[tabName] }));
+                          if (!pushTabLimits[tabName]) setPushTabLimits(p => ({ ...p, [tabName]: 50 }));
+                        }}
+                        style={{ cursor: "pointer", padding: "10px 14px", display: "flex", alignItems: "center", gap: "8px", borderBottom: isExpanded ? "1px solid #334155" : "none" }}
+                      >
+                        {isExpanded ? <ChevronDown style={{width: 16, height: 16, color: "#cbd5e1"}}/> : <ChevronRight style={{width: 16, height: 16, color: "#cbd5e1"}}/>}
+                        <span style={{ fontWeight: 600, color: "#f8fafc", fontSize: "14px", flex: 1 }}>{tabName}</span>
+                        <Badge style={{ backgroundColor: "rgba(59, 130, 246, 0.2)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }}>
+                          {entries.length} Added
+                        </Badge>
+                      </div>
+
+                      {/* ACCORDION BODY */}
+                      {isExpanded && (
+                        <div style={{ backgroundColor: "#0f172a", padding: "8px 14px" }}>
+                          <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
+                            {visibleEntries.map((entry, idx) => (
+                              <li key={`${entry.id}-${idx}`} style={{ marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid rgba(51,65,85,0.4)" }}>
+                                 <div style={{ color: "#38bdf8", fontWeight: 500, fontSize: "13px" }}>{entry.id}</div>
+                                 <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px", lineHeight: "1.4" }}>{entry.eventName}</div>
+                              </li>
+                            ))}
+                          </ul>
+                          
+                          {/* LOAD MORE BUTTON */}
+                          {remaining > 0 && (
+                            <div style={{ marginTop: "12px", marginBottom: "8px", textAlign: "left" }}>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setPushTabLimits(p => ({ ...p, [tabName]: currentLimit + 50 }))}
+                                style={{ backgroundColor: "#1e293b", borderColor: "#334155", color: "#e2e8f0", fontSize: "12px", width: "100%" }}
+                              >
+                                Load more results ({remaining} remaining)
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          ) : (
+            <span style={{ color: "#fbbf24", display: "flex", alignItems: "flex-start", gap: "8px" }}>
+              <AlertTriangle style={{ width: "18px", height: "18px", flexShrink: 0, marginTop: "2px" }} />
+              <span>No new records found. All matching records are already present in the external sheet.</span>
+            </span>
+          )}
+        </div>
+        <DialogFooter style={{ marginTop: "20px", flexShrink: 0 }}>
+          <Button
+            onClick={() => setExternalPushResultOpen(false)}
+            style={{ width: "100%", backgroundColor: "#3b82f6", color: "white", border: "none", padding: "10px", borderRadius: "6px", fontWeight: "bold" }}
+          >
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
   </>
 );
 
   // ==========================================
-  // 💻 DESKTOP UI (Exactly as you provided)
+  // 💻 DESKTOP UI
   // ==========================================
   const renderDesktopView = () => (
     <div className="p-6 space-y-4 w-full">
@@ -1729,10 +2007,97 @@ export function ClickUpListViewUpdated({
                   <Button variant="default" size="sm" className="gap-2 h-8" onClick={handleBulkUpdate}>Save Changes ({Object.keys(pendingChanges).length})</Button>
                 </>
               )}
-              <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleExport} disabled={isExporting}>
-                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                {isExporting ? "Exporting..." : "Export"}
-              </Button>
+              
+              {/* NEW EXTERNAL DEPARTMENTS BUTTON */}
+             {showExternalButton && (
+  <button
+    onClick={() => setExternalPushDialogOpen(true)}
+    disabled={isPushingExternal}
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      height: "32px",
+      padding: "0 12px",
+      fontSize: "14px",
+      borderRadius: "6px",
+      border: "1px solid rgba(232, 235, 238, 0.5)",
+      color: "#f7faf7",
+      background: "transparent",
+      cursor: isPushingExternal ? "not-allowed" : "pointer",
+      opacity: isPushingExternal ? 0.7 : 1
+    }}
+  >
+    {isPushingExternal ? (
+      <Loader2
+        style={{
+          width: "16px",
+          height: "16px",
+          animation: "spin 1s linear infinite"
+        }}
+      />
+    ) : (
+      <Send style={{ width: "16px", height: "16px" }} />
+    )}
+
+    {isPushingExternal ? "Pushing..." : "Send to external departments"}
+
+    <style>
+      {`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+  </button>
+)}
+
+            <button
+  onClick={handleExport}
+  disabled={isExporting}
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    height: "32px",
+    padding: "0 12px",
+    fontSize: "14px",
+    borderRadius: "6px",
+    border: "1px solid #cbd5e1",
+    background: "transparent",
+    cursor: isExporting ? "not-allowed" : "pointer",
+    opacity: isExporting ? 0.7 : 1
+  }}
+>
+  {isExporting ? (
+    <Loader2
+      style={{
+        width: "16px",
+        height: "16px",
+        animation: "spin 1s linear infinite"
+      }}
+    />
+  ) : (
+    <Download
+      style={{
+        width: "16px",
+        height: "16px"
+      }}
+    />
+  )}
+
+  {isExporting ? "Exporting..." : "Export"}
+
+  <style>
+    {`
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+</button>
               {showAddButton && hasAccess(title, 'write') && (<Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>+ Add</Button>)}
             </div>
           </div>
@@ -1834,7 +2199,36 @@ export function ClickUpListViewUpdated({
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto relative custom-scrollbar" style={{ maxHeight: '60vh' }}>
-            {(isLoading || isGroupingDataLoading) && (<div className="p-8 text-center flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Loading...</div>)}
+            {(isLoading || isGroupingDataLoading) && (
+  <div
+    style={{
+      padding: "32px",
+      textAlign: "center",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px"
+    }}
+  >
+    <Loader2
+      style={{
+        width: "16px",
+        height: "16px",
+        animation: "spin 1s linear infinite"
+      }}
+    />
+    <span>Loading...</span>
+
+    <style>
+      {`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+  </div>
+)}
             {error && <div className="p-8 text-center text-red-500">Error: {(error as Error).message}</div>}
             {!(isLoading || isGroupingDataLoading) && finalItems.length === 0 && <div className="p-8 text-center">No results found.</div>}
             {finalItems.length > 0 && (
@@ -1843,9 +2237,50 @@ export function ClickUpListViewUpdated({
               </div>
             )}
             {isFetching && !isLoading && !isGroupingDataLoading && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center">
-                <div className="bg-background/80 backdrop-blur-sm text-foreground rounded-full px-4 py-2 text-xs flex items-center gap-2 shadow-lg border"><Loader2 className="w-4 h-4 animate-spin" /><span>Buffering...</span></div>
-              </div>
+              <div
+  style={{
+    position: "fixed",
+    inset: 0,
+    zIndex: 50,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }}
+>
+  <div
+    style={{
+      background: "rgba(15,23,42,0.8)",
+      backdropFilter: "blur(6px)",
+      color: "#e2e8f0",
+      borderRadius: "9999px",
+      padding: "8px 16px",
+      fontSize: "12px",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
+      border: "1px solid #334155"
+    }}
+  >
+    <Loader2
+      style={{
+        width: "16px",
+        height: "16px",
+        animation: "spin 1s linear infinite"
+      }}
+    />
+    <span>Buffering...</span>
+  </div>
+
+  <style>
+    {`
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+</div>
             )}
           </div>
         </CardContent>
@@ -1864,7 +2299,7 @@ export function ClickUpListViewUpdated({
         }
       </Card>
 
-      {/* Dialogs... (Add & Error remain unchanged) */}
+      {/* Add New Entry Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent style={{ maxHeight: "90vh", overflowY: "auto" }}>
           <DialogHeader><DialogTitle>Add New {title}</DialogTitle></DialogHeader>
@@ -1883,6 +2318,203 @@ export function ClickUpListViewUpdated({
         </DialogContent>
       </Dialog>
 
+      {/* Send to External Departments Dialog */}
+      <Dialog open={externalPushDialogOpen} onOpenChange={setExternalPushDialogOpen}>
+  <DialogContent
+    style={{
+      backgroundColor: "#0f172a",
+      border: "1px solid #1e293b",
+      borderRadius: "12px",
+      padding: "24px",
+      maxWidth: "480px",
+      color: "#e2e8f0",
+      boxShadow: "0 20px 40px rgba(0,0,0,0.6)"
+    }}
+  >
+    <DialogHeader>
+      <DialogTitle
+        style={{
+          fontSize: "18px",
+          fontWeight: "600",
+          color: "#f1f5f9"
+        }}
+      >
+        Send to External Departments
+      </DialogTitle>
+    </DialogHeader>
+
+    <div
+      style={{
+        marginTop: "12px",
+        fontSize: "14px",
+        lineHeight: "1.6",
+        color: "#94a3b8"
+      }}
+    >
+      Are you sure you want to push the current view's data to the external department Google Sheet?
+      <br /><br />
+      This will push all records matching your current active filters. Any duplicate records (already existing in the sheet) will be automatically ignored.
+    </div>
+
+    <DialogFooter
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "10px",
+        marginTop: "20px"
+      }}
+    >
+     <Button
+  onClick={() => setExternalPushDialogOpen(false)}
+  style={{
+    backgroundColor: "transparent",
+    border: "1px solid #334155",
+    color: "#cbd5f5",
+    padding: "8px 16px",
+    marginRight: "8px",
+    borderRadius: "6px",
+    cursor: "pointer"
+  }}
+>
+  Cancel
+</Button>
+
+      <Button
+        onClick={handleExternalPush}
+        disabled={isPushingExternal}
+        style={{
+          backgroundColor: "#0685d9",
+          color: "white",
+          border: "none",
+          padding: "8px 14px",
+          borderRadius: "6px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px"
+        }}
+      >
+        {isPushingExternal && (
+          <Loader2
+            style={{
+              width: "16px",
+              height: "16px",
+              animation: "spin 1s linear infinite"
+            }}
+          />
+        )}
+        Confirm Push
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+    {/* External Push Result Dialog for Desktop */}
+    <Dialog open={externalPushResultOpen} onOpenChange={setExternalPushResultOpen}>
+      <DialogContent
+        style={{
+          backgroundColor: "#0f172a",
+          border: "1px solid #1e293b",
+          borderRadius: "12px",
+          padding: "20px",
+          maxWidth: "440px",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+          color: "#e2e8f0",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.6)"
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle style={{ fontSize: "18px", fontWeight: "600", color: "#f1f5f9" }}>
+            Push Summary
+          </DialogTitle>
+        </DialogHeader>
+        <div style={{ flex: 1, overflowY: "auto", marginTop: "12px", fontSize: "14px", paddingRight: "4px" }}>
+          {externalPushResultEntries.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <span style={{ color: "#10b981", display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
+                <CheckCircle2 style={{ width: "18px", height: "18px", flexShrink: 0, marginTop: "2px" }} />
+                <span>Successfully pushed <strong>{externalPushResultCount}</strong> new entries:</span>
+              </span>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {Object.entries(groupedPushedEntries).map(([tabName, entries]) => {
+                  const isExpanded = !!expandedPushTabs[tabName];
+                  const currentLimit = pushTabLimits[tabName] || 50;
+                  const visibleEntries = entries.slice(0, currentLimit);
+                  const remaining = entries.length - currentLimit;
+
+                  return (
+                    <div key={tabName} style={{ border: "1px solid #334155", borderRadius: "8px", overflow: "hidden", backgroundColor: "#1e293b" }}>
+                      
+                      {/* ACCORDION HEADER */}
+                      <div 
+                        onClick={() => {
+                          setExpandedPushTabs(p => ({ ...p, [tabName]: !p[tabName] }));
+                          if (!pushTabLimits[tabName]) setPushTabLimits(p => ({ ...p, [tabName]: 50 }));
+                        }}
+                        style={{ cursor: "pointer", padding: "10px 14px", display: "flex", alignItems: "center", gap: "8px", borderBottom: isExpanded ? "1px solid #334155" : "none" }}
+                      >
+                        {isExpanded ? <ChevronDown style={{width: 16, height: 16, color: "#cbd5e1"}}/> : <ChevronRight style={{width: 16, height: 16, color: "#cbd5e1"}}/>}
+                        <span style={{ fontWeight: 600, color: "#f8fafc", fontSize: "14px", flex: 1 }}>{tabName}</span>
+                        <Badge style={{ backgroundColor: "rgba(59, 130, 246, 0.2)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.3)" }}>
+                          {entries.length} Added
+                        </Badge>
+                      </div>
+
+                      {/* ACCORDION BODY */}
+                      {isExpanded && (
+                        <div style={{ backgroundColor: "#0f172a", padding: "8px 14px" }}>
+                          <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
+                            {visibleEntries.map((entry, idx) => (
+                              <li key={`${entry.id}-${idx}`} style={{ marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid rgba(51,65,85,0.4)" }}>
+                                 <div style={{ color: "#38bdf8", fontWeight: 500, fontSize: "13px" }}>{entry.id}</div>
+                                 <div style={{ color: "#94a3b8", fontSize: "11px", marginTop: "2px", lineHeight: "1.4" }}>{entry.eventName}</div>
+                              </li>
+                            ))}
+                          </ul>
+                          
+                          {/* LOAD MORE BUTTON */}
+                          {remaining > 0 && (
+                            <div style={{ marginTop: "12px", marginBottom: "8px", textAlign: "left" }}>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setPushTabLimits(p => ({ ...p, [tabName]: currentLimit + 50 }))}
+                                style={{ backgroundColor: "#1e293b", borderColor: "#334155", color: "#e2e8f0", fontSize: "12px", width: "100%" }}
+                              >
+                                Load more results ({remaining} remaining)
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          ) : (
+            <span style={{ color: "#fbbf24", display: "flex", alignItems: "flex-start", gap: "8px" }}>
+              <AlertTriangle style={{ width: "18px", height: "18px", flexShrink: 0, marginTop: "2px" }} />
+              <span>No new records found. All matching records are already present in the external sheet.</span>
+            </span>
+          )}
+        </div>
+        <DialogFooter style={{ marginTop: "20px", flexShrink: 0 }}>
+          <Button
+            onClick={() => setExternalPushResultOpen(false)}
+            style={{ width: "100%", backgroundColor: "#3b82f6", color: "white", border: "none", padding: "10px", borderRadius: "6px", fontWeight: "bold" }}
+          >
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+      {/* Error Dialog */}
       <Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
         <DialogContent>
           <DialogHeader><DialogTitle>{errorDialog.title}</DialogTitle></DialogHeader>
@@ -1895,6 +2527,5 @@ export function ClickUpListViewUpdated({
     </div>
   );
 
-  // Return specific view based on screen size
   return isMobile ? renderMobileView() : renderDesktopView();
 }

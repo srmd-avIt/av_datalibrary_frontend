@@ -98,6 +98,7 @@ const APP_RESOURCES = [
   "Search New Media for Person Event",
   "Search New Media Extensively",
   "ML Summary by event code"
+  
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";

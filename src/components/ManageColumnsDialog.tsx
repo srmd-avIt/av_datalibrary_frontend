@@ -170,12 +170,11 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [isGlobalGuest, setIsGlobalGuest] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [showColumnEditor, setShowColumnEditor] = useState(false); 
   
   const [lastUserSummary, setLastUserSummary] = useState<string | null>(null);
-  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
-  const [newColumnLabel, setNewColumnLabel] = useState('');
 
   // Mobile detection
   useEffect(() => {
@@ -188,6 +187,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setSelectedUserIds([]);
+      setIsGlobalGuest(false);
       setShowColumnEditor(false);
       setUserSearch('');
     }
@@ -251,10 +251,8 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         }
       }
 
-      setInternalColumns(mergedColumns);
-
       let initialVisibleKeys = visibleColumnKeys;
-      const referenceUserId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
+      const referenceUserId = isGlobalGuest ? 'guest' : (selectedUserIds.length > 0 ? selectedUserIds[0] : null);
 
       if (referenceUserId) {
         const savedConfigStr = localStorage.getItem(`columnConfig-${viewId}-${referenceUserId}`);
@@ -263,7 +261,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             const savedConfig = JSON.parse(savedConfigStr);
             if (savedConfig && Array.isArray(savedConfig.visible)) {
               initialVisibleKeys = savedConfig.visible;
-              if (selectedUserIds.length === 1) {
+              if (isGlobalGuest || selectedUserIds.length === 1) {
                 const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${referenceUserId}`);
                 setLastUserSummary(summary || null);
               } else {
@@ -280,12 +278,31 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         setLastUserSummary(null);
       }
 
+      // Preserve any keys that are supposed to be visible but aren't in mergedColumns yet (stops silent deletion bug)
+      let finalMergedColumns = [...mergedColumns];
+      const mergedKeys = new Set(finalMergedColumns.map(c => c.key));
+      
+      initialVisibleKeys.forEach(key => {
+        if (!mergedKeys.has(key)) {
+          finalMergedColumns.push({
+            key: key,
+            label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
+            sortable: true,
+            editable: false,
+            isCustom: true // Treat as custom so it doesn't get lost
+          });
+          mergedKeys.add(key);
+        }
+      });
+
+      setInternalColumns(finalMergedColumns);
+
       const visibleOrdered = initialVisibleKeys
-        .map(key => mergedColumns.find(c => c.key === key))
+        .map(key => finalMergedColumns.find(c => c.key === key))
         .filter((c): c is Column => !!c);
       
       const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
-      const hidden = mergedColumns.filter(c => !visibleKeysSet.has(c.key));
+      const hidden = finalMergedColumns.filter(c => !visibleKeysSet.has(c.key));
       hidden.sort((a, b) => a.label.localeCompare(b.label));
 
       setCurrentVisible(visibleOrdered);
@@ -293,7 +310,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     };
 
     initializeColumns();
-  }, [isOpen, showColumnEditor, allColumns, visibleColumnKeys, apiEndpoint, selectedUserIds, viewId]); 
+  }, [isOpen, showColumnEditor, allColumns, visibleColumnKeys, apiEndpoint, selectedUserIds, isGlobalGuest, viewId]); 
 
   const handleToggleUser = (userId: string) => {
     setSelectedUserIds(prev => 
@@ -382,16 +399,22 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         localStorage.setItem(`columnChangesSummary-${viewId}-${uid}`, summaryText);
       });
       if (target.userIds.length === 1) setLastUserSummary(summaryText);
+    } else if (target.type === 'global_guest') {
+      localStorage.setItem(`columnConfig-${viewId}-guest`, JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys }));
+      localStorage.setItem(`columnChangesSummary-${viewId}-guest`, summaryText);
+      setLastUserSummary(summaryText);
     }
 
     onSave({ viewId, visibleKeys, hiddenKeys, target });
     onClose();
     setShowColumnEditor(false);
     setSelectedUserIds([]);
+    setIsGlobalGuest(false);
     setUserSearch('');
   };
 
   const getUserLabel = () => {
+    if (isGlobalGuest) return "Global Guests";
     if (selectedUserIds.length === 1) {
       return users.find(u => u.id === selectedUserIds[0])?.name || "User";
     }
@@ -419,8 +442,33 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           </Button>
         </div>
 
+        {/* Guest Toggle Row */}
+        <div style={{ padding: '16px 16px 0 16px', flexShrink: 0 }}>
+          <div 
+            onClick={() => {
+              setIsGlobalGuest(!isGlobalGuest);
+              if (!isGlobalGuest) setSelectedUserIds([]);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px",
+              backgroundColor: isGlobalGuest ? "rgba(59,130,246,0.15)" : "#0f172a",
+              border: isGlobalGuest ? "1px solid rgba(59,130,246,0.3)" : "1px solid #1e293b",
+              cursor: 'pointer'
+            }}
+          >
+            <Checkbox checked={isGlobalGuest} onCheckedChange={(checked) => {
+              setIsGlobalGuest(!!checked);
+              if (checked) setSelectedUserIds([]);
+            }} onClick={e => e.stopPropagation()} style={{ borderColor: '#64748b' }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: "15px", color: isGlobalGuest ? '#fff' : '#e2e8f0' }}>Global Guest View</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>Apply layout to all non-logged in users</div>
+            </div>
+          </div>
+        </div>
+
         {/* Body - Flex 1 & Hidden Overflow */}
-        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: isGlobalGuest ? 0.5 : 1, pointerEvents: isGlobalGuest ? 'none' : 'auto' }}>
           {/* Search Row */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexShrink: 0 }}>
             <Input
@@ -467,11 +515,11 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         {/* Footer - Fixed Bottom */}
         <div style={{ padding: '16px 20px', borderTop: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>
-            {selectedUserIds.length} selected
+            {isGlobalGuest ? 'Global Guest selected' : `${selectedUserIds.length} selected`}
           </div>
           <Button
             onClick={() => setShowColumnEditor(true)}
-            disabled={selectedUserIds.length === 0}
+            disabled={!isGlobalGuest && selectedUserIds.length === 0}
             style={{ backgroundColor: '#2563eb', color: 'white', borderRadius: 8, height: 44, padding: '0 24px', fontWeight: 600 }}
           >
             Next <ArrowRight style={{ width: '16px', height: '16px', marginLeft: '8px' }} />
@@ -502,7 +550,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         {/* Body - Flex 1 & Hidden Overflow - Vertically Stacked to prevent squishing */}
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
           
-          {selectedUserIds.length > 1 && (
+          {selectedUserIds.length > 1 && !isGlobalGuest && (
             <div style={{ padding: '12px', borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', fontSize: 13, display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                <Users style={{ width: '20px', height: '20px', flexShrink: 0 }} />
                <span>Applying layout to <strong>{selectedUserIds.length}</strong> users.</span>
@@ -557,7 +605,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           <Button variant="outline" onClick={onClose} style={{ flex: 1, backgroundColor: '#1e293b', borderColor: '#334155', color: 'white', height: 44, borderRadius: 8 }}>
             Cancel
           </Button>
-          <Button onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })} style={{ flex: 2, backgroundColor: '#2563eb', color: 'white', height: 44, borderRadius: 8, fontWeight: 600 }}>
+          <Button onClick={() => handleSave(isGlobalGuest ? { type: "global_guest" } : { type: "specific_users", userIds: selectedUserIds })} style={{ flex: 2, backgroundColor: '#2563eb', color: 'white', height: 44, borderRadius: 8, fontWeight: 600 }}>
             Save Layout
           </Button>
         </div>
@@ -567,7 +615,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
 
   // ==========================================
-  // 💻 DESKTOP UI (Kept exactly as it was)
+  // 💻 DESKTOP UI
   // ==========================================
   const renderDesktopUserSelection = () => {
     const filteredUsers = getFilteredUsers();
@@ -581,54 +629,77 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
               Select one or more users to apply column settings.
             </div>
           </DialogHeader>
-          
-          <div className="flex gap-2 items-center mb-2">
-            <Input
-              placeholder="Search by name or email..."
-              value={userSearch}
-              onChange={e => setUserSearch(e.target.value)}
-              className="flex-1"
-            />
-            <Button variant="outline" size="sm" onClick={handleSelectAllUsers}>
-              {filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
-            </Button>
-          </div>
 
-          <ScrollArea style={{ height: "18rem", width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "8px", overflowY: "auto" }}>
-            {filteredUsers.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted-foreground)" }}>No users found</div>
-            ) : (
-              filteredUsers.map(user => {
-                const isSelected = selectedUserIds.includes(user.id);
-                return (
-                  <div
-                    key={user.id}
-                    onClick={() => handleToggleUser(user.id)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "8px", cursor: "pointer",
-                      backgroundColor: isSelected ? "var(--muted)" : "transparent", transition: "background 0.2s"
-                    }}
-                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)"; }}
-                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
-                  >
-                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</div>
-                      <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{user.email}</div>
+          <div 
+            onClick={() => {
+              setIsGlobalGuest(!isGlobalGuest);
+              if (!isGlobalGuest) setSelectedUserIds([]);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px", cursor: "pointer",
+              backgroundColor: isGlobalGuest ? "var(--muted)" : "transparent", transition: "background 0.2s",
+              border: isGlobalGuest ? "1px solid var(--primary)" : "1px solid var(--border)", marginBottom: "12px"
+            }}
+          >
+            <Checkbox checked={isGlobalGuest} onCheckedChange={(checked) => {
+              setIsGlobalGuest(!!checked);
+              if (checked) setSelectedUserIds([]);
+            }} onClick={e => e.stopPropagation()} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: "14px" }}>Global Guest View</div>
+              <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>Apply layout to all unauthenticated guests</div>
+            </div>
+          </div>
+          
+          <div style={{ opacity: isGlobalGuest ? 0.5 : 1, pointerEvents: isGlobalGuest ? 'none' : 'auto' }}>
+            <div className="flex gap-2 items-center mb-2">
+              <Input
+                placeholder="Search by name or email..."
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                className="flex-1"
+              />
+              <Button variant="outline" size="sm" onClick={handleSelectAllUsers}>
+                {filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
+              </Button>
+            </div>
+
+            <ScrollArea style={{ height: "18rem", width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "8px", overflowY: "auto" }}>
+              {filteredUsers.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted-foreground)" }}>No users found</div>
+              ) : (
+                filteredUsers.map(user => {
+                  const isSelected = selectedUserIds.includes(user.id);
+                  return (
+                    <div
+                      key={user.id}
+                      onClick={() => handleToggleUser(user.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "8px", cursor: "pointer",
+                        backgroundColor: isSelected ? "var(--muted)" : "transparent", transition: "background 0.2s"
+                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)"; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</div>
+                        <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{user.email}</div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </ScrollArea>
+                  );
+                })
+              )}
+            </ScrollArea>
+          </div>
 
           <DialogFooter className="flex justify-between sm:justify-between w-full mt-4">
              <div className="text-sm text-muted-foreground self-center">
-                {selectedUserIds.length} user{selectedUserIds.length !== 1 && 's'} selected
+                {isGlobalGuest ? 'Global Guest selected' : `${selectedUserIds.length} user${selectedUserIds.length !== 1 ? 's' : ''} selected`}
              </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
               <Button variant="ghost" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
-              <Button onClick={() => setShowColumnEditor(true)} disabled={selectedUserIds.length === 0} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Next</Button>
+              <Button onClick={() => setShowColumnEditor(true)} disabled={!isGlobalGuest && selectedUserIds.length === 0} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Next</Button>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -649,14 +720,14 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             </div>
           </DialogHeader>
 
-          {lastUserSummary && selectedUserIds.length === 1 && (
+          {lastUserSummary && (isGlobalGuest || selectedUserIds.length === 1) && (
             <div className="mb-2 p-2 border rounded bg-muted/30 text-sm text-muted-foreground">
-              <strong>Last changes for this user:</strong>
+              <strong>Last changes for this layout:</strong>
               <div className="line-clamp-2">{lastUserSummary}</div>
             </div>
           )}
 
-          {selectedUserIds.length > 1 && (
+          {selectedUserIds.length > 1 && !isGlobalGuest && (
             <div className="mb-2 p-2 border rounded bg-blue-50/50 text-blue-800 text-sm flex items-center gap-2">
                <Users className="w-4 h-4" />
                <span>You are applying this layout to <strong>{selectedUserIds.length}</strong> users at once.</span>
@@ -706,7 +777,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             <Button variant="ghost" onClick={() => setShowColumnEditor(false)}><ArrowLeft className="w-4 h-4 mr-2" /> Back to Users</Button>
             <div style={{ display: "flex", gap: "8px" }}>
               <Button variant="outline" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
-              <Button onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })} style={{ minWidth: "140px", padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Save for {getUserLabel()}</Button>
+              <Button onClick={() => handleSave(isGlobalGuest ? { type: "global_guest" } : { type: "specific_users", userIds: selectedUserIds })} style={{ minWidth: "140px", padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Save for {getUserLabel()}</Button>
             </div>
           </DialogFooter>
 
