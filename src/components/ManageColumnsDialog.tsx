@@ -170,9 +170,9 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [isGlobalGuest, setIsGlobalGuest] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [showColumnEditor, setShowColumnEditor] = useState(false); 
+  const [isSaving, setIsSaving] = useState(false);
   
   const [lastUserSummary, setLastUserSummary] = useState<string | null>(null);
 
@@ -187,7 +187,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   useEffect(() => {
     if (!isOpen) {
       setSelectedUserIds([]);
-      setIsGlobalGuest(false);
       setShowColumnEditor(false);
       setUserSearch('');
     }
@@ -199,7 +198,8 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     const initializeColumns = async () => {
       let mergedColumns = [...allColumns];
 
-     if (apiEndpoint) {
+      // Fetch dynamic columns from backend API if endpoint provided
+      if (apiEndpoint) {
         setIsLoadingBackend(true);
         try {
           const fetchUrl = `${API_BASE_URL}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}limit=1`;
@@ -251,58 +251,59 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
         }
       }
 
-      let initialVisibleKeys = visibleColumnKeys;
-      const referenceUserId = isGlobalGuest ? 'guest' : (selectedUserIds.length > 0 ? selectedUserIds[0] : null);
+      setInternalColumns(mergedColumns);
 
+      let initialVisibleKeys = visibleColumnKeys;
+      const referenceUserId = selectedUserIds.length > 0 ? selectedUserIds[0] : null;
+
+      // FETCH FROM DATABASE RATHER THAN LOCALSTORAGE
       if (referenceUserId) {
-        const savedConfigStr = localStorage.getItem(`columnConfig-${viewId}-${referenceUserId}`);
-        if (savedConfigStr) {
-          try {
-            const savedConfig = JSON.parse(savedConfigStr);
+        try {
+          const token = localStorage.getItem('app-token');
+          const configRes = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userId=${referenceUserId}`, {
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : '', 
+            }
+          });
+
+          if (configRes.ok) {
+            const savedConfig = await configRes.json();
             if (savedConfig && Array.isArray(savedConfig.visible)) {
               initialVisibleKeys = savedConfig.visible;
-              if (isGlobalGuest || selectedUserIds.length === 1) {
-                const summary = localStorage.getItem(`columnChangesSummary-${viewId}-${referenceUserId}`);
-                setLastUserSummary(summary || null);
+              if (selectedUserIds.length === 1) {
+                setLastUserSummary(savedConfig.summary || null);
               } else {
                 setLastUserSummary(null);
               }
+              // Update local cache for immediate app availability 
+              localStorage.setItem(`columnConfig-${viewId}-${referenceUserId}`, JSON.stringify({ visible: savedConfig.visible, hidden: savedConfig.hidden }));
             }
-          } catch (e) {
-            console.error("Error parsing saved config", e);
+          } else {
+             // Fallback to local storage if DB call fails
+             const savedConfigStr = localStorage.getItem(`columnConfig-${viewId}-${referenceUserId}`);
+             if (savedConfigStr) {
+               const savedConfig = JSON.parse(savedConfigStr);
+               if (savedConfig && Array.isArray(savedConfig.visible)) {
+                 initialVisibleKeys = savedConfig.visible;
+                 if (selectedUserIds.length === 1) {
+                   setLastUserSummary(localStorage.getItem(`columnChangesSummary-${viewId}-${referenceUserId}`));
+                 }
+               }
+             }
           }
-        } else {
-            setLastUserSummary(null);
+        } catch (e) {
+          console.error("Error fetching user config from database", e);
         }
       } else {
         setLastUserSummary(null);
       }
 
-      // Preserve any keys that are supposed to be visible but aren't in mergedColumns yet (stops silent deletion bug)
-      let finalMergedColumns = [...mergedColumns];
-      const mergedKeys = new Set(finalMergedColumns.map(c => c.key));
-      
-      initialVisibleKeys.forEach(key => {
-        if (!mergedKeys.has(key)) {
-          finalMergedColumns.push({
-            key: key,
-            label: key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().replace(/^./, str => str.toUpperCase()),
-            sortable: true,
-            editable: false,
-            isCustom: true // Treat as custom so it doesn't get lost
-          });
-          mergedKeys.add(key);
-        }
-      });
-
-      setInternalColumns(finalMergedColumns);
-
       const visibleOrdered = initialVisibleKeys
-        .map(key => finalMergedColumns.find(c => c.key === key))
+        .map(key => mergedColumns.find(c => c.key === key))
         .filter((c): c is Column => !!c);
       
       const visibleKeysSet = new Set(visibleOrdered.map(c => c.key));
-      const hidden = finalMergedColumns.filter(c => !visibleKeysSet.has(c.key));
+      const hidden = mergedColumns.filter(c => !visibleKeysSet.has(c.key));
       hidden.sort((a, b) => a.label.localeCompare(b.label));
 
       setCurrentVisible(visibleOrdered);
@@ -310,7 +311,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     };
 
     initializeColumns();
-  }, [isOpen, showColumnEditor, allColumns, visibleColumnKeys, apiEndpoint, selectedUserIds, isGlobalGuest, viewId]); 
+  }, [isOpen, showColumnEditor, allColumns, visibleColumnKeys, apiEndpoint, selectedUserIds, viewId]); 
 
   const handleToggleUser = (userId: string) => {
     setSelectedUserIds(prev => 
@@ -377,12 +378,14 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     toast.info("Custom column removed.");
   };
 
-  const handleSave = (target: SaveTarget) => {
+  // UPDATED handleSave TO PUSH TO DATABASE
+  const handleSave = async (target: SaveTarget) => {
     if (currentVisible.length === 0) {
       toast.warning("Cannot save an empty layout. Please make at least one column visible.");
       return;
     }
 
+    setIsSaving(true);
     onColumnsUpdate(internalColumns);
 
     const visibleKeys = currentVisible.map(c => c.key);
@@ -394,27 +397,46 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     const summaryText = `Visible: ${visibleKeys.join(', ')}, Hidden: ${hiddenKeys.join(', ')}`;
 
     if (target.type === 'specific_users') {
-      target.userIds.forEach(uid => {
-        localStorage.setItem(`columnConfig-${viewId}-${uid}`, JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys }));
-        localStorage.setItem(`columnChangesSummary-${viewId}-${uid}`, summaryText);
-      });
-      if (target.userIds.length === 1) setLastUserSummary(summaryText);
-    } else if (target.type === 'global_guest') {
-      localStorage.setItem(`columnConfig-${viewId}-guest`, JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys }));
-      localStorage.setItem(`columnChangesSummary-${viewId}-guest`, summaryText);
-      setLastUserSummary(summaryText);
+      try {
+        const token = localStorage.getItem('app-token');
+        await fetch(`${API_BASE_URL}/user-column-preferences`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: JSON.stringify({
+            viewId,
+            userIds: target.userIds,
+            visibleKeys,
+            hiddenKeys,
+            summaryText
+          })
+        });
+
+        // Save local cache for immediate availability
+        target.userIds.forEach(uid => {
+          localStorage.setItem(`columnConfig-${viewId}-${uid}`, JSON.stringify({ visible: visibleKeys, hidden: hiddenKeys }));
+          localStorage.setItem(`columnChangesSummary-${viewId}-${uid}`, summaryText);
+        });
+
+        if (target.userIds.length === 1) setLastUserSummary(summaryText);
+        toast.success("Layout saved successfully!");
+      } catch (e) {
+        console.error("Failed to save layout to DB", e);
+        toast.error("Network error. Saved layout locally.");
+      }
     }
 
     onSave({ viewId, visibleKeys, hiddenKeys, target });
+    setIsSaving(false);
     onClose();
     setShowColumnEditor(false);
     setSelectedUserIds([]);
-    setIsGlobalGuest(false);
     setUserSearch('');
   };
 
   const getUserLabel = () => {
-    if (isGlobalGuest) return "Global Guests";
     if (selectedUserIds.length === 1) {
       return users.find(u => u.id === selectedUserIds[0])?.name || "User";
     }
@@ -424,14 +446,12 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
   // ==========================================
   // 📱 PERFECT MOBILE UI 
   // ==========================================
-  
   const renderMobileUserSelection = () => {
     if (!isOpen) return null;
     const filteredUsers = getFilteredUsers();
     
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: '#0b1120', color: 'white', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-        {/* Header - Fixed Height */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: '#f8fafc' }}>Select Users</h2>
@@ -442,34 +462,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           </Button>
         </div>
 
-        {/* Guest Toggle Row */}
-        <div style={{ padding: '16px 16px 0 16px', flexShrink: 0 }}>
-          <div 
-            onClick={() => {
-              setIsGlobalGuest(!isGlobalGuest);
-              if (!isGlobalGuest) setSelectedUserIds([]);
-            }}
-            style={{
-              display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px",
-              backgroundColor: isGlobalGuest ? "rgba(59,130,246,0.15)" : "#0f172a",
-              border: isGlobalGuest ? "1px solid rgba(59,130,246,0.3)" : "1px solid #1e293b",
-              cursor: 'pointer'
-            }}
-          >
-            <Checkbox checked={isGlobalGuest} onCheckedChange={(checked) => {
-              setIsGlobalGuest(!!checked);
-              if (checked) setSelectedUserIds([]);
-            }} onClick={e => e.stopPropagation()} style={{ borderColor: '#64748b' }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: "15px", color: isGlobalGuest ? '#fff' : '#e2e8f0' }}>Global Guest View</div>
-              <div style={{ fontSize: "13px", color: "#64748b" }}>Apply layout to all non-logged in users</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Body - Flex 1 & Hidden Overflow */}
-        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: isGlobalGuest ? 0.5 : 1, pointerEvents: isGlobalGuest ? 'none' : 'auto' }}>
-          {/* Search Row */}
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexShrink: 0 }}>
             <Input
               placeholder="Search users..."
@@ -482,7 +475,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             </Button>
           </div>
 
-          {/* List Area */}
           <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 12, backgroundColor: '#0f172a', padding: 8 }}>
             {filteredUsers.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#64748b", fontSize: 14 }}>No users found</div>
@@ -512,14 +504,13 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           </div>
         </div>
 
-        {/* Footer - Fixed Bottom */}
         <div style={{ padding: '16px 20px', borderTop: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>
-            {isGlobalGuest ? 'Global Guest selected' : `${selectedUserIds.length} selected`}
+            {selectedUserIds.length} selected
           </div>
           <Button
             onClick={() => setShowColumnEditor(true)}
-            disabled={!isGlobalGuest && selectedUserIds.length === 0}
+            disabled={selectedUserIds.length === 0}
             style={{ backgroundColor: '#2563eb', color: 'white', borderRadius: 8, height: 44, padding: '0 24px', fontWeight: 600 }}
           >
             Next <ArrowRight style={{ width: '16px', height: '16px', marginLeft: '8px' }} />
@@ -534,8 +525,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: '#0b1120', color: 'white', display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-        
-        {/* Header - Fixed */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Button variant="ghost" onClick={() => setShowColumnEditor(false)} style={{ padding: 0, height: 36, width: 36, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)' }}>
             <ArrowLeft style={{ width: '20px', height: '20px', color: '#cbd5e1' }} />
@@ -547,20 +536,15 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           </div>
         </div>
 
-        {/* Body - Flex 1 & Hidden Overflow - Vertically Stacked to prevent squishing */}
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
-          
-          {selectedUserIds.length > 1 && !isGlobalGuest && (
+          {selectedUserIds.length > 1 && (
             <div style={{ padding: '12px', borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', fontSize: 13, display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                <Users style={{ width: '20px', height: '20px', flexShrink: 0 }} />
                <span>Applying layout to <strong>{selectedUserIds.length}</strong> users.</span>
             </div>
           )}
 
-          {/* DndProvider wraps the scrollable areas */}
           <DndProvider backend={HTML5Backend}>
-            
-            {/* Visible Columns Box (Takes half height) */}
             <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 50%', minHeight: '300px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexShrink: 0 }}>
                 <Eye style={{ width: '18px', height: '18px', color: '#60a5fa' }} />
@@ -577,14 +561,33 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
               </div>
             </div>
 
-            {/* Hidden Columns Box (Takes half height) */}
             <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 50%', minHeight: '300px' }}>
                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <EyeOff style={{ width: '18px', height: '18px', color: '#64748b' }} />
                   <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#cbd5e1' }}>Hidden ({currentHidden.length})</h3>
                 </div>
-                {isLoadingBackend && <Loader2 style={{ width: '16px', height: '16px', color: '#60a5fa', animation: 'spin 1s linear infinite' }} />}
+                <>
+  <style>
+    {`
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+
+  {isLoadingBackend && (
+    <Loader2
+      style={{
+        width: '16px',
+        height: '16px',
+        color: '#60a5fa',
+        animation: 'spin 1s linear infinite'
+      }}
+    />
+  )}
+</>
               </div>
               <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: 8 }}>
                 {currentHidden.map((col, i) => (
@@ -596,17 +599,15 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
                 {!isLoadingBackend && currentHidden.length === 0 && <div style={{ textAlign: "center", color: "#64748b", padding: "20px 0", fontSize: 14 }}>All columns are visible.</div>}
               </div>
             </div>
-
           </DndProvider>
         </div>
 
-        {/* Footer - Fixed Bottom */}
         <div style={{ padding: '16px 20px', borderTop: '1px solid #1e293b', backgroundColor: 'rgba(15,23,42,0.95)', display: 'flex', gap: 12, flexShrink: 0, paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <Button variant="outline" onClick={onClose} style={{ flex: 1, backgroundColor: '#1e293b', borderColor: '#334155', color: 'white', height: 44, borderRadius: 8 }}>
             Cancel
           </Button>
-          <Button onClick={() => handleSave(isGlobalGuest ? { type: "global_guest" } : { type: "specific_users", userIds: selectedUserIds })} style={{ flex: 2, backgroundColor: '#2563eb', color: 'white', height: 44, borderRadius: 8, fontWeight: 600 }}>
-            Save Layout
+          <Button disabled={isSaving} onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })} style={{ flex: 2, backgroundColor: '#2563eb', color: 'white', height: 44, borderRadius: 8, fontWeight: 600 }}>
+            {isSaving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Layout"}
           </Button>
         </div>
       </div>
@@ -629,77 +630,54 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
               Select one or more users to apply column settings.
             </div>
           </DialogHeader>
-
-          <div 
-            onClick={() => {
-              setIsGlobalGuest(!isGlobalGuest);
-              if (!isGlobalGuest) setSelectedUserIds([]);
-            }}
-            style={{
-              display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px", cursor: "pointer",
-              backgroundColor: isGlobalGuest ? "var(--muted)" : "transparent", transition: "background 0.2s",
-              border: isGlobalGuest ? "1px solid var(--primary)" : "1px solid var(--border)", marginBottom: "12px"
-            }}
-          >
-            <Checkbox checked={isGlobalGuest} onCheckedChange={(checked) => {
-              setIsGlobalGuest(!!checked);
-              if (checked) setSelectedUserIds([]);
-            }} onClick={e => e.stopPropagation()} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: "14px" }}>Global Guest View</div>
-              <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>Apply layout to all unauthenticated guests</div>
-            </div>
-          </div>
           
-          <div style={{ opacity: isGlobalGuest ? 0.5 : 1, pointerEvents: isGlobalGuest ? 'none' : 'auto' }}>
-            <div className="flex gap-2 items-center mb-2">
-              <Input
-                placeholder="Search by name or email..."
-                value={userSearch}
-                onChange={e => setUserSearch(e.target.value)}
-                className="flex-1"
-              />
-              <Button variant="outline" size="sm" onClick={handleSelectAllUsers}>
-                {filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
-              </Button>
-            </div>
-
-            <ScrollArea style={{ height: "18rem", width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "8px", overflowY: "auto" }}>
-              {filteredUsers.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted-foreground)" }}>No users found</div>
-              ) : (
-                filteredUsers.map(user => {
-                  const isSelected = selectedUserIds.includes(user.id);
-                  return (
-                    <div
-                      key={user.id}
-                      onClick={() => handleToggleUser(user.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "8px", cursor: "pointer",
-                        backgroundColor: isSelected ? "var(--muted)" : "transparent", transition: "background 0.2s"
-                      }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)"; }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</div>
-                        <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{user.email}</div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </ScrollArea>
+          <div className="flex gap-2 items-center mb-2">
+            <Input
+              placeholder="Search by name or email..."
+              value={userSearch}
+              onChange={e => setUserSearch(e.target.value)}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm" onClick={handleSelectAllUsers}>
+              {filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id)) ? "Deselect All" : "Select All"}
+            </Button>
           </div>
+
+          <ScrollArea style={{ height: "18rem", width: "100%", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "8px", overflowY: "auto" }}>
+            {filteredUsers.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted-foreground)" }}>No users found</div>
+            ) : (
+              filteredUsers.map(user => {
+                const isSelected = selectedUserIds.includes(user.id);
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => handleToggleUser(user.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "8px", cursor: "pointer",
+                      backgroundColor: isSelected ? "var(--muted)" : "transparent", transition: "background 0.2s"
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)"; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</div>
+                      <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{user.email}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </ScrollArea>
 
           <DialogFooter className="flex justify-between sm:justify-between w-full mt-4">
              <div className="text-sm text-muted-foreground self-center">
-                {isGlobalGuest ? 'Global Guest selected' : `${selectedUserIds.length} user${selectedUserIds.length !== 1 ? 's' : ''} selected`}
+                {selectedUserIds.length} user{selectedUserIds.length !== 1 && 's'} selected
              </div>
             <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
               <Button variant="ghost" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
-              <Button onClick={() => setShowColumnEditor(true)} disabled={!isGlobalGuest && selectedUserIds.length === 0} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Next</Button>
+              <Button onClick={() => setShowColumnEditor(true)} disabled={selectedUserIds.length === 0} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Next</Button>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -720,14 +698,14 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             </div>
           </DialogHeader>
 
-          {lastUserSummary && (isGlobalGuest || selectedUserIds.length === 1) && (
+          {lastUserSummary && selectedUserIds.length === 1 && (
             <div className="mb-2 p-2 border rounded bg-muted/30 text-sm text-muted-foreground">
-              <strong>Last changes for this layout:</strong>
+              <strong>Last changes for this user:</strong>
               <div className="line-clamp-2">{lastUserSummary}</div>
             </div>
           )}
 
-          {selectedUserIds.length > 1 && !isGlobalGuest && (
+          {selectedUserIds.length > 1 && (
             <div className="mb-2 p-2 border rounded bg-blue-50/50 text-blue-800 text-sm flex items-center gap-2">
                <Users className="w-4 h-4" />
                <span>You are applying this layout to <strong>{selectedUserIds.length}</strong> users at once.</span>
@@ -737,7 +715,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           <DndProvider backend={HTML5Backend}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", paddingTop: "10px", flex: 1, overflow: "hidden" }}>
               
-              {/* Visible Columns */}
               <Card style={{ padding: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <CardHeader>
                   <CardTitle style={{ display: "flex", alignItems: "center", gap: "8px" }}><Eye className="w-5 h-5" /> Visible ({currentVisible.length})</CardTitle>
@@ -753,7 +730,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
                 </CardContent>
               </Card>
 
-              {/* Hidden Columns */}
               <Card style={{ padding: "12px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <CardHeader style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <CardTitle style={{ display: "flex", alignItems: "center", gap: "16px", padding: "4px 0" }}><EyeOff className="w-5 h-5" /> Hidden ({currentHidden.length})</CardTitle>
@@ -777,7 +753,44 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             <Button variant="ghost" onClick={() => setShowColumnEditor(false)}><ArrowLeft className="w-4 h-4 mr-2" /> Back to Users</Button>
             <div style={{ display: "flex", gap: "8px" }}>
               <Button variant="outline" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
-              <Button onClick={() => handleSave(isGlobalGuest ? { type: "global_guest" } : { type: "specific_users", userIds: selectedUserIds })} style={{ minWidth: "140px", padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Save for {getUserLabel()}</Button>
+             <>
+  <style>
+    {`
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}
+  </style>
+
+  <Button
+    disabled={isSaving}
+    onClick={() =>
+      handleSave({ type: "specific_users", userIds: selectedUserIds })
+    }
+    style={{
+      minWidth: "140px",
+      padding: "8px 16px",
+      fontSize: "14px",
+      borderRadius: "6px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }}
+  >
+    {isSaving ? (
+      <Loader2
+        style={{
+          width: "16px",
+          height: "16px",
+          animation: "spin 1s linear infinite"
+        }}
+      />
+    ) : (
+      `Save for ${getUserLabel()}`
+    )}
+  </Button>
+</>
             </div>
           </DialogFooter>
 
