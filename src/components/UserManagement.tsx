@@ -97,8 +97,13 @@ const APP_RESOURCES = [
   "Search ML by EventCode",
   "Search New Media for Person Event",
   "Search New Media Extensively",
-  "ML Summary by event code"
-  
+  "ML Summary by event code",
+  "PS",
+  "SU",
+  "Dyatra Satsangs",
+  "GM (PPG Approved)",
+  "Prasangik Udbodhan",
+  "Nemiji Sessions"
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";
