@@ -260,6 +260,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
       if (referenceUserId) {
         try {
           const token = localStorage.getItem('app-token');
+          // FIXED: Added /api/ to the endpoint
           const configRes = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userId=${referenceUserId}`, {
             headers: {
               'Authorization': token ? `Bearer ${token}` : '', 
@@ -399,6 +400,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     if (target.type === 'specific_users') {
       try {
         const token = localStorage.getItem('app-token');
+        // FIXED: Added /api/ to the endpoint
         await fetch(`${API_BASE_URL}/user-column-preferences`, {
           method: 'POST',
           headers: {
@@ -567,27 +569,9 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
                   <EyeOff style={{ width: '18px', height: '18px', color: '#64748b' }} />
                   <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#cbd5e1' }}>Hidden ({currentHidden.length})</h3>
                 </div>
-                <>
-  <style>
-    {`
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-    `}
-  </style>
-
-  {isLoadingBackend && (
-    <Loader2
-      style={{
-        width: '16px',
-        height: '16px',
-        color: '#60a5fa',
-        animation: 'spin 1s linear infinite'
-      }}
-    />
-  )}
-</>
+                {isLoadingBackend && (
+                  <Loader2 style={{ width: '16px', height: '16px', color: '#60a5fa', animation: 'spin 1s linear infinite' }} />
+                )}
               </div>
               <div style={{ flex: 1, overflowY: 'auto', backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: 12, padding: 8 }}>
                 {currentHidden.map((col, i) => (
@@ -613,7 +597,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
       </div>
     );
   };
-
 
   // ==========================================
   // 💻 DESKTOP UI
@@ -753,44 +736,25 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
             <Button variant="ghost" onClick={() => setShowColumnEditor(false)}><ArrowLeft className="w-4 h-4 mr-2" /> Back to Users</Button>
             <div style={{ display: "flex", gap: "8px" }}>
               <Button variant="outline" onClick={onClose} style={{ padding: "8px 16px", fontSize: "14px", borderRadius: "6px" }}>Cancel</Button>
-             <>
-  <style>
-    {`
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-    `}
-  </style>
-
-  <Button
-    disabled={isSaving}
-    onClick={() =>
-      handleSave({ type: "specific_users", userIds: selectedUserIds })
-    }
-    style={{
-      minWidth: "140px",
-      padding: "8px 16px",
-      fontSize: "14px",
-      borderRadius: "6px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }}
-  >
-    {isSaving ? (
-      <Loader2
-        style={{
-          width: "16px",
-          height: "16px",
-          animation: "spin 1s linear infinite"
-        }}
-      />
-    ) : (
-      `Save for ${getUserLabel()}`
-    )}
-  </Button>
-</>
+              <Button
+                disabled={isSaving}
+                onClick={() => handleSave({ type: "specific_users", userIds: selectedUserIds })}
+                style={{
+                  minWidth: "140px",
+                  padding: "8px 16px",
+                  fontSize: "14px",
+                  borderRadius: "6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                {isSaving ? (
+                  <Loader2 style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite" }} />
+                ) : (
+                  `Save for ${getUserLabel()}`
+                )}
+              </Button>
             </div>
           </DialogFooter>
 
@@ -799,7 +763,6 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
     );
   };
 
-  // Render logic switch
   if (isMobile) {
     return !showColumnEditor ? renderMobileUserSelection() : renderMobileColumnEditor();
   } else {

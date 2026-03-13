@@ -1,4 +1,3 @@
-
 /// <reference types="vite/client" />
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -409,6 +408,40 @@ export function ClickUpListViewUpdated({
       return [];
     })()
   );
+
+  // 🚀 NEW: Fetch User Layout from Google Sheets DB on load
+  useEffect(() => {
+    const fetchUserColumnLayout = async () => {
+      if (!user?.id || !viewId) return;
+      
+      try {
+        const token = localStorage.getItem('app-token');
+        const res = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userId=${user.id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          
+          // If the database has saved preferences for this user, apply them!
+          if (data.visible && Array.isArray(data.visible) && data.visible.length > 0) {
+             setColumnOrder(data.visible); 
+          }
+          if (data.hidden && Array.isArray(data.hidden)) {
+             setHiddenColumns(data.hidden);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load user column preferences from DB", error);
+      }
+    };
+
+    fetchUserColumnLayout();
+  }, [viewId, user?.id, setColumnOrder, setHiddenColumns]);
   
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 
