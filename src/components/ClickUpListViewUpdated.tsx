@@ -378,15 +378,15 @@ export function ClickUpListViewUpdated({
   const activeViewFilters = useMemo(() => currentView?.filters || {}, [currentView]);
   const effectiveApiEndpoint = currentView?.apiEndpoint || apiEndpoint;
 
-  const getLayoutKeys = (userId?: string | null) => {
-    const prefix = userId ? `user-${userId}-view-${viewId}` : `global-view-${viewId}`;
+ const getLayoutKeys = (userName?: string | null) => {
+    const prefix = userName ? `user-${userName}-view-${viewId}` : `global-view-${viewId}`;
     return { orderKey: `column-order-${prefix}`, hiddenKey: `hidden-columns-${prefix}` };
   };
 
   const [columnOrder, setColumnOrder] = useLocalStorageState<string[]>(
-    getLayoutKeys(user?.id).orderKey,
+    getLayoutKeys(user?.name).orderKey,
     (() => {
-      const userKeys = getLayoutKeys(user?.id);
+      const userKeys = getLayoutKeys(user?.name);
       const guestKeys = getLayoutKeys();
       const userOrder = localStorage.getItem(userKeys.orderKey);
       if (userOrder) return JSON.parse(userOrder) as string[];
@@ -397,9 +397,9 @@ export function ClickUpListViewUpdated({
   );
 
   const [hiddenColumns, setHiddenColumns] = useLocalStorageState<string[]>(
-    getLayoutKeys(user?.id).hiddenKey,
+    getLayoutKeys(user?.name).hiddenKey,
     (() => {
-      const userKeys = getLayoutKeys(user?.id);
+      const userKeys = getLayoutKeys(user?.name);
       const guestKeys = getLayoutKeys();
       const userHidden = localStorage.getItem(userKeys.hiddenKey);
       if (userHidden) return JSON.parse(userHidden) as string[];
@@ -409,14 +409,14 @@ export function ClickUpListViewUpdated({
     })()
   );
 
-  // 🚀 NEW: Fetch User Layout from Google Sheets DB on load
+  // 🚀 FETCH USING USER NAME
   useEffect(() => {
     const fetchUserColumnLayout = async () => {
-      if (!user?.id || !viewId) return;
+      if (!user?.name || !viewId) return;
       
       try {
         const token = localStorage.getItem('app-token');
-        const res = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userId=${user.id}`, {
+        const res = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userName=${user.name}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -426,8 +426,6 @@ export function ClickUpListViewUpdated({
 
         if (res.ok) {
           const data = await res.json();
-          
-          // If the database has saved preferences for this user, apply them!
           if (data.visible && Array.isArray(data.visible) && data.visible.length > 0) {
              setColumnOrder(data.visible); 
           }
@@ -441,7 +439,7 @@ export function ClickUpListViewUpdated({
     };
 
     fetchUserColumnLayout();
-  }, [viewId, user?.id, setColumnOrder, setHiddenColumns]);
+  }, [viewId, user?.name, setColumnOrder, setHiddenColumns]);
   
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 

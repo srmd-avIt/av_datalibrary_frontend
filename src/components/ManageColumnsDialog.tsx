@@ -322,7 +322,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
   const handleSelectAllUsers = () => {
     const filtered = getFilteredUsers();
-    const filteredIds = filtered.map(u => u.id);
+    const filteredIds = filtered.map(u => u.name);
     const allSelected = filteredIds.every(id => selectedUserIds.includes(id));
 
     if (allSelected) {
@@ -409,7 +409,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
           },
           body: JSON.stringify({
             viewId,
-            userIds: target.userIds,
+            userNames: target.userIds, // <-- Changed this key to match backend
             visibleKeys,
             hiddenKeys,
             summaryText
@@ -440,7 +440,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
 
   const getUserLabel = () => {
     if (selectedUserIds.length === 1) {
-      return users.find(u => u.id === selectedUserIds[0])?.name || "User";
+      return users.find(u => u.name === selectedUserIds[0])?.name || "User";
     }
     return `${selectedUserIds.length} Users`;
   };
@@ -482,11 +482,11 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
               <div style={{ textAlign: "center", padding: "40px 0", color: "#64748b", fontSize: 14 }}>No users found</div>
             ) : (
               filteredUsers.map(user => {
-                const isSelected = selectedUserIds.includes(user.id);
+                const isSelected = selectedUserIds.includes(user.name);
                 return (
                   <div
                     key={user.id}
-                    onClick={() => handleToggleUser(user.id)}
+                    onClick={() => handleToggleUser(user.name)}
                     style={{
                       display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "8px",
                       backgroundColor: isSelected ? "rgba(59,130,246,0.15)" : "transparent",
@@ -494,7 +494,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
                       marginBottom: 4, cursor: 'pointer'
                     }}
                   >
-                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} style={{ borderColor: '#64748b' }} />
+                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.name)} onClick={e => e.stopPropagation()} style={{ borderColor: '#64748b' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: "15px", color: isSelected ? '#fff' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
                       <div style={{ fontSize: "13px", color: "#64748b", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
@@ -631,11 +631,11 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
               <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted-foreground)" }}>No users found</div>
             ) : (
               filteredUsers.map(user => {
-                const isSelected = selectedUserIds.includes(user.id);
+                const isSelected = selectedUserIds.includes(user.name);
                 return (
                   <div
                     key={user.id}
-                    onClick={() => handleToggleUser(user.id)}
+                    onClick={() => handleToggleUser(user.name)}
                     style={{
                       display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "8px", cursor: "pointer",
                       backgroundColor: isSelected ? "var(--muted)" : "transparent", transition: "background 0.2s"
@@ -643,7 +643,7 @@ export const ManageColumnsDialog: React.FC<ManageColumnsDialogProps> = ({
                     onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = "var(--muted-hover)"; }}
                     onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
                   >
-                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.id)} onClick={e => e.stopPropagation()} />
+                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleUser(user.name)} onClick={e => e.stopPropagation()} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</div>
                       <div style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{user.email}</div>
