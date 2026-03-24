@@ -46,6 +46,7 @@
             "google-auth-library": "^10.3.0",
             "input-otp": "^1.4.2",
             "lucide-react": "^0.487.0",
+            "mediainfo.js": "^0.3.7",
             "motion": "*",
             "music-metadata-browser": "^2.5.11",
             "next-themes": "^0.4.6",
@@ -65,7 +66,8 @@
             "tailwind-merge": "*",
             "vaul": "^1.1.2",
             "vite-plugin-pwa": "^1.0.3",
-            "workbox-window": "^7.3.0"
+            "workbox-window": "^7.3.0",
+            "xlsx": "^0.18.5"
       },
       "devDependencies": {
             "@testing-library/jest-dom": "^6.9.1",

@@ -103,7 +103,8 @@ const APP_RESOURCES = [
   "Dyatra Satsangs",
   "GM (PPG Approved)",
   "Prasangik Udbodhan",
-  "Nemiji Sessions"
+  "Nemiji Sessions",
+  "Submission & Que Sheet"
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";

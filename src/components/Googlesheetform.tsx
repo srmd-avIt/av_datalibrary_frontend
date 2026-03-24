@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -8,13 +9,13 @@ import {
   Sparkles, Layers, Plus, ListChecks, Trash2, UploadCloud, 
   CheckSquare, Square, Inbox, Pencil, X, MessageSquare, Send, Eye, RotateCcw,
   AlertCircle, XCircle, ChevronDown, ChevronRight, CheckCircle2, ListFilter, Loader2,
-  AtSign, CornerUpLeft, FileSearch, Lock, RefreshCw,
+  AtSign, CornerUpLeft, FileSearch, Lock, RefreshCw, Download,
   // Hub Icons
   Layout, Wand2, Video, FileText, ArrowRight, ArrowLeft,
   // New Icons for Table View
   TableProperties, LayoutList, Grip, GripVertical,
   // Submitters ML Icons
-  Users, Search, SearchCheck, ListTree
+  Users, Search, SearchCheck, ListTree, Link as LinkIcon
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -28,6 +29,7 @@ import { SearchNewMLEventCode } from "./SearchNewMLEventCode";
 import { SearchDetailsByMLID } from "./SearchDetailsByMLID";
 import { MLSummaryByEventCode } from "./MLSummaryByEventCode";
 import { SearchNewMediaExtensively } from "./SearchNewMediaExtensively";
+import { ProjectHubWorkflow } from "./ProjectHubWorkflow";
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL;
 const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
@@ -54,6 +56,7 @@ const TABLE_COLUMNS = [
   { id: 'Yr', label: 'Year', width: 60 },
   { id: 'NewEventCategory', label: 'Event Category', width: 140 },
   { id: 'RecordingName', label: 'Recording Name', width: 250 },
+  { id: 'Detail', label: 'Detail', width: 200 },
   { id: 'Duration', label: 'Duration', width: 80 },
   { id: 'Filesize', label: 'File Size', width: 90 },
   { id: 'FilesizeInBytes', label: 'Bytes', width: 100 },
@@ -74,7 +77,21 @@ const TABLE_COLUMNS = [
   { id: 'SatsangEnd', label: 'Satsang End', width: 80 },
   { id: 'fkCity', label: 'City', width: 120 },
   { id: 'SubDuration', label: 'Sub Duration', width: 100 },
-  { id: 'Detail', label: 'Detail', width: 200 },
+  
+  { id: 'Remarks', label: 'Remarks', width: 200 },
+];
+
+const BATCH_TABLE_COLUMNS = [
+  { id: 'MLUniqueID', label: 'ML Unique ID', width: 130, sticky: true, left: 40 },
+  { id: 'fkGranth', label: 'Granth', width: 120 },
+  { id: 'Number', label: 'Patrank', width: 100 },
+  { id: 'Topic', label: 'Topic', width: 180 },
+  { id: 'ContentFrom', label: 'Date From', width: 100 },
+  { id: 'SatsangStart', label: 'Satsang Start', width: 100 },
+  { id: 'SatsangEnd', label: 'Satsang End', width: 100 },
+  { id: 'fkCity', label: 'City', width: 120 },
+  { id: 'SubDuration', label: 'Sub Duration', width: 100 },
+  { id: 'Detail', label: 'Detail', width: 250 },
   { id: 'Remarks', label: 'Remarks', width: 200 },
 ];
 
@@ -163,19 +180,21 @@ const mapSheetRowToQueueItem = (row: any) => {
         return "";
     };
 
-    const recCode = getVal(['Recording Code', 'RecordingCode']);
-    const idFromCode = recCode ? parseInt(recCode.replace(/\D/g, '')) : NaN;
+    const recCode = String(getVal(['Recording Code', 'RecordingCode']) || '').trim();
+    const mlId = String(getVal(['ML Unique ID', 'MLUniqueID']) || '').trim();
+    
+    const uniqueId = (recCode && mlId) ? `${recCode}_${mlId}` : (recCode || Math.random().toString(36).substring(2, 9));
     
     return {
-        _id: idFromCode || Math.floor(Math.random() * 100000000),
+        _id: uniqueId,
         _status: status,
-        QcStatus: getVal(['QC Status', 'QcStatus']), // Fixed to retain original status
+        QcStatus: getVal(['QC Status', 'QcStatus']), 
         fkEventCode: getVal(['Event Code', 'fkEventCode']), 
         EventName: getVal(['Event Name', 'EventName', 'Recording Name', 'RecordingName']), 
         Yr: getVal(['Year', 'Yr']), 
         NewEventCategory: getVal(['Digital Master Category', 'NewEventCategory', 'fkDigitalMasterCategory']),
         RecordingName: getVal(['Recording Name', 'RecordingName']),
-        RecordingCode: getVal(['Recording Code', 'RecordingCode']),
+        RecordingCode: recCode,
         Duration: getVal(['Duration']),
         Filesize: getVal(['File Size', 'Filesize']),
         FilesizeInBytes: getVal(['File Size (Bytes)', 'FilesizeInBytes']),
@@ -186,12 +205,22 @@ const mapSheetRowToQueueItem = (row: any) => {
         Masterquality: getVal(['Master Quality', 'Masterquality']),
         PreservationStatus: getVal(['Preservation Status', 'PreservationStatus']) || "Pending",
         RecordingRemarks: getVal(['Recording Remarks', 'RecordingRemarks']),
-        MLUniqueID: getVal(['ML Unique ID', 'MLUniqueID']),
+        MLUniqueID: mlId,
+        
+        fkGranth: getVal(['fkGranth', 'Granth']),
+        Number: getVal(['Number', 'Patrank']),
+        Topic: getVal(['Topic']),
+        ContentFrom: getVal(['Date From', 'ContentFrom']),
+        SatsangStart: getVal(['Satsang Start', 'SatsangStart']),
+        SatsangEnd: getVal(['Satsang End', 'SatsangEnd']),
+        fkCity: getVal(['City', 'fkCity']),
+        SubDuration: getVal(['Sub Duration', 'SubDuration']),
+        Detail: getVal(['Detail']),
+        Remarks: getVal(['Remarks']),
+        
         AudioWAVDRCode: getVal(['Audio WAV DR Code', 'AudioWAVDRCode']),
         AudioMP3DRCode: getVal(['Audio MP3 DR Code', 'AudioMP3DRCode']),
         comments: parseLogchats(getVal(['Logchats'])),
-        Detail: getVal(['Detail']),
-        Remarks: getVal(['Remarks']),
         LastModifiedBy: getVal(['Last Modified By', 'LastModifiedBy'])
     };
 };
@@ -233,7 +262,7 @@ const styles = {
   }),
   mainContainer: { display: "grid", gap: "20px", width: "100%", maxWidth: "1920px", margin: "0 auto", flex: 1, minHeight: 0, transition: "all 0.3s ease" },
   columnScroll: { height: "100%", overflowY: "auto" as "auto", paddingRight: "8px", paddingBottom: "100px" },
-  unifiedCard: (isCompact: boolean) => ({ background: "rgba(30, 41, 59, 0.7)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: isCompact ? "16px" : "24px", width: "100%", boxShadow: "0 20px 40px -12px rgba(0, 0, 0, 0.5)", transition: "padding 0.3s ease" }),
+  unifiedCard: (isCompact: boolean) => ({ background: "rgba(30, 41, 59, 0.7)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: isCompact ? "16px" : "24px", width: "100%", boxShadow: "0 20px 40px -12px rgba(0, 0, 0, 0.5)", transition: "padding 0.3s ease", display: "flex", flexDirection: "column" as "column" }),
   queueCard: (isCompact: boolean) => ({ background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", padding: isCompact ? "16px" : "20px", width: "100%", transition: "padding 0.3s ease", display: "flex", flexDirection: "column" as "column" }),
   commentCard: { background: "#0f172a", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column" as "column", height: "100%", overflow: "hidden", boxShadow: "-10px 0 30px rgba(0,0,0,0.3)" },
   queueItem: (isActive: boolean, isEditing: boolean) => ({ background: isEditing ? "rgba(245, 158, 11, 0.1)" : isActive ? "linear-gradient(90deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05))" : "rgba(30, 41, 59, 0.4)", borderLeft: isEditing ? "4px solid #f59e0b" : isActive ? "4px solid #3b82f6" : "4px solid transparent", border: "1px solid rgba(255,255,255,0.05)", borderLeftWidth: "4px", borderRadius: "8px", padding: "12px 14px", marginBottom: "8px", cursor: "pointer", transition: "all 0.2s ease" }),
@@ -268,8 +297,19 @@ const styles = {
     }
     return { display: "flex", alignItems: "center", gap: 5, fontSize: "0.65rem", fontWeight: "700", textTransform: "uppercase" as "uppercase", background: bg, color: color, border: `1px solid ${border}`, padding: "2px 8px", borderRadius: "100px", cursor: "pointer", transition: "all 0.2s" };
   },
-  groupTitle: (status: string, isActive: boolean) => ({ color: status === 'complete' ? '#34d399' : status === 'revision' ? '#60a5fa' : status === 'inwarding' ? '#f59e42' : status === 'submission_confirmed' ? '#24fbf0' : '#f87171', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' as 'uppercase', marginTop: 20, marginBottom: 10, padding: "8px 5px", display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isActive ? 1 : 0.7, transition: "opacity 0.2s" }),
-  tableHeader: { padding: '12px 6px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' as 'uppercase', color: '#94a3b8', background: 'rgba(30, 41, 59, 0.95)', position: 'sticky' as 'sticky', top: 0, zIndex: 10, whiteSpace: 'nowrap' as 'nowrap', borderBottom: '2px solid rgba(255,255,255,0.08)', userSelect: 'none' as 'none' },
+  
+  groupTitle: (key: string, isActive: boolean) => {
+      let color = '#3b82f6';
+      if (key === 'complete') color = '#34d399';
+      if (key === 'revision') color = '#60a5fa';
+      if (key === 'inwarding') color = '#f59e42';
+      if (key === 'submission_confirmed') color = '#24fbf0';
+      if (key === 'incomplete') color = '#f87171';
+      
+      return { color, fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' as 'uppercase', marginTop: 20, marginBottom: 10, padding: "8px 5px", display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isActive ? 1 : 0.7, transition: "opacity 0.2s" }
+  },
+  // Update header height to 40px strictly for vertical sticky calculation
+  tableHeader: { height: '40px', padding: '0 10px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' as 'uppercase', color: '#94a3b8', background: 'rgba(30, 41, 59, 0.95)', position: 'sticky' as 'sticky', top: 0, zIndex: 20, whiteSpace: 'nowrap' as 'nowrap', borderBottom: '2px solid rgba(255,255,255,0.08)', userSelect: 'none' as 'none' },
   tableCell: { padding: '8px 10px', fontSize: '0.8rem', color: '#e2e8f0', borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' as 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'ellipsis' },
   tableRow: (isActive: boolean) => ({ background: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent', cursor: 'pointer', transition: 'background 0.2s' })
 };
@@ -320,14 +360,13 @@ const SearchableSelect = ({ label, name, options, value, onChange, theme, requir
 };
 
 // ============================================================================
-// --- NEW COMPONENT: SubmittersMLHub ---
+// --- COMPONENT: SubmittersMLHub ---
 // ============================================================================
 const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
   const { user } = useAuth();
-  const { width: windowWidth } = useWindowSize(); // <-- ADDED for mobile detection
-  const isMobile = windowWidth < 768; // <-- ADDED for mobile detection
+  const { width: windowWidth } = useWindowSize(); 
+  const isMobile = windowWidth < 768; 
   
-  // Base configuration of tabs with their required permissions
   const allTabs = useMemo(() => [
     { id: "check-ml-reference", label: "Check ML Reference", icon: CheckSquare, permissionKey: "Check ML Reference" },
     { id: "search-new-ml-event-code", label: "Search ML by EventCode", icon: Search, permissionKey: "Search ML by EventCode" },
@@ -336,24 +375,19 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
     { id: "ML Summary by event code", label: "ML Summary by event code", icon: ListTree, permissionKey: "ML Summary by event code" }
   ], []);
 
-  // Filter tabs based on RBAC
   const visibleTabs = useMemo(() => {
     if (!user) return [];
     if (user.role === "Owner" || user.role === "Admin") return allTabs;
-    
-    // Create a Set of permission strings the user has read/write access to
     const permittedResources = new Set(
       (user.permissions || [])
         .filter(p => p.actions.includes("read") || p.actions.includes("write"))
         .map(p => p.resource)
     );
-    
     return allTabs.filter(tab => permittedResources.has(tab.permissionKey));
   }, [user, allTabs]);
 
   const [activeTab, setActiveTab] = useState<string>(visibleTabs.length > 0 ? visibleTabs[0].id : "");
 
-  // Ensure active tab is valid if visibleTabs changes
   useEffect(() => {
     if (visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) {
         setActiveTab(visibleTabs[0].id);
@@ -362,7 +396,6 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
       <div style={styles.header(false)}>
         <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' }}>
             <button 
@@ -379,24 +412,16 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
         </div>
       </div>
 
-      {/* Main Container - Stacked Vertically */}
       <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: "16px", marginTop: "10px", overflow: "hidden" }}>
         {visibleTabs.length > 0 ? (
           <>
-            {/* Top Navigation Tabs - Fixed for Mobile */}
           <div 
               style={{ 
-                display: "flex", 
-                flexDirection: "row", 
-                gap: isMobile ? "8px" : "4px", // Reduced gap for laptop          
-                overflowX: "auto", 
-                padding: isMobile ? "0 10px 12px 10px" : "0 4px 8px 4px", 
-                justifyContent: "flex-start", // Changed to flex-start to prevent cutoff bug
-                flexShrink: 0,
-                WebkitOverflowScrolling: "touch",
-                width: "100%"
+                display: "flex", flexDirection: "row", gap: isMobile ? "8px" : "4px", overflowX: "auto", 
+                padding: isMobile ? "0 10px 12px 10px" : "0 4px 8px 4px", justifyContent: "flex-start", 
+                flexShrink: 0, WebkitOverflowScrolling: "touch", width: "100%"
               }} 
-              className="custom-scrollbar" // Allows elegant scrolling if screen is split/tiny
+              className="custom-scrollbar"
             >
               {visibleTabs.map((tab) => (
                 <button
@@ -404,28 +429,15 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
                   onClick={() => setActiveTab(tab.id)}
                   style={{
                     display: "flex", alignItems: "center", gap: "6px",
-                    padding: isMobile ? "10px 16px" : "6px 10px", // Smaller padding for laptop
-                    fontSize: isMobile ? "0.9rem" : "0.75rem",    // Smaller font for laptop
-                    borderRadius: "8px",    
-                    border: "1px solid",
+                    padding: isMobile ? "10px 16px" : "6px 10px", fontSize: isMobile ? "0.9rem" : "0.75rem",
+                    borderRadius: "8px", border: "1px solid",
                     borderColor: activeTab === tab.id ? "rgba(59, 130, 246, 0.5)" : "transparent",
                     background: activeTab === tab.id ? "rgba(59, 130, 246, 0.1)" : "rgba(30, 41, 59, 0.5)",
-                    color: activeTab === tab.id ? "#fff" : "#94a3b8",
-                    cursor: "pointer", transition: "all 0.2s", textAlign: "center",
-                    fontWeight: activeTab === tab.id ? 600 : 500,
-                    whiteSpace: "nowrap",
-                    flexShrink: 0 
+                    color: activeTab === tab.id ? "#fff" : "#94a3b8", cursor: "pointer", transition: "all 0.2s", 
+                    textAlign: "center", fontWeight: activeTab === tab.id ? 600 : 500, whiteSpace: "nowrap", flexShrink: 0 
                   }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== tab.id) {
-                        e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== tab.id) {
-                        e.currentTarget.style.background = "rgba(30, 41, 59, 0.5)";
-                    }
-                  }}
+                  onMouseEnter={(e) => { if (activeTab !== tab.id) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseLeave={(e) => { if (activeTab !== tab.id) e.currentTarget.style.background = "rgba(30, 41, 59, 0.5)"; }}
                 >
                   <tab.icon size={isMobile ? 16 : 14} color={activeTab === tab.id ? "#3b82f6" : "#64748b"} /> 
                   {tab.label}
@@ -433,7 +445,6 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
               ))}
             </div>
 
-            {/* Content Area */}
             <div style={{ flex: 1, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden" }} className="custom-scrollbar">
               {activeTab === "check-ml-reference" && <CheckMLReference />}
               {activeTab === "search-new-ml-event-code" && <SearchNewMLEventCode />}
@@ -467,15 +478,19 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival' | 'submitters_ml'>('hub');
+ const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival' | 'submitters_ml' | 'project_hub_workflow'>('hub');
   
   const [isTableView, setIsTableView] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- NEW: State to control the duplicate recording code modal ---
+  // --- NEW WIZARD STATE ---
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
+  // --- NEW: Multi-Select Table State for new ML additions ---
+  const [selectedMlIds, setSelectedMlIds] = useState<Set<string>>(new Set());
+  const [showMultiAddConfirm, setShowMultiAddConfirm] = useState(false);
+
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
-  
-  // --- NEW: State for Mobile View specific overrides
   const [showMobileForm, setShowMobileForm] = useState(false);
 
   const canViewAudioMerge = useMemo(() => {
@@ -486,7 +501,22 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       (p.actions.includes("read") || p.actions.includes("write"))
     );
   }, [loggedInUser]);
+const canViewProjectHubWorkflow = useMemo(() => {
+  if (!loggedInUser) return false;
+  if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+  return !!loggedInUser.permissions?.some((p: any) => 
+    p.resource === "Project Hub Workflow" && 
+    (p.actions.includes("read") || p.actions.includes("write"))
+  );
+}, [loggedInUser]);
 
+const hasProjectHubWriteAccess = useMemo(() => {
+  if (!loggedInUser) return false;
+  if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+  return !!loggedInUser.permissions?.some((p: any) => 
+    p.resource === "Project Hub Workflow" && p.actions.includes("write")
+  );
+}, [loggedInUser]);
   const canViewWisdomReels = useMemo(() => {
     if (!loggedInUser) return false;
     if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
@@ -499,8 +529,6 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const canViewSubmittersML = useMemo(() => {
     if (!loggedInUser) return false;
     if (loggedInUser.role === "Owner" || loggedInUser.role === "Admin") return true;
-    
-    // 1) Require explicit access to the "Submitters ML" CARD
     return !!loggedInUser.permissions?.some(p => 
         p.resource === "Submitters ML" && 
         (p.actions.includes("read") || p.actions.includes("write"))
@@ -518,14 +546,20 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  const [isGrouped, setIsGrouped] = useState(false); 
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['incomplete', 'revision', 'complete']));
-  const [groupByField, setGroupByField] = useState<string>('_status');
+  const [groupByField, setGroupByField] = useState<string>('RecordingCode');
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 }); 
 
+  // Queue Table Column Widths
   const [colWidths, setColWidths] = useState<{[key: string]: number}>(() => {
     const initial: any = {};
     TABLE_COLUMNS.forEach(col => initial[col.id] = col.width);
+    return initial;
+  });
+
+  // Batch Selection Table Column Widths
+  const [batchColWidths, setBatchColWidths] = useState<{[key: string]: number}>(() => {
+    const initial: any = {};
+    BATCH_TABLE_COLUMNS.forEach(col => initial[col.id] = col.width);
     return initial;
   });
 
@@ -533,22 +567,34 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const [mlIdOptions, setMlIdOptions] = useState<any[]>([]);
   const [userList, setUserList] = useState<{name: string, email: string}[]>([]); 
   
-  // NEW: State for Wisdom Users and Picked Count
   const [wisdomUserList, setWisdomUserList] = useState<{name: string, email: string}[]>([]);
   const [submittersMLUserList, setSubmittersMLUserList] = useState<{name: string, email: string}[]>([]);
   const [wisdomPickedCount, setWisdomPickedCount] = useState(0);
-  const [wisdomTotalCount, setWisdomTotalCount] = useState(0); // Add total count state
+  const [wisdomTotalCount, setWisdomTotalCount] = useState(0);
 
   const [queue, setQueue] = useState<any[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEY); return saved ? JSON.parse(saved) : []; } catch (e) { return []; } });
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
-  const [activeCommentId, setActiveCommentId] = useState<number | null>(null); 
-  const [editingId, setEditingId] = useState<number | null>(null); 
-  const [openStatusDropdown, setOpenStatusDropdown] = useState<number | null>(null); 
+  
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+      try { 
+          const saved = localStorage.getItem(STORAGE_KEY); 
+          const parsedQueue = saved ? JSON.parse(saved) : []; 
+          const defaultGroups = parsedQueue.map((q:any) => q.RecordingCode || 'Uncategorized');
+          return new Set([...defaultGroups, 'incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete']); 
+      } catch (e) { 
+          return new Set(['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete']); 
+      }
+  });
+
+  const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set());
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null); 
+  const [editingId, setEditingId] = useState<string | null>(null); 
+  const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null); 
   const [commentInput, setCommentInput] = useState("");
   const [replyTo, setReplyTo] = useState<any>(null); 
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null); 
+  const [editingCommentId, setEditingCommentId] = useState<string | number | null>(null); 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  
   const activeEntry = queue.find(q => q._id === activeCommentId);
   const isCommentsOpen = !!activeCommentId && !!activeEntry;
 
@@ -561,29 +607,24 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   useEffect(() => { if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: "smooth" }); }, [activeEntry?.comments, activeCommentId]);
 
   useEffect(() => {
-    const handleScroll = () => {
-        if (openStatusDropdown) setOpenStatusDropdown(null);
-    };
+    const handleScroll = () => { if (openStatusDropdown) setOpenStatusDropdown(null); };
     const div = tableContainerRef.current;
     if (div) div.addEventListener('scroll', handleScroll);
     return () => { if (div) div.removeEventListener('scroll', handleScroll); };
   }, [openStatusDropdown]);
   
-  useEffect(() => {
-    setOpenStatusDropdown(null);
-  }, [isTableView]);
+  useEffect(() => { setOpenStatusDropdown(null); }, [isTableView]);
 
-  // --- NEW: Fetch ML options dynamically based on selected Event Code ---
   useEffect(() => {
       const fetchMlOptions = async () => {
+          if (!formData.fkEventCode) {
+              setMlIdOptions([]);
+              return;
+          }
           try {
-              const url = formData.fkEventCode
-                  ? `${cleanBaseUrl}/api/ml-unique-id/options?eventCode=${encodeURIComponent(formData.fkEventCode)}`
-                  : `${cleanBaseUrl}/api/ml-unique-id/options`;
+              const url = `${cleanBaseUrl}/api/ml-unique-id/options?eventCode=${encodeURIComponent(formData.fkEventCode)}`;
               const res = await fetch(url);
-              if (res.ok) {
-                  setMlIdOptions(await res.json());
-              }
+              if (res.ok) setMlIdOptions(await res.json());
           } catch (e) {
               console.error("Error fetching ML options:", e);
           }
@@ -591,77 +632,39 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       fetchMlOptions();
   }, [formData.fkEventCode]);
 
-  // Initial Data Fetch & Users
   useEffect(() => {
       const fetchData = async () => {
           try {
-              // Fetch Dropdowns
               const ecRes = await fetch(`${cleanBaseUrl}/api/event-code/options`); 
               if (ecRes.ok) setEventCodeOptions(await ecRes.json());
-          } catch (e) { 
-              console.error(e); 
-          }
+          } catch (e) { console.error(e); }
       }; 
 
       const fetchUsers = async () => {
         try {
             const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/users/mention-list`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                }
-            });
-            if (res.ok) {
-                setUserList(await res.json());
-            }
-        } catch (e) {
-            console.error(e);
-        }
+            const res = await fetch(`${cleanBaseUrl}/api/users/mention-list`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
+            if (res.ok) setUserList(await res.json());
+        } catch (e) { console.error(e); }
       };
 
       const fetchWisdomUsers = async () => {
         try {
             const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/users/wisdom-list`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                }
-            });
-            if (res.ok) {
-                setWisdomUserList(await res.json());
-            } else {
-                 setWisdomUserList([]);
-            }
-        } catch (e) {
-            console.error("Error fetching wisdom users", e);
-        }
+            const res = await fetch(`${cleanBaseUrl}/api/users/wisdom-list`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
+            if (res.ok) setWisdomUserList(await res.json()); else setWisdomUserList([]);
+        } catch (e) { console.error("Error fetching wisdom users", e); }
       };
 
       const fetchSubmittersMLUsers = async () => {
         try {
             const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/users/submitters-ml-list`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                }
-            });
-            if (res.ok) {
-                setSubmittersMLUserList(await res.json());
-            } else {
-                 setSubmittersMLUserList([]);
-            }
-        } catch (e) {
-            console.error("Error fetching submitters ML users", e);
-        }
+            const res = await fetch(`${cleanBaseUrl}/api/users/submitters-ml-list`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
+            if (res.ok) setSubmittersMLUserList(await res.json()); else setSubmittersMLUserList([]);
+        } catch (e) { console.error("Error fetching submitters ML users", e); }
       };
 
-      fetchData();
-      fetchUsers();
-      fetchWisdomUsers();
-      fetchSubmittersMLUsers();
+      fetchData(); fetchUsers(); fetchWisdomUsers(); fetchSubmittersMLUsers();
   }, []);
 
   useEffect(() => {
@@ -669,94 +672,58 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         if (!canViewWisdomReels) return;
         try {
             const token = localStorage.getItem('app-token');
-            
             const [usedRes, unusedRes] = await Promise.all([
-                fetch(`${cleanBaseUrl}/api/video-archival/satsang-reels?limit=10000`, { 
-                    headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
-                }),
-                fetch(`${cleanBaseUrl}/api/video-archival/unused-satsangs?limit=10000`, { 
-                    headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
-                })
+                fetch(`${cleanBaseUrl}/api/video-archival/satsang-reels?limit=10000`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } }),
+                fetch(`${cleanBaseUrl}/api/video-archival/unused-satsangs?limit=10000`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } })
             ]);
 
-            let picked = 0;
-            let total = 0;
-
+            let picked = 0; let total = 0;
             if (usedRes.ok) {
                 const usedData = await usedRes.json();
-                const items = usedData.data || [];
-                picked += items.filter((i: any) => i.LockStatus === 'Locked').length;
-                total += items.length;
+                picked += (usedData.data || []).filter((i: any) => i.LockStatus === 'Locked').length;
+                total += (usedData.data || []).length;
             }
-
             if (unusedRes.ok) {
                 const unusedData = await unusedRes.json();
-                const items = unusedData.data || [];
-                picked += items.filter((i: any) => i.LockStatus === 'Locked').length;
-                total += items.length;
+                picked += (unusedData.data || []).filter((i: any) => i.LockStatus === 'Locked').length;
+                total += (unusedData.data || []).length;
             }
-
-            setWisdomPickedCount(picked);
-            setWisdomTotalCount(total);
-        } catch (e) {
-            console.error("Error fetching wisdom picked count", e);
-        }
+            setWisdomPickedCount(picked); setWisdomTotalCount(total);
+        } catch (e) { console.error("Error fetching wisdom picked count", e); }
     };
     fetchWisdomPickedCount();
   }, [canViewWisdomReels]);
 
-  // --- MERGE QUEUE WITH GOOGLE SHEET (HANDLES DELETIONS & PRESERVES LOCAL STATUS) ---
   const fetchSheetData = async () => {
     try {
       const token = localStorage.getItem('app-token');
       const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings?limit=500`, { 
-          headers: {
-              "Content-Type": "application/json",
-              ...(token ? { "Authorization": `Bearer ${token}` } : {})
-          }
+          headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
       });
-
       if (res.ok) {
         const result = await res.json();
         if (result.data && Array.isArray(result.data)) {
           const freshQueue = result.data.map(mapSheetRowToQueueItem);
-          
-          // Get current local storage data
           const savedData = localStorage.getItem(STORAGE_KEY);
           const localQueue = savedData ? JSON.parse(savedData) : [];
 
-          // Merge: Keep rows from freshQueue (handles sheet deletions & additions automatically).
-          // If the row existed locally, preserve its local status and comments over the fetched ones.
           const mergedQueue = freshQueue.map((freshItem: any) => {
               const localItem = localQueue.find((l: any) => l._id === freshItem._id);
               if (localItem) {
-                  return {
-                      ...freshItem,
-                      _status: localItem._status, // Preserve local frontend status
-                      QcStatus: localItem.QcStatus, // Preserve mapped status
-                      comments: localItem.comments?.length > 0 ? localItem.comments : freshItem.comments, // Preserve local comments
-                  };
+                  return { ...freshItem, _status: localItem._status, QcStatus: localItem.QcStatus, comments: localItem.comments?.length > 0 ? localItem.comments : freshItem.comments };
               }
-              return freshItem; // It's a brand new row from sheet
+              return freshItem; 
           });
 
           setQueue(mergedQueue);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedQueue));
-          console.log("Queue synced from Google Sheet (Deletions reflected, Local Status Preserved)");
         }
       }
-    } catch (error) {
-      console.error("Error syncing with Google Sheet:", error);
-    }
+    } catch (error) { console.error("Error syncing with Google Sheet:", error); }
   };
 
-  useEffect(() => {
-      if(canViewAudioMerge) {
-          fetchSheetData();
-      }
-  }, [canViewAudioMerge]);
+  useEffect(() => { if(canViewAudioMerge) fetchSheetData(); }, [canViewAudioMerge]);
 
-  // Handle Manual Refresh
   const [isRefreshing, setIsRefreshing] = useState(false);
   const handleManualRefresh = async () => {
       setIsRefreshing(true);
@@ -765,27 +732,34 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
       toast.success("Synced with Google Sheet");
   };
 
-  // --- COLUMN RESIZING LOGIC ---
   const handleResizeStart = (e: React.MouseEvent, columnId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
+    e.preventDefault(); e.stopPropagation();
     const startX = e.clientX;
     const startWidth = colWidths[columnId] || 100;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-        const deltaX = moveEvent.clientX - startX;
-        setColWidths(prev => ({
-            ...prev,
-            [columnId]: Math.max(50, startWidth + deltaX) // Min width 50px
-        }));
+        setColWidths(prev => ({ ...prev, [columnId]: Math.max(50, startWidth + (moveEvent.clientX - startX)) }));
     };
-
     const handleMouseUp = () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
     };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
+  const handleBatchResizeStart = (e: React.MouseEvent, columnId: string) => {
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = batchColWidths[columnId] || 100;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+        setBatchColWidths(prev => ({ ...prev, [columnId]: Math.max(50, startWidth + (moveEvent.clientX - startX)) }));
+    };
+    const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+    };
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
@@ -797,57 +771,34 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
     const toastId = toast.loading(`Scanning ${files.length} file(s)...`);
 
     try {
-        let totalBytes = 0;
-        let totalDuration = 0;
-        let maxRes = { w: 0, h: 0 };
+        let totalBytes = 0; let totalDuration = 0; let maxRes = { w: 0, h: 0 };
         const distinctExtensions = new Set<string>();
         
-        // Get the first file's name (without extension) for Recording Name
         let recordingName = "";
-        if (files.length > 0) {
-            const firstFile = files[0];
-            // Remove extension from filename
-            recordingName = firstFile.name.substring(0, firstFile.name.lastIndexOf('.')) || firstFile.name;
-        }
+        if (files.length > 0) recordingName = files[0].name.substring(0, files[0].name.lastIndexOf('.')) || files[0].name;
 
         const mediaFiles = files.filter(f => f.name !== ".DS_Store" && f.size > 0);
-
         mediaFiles.forEach(f => {
             const parts = f.name.split('.');
-            if(parts.length > 1) {
-                distinctExtensions.add(parts.pop()!.toLowerCase());
-            }
+            if(parts.length > 1) distinctExtensions.add(parts.pop()!.toLowerCase());
         });
         const fileTypeString = Array.from(distinctExtensions).join(', ');
 
         const metadataPromises = mediaFiles.map(async (file) => {
             totalBytes += file.size;
             const meta = await getMediaMetadata(file);
-            return {
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                duration: meta.duration,
-                width: meta.width,
-                height: meta.height,
-                bitrate: meta.bitrate, 
-            };
+            return { name: file.name, size: file.size, type: file.type, duration: meta.duration, width: meta.width, height: meta.height, bitrate: meta.bitrate };
         });
-
         const filesMetadata = await Promise.all(metadataPromises);
 
         filesMetadata.forEach(meta => {
             totalDuration += meta.duration;
-            if (meta.width > maxRes.w) {
-                maxRes = { w: meta.width, h: meta.height };
-            }
+            if (meta.width > maxRes.w) maxRes = { w: meta.width, h: meta.height };
         });
 
         let bitrateKbps = filesMetadata.length > 0 ? filesMetadata[0].bitrate : null;
-        if (!bitrateKbps) {
-            const totalBits = totalBytes * 8;
-            bitrateKbps = totalDuration > 0 ? (totalBits / totalDuration) / 1000 : 0;
-        }
+        if (!bitrateKbps) bitrateKbps = totalDuration > 0 ? ((totalBytes * 8) / totalDuration) / 1000 : 0;
+        
         const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
         const dimensionStr = maxRes.w > 0 ? `${maxRes.w}x${maxRes.h}` : "";
 
@@ -858,575 +809,451 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
         else if (maxRes.h > 0) quality = "SD";
 
         setFormData(prev => ({
-            ...prev,
-            RecordingName: recordingName, // Auto-fill from filename
-            NoOfFiles: mediaFiles.length.toString(),
-            Filesize: formatBytes(totalBytes),
-            FilesizeInBytes: totalBytes.toString(), 
-            fkMediaName: fileTypeString, 
-            Duration: formatDuration(totalDuration), 
-            AudioTotalDuration: formatDuration(totalDuration), 
-           
-            AudioBitrate: bitrateString, 
-            Dimension: dimensionStr || prev.Dimension,
-            Masterquality: quality || prev.Masterquality,
-            files: filesMetadata, 
+            ...prev, RecordingName: recordingName, NoOfFiles: mediaFiles.length.toString(), Filesize: formatBytes(totalBytes),
+            FilesizeInBytes: totalBytes.toString(), fkMediaName: fileTypeString, Duration: formatDuration(totalDuration), 
+            AudioTotalDuration: formatDuration(totalDuration), AudioBitrate: bitrateString, Dimension: dimensionStr || prev.Dimension,
+            Masterquality: quality || prev.Masterquality, files: filesMetadata, 
         }));
 
         toast.success("File(s) scanned and fields populated!", { id: toastId });
-
     } catch (err) {
         console.error(err);
         toast.error("Error scanning files", { id: toastId });
     }
-    
     if(fileInputRef.current) fileInputRef.current.value = "";
 };
 
   const handleChange = async (e: any) => {
     const { name, value } = e.target;
     
-     if (name === "fkEventCode") {
+    if (name === "fkEventCode") {
         const selectedEvent = eventCodeOptions.find(opt => opt.EventCode === value);
+        setSelectedMlIds(new Set());
+        setMlIdOptions([]);
         setFormData(prev => ({
-            ...prev,
-            fkEventCode: value,
-            EventName: selectedEvent?.EventName || "",
-            Yr: selectedEvent?.Yr || "",
-            NewEventCategory: selectedEvent?.NewEventCategory || "",
-            // Reset ML-related fields when the Event Code changes
-            MLUniqueID: "",
-            Detail: "",
-            fkGranth: "",
-            Number: "",
-            Topic: "",
-            ContentFrom: "",
-            SatsangStart: "",
-            SatsangEnd: "",
-            fkCity: "",
-            SubDuration: "",
-            Remarks: ""
+            ...prev, fkEventCode: value, EventName: selectedEvent?.EventName || "", Yr: selectedEvent?.Yr || "", NewEventCategory: selectedEvent?.NewEventCategory || "",
+            MLUniqueID: "", Detail: "", fkGranth: "", Number: "", Topic: "", ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", SubDuration: "", Remarks: ""
         }));
     }
-   else if (name === "MLUniqueID") {
-    const selectedML = mlIdOptions.find(opt => opt.MLUniqueID === value);
-    setFormData(prev => ({
-        ...prev,
-        MLUniqueID: value,
-        Detail: selectedML?.Detail || "",
-        fkGranth: selectedML?.fkGranth || "",
-        Number: selectedML?.Number || "",
-        Topic: selectedML?.Topic || "",
-        ContentFrom: selectedML?.ContentFrom || "",
-        SatsangStart: selectedML?.SatsangStart || "",
-        SatsangEnd: selectedML?.SatsangEnd || "",
-        fkCity: selectedML?.fkCity || "",
-        SubDuration: selectedML?.SubDuration || "",
-        Remarks: selectedML?.Remarks || "",
-    }));
-}
+    else if (name === "MLUniqueID") {
+        const selectedML = mlIdOptions.find(opt => opt.MLUniqueID === value);
+        setFormData(prev => ({
+            ...prev, MLUniqueID: value, Detail: selectedML?.Detail || "", fkGranth: selectedML?.fkGranth || "", Number: selectedML?.Number || "",
+            Topic: selectedML?.Topic || "", ContentFrom: selectedML?.ContentFrom || "", SatsangStart: selectedML?.SatsangStart || "",
+            SatsangEnd: selectedML?.SatsangEnd || "", fkCity: selectedML?.fkCity || "", SubDuration: selectedML?.SubDuration || "", Remarks: selectedML?.Remarks || "",
+        }));
+    }
     else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
   const handleSelectEntry = (item: any) => { 
-      setFormData(item); 
-      setActiveCommentId(item._id); 
-      setEditingId(null); 
-      setShowMobileForm(false); 
+      setFormData(item); setActiveCommentId(item._id); setEditingId(null); setShowMobileForm(false); 
+      setCurrentStep(1); 
   };
   
   const handleEditClick = (item: any, e: any) => { 
       e.stopPropagation(); 
-      if (!canEditEntry(item)) {
-          if (hasEditAccess) {
-              toast.error("Only entries marked 'Needs Revision' can be edited.");
-          } else {
-              toast.error("You do not have permission to edit.");
-          }
-          return;
-      }
-      setFormData(item); 
-      setActiveCommentId(item._id); 
-      setEditingId(item._id); 
+      if (!canEditEntry(item)) { toast.error(hasEditAccess ? "Only entries marked 'Needs Revision' can be edited." : "You do not have permission to edit."); return; }
+      setFormData(item); setActiveCommentId(item._id); setEditingId(item._id); 
+      setCurrentStep(1); 
       if (isMobile) setShowMobileForm(true);
   };
   
-  const enableEditing = () => { 
-    if(activeCommentId) setEditingId(activeCommentId); 
-    if(isMobile) setShowMobileForm(true);
-  };
+  const enableEditing = () => { if(activeCommentId) setEditingId(activeCommentId); if(isMobile) setShowMobileForm(true); };
   
-  const handleStatusClick = (id: number, e: any) => { e.stopPropagation(); if (openStatusDropdown === id) setOpenStatusDropdown(null); else setOpenStatusDropdown(id); };
+  const handleStatusClick = (id: string, e: any) => { e.stopPropagation(); if (openStatusDropdown === id) setOpenStatusDropdown(null); else setOpenStatusDropdown(id); };
 
-  // --- UPDATED updateStatus: Syncs with Backend via API ---
-const updateStatus = async (id: number, newStatus: string, e: any) => { 
-    e.stopPropagation(); 
-    
-    const statusMap: Record<string, string> = {
-        'incomplete': 'Submitted to MM',
-        'revision': 'Needs Revision',
-        'inwarding': 'Inwarding',
-        'submission_confirmed': 'Submission Confirmed',
-        'complete': 'Complete'
-    };
-    
-    const mappedStatus = statusMap[newStatus] || newStatus;
+  const updateStatus = async (id: string, newStatus: string, e: any) => { 
+      e.stopPropagation(); 
+      const statusMap: Record<string, string> = { 'incomplete': 'Submitted to MM', 'revision': 'Needs Revision', 'inwarding': 'Inwarding', 'submission_confirmed': 'Submission Confirmed', 'complete': 'Complete' };
+      const mappedStatus = statusMap[newStatus] || newStatus;
+      const itemToUpdate = queue.find(item => item._id === id);
+      if (!itemToUpdate) return;
 
-    // Find the item to update
-    const itemToUpdate = queue.find(item => item._id === id);
-    if (!itemToUpdate) return;
-
-    // Optimistic UI Update (Update local state immediately)
-    setQueue(prev => {
-        const updated = prev.map(item => 
-            item._id === id 
-                ? { ...item, _status: newStatus, QcStatus: mappedStatus } 
-                : item
-        );
-        
-        // Save to localStorage
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        
-        return updated;
-    });
-
-    // Sync with Backend/Google Sheet
-    try {
-        const token = localStorage.getItem('app-token');
-        const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-            method: "PUT",
-            headers: { 
-                "Content-Type": "application/json",
-                ...(token ? { "Authorization": `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({
-                ...itemToUpdate,
-                _status: newStatus,
-                QcStatus: mappedStatus,
-                Logchats: formatLogchats(itemToUpdate.comments || [])
-            }),
-        });
-
-        if (!res.ok) {
-            throw new Error("Failed to sync status to Google Sheet");
-        }
-
-        toast.success(`Status updated to ${mappedStatus}`);
-    } catch (error) {
-        console.error("Status Update Error:", error);
-        toast.error("Status updated locally, but sync to Google Sheet failed");
-        
-        // Revert local state on failure
-        setQueue(prev => prev.map(item => 
-            item._id === id 
-                ? { ...item, _status: itemToUpdate._status, QcStatus: itemToUpdate.QcStatus } 
-                : item
-        ));
-    }
-    
-    setOpenStatusDropdown(null);
-};
+      setQueue(prev => prev.map(item => item._id === id ? { ...item, _status: newStatus, QcStatus: mappedStatus } : item));
+      
+      try {
+          const token = localStorage.getItem('app-token');
+          const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+              method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ ...itemToUpdate, _status: newStatus, QcStatus: mappedStatus, "QC Status": mappedStatus, Logchats: formatLogchats(itemToUpdate.comments || []) }),
+          });
+          if (!res.ok) throw new Error("Failed to sync status");
+          toast.success(`Status updated to ${mappedStatus}`);
+      } catch (error) {
+          toast.error("Status updated locally, but sync failed");
+          setQueue(prev => prev.map(item => item._id === id ? { ...item, _status: itemToUpdate._status, QcStatus: itemToUpdate.QcStatus } : item));
+      }
+      setOpenStatusDropdown(null);
+  };
 
   const toggleGroup = (group: string) => { const newSet = new Set(expandedGroups); if (newSet.has(group)) newSet.delete(group); else newSet.add(group); setExpandedGroups(newSet); };
   
   function parseDurationToSeconds(duration: string): number {
-    const parts = duration.split(':').map(Number);
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return 0;
+      const parts = duration.split(':').map(Number);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return 0;
   }
-
-  function isValidDurationFormat(duration: string): boolean {
-    return /^(\d{2}):[0-5]\d:[0-5]\d$/.test(duration) || /^[0-5]?\d:[0-5]\d$/.test(duration);
-  }
+  function isValidDurationFormat(duration: string): boolean { return /^(\d{2}):[0-5]\d:[0-5]\d$/.test(duration) || /^[0-5]?\d:[0-5]\d$/.test(duration); }
 
   function validateForm(formData: any) {
-    const errors: {[key: string]: string} = {};
-    if (!formData.RecordingCode || formData.RecordingCode.length !== 11) {
-      errors.RecordingCode = "DR code must be exactly 11 characters.";
-    } else if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
-      errors.RecordingCode = "First 7 characters of DR code must match the Event Code.";
-    }
-    if (formData.MLUniqueID && formData.fkEventCode && formData.MLUniqueID.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
-      errors.MLUniqueID = "First 7 characters of ML Unique ID must match the Event Code.";
-    }
-    if (formData.Duration && !isValidDurationFormat(formData.Duration)) {
-      errors.Duration = "Duration must be in hh:mm:ss format.";
-    }
-    if (formData.Duration && formData.SubDuration) {
-      const dur1 = parseDurationToSeconds(formData.Duration);
-      const dur2 = parseDurationToSeconds(formData.SubDuration);
-      if (Math.abs(dur1 - dur2) > 60) {
-        errors.Duration = "Difference between Duration and MLID's SubDuration is more than 60 seconds.";
+      const errors: {[key: string]: string} = {};
+      if (!formData.RecordingCode || formData.RecordingCode.length !== 11) errors.RecordingCode = "DR code must be exactly 11 characters.";
+      else if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) errors.RecordingCode = "First 7 characters of DR code must match the Event Code.";
+      
+      if (formData.MLUniqueID && formData.fkEventCode && formData.MLUniqueID.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) errors.MLUniqueID = "First 7 characters of ML Unique ID must match the Event Code.";
+      
+      if (formData.Duration && !isValidDurationFormat(formData.Duration)) errors.Duration = "Duration must be in hh:mm:ss format.";
+      if (formData.Duration && formData.SubDuration) {
+          if (Math.abs(parseDurationToSeconds(formData.Duration) - parseDurationToSeconds(formData.SubDuration)) > 60) errors.Duration = "Difference between Duration and MLID's SubDuration is more than 60 seconds.";
       }
-    }
-    if (!formData.fkEventCode) {
-      errors.fkEventCode = "Event Code is required.";
-    }
-    if (!formData.RecordingCode) {
-      errors.RecordingCode = "Recording Code is required.";
-    }
-    return errors;
+      if (!formData.fkEventCode) errors.fkEventCode = "Event Code is required.";
+      if (!formData.RecordingCode) errors.RecordingCode = "Recording Code is required.";
+      return errors;
   }
 
-  // --- SAVE / UPDATE HANDLER ---
-  const handleSaveDraft = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errors = validateForm(formData);
-    setFormErrors(errors);
+  const processAddQueue = async () => {
+      setShowMultiAddConfirm(false);
+      setIsSubmitting(true);
+      const token = localStorage.getItem('app-token');
+      let newItems = [];
+      
+      const safeRecCode = String(formData.RecordingCode || '').trim();
 
-    if (Object.keys(errors).length > 0) {
-      toast.error("Please fix the errors in the form.");
-      return;
-    }
-    
-    // Validations
-    if (!formData.RecordingCode || formData.RecordingCode.length !== 11) {
-        toast.error("Recording Code (DR code) must be exactly 11 characters.");
-        return;
-    }
-    if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
-        toast.error("First 7 characters of DR code must match the Event Code.");
-        return;
-    }
-    if (!formData.fkEventCode || !formData.RecordingCode) {
-        toast.error("Event Code and Recording Code are required.");
-        return;
-    }
+      if (selectedMlIds.size > 0) {
+          for (const mlid of selectedMlIds) {
+              const mlDetails = mlIdOptions.find(opt => opt.MLUniqueID === mlid) || {};
+              const safeMlId = String(mlid || '').trim();
+              newItems.push({
+                  ...formData,
+                  MLUniqueID: mlid,
+                  Detail: mlDetails.Detail || "",
+                  fkGranth: mlDetails.fkGranth || "",
+                  Number: mlDetails.Number || "",
+                  Topic: mlDetails.Topic || "",
+                  ContentFrom: mlDetails.ContentFrom || "",
+                  SatsangStart: mlDetails.SatsangStart || "",
+                  SatsangEnd: mlDetails.SatsangEnd || "",
+                  fkCity: mlDetails.fkCity || "",
+                  SubDuration: mlDetails.SubDuration || "",
+                  Remarks: mlDetails.Remarks || "",
+                  _id: safeMlId ? `${safeRecCode}_${safeMlId}` : safeRecCode,
+                  comments: [],
+                  _status: 'incomplete',
+                  QcStatus: 'Submitted to MM',
+                  "QC Status": 'Submitted to MM'
+              });
+          }
+      } else {
+          const safeMlId = String(formData.MLUniqueID || '').trim();
+          newItems.push({
+              ...formData,
+              _id: safeMlId ? `${safeRecCode}_${safeMlId}` : safeRecCode,
+              comments: [],
+              _status: 'incomplete',
+              QcStatus: 'Submitted to MM',
+              "QC Status": 'Submitted to MM'
+          });
+      }
 
-    // --- DUPLICATE RECORDING CODE VALIDATION ---
-    const isDuplicateDR = queue.some(item => 
-        item.RecordingCode && 
-        item.RecordingCode.toLowerCase() === formData.RecordingCode.toLowerCase() && 
-        item._id !== editingId // Ignore current entry during an update
-    );
-
-    if (isDuplicateDR) {
-        setFormErrors(prev => ({ ...prev, RecordingCode: "This Recording Code is already in use." }));
-        // Trigger the custom popup warning
-        setDuplicateWarning(formData.RecordingCode);
-        return;
-    }
-    // -------------------------------------------
-
-    if (editingId) {
-        // UPDATE EXISTING ENTRY
-        const existingItem = queue.find(item => item._id === editingId);
-        
-        const updatedItem = { 
-            ...formData, 
-            _id: editingId, 
-            comments: existingItem?.comments || [], 
-            _status: existingItem?._status || 'incomplete',
-            QcStatus: existingItem?.QcStatus || 'Submitted to MM' // Preserves Default Backend Status Name
-        };
-
-        setQueue(prev => prev.map(item => {
-            if (item._id === editingId) {
-                return updatedItem;
-            }
-            return item;
-        }));
-
-        try {
-            const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                method: "PUT",
-                headers: { 
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({
-                    ...updatedItem,
-                    Logchats: formatLogchats(updatedItem.comments)
-                }),
-            });
-
-            if (!res.ok) throw new Error("Failed to sync update to Sheet");
-            toast.success("Entry Updated in Google Sheet");
-        } catch (error) {
-            console.error(error);
-            toast.error("Updated locally, but failed to sync with Google Sheet");
-        }
-
-        setEditingId(null); 
-        setFormData(initialFormState); 
-        setActiveCommentId(null); 
-        setShowMobileForm(false);
-        
-    } else {
-        // CREATE NEW ENTRY
-        const newItem = { 
-            ...formData, 
-            _id: Date.now(), 
-            comments: [], 
-            _status: 'incomplete', 
-            QcStatus: 'Submitted to MM' // Initialize Backend Status Correctly
-        };
-        try {
-            const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                method: "POST",
-                headers: { 
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({
-                    ...newItem,
-                    Logchats: formatLogchats(newItem.comments)
-                }),
-            });
-            if (!res.ok) throw new Error("Failed to sync");
-            toast.success("Added to Google Sheet");
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to add to Google Sheet");
-        }
-        setQueue(prev => [newItem, ...prev]);
-        toast.success("Added to Queue");
-        setFormData(initialFormState);
-        setShowMobileForm(false);
-    }
+      let addedItems = [];
+      try {
+          for (const item of newItems) {
+              const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+                  body: JSON.stringify({ ...item, Logchats: formatLogchats(item.comments) }),
+              });
+              if (!res.ok) throw new Error("Failed to sync item");
+              addedItems.push(item);
+          }
+          
+          toast.success(`Successfully added ${addedItems.length} entry/entries to Google Sheet and Queue`);
+          setQueue(prev => [...addedItems, ...prev]);
+          setExpandedGroups(prev => new Set(prev).add(formData.RecordingCode || 'incomplete')); 
+          setFormData(initialFormState);
+          setSelectedMlIds(new Set());
+          setCurrentStep(1);
+          setShowMobileForm(false);
+      } catch (error) {
+          console.error(error);
+          toast.error("Failed to sync some entries with Google Sheet.");
+          if (addedItems.length > 0) {
+              setQueue(prev => [...addedItems, ...prev]);
+              setExpandedGroups(prev => new Set(prev).add(formData.RecordingCode || 'incomplete')); 
+          }
+      } finally {
+          setIsSubmitting(false);
+      }
   };
 
-  const handleResetForm = () => { setIsResetting(true); setFormData(initialFormState); setTimeout(() => setIsResetting(false), 700); };
+  const handleSaveDraft = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const errors = validateForm(formData);
+      setFormErrors(errors);
+      if (Object.keys(errors).length > 0) { toast.error("Please fix the errors in the form."); return; }
+      
+      if (!formData.RecordingCode || formData.RecordingCode.length !== 11) { toast.error("Recording Code must be exactly 11 characters."); return; }
+      if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) { toast.error("First 7 characters of DR code must match the Event Code."); return; }
+      if (!formData.fkEventCode || !formData.RecordingCode) { toast.error("Event Code and Recording Code are required."); return; }
+
+      let isDuplicateDR = false;
+      let dupId = "";
+      
+      if (!isEditing && selectedMlIds.size > 0) {
+          for (const mlid of selectedMlIds) {
+              if (queue.some(item => item.RecordingCode === formData.RecordingCode && item.MLUniqueID === mlid)) {
+                  isDuplicateDR = true; dupId = mlid; break;
+              }
+          }
+      } else {
+          isDuplicateDR = queue.some(item => item.RecordingCode === formData.RecordingCode && item.MLUniqueID === formData.MLUniqueID && item._id !== editingId);
+          dupId = formData.MLUniqueID;
+      }
+
+      if (isDuplicateDR) {
+          setFormErrors(prev => ({ ...prev, RecordingCode: "This Recording Code + ML ID combo is already in use." }));
+          setDuplicateWarning(`${formData.RecordingCode} (ML ID: ${dupId || 'N/A'})`);
+          return;
+      }
+
+      if (editingId) {
+          const existingItem = queue.find(item => item._id === editingId);
+          const updatedItem = { ...formData, _id: editingId, comments: existingItem?.comments || [], _status: existingItem?._status || 'incomplete', QcStatus: existingItem?.QcStatus || 'Submitted to MM' };
+
+          setQueue(prev => prev.map(item => item._id === editingId ? updatedItem : item));
+
+          try {
+              const token = localStorage.getItem('app-token');
+              const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+                  method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+                  body: JSON.stringify({ ...updatedItem, Logchats: formatLogchats(updatedItem.comments) }),
+              });
+              if (!res.ok) throw new Error("Failed to sync update to Sheet");
+              toast.success("Entry Updated in Google Sheet");
+          } catch (error) {
+              console.error(error);
+              toast.error("Updated locally, but failed to sync with Google Sheet");
+          }
+          setEditingId(null); setFormData(initialFormState); setActiveCommentId(null); setCurrentStep(1); setShowMobileForm(false);
+          
+      } else {
+          if (!isEditing && mlIdOptions.length > 0 && selectedMlIds.size > 0) {
+              setShowMultiAddConfirm(true); 
+          } else {
+              processAddQueue(); 
+          }
+      }
+  };
+
+  const handleResetForm = () => { 
+      setIsResetting(true); 
+      setFormData(initialFormState); 
+      setSelectedMlIds(new Set()); 
+      setCurrentStep(1);
+      setTimeout(() => setIsResetting(false), 700); 
+  };
   
   const handleCancelSelection = () => { 
-      setEditingId(null); 
-      setActiveCommentId(null); 
-      setFormData(initialFormState); 
-      setShowMobileForm(false); 
+      setEditingId(null); setActiveCommentId(null); setFormData(initialFormState); setSelectedMlIds(new Set()); setCurrentStep(1); setShowMobileForm(false); 
   };
-  
-  const handleCloseComments = () => { 
-      setActiveCommentId(null); 
-      setEditingId(null); // Exit edit mode if active
-      setFormData(initialFormState); // Reset form to blank/initial state
-  };
+  const handleCloseComments = () => { setActiveCommentId(null); setEditingId(null); setFormData(initialFormState); setCurrentStep(1); };
 
   const handleMentionClick = async () => {
-    const isOpening = !showUserDropdown;
-    setShowUserDropdown(isOpening);
-
-    if (isOpening) {
-        try {
-            const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/users/mention-list`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-                }
-            });
-
-            if (res.ok) {
-                const users = await res.json();
-                setUserList(users);
-            } else {
-                console.error("Failed to fetch users");
-                toast.error("Could not load user list");
-            }
-        } catch (error) {
-            console.error("API Error:", error);
-        }
-    }
+      const isOpening = !showUserDropdown;
+      setShowUserDropdown(isOpening);
+      if (isOpening) {
+          try {
+              const token = localStorage.getItem('app-token');
+              const res = await fetch(`${cleanBaseUrl}/api/users/mention-list`, { method: "GET", headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
+              if (res.ok) setUserList(await res.json()); else toast.error("Could not load user list");
+          } catch (error) { console.error("API Error:", error); }
+      }
   };
 
-const handleSendComment = async () => {
-    if (!commentInput.trim() || !activeCommentId) return;
+  const handleSendComment = async () => {
+      if (!commentInput.trim() || !activeCommentId) return;
+      const token = localStorage.getItem('app-token'); 
+      
+      setQueue(prev => prev.map(item => {
+          if (item._id === activeCommentId) {
+              let updatedComments;
+              if (editingCommentId) updatedComments = item.comments.map((c: any) => c.id === editingCommentId ? { ...c, text: commentInput, isEdited: true } : c);
+              else {
+                  const newComment = { id: Date.now(), text: commentInput, user: userEmail || "User", timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), replyTo: replyTo ? { user: replyTo.user, text: replyTo.text, id: replyTo.id } : undefined };
+                  updatedComments = [...(item.comments || []), newComment];
+              }
 
-    // 1. Optimistic UI Update (Update local state immediately)
-    const token = localStorage.getItem('app-token'); // <--- GET TOKEN
-    
-    setQueue(prev => prev.map(item => {
-        if (item._id === activeCommentId) {
-            let updatedComments;
-            if (editingCommentId) {
-                updatedComments = item.comments.map((c: any) => 
-                    c.id === editingCommentId 
-                        ? { ...c, text: commentInput, isEdited: true } 
-                        : c
-                );
-            } 
-            else {
-                const newComment = {
-                    id: Date.now(),
-                    text: commentInput,
-                    user: userEmail || "User",
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    replyTo: replyTo ? { user: replyTo.user, text: replyTo.text, id: replyTo.id } : undefined
-                };
-                updatedComments = [...(item.comments || []), newComment];
-            }
+              fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+                  method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                  body: JSON.stringify({ ...item, Logchats: formatLogchats(updatedComments) }),
+              }).catch(err => { toast.error("Failed to sync chat"); console.error(err); });
 
-            // 2. SEND TO BACKEND with Auth Token
-            fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                method: "POST", 
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}` // <--- CRITICAL FIX
-                },
-                body: JSON.stringify({
-                    ...item,
-                    Logchats: formatLogchats(updatedComments) // Converts array to string for Sheet
-                }),
-            }).catch(err => {
-                toast.error("Failed to sync chat to Sheet");
-                console.error(err);
-            });
+              return { ...item, comments: updatedComments };
+          }
+          return item;
+      }));
+      setCommentInput(""); setReplyTo(null); setEditingCommentId(null); setShowUserDropdown(false);
+  };
 
-            return { ...item, comments: updatedComments };
-        }
-        return item;
-    }));
-    
-    setCommentInput("");
-    setReplyTo(null);
-    setEditingCommentId(null);
-    setShowUserDropdown(false);
-};
-
-  const handleEditCommentAction = (comment: any) => { setCommentInput(comment.text); setEditingCommentId(comment.id); setReplyTo(null); const inputEl = document.getElementById("chat-input-field"); if(inputEl) inputEl.focus(); };
+  const handleEditCommentAction = (comment: any) => { setCommentInput(comment.text); setEditingCommentId(comment.id); setReplyTo(null); document.getElementById("chat-input-field")?.focus(); };
   
   const handleDeleteComment = (commentId: number) => {
-    if (!activeCommentId) return;
-    if (!window.confirm("Delete this message?")) return;
+      if (!activeCommentId || !window.confirm("Delete this message?")) return;
+      const token = localStorage.getItem('app-token'); 
 
-    setQueue(prev => prev.map(item => {
-        if (item._id === activeCommentId) {
-            const updatedComments = item.comments.filter((c: any) => c.id !== commentId);
-            fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...item, Logchats: formatLogchats(updatedComments) }),
-            });
-            return { ...item, comments: updatedComments };
-        }
-        return item;
-    }));
+      setQueue(prev => prev.map(item => {
+          if (item._id === activeCommentId) {
+              const updatedComments = item.comments.filter((c: any) => c.id !== commentId);
+              
+              fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+                  method: "POST", 
+                  headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                  body: JSON.stringify({ ...item, Logchats: formatLogchats(updatedComments) }),
+              })
+              .then(res => {
+                  if (!res.ok) throw new Error("Failed to sync deletion");
+                  toast.success("Comment deleted");
+              })
+              .catch(err => {
+                  console.error("Delete error:", err);
+                  toast.error("Failed to delete comment from server");
+              });
+
+              return { ...item, comments: updatedComments };
+          }
+          return item;
+      }));
   };
 
   const handleCancelChatAction = () => { setReplyTo(null); setEditingCommentId(null); setCommentInput(""); };
-  const toggleSelection = (id: number, e: any) => { e.stopPropagation(); const newSet = new Set(selectedIndices); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedIndices(newSet); };
-  const handleDelete = (id: number, e: any) => { e.stopPropagation(); setQueue(prev => prev.filter(item => item._id !== id)); if (editingId === id || activeCommentId === id) handleCancelSelection(); const newSet = new Set(selectedIndices); newSet.delete(id); setSelectedIndices(newSet); };
+  const toggleSelection = (id: string, e: any) => { e.stopPropagation(); const newSet = new Set(selectedIndices); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedIndices(newSet); };
   
+  const handleGroupSelect = (groupItems: any[], e: React.MouseEvent) => {
+      e.stopPropagation();
+      const groupIds = groupItems.map(item => item._id);
+      const isAllSelected = groupIds.length > 0 && groupIds.every(id => selectedIndices.has(id));
+      
+      setSelectedIndices(prev => {
+          const next = new Set(prev);
+          if (isAllSelected) {
+              groupIds.forEach(id => next.delete(id));
+          } else {
+              groupIds.forEach(id => next.add(id));
+          }
+          return next;
+      });
+  };
+
   const handleUploadSelected = async () => {
-    if (selectedIndices.size === 0) return;
-    const selectedItems = queue.filter(item => selectedIndices.has(item._id));
-    const incompleteItems = selectedItems.filter(item => item._status !== 'complete');
-    if (incompleteItems.length > 0) {
-        toast.error(`Cannot approve! ${incompleteItems.length} items are not marked 'Complete'.`);
+      if (selectedIndices.size === 0) return;
+      const selectedItems = queue.filter(item => selectedIndices.has(item._id));
+      if (selectedItems.some(item => item._status !== 'complete')) { toast.error(`Cannot approve! Items must be marked 'Complete'.`); return; }
+      
+      setIsSubmitting(true);
+      const token = localStorage.getItem('app-token');
+      let failedIds: string[] = [];
+
+      for (const item of selectedItems) {
+          try {
+              const { _id, comments, _status, ...cleanPayload } = item;
+              const finalPayload = { ...cleanPayload, LastModifiedBy: userEmail || "System", Logchats: formatLogchats(comments || []) };
+             await fetch(`${cleanBaseUrl}/api/digitalrecording/approve`, {
+                  method: "POST", headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : '' },
+                  body: JSON.stringify(finalPayload),
+              }).then(async res => { 
+                  if (!res.ok) {
+                      let errMsg = "DB Transaction Failed";
+                      try { const err = await res.json(); errMsg = err.message || err.error || JSON.stringify(err); } 
+                      catch (e) { errMsg = await res.text(); }
+                      throw new Error(errMsg);
+                  }
+              });
+          } catch (error: any) { console.error(error); failedIds.push(item._id); toast.error(<><b>Approval Error</b><div>{error.message}</div></>); }
+      }
+      setQueue(prev => prev.filter(item => !selectedIndices.has(item._id) || failedIds.includes(item._id)));
+      setSelectedIndices(new Set());
+      if (activeCommentId && !failedIds.includes(activeCommentId)) setActiveCommentId(null);
+      if (failedIds.length === 0) toast.success("Entries Approved & Linked successfully");
+      else toast.warning(`Some entries failed to approve.`);
+      setIsSubmitting(false);
+  };
+
+  const handleSetStep = (s: number) => {
+    if (s === 2 && !formData.fkEventCode) {
+        toast.error("Please select an Event Code first.");
         return;
     }
-    setIsSubmitting(true);
-    const token = localStorage.getItem('app-token');
-    let failedIds: number[] = [];
-
-    for (const item of selectedItems) {
-        try {
-            const { _id, comments, _status, ...cleanPayload } = item;
-            const finalPayload = { 
-                ...cleanPayload, 
-                LastModifiedBy: userEmail || "System",
-                Logchats: formatLogchats(comments || []) 
-            };
-           await fetch(`${cleanBaseUrl}/api/digitalrecording/approve`, {
-                method: "POST", 
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "Authorization": token ? `Bearer ${token}` : '' 
-                },
-                body: JSON.stringify(finalPayload),
-            }).then(async res => { 
-                if (!res.ok) {
-                    let errMsg = "DB Transaction Failed";
-                    try {
-                        const err = await res.json();
-                        errMsg = err.message || err.error || JSON.stringify(err);
-                    } catch (e) {
-                        errMsg = await res.text();
-                    }
-                    throw new Error(errMsg);
-                }
-            });
-        } catch (error: any) {
-            console.error("Approval Error:", error);
-            failedIds.push(item._id);
-            toast.error(
-              <>
-                <b>Approval Error</b>
-                <div style={{whiteSpace: 'pre-wrap'}}>{error.message}</div>
-              </>
-            );
-        }
+    if (s === 3 && !formData.fkEventCode) {
+        toast.error("Please select an Event Code first.");
+        return;
     }
-    setQueue(prev => prev.filter(item => !selectedIndices.has(item._id) || failedIds.includes(item._id)));
-    setSelectedIndices(new Set());
-    if (activeCommentId && !failedIds.includes(activeCommentId)) setActiveCommentId(null);
-    if (failedIds.length === 0) {
-        toast.success("Entries Approved & Linked successfully");
-    } else {
-        toast.warning(`Some entries failed to approve.`);
-    }
-    setIsSubmitting(false);
+    setCurrentStep(s);
   };
-  
+
+  const exportToCSV = () => {
+    if (queue.length === 0) {
+        toast.error("No data to export");
+        return;
+    }
+    
+    const exportCols = TABLE_COLUMNS.filter(col => col.id !== 'select' && col.id !== 'actions');
+    
+    const headers = exportCols.map(col => `"${col.label}"`).join(",");
+    
+    const csvRows = queue.map(row => {
+        return exportCols.map(col => {
+            let val = row[col.id] || "";
+            val = String(val).replace(/"/g, '""');
+            return `"${val}"`;
+        }).join(",");
+    });
+    
+    const csvString = [headers, ...csvRows].join("\n");
+    
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Audio_Merge_Queue_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const isEditing = !!editingId;
   const isViewing = !!activeCommentId && !isEditing;
+  const isCurrentEntryEditable = activeEntry ? canEditEntry(activeEntry) : false;
   
   const getGridTemplate = () => { 
-      if (isTableView) {
-        return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
-      }
-      if (isCommentsOpen) { 
-          if (windowWidth < 1280) return "1.2fr 1fr 1fr"; 
-          if (windowWidth < 1500) return "3fr 1.5fr 2fr"; 
-          return "3.5fr 2fr 2fr"; 
-      } else { 
-          if (windowWidth < 1280) return "1.2fr 0.8fr 0fr"; 
-          return "4fr 2fr 0fr"; 
-      }  
+      if (isTableView) return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
+      if (isCommentsOpen) return windowWidth < 1280 ? "1.2fr 1fr 1fr" : windowWidth < 1500 ? "3fr 1.5fr 2fr" : "3.5fr 2fr 2fr"; 
+      return windowWidth < 1280 ? "1.2fr 0.8fr 0fr" : "4fr 2fr 0fr"; 
   };
   
   const renderField = (label: string, name: string, theme: any, options: any = {}) => ( 
-  <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> 
-    <Label style={{...styles.label, color: focusedField === name && !options.disabled ? theme.to : styles.label.color }}> 
-      {label} 
-      {options.required && <span style={{ color: theme.from, fontSize: "1.2em", lineHeight: 0 }}>*</span>} 
-    </Label> 
-    <Input 
-      name={name} 
-      type={options.type || "text"} 
-      value={(formData as any)[name]} 
-      onChange={(e) => {
-        let value = e.target.value;
-        // Apply uppercase transform if specified
-        if (options.uppercase) {
-          value = value.toUpperCase();
-        }
-        e.target.value = value;
-        handleChange(e);
-      }}
-      onFocus={() => setFocusedField(name)} 
-      onBlur={() => setFocusedField(null)} 
-      disabled={options.disabled} 
-      style={{ 
-        ...styles.input(theme, options.disabled, isCompact), 
-        borderColor: formErrors[name] ? "#ef4444" : (focusedField === name && !options.disabled ? theme.to : "rgba(255,255,255,0.1)"),
-        textTransform: options.uppercase ? 'uppercase' : 'none' // CSS uppercase
-      }} 
-      autoComplete="off" 
-    /> 
-    {formErrors[name] && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 2 }}>{formErrors[name]}</div>} 
-  </div> 
-);
+      <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> 
+          <Label style={{...styles.label, color: focusedField === name && !options.disabled ? theme.to : styles.label.color }}> 
+            {label} {options.required && <span style={{ color: theme.from, fontSize: "1.2em", lineHeight: 0 }}>*</span>} 
+          </Label> 
+          <Input 
+            name={name} type={options.type || "text"} value={(formData as any)[name] || ""} 
+            onChange={(e) => { let value = e.target.value; if (options.uppercase) value = value.toUpperCase(); e.target.value = value; handleChange(e); }}
+            onFocus={() => setFocusedField(name)} onBlur={() => setFocusedField(null)} disabled={options.disabled} 
+            style={{ ...styles.input(theme, options.disabled, isCompact), borderColor: formErrors[name] ? "#ef4444" : (focusedField === name && !options.disabled ? theme.to : "rgba(255,255,255,0.1)"), textTransform: options.uppercase ? 'uppercase' : 'none' }} autoComplete="off" 
+          /> 
+          {formErrors[name] && <div style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 2 }}>{formErrors[name]}</div>} 
+      </div> 
+  );
   
   const getGroupedQueue = (data: any[], groupBy: string) => { 
       const groups: any = {}; 
       data.forEach(item => { 
           let key = item[groupBy] || 'Uncategorized';
-          if (groupBy === '_status') key = item._status || 'incomplete';
           if (!groups[key]) groups[key] = []; 
           groups[key].push(item); 
       }); 
@@ -1434,538 +1261,280 @@ const handleSendComment = async () => {
   };
 
   const renderQueueItem = (item: any) => { 
-    const isSelected = selectedIndices.has(item._id);
-    const isActive = activeCommentId === item._id; 
-    const isItemEditing = editingId === item._id;
-    const currentStatus = item._status || 'incomplete';
-    const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
-    
-    const isEditable = canEditEntry(item);
+      const isSelected = selectedIndices.has(item._id); const isActive = activeCommentId === item._id; 
+      const isItemEditing = editingId === item._id; const currentStatus = item._status || 'incomplete';
+      const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
+      const isEditable = canEditEntry(item);
 
-    return (
-        <div key={item._id} style={styles.queueItem(isActive, isItemEditing)} onClick={() => handleSelectEntry(item)}>
-            <div style={{display: "flex", alignItems: "flex-start", gap: "10px"}}>
-                <div onClick={(e) => toggleSelection(item._id, e)} style={{ paddingTop: 2, flexShrink: 0 }}>{isSelected ? <CheckSquare size={18} color="#10b981" /> : <Square size={18} color="rgba(255,255,255,0.3)" />}</div>
-                <div style={{flex: 1, minWidth: 0 }}>
-                    <div title={item.fkEventCode || "Untitled"} style={{ fontWeight: '600', color: isItemEditing ? '#f59e0b' : isActive ? '#3b82f6' : '#fff', fontSize: '0.9rem', marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fkEventCode || "Untitled"}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.EventName}</div>
-                    <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>{item.comments?.length > 0 && (<span style={{fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '1px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3}}><MessageSquare size={10} /> {item.comments.length}</span>)}</div>
-                </div>
-                <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, marginTop: -2}}>
-                   <div style={{position: 'relative'}}>
-                       <div onClick={hasEditAccess ? (e) => handleStatusClick(item._id, e) : undefined} style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, whiteSpace: "nowrap" }} title={hasEditAccess ? "Change Status" : "View Only"}>
-                        <statusConfig.icon size={12} strokeWidth={3} /> {!isCompact && (currentStatus === 'revision' ? 'Revise' : currentStatus)}
-                       </div>
-                      {openStatusDropdown === item._id && hasEditAccess && !isTableView && (
-                        <div className="hide-scrollbar" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 5, background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 5, zIndex: 50, width: '140px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}>{STATUS_OPTIONS.map(opt => (<div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}><opt.icon size={14} color={opt.color} /> {opt.label}</div>))}</div>
-                      )}
-                    </div>
-                    <button 
-                        onClick={(e) => {
-                            if (!isEditable) {
-                                e.stopPropagation();
-                                if(hasEditAccess) toast.error("Only entries marked 'Needs Revision' can be edited.");
-                                else toast.error("You do not have permission to edit.");
-                                return;
-                            }
-                            handleEditClick(item, e);
-                        }} 
-                        style={{ 
-                            background: 'transparent', 
-                            border: 'none', 
-                            color: isItemEditing ? '#f59e0b' : (isEditable ? '#64748b' : 'rgba(100, 116, 139, 0.3)'), 
-                            cursor: isEditable ? 'pointer' : 'not-allowed', 
-                            padding: 5 
-                        }} 
-                        title={isEditable ? "Edit" : "Editing locked (Status must be 'Needs Revision')"} 
-                    >
-                        <Pencil size={16} />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+      return (
+          <div key={item._id} style={styles.queueItem(isActive, isItemEditing)} onClick={() => handleSelectEntry(item)}>
+              <div style={{display: "flex", alignItems: "flex-start", gap: "10px"}}>
+                  <div onClick={(e) => toggleSelection(item._id, e)} style={{ paddingTop: 2, flexShrink: 0 }}>{isSelected ? <CheckSquare size={18} color="#10b981" /> : <Square size={18} color="rgba(255,255,255,0.3)" />}</div>
+                  <div style={{flex: 1, minWidth: 0 }}>
+                      <div title={item.RecordingCode || "Untitled"} style={{ fontWeight: '600', color: isItemEditing ? '#f59e0b' : isActive ? '#3b82f6' : '#fff', fontSize: '0.9rem', marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.RecordingCode || "No Recording Code"}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.EventName}</div>
+                      <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>{item.comments?.length > 0 && (<span style={{fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '1px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3}}><MessageSquare size={10} /> {item.comments.length}</span>)}</div>
+                  </div>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, marginTop: -2}}>
+                     <div style={{position: 'relative'}}>
+                         <div onClick={hasEditAccess ? (e) => handleStatusClick(item._id, e) : undefined} style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, whiteSpace: "nowrap" }}>
+                          <statusConfig.icon size={12} strokeWidth={3} /> {!isCompact && (currentStatus === 'revision' ? 'Revise' : currentStatus)}
+                         </div>
+                        {openStatusDropdown === item._id && hasEditAccess && !isTableView && (
+                          <div className="hide-scrollbar" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 5, background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 5, zIndex: 50, width: '140px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}>{STATUS_OPTIONS.map(opt => (<div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}><opt.icon size={14} color={opt.color} /> {opt.label}</div>))}</div>
+                        )}
+                      </div>
+                      <button onClick={(e) => { if (!isEditable) { e.stopPropagation(); toast.error(hasEditAccess ? "Only entries marked 'Needs Revision' can be edited." : "Permission denied."); return; } handleEditClick(item, e); }} style={{ background: 'transparent', border: 'none', color: isItemEditing ? '#f59e0b' : (isEditable ? '#64748b' : 'rgba(100, 116, 139, 0.3)'), cursor: isEditable ? 'pointer' : 'not-allowed', padding: 5 }}>
+                          <Pencil size={16} />
+                      </button>
+                  </div>
+              </div>
+          </div>
+      );
   };
-  
+
   const renderTableView = () => {
-    const groups = getGroupedQueue(queue, groupByField);
-    const groupKeys = Object.keys(groups);
-    
-    // Sort logic for status, otherwise default sort
-    if (groupByField === '_status') {
-         const order = ['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'];
-         groupKeys.sort((a,b) => order.indexOf(a) - order.indexOf(b));
-    }
+      const groups = getGroupedQueue(queue, groupByField);
+      const groupKeys = Object.keys(groups).sort();
 
+      return (
+          <div ref={tableContainerRef} style={{ height: "100%", width: "100%", overflow: "auto", position: 'relative' }} className="custom-scrollbar">
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, tableLayout: 'fixed' }}>
+                  <thead>
+                      <tr>
+                           {TABLE_COLUMNS.map((col) => (
+                               <th key={col.id} style={{ ...styles.tableHeader, width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id], position: 'sticky', left: col.frozen ? (col.id === 'select' ? 0 : 40) : 'auto', zIndex: col.frozen ? 21 : 20, boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none' }}>
+                                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                      {col.id === 'select' ? ( 
+                                          <div style={{display: 'flex', justifyContent: 'center', width: '100%'}}>
+                                              {groupByField === 'none' && (
+                                                  <div onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))} style={{cursor: 'pointer', display: 'flex'}}> 
+                                                      {selectedIndices.size === queue.length && queue.length > 0 ? <CheckSquare size={16} color="#10b981"/> : <Square size={16} color="#64748b"/>} 
+                                                  </div>
+                                              )}
+                                          </div> 
+                                      ) : ( <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>{col.label}</span> )}
+                                      {col.id !== 'select' && ( <div onMouseDown={(e) => handleResizeStart(e, col.id)} style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}><GripVertical size={12} /></div> )}
+                                  </div>
+                               </th>
+                           ))}
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {groupKeys.map(groupKey => {
+                          const isExpanded = expandedGroups.has(groupKey);
+                          return (
+                          <React.Fragment key={groupKey}>
+                              {groupByField !== 'none' && (
+                                  <tr 
+                                      onClick={() => toggleGroup(groupKey)} 
+                                      style={{ cursor: 'pointer' }}
+                                  >
+                                      <td 
+                                          colSpan={TABLE_COLUMNS.length} 
+                                          style={{ 
+                                              background: '#1e293b', 
+                                              padding: 0, 
+                                              borderTop: '1px solid rgba(255,255,255,0.1)', 
+                                              position: 'sticky', 
+                                              top: '40px', 
+                                              zIndex: 15,
+                                              transition: 'background 0.2s'
+                                          }}
+                                          onMouseEnter={(e) => e.currentTarget.style.background = '#283548'} 
+                                          onMouseLeave={(e) => e.currentTarget.style.background = '#1e293b'}
+                                      >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', position: 'sticky', left: 0, width: 'max-content' }}>
+                                              <div onClick={(e) => handleGroupSelect(groups[groupKey], e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
+                                                  {groups[groupKey].length > 0 && groups[groupKey].every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="#64748b" />}
+                                              </div>
+                                              {isExpanded ? <ChevronDown size={16} color="#3b82f6" /> : <ChevronRight size={16} color="#94a3b8" />}
+                                              <span style={{ color: '#3b82f6', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                  {groupByField === '_status' 
+                                                      ? (STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey)
+                                                      : (groupKey === 'Uncategorized' || !groupKey ? `No ${groupByField}` : groupKey)}
+                                                  <span style={{opacity: 0.5, marginLeft: 6, fontWeight: 400}}>({groups[groupKey].length})</span>
+                                              </span>
+                                          </div>
+                                      </td>
+                                  </tr>
+                              )}
+                              
+                              {(groupByField === 'none' || isExpanded) && groups[groupKey].map((item: any) => {
+                                  const isSelected = selectedIndices.has(item._id); const isActive = activeCommentId === item._id; const currentStatus = item._status || 'incomplete';
+                                  const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
+
+                                  return (
+                                      <tr key={item._id} onClick={() => handleSelectEntry(item)} style={styles.tableRow(isActive)}>
+                                          {TABLE_COLUMNS.map(col => {
+                                              const commonStyle = { ...styles.tableCell, width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id], position: col.frozen ? 'sticky' : undefined, left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined, zIndex: col.frozen ? 5 : undefined, background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none' } as React.CSSProperties;
+                                              if (col.id === 'select') return <td key={col.id} style={{...commonStyle, textAlign: 'center'}} onClick={(e) => toggleSelection(item._id, e)}>{isSelected ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="rgba(255,255,255,0.3)" />}</td>;
+                                              if (col.id === 'actions') return <td key={col.id} style={commonStyle}><div style={{display: 'flex', gap: 6, justifyContent: 'center'}}><button onClick={(e) => { e.stopPropagation(); handleSelectEntry(item); }} style={{background: 'transparent', border: 'none', cursor: 'pointer', color: item.comments?.length > 0 ? '#3b82f6' : '#64748b'}}><MessageSquare size={16} /></button></div></td>;
+                                              if (col.id === 'status') return <td key={col.id} style={commonStyle}><div onClick={hasEditAccess ? (e) => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setDropdownPos({ top: rect.bottom + 4, left: rect.left }); setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id); } : undefined} style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, width: 'fit-content' }}><statusConfig.icon size={12} strokeWidth={3} /> {statusConfig.label}</div></td>;
+                                              return <td key={col.id} style={{...commonStyle, fontWeight: col.id === 'RecordingCode' ? 600 : 400, color: col.id === 'RecordingCode' ? '#fff' : '#e2e8f0'}} title={item[col.id]}>{item[col.id]}</td>;
+                                          })}
+                                      </tr>
+                                  );
+                              })}
+                          </React.Fragment>
+                      )})}
+                      {queue.length === 0 && ( <tr><td colSpan={TABLE_COLUMNS.length} style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}><Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} /><p>Queue is Empty</p></td></tr> )}
+                  </tbody>
+              </table>
+          </div>
+      );
+  };
+
+  const renderStepIndicator = () => {
     return (
-        <div 
-            ref={tableContainerRef}
-            style={{ height: "100%", width: "100%", overflow: "auto", position: 'relative' }} 
-            className="custom-scrollbar"
-        >
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; border: 2px solid #0f172a; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-                .custom-scrollbar::-webkit-scrollbar-corner { background: #0f172a; }
-            `}</style>
-            
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, tableLayout: 'fixed' }}>
-                <thead>
-                    <tr>
-                         {TABLE_COLUMNS.map((col) => (
-                             <th 
-                                key={col.id} 
-                                style={{
-                                    ...styles.tableHeader, 
-                                    width: colWidths[col.id], 
-                                    minWidth: colWidths[col.id],
-                                    maxWidth: colWidths[col.id],
-                                    position: 'sticky',
-                                    left: col.frozen ? (col.id === 'select' ? 0 : 40) : 'auto',
-                                    zIndex: col.frozen ? 20 : 10,
-                                    boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none'
-                                }}
-                            >
-                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                                    {col.id === 'select' ? (
-                                        <div onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))} style={{cursor: 'pointer', display: 'flex', justifyContent: 'center', width: '100%'}}>
-                                            {selectedIndices.size === queue.length && queue.length > 0 ? <CheckSquare size={16} color="#10b981"/> : <Square size={16} color="#64748b"/>}
-                                        </div>
-                                    ) : (
-                                        <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>{col.label}</span>
-                                    )}
-                                    
-                                    {col.id !== 'select' && (
-                                        <div 
-                                            onMouseDown={(e) => handleResizeStart(e, col.id)}
-                                            style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}
-                                            className="hover:opacity-100"
-                                        >
-                                            <GripVertical size={12} />
-                                        </div>
-                                    )}
-                                </div>
-                             </th>
-                         ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {groupKeys.map(groupKey => {
-                        // Check if this specific group key is currently expanded in the Set
-                        const isExpanded = expandedGroups.has(groupKey);
-
-                        return (
-                        <React.Fragment key={groupKey}>
-                            {groupByField !== 'none' && (
-                                <tr 
-                                    onClick={() => toggleGroup(groupKey)}
-                                    style={{ cursor: 'pointer', transition: 'background 0.2s' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <td 
-                                        colSpan={TABLE_COLUMNS.length} 
-                                        style={{ 
-                                            background: '#1e293b', 
-                                            padding: '10px 12px', 
-                                            fontSize: '0.75rem', 
-                                            fontWeight: 800, 
-                                            color: '#fff', 
-                                            borderTop: '1px solid rgba(255,255,255,0.1)', 
-                                            position: 'sticky', 
-                                            left: 0,
-                                            zIndex: 15 
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            {/* THE ICON TOGGLE */}
-                                            {isExpanded ? <ChevronDown size={16} color="#3b82f6" /> : <ChevronRight size={16} color="#94a3b8" />}
-                                            
-                                            <span>
-                                                {groupByField === '_status' ? STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey : groupKey} 
-                                                <span style={{opacity: 0.5, marginLeft: 6, fontWeight: 400}}>({groups[groupKey].length})</span>
-                                            </span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                            
-                            {/* LOGIC: Show rows if NO grouping is active OR if the group is Expanded */}
-                            {(groupByField === 'none' || isExpanded) && groups[groupKey].map((item: any) => {
-                                const isSelected = selectedIndices.has(item._id);
-                                const isActive = activeCommentId === item._id;
-                                const currentStatus = item._status || 'incomplete';
-                                const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
-
-                                return (
-                                    <tr key={item._id} onClick={() => handleSelectEntry(item)} style={styles.tableRow(isActive)}>
-                                        {TABLE_COLUMNS.map(col => {
-                                            const commonStyle = {
-                                                ...styles.tableCell,
-                                                width: colWidths[col.id],
-                                                minWidth: colWidths[col.id],
-                                                maxWidth: colWidths[col.id],
-                                                position: col.frozen ? 'sticky' : undefined,
-                                                left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined,
-                                                zIndex: col.frozen ? 5 : undefined,
-                                                background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, 
-                                                boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none'
-                                            } as React.CSSProperties;
-
-                                            if (col.id === 'select') {
-                                                return (
-                                                    <td key={col.id} style={{...commonStyle, textAlign: 'center'}} onClick={(e) => toggleSelection(item._id, e)}>
-                                                        {isSelected ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="rgba(255,255,255,0.3)" />}
-                                                    </td>
-                                                );
-                                            }
-                                            if (col.id === 'actions') {
-                                                return (
-                                                    <td key={col.id} style={commonStyle}>
-                                                        <div style={{display: 'flex', gap: 6, justifyContent: 'center'}}>
-                                                            <button onClick={(e) => { e.stopPropagation(); handleSelectEntry(item); }} title="View Comments" style={{background: 'transparent', border: 'none', cursor: 'pointer', color: item.comments?.length > 0 ? '#3b82f6' : '#64748b'}}>
-                                                                <MessageSquare size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                );
-                                            }
-                                            if (col.id === 'status') {
-                                                return (
-                                                    <td key={col.id} style={commonStyle}>
-                                                        <div 
-                                                            onClick={hasEditAccess ? (e) => {
-                                                                e.stopPropagation();
-                                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                                setDropdownPos({ top: rect.bottom + 4, left: rect.left });
-                                                                setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id);
-                                                            } : undefined} 
-                                                            style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, width: 'fit-content' }}
-                                                        >
-                                                            <statusConfig.icon size={12} strokeWidth={3} /> {statusConfig.label}
-                                                        </div>
-                                                    </td>
-                                                );
-                                            }
-
-                                            return (
-                                                <td key={col.id} style={{...commonStyle, fontWeight: col.id === 'RecordingCode' ? 600 : 400, color: col.id === 'RecordingCode' ? '#fff' : '#e2e8f0'}} title={item[col.id]}>
-                                                    {item[col.id]}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                );
-                            })}
-                        </React.Fragment>
-                    )})}
-                    {queue.length === 0 && (
-                        <tr>
-                            <td colSpan={TABLE_COLUMNS.length} style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}>
-                                <Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} />
-                                <p>Queue is Empty</p>
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        {/* Step 1 */}
+        <div onClick={() => handleSetStep(1)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', opacity: currentStep >= 1 ? 1 : 0.5, transition: 'all 0.2s' }}>
+            <div style={{ width: '26px', height: '26px', borderRadius: '13px', background: currentStep === 1 ? '#3b82f6' : currentStep > 1 ? '#10b981' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                {currentStep > 1 ? <CheckCircle size={14} /> : '1'}
+            </div>
+            <span style={{ fontSize: '0.85rem', fontWeight: currentStep === 1 ? 700 : 500, color: currentStep === 1 ? '#fff' : '#94a3b8' }}>Event Details</span>
         </div>
+        
+        <div style={{ flex: 1, height: '2px', background: currentStep > 1 ? '#10b981' : 'rgba(255,255,255,0.1)', margin: '0 15px', transition: 'all 0.3s' }} />
+
+        {/* Step 2 */}
+        <div onClick={() => handleSetStep(2)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', opacity: currentStep >= 2 ? 1 : 0.5, transition: 'all 0.2s' }}>
+            <div style={{ width: '26px', height: '26px', borderRadius: '13px', background: currentStep === 2 ? '#3b82f6' : currentStep > 2 ? '#10b981' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                {currentStep > 2 ? <CheckCircle size={14} /> : '2'}
+            </div>
+            <span style={{ fontSize: '0.85rem', fontWeight: currentStep === 2 ? 700 : 500, color: currentStep === 2 ? '#fff' : '#94a3b8' }}>DMS Details</span>
+        </div>
+
+        <div style={{ flex: 1, height: '2px', background: currentStep > 2 ? '#10b981' : 'rgba(255,255,255,0.1)', margin: '0 15px', transition: 'all 0.3s' }} />
+
+        {/* Step 3 */}
+        <div onClick={() => handleSetStep(3)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', opacity: currentStep === 3 ? 1 : 0.5, transition: 'all 0.2s' }}>
+            <div style={{ width: '26px', height: '26px', borderRadius: '13px', background: currentStep === 3 ? '#3b82f6' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                3
+            </div>
+            <span style={{ fontSize: '0.85rem', fontWeight: currentStep === 3 ? 700 : 500, color: currentStep === 3 ? '#fff' : '#94a3b8' }}>MediaLog Link</span>
+        </div>
+      </div>
     );
   };
 
   if (viewMode === 'hub') {
-    const totalItems = queue.length;
-    const completedItems = queue.filter(i => i._status === 'complete').length;
-    const audioMergeProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      const totalItems = queue.length; const completedItems = queue.filter(i => i._status === 'complete').length; const audioMergeProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+     const allProjects = [
+  { id: 'audio_merge', title: 'Audio Merge Project', description: 'Ingest, process, and approve new Digital Recordings (DRs) with automated metadata scanning.', icon: Wand2, color: colors.primary, stats: { label: 'In Progress', value: queue.length }, progress: audioMergeProgress, tags: ['Audio', 'Ingest'], isVisible: canViewAudioMerge },
+  
+  // NEW PROJECT HUB WORKFLOW CARD ADDED HERE
+  { 
+  id: 'project_hub_workflow', 
+  title: 'Submission & Que Sheet', 
+  description: 'Create projects, manage media files (DR), and add media logs (ML) with templates and auto-validations.', 
+  icon: Layers, 
+  color: { from: "#3b82f6", to: "#06b6d4" }, 
+  stats: { label: 'New', value: 'System' }, 
+  progress: 100, 
+  tags: ['DR', 'ML', 'Projects'], 
+  status: "APPROVED", 
+  isVisible: canViewProjectHubWorkflow // Updated from true to permission check
+},
 
-    const allProjects = [
-      { 
-        id: 'audio_merge', 
-        title: 'Audio Merge Project', 
-        description: 'Ingest, process, and approve new Digital Recordings (DRs) with automated metadata scanning.', 
-        icon: Wand2, 
-        color: colors.primary, 
-        stats: { label: 'In Progress', value: queue.length }, 
-        progress: audioMergeProgress,
-        tags: ['Audio', 'Ingest'], 
-        
-        isVisible: canViewAudioMerge 
-      },
-      { 
-        id: 'video_archival', 
-        title: 'Wisdom Reels Archival', 
-        description: 'Track satsangs used for reels and manage editing workflow.', 
-        icon: Video, 
-        color: colors.secondary, 
-        stats: { label: 'Picked', value: wisdomPickedCount }, 
-        progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, 
-        tags: ['Video', 'Archive'], 
-        status: "PENDING_APPROVAL",
-        isVisible: canViewWisdomReels 
-      },
-      { 
-        id: 'submitters_ml', 
-        title: 'Submitters ML', 
-        description: 'Manage ML references, extensive searches, and ML summaries by event code.', 
-        icon: Users, 
-        color: colors.success, 
-        stats: { label: 'Modules', value: 5 }, 
-        
-        tags: ['ML', 'Search'], 
-        status: "APPROVED",
-        isVisible: canViewSubmittersML 
-      }
-    ];
+  { id: 'video_archival', title: 'Wisdom Reels Archival', description: 'Track satsangs used for reels and manage editing workflow.', icon: Video, color: colors.secondary, stats: { label: 'Picked', value: wisdomPickedCount }, progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, tags: ['Video', 'Archive'], status: "PENDING_APPROVAL", isVisible: canViewWisdomReels },
+  { id: 'submitters_ml', title: 'Submitters ML', description: 'Manage ML references, extensive searches, and ML summaries by event code.', icon: Users, color: colors.success, stats: { label: 'Modules', value: 5 }, tags: ['ML', 'Search'], status: "APPROVED", isVisible: canViewSubmittersML }
+];
+      const visibleProjects = allProjects.filter(p => p.isVisible);
 
-    const visibleProjects = allProjects.filter(p => p.isVisible);
+      return (
+        <div className="px-8 py-10 animate-in fade-in duration-1000" style={{...styles.wrapper, display: 'block', overflowY: 'auto', padding: isMobile ? "20px 10px" : "20px 40px"}}>
+          <style>{`.glass-card { background: #131b2e; border-radius: 20px; padding: 24px; position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); } .animate-in { animation: fadeIn 0.5s ease-out forwards; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
-    return (
-      <div className="px-8 py-10 animate-in fade-in duration-1000" style={{...styles.wrapper, display: 'block', overflowY: 'auto', padding: isMobile ? "20px 10px" : "20px 40px"}}>
-        <style>{`
-          .glass-card { background: #131b2e; border-radius: 20px; padding: 24px; position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); }
-          .animate-in { animation: fadeIn 0.5s ease-out forwards; }
-          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        `}</style>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px', width: '100%' }}>
+              <div style={{ background: '#131b2e', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '9999px', padding: '4px', display: 'flex', gap: '4px' }}></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {loggedInUser?.picture ? ( <div style={{ padding: '2px', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: '50%' }}><Avatar className="w-9 h-9 border-2 border-background cursor-pointer"><AvatarImage src={loggedInUser.picture} alt={loggedInUser.name} /><AvatarFallback>{loggedInUser.name.charAt(0)}</AvatarFallback></Avatar></div> ) : ( <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>G</div> )}
+              </div>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px', width: '100%' }}>
-            <div style={{ background: '#131b2e', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '9999px', padding: '4px', display: 'flex', gap: '4px' }}></div>
+          <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '-20px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.3)' }}><Layout size={24} color="white" /></div>
+                  <h1 style={{ fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: '800', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0, letterSpacing: '-1px' }}>Project Hub</h1>
+              </div>
+          </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                {loggedInUser?.picture ? (
-                    <div style={{ padding: '2px', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: '50%' }}>
-                        <Avatar className="w-9 h-9 border-2 border-background cursor-pointer">
-                            <AvatarImage src={loggedInUser.picture} alt={loggedInUser.name} />
-                            <AvatarFallback>{loggedInUser.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    </div>
-                ) : (
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
-                        G
-                    </div>
-                )}
-            </div>
-        </div>
-
-        <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '-20px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                    width: '48px', height: '48px', borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 8px 16px -4px rgba(99, 102, 241, 0.3)'
-                }}>
-                    <Layout size={24} color="white" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+            {visibleProjects.length > 0 ? (
+              visibleProjects.map((project) => (
+              <div key={project.id} onClick={() => { 
+  if(project.id === 'audio_merge') setViewMode('form'); 
+  else if(project.id === 'project_hub_workflow') setViewMode('project_hub_workflow'); // Added route here
+  else if(project.id === 'video_archival') setViewMode('video_archival'); 
+  else if(project.id === 'submitters_ml') setViewMode('submitters_ml'); 
+  else toast.info("Project coming soon"); 
+}} style={{ background: '#131b2e', borderRadius: '24px', padding: '32px', border: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', cursor: 'pointer', minHeight: '320px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                  <span style={{ padding: '0.35rem 0.85rem', borderRadius: '0.5rem', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: project.status === 'APPROVED' ? '#34d399' : project.status === 'PENDING_APPROVAL' ? '#fbbf24' : '#94a3b8' }}></span>
+                  <ArrowRight size={20} color="#64748b" />
                 </div>
-                <h1 style={{
-                    fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: '800',
-                    background: 'linear-gradient(to right, #fff, #94a3b8)',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    margin: 0, letterSpacing: '-1px'
-                }}>
-                    Project Hub
-                </h1>
-            </div>
+                <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem', lineHeight: 1.1 }}>{project.title}</h3>
+                <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: 'auto', fontWeight: 500 }}>{project.description}</p>
+                <div style={{ marginTop: '2rem' }}>
+                  {project.id !== 'submitters_ml' && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' }}><span>Completion Status</span><span style={{ color: 'white' }}>{project.progress}%</span></div>
+                      <div style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '9999px', height: '0.35rem', overflow: 'hidden' }}><div style={{ width: `${project.progress}%`, height: '100%', background: '#f59e0b' }} /></div>
+                    </>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+                   <div style={{ display: 'flex' }}>
+                      {project.id === 'audio_merge' ? ( <>{userList.slice(0, 3).map((u, i) => ( <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{getInitials(u.name)}</div> ))} {userList.length > 3 && ( <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{userList.length - 3}</div> )}</> ) : project.id === 'video_archival' ? ( <>{wisdomUserList.length > 0 ? ( <>{wisdomUserList.slice(0, 3).map((u, i) => ( <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{getInitials(u.name)}</div> ))} {wisdomUserList.length > 3 && ( <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{wisdomUserList.length - 3}</div> )}</> ) : ( <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div> )}</> ) : project.id === 'submitters_ml' ? ( <>{submittersMLUserList.length > 0 ? ( <>{submittersMLUserList.slice(0, 3).map((u, i) => ( <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{getInitials(u.name)}</div> ))} {submittersMLUserList.length > 3 && ( <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{submittersMLUserList.length - 3}</div> )}</> ) : ( <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div> )}</> ) : ( <>{[1, 2].map(id => ( <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{id === 1 ? 'JD' : 'AS'}</div> ))} <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+3</div></> )}
+                   </div>
+                   <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>{project.stats.value} Items</span>
+                </div>
+              </div>
+            ))
+            ) : ( <div style={{ gridColumn: "1 / -1", textAlign: "center", color: "#64748b", padding: "40px" }}>You do not have access to any projects. Please contact an Administrator.</div> )}
+          </div>
         </div>
+      );
+  }
 
-{showAnalytics && canViewAudioMerge && (
-  <div style={{
-    position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
-    background: "rgba(0,0,0,0.6)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center"
-  }}>
-    <div style={{
-      background: "#131b2e", borderRadius: 20, padding: 32, minWidth: isMobile ? "95%" : 600, minHeight: 400,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.5)", position: "relative"
-    }}>
-      <button
-  onClick={() => { setShowAnalytics(false); }}
-  style={{
-    position: "absolute", top: 16, right: 16, background: "transparent",
-    border: "none", color: "#fff", fontSize: 22, cursor: "pointer"
-  }}
-  title="Close"
->
-  ×
-</button>
-     <h2 style={{ color: "#fff", marginBottom: 24, textAlign: "center" }}>Audio Merge Project Analytics</h2>
-<div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 300 }}>
-</div>
+  if (viewMode === 'video_archival') return <div style={styles.wrapper}><VideoArchivalProject onBack={() => setViewMode('hub')} userEmail={userEmail} /></div>;
+  if (viewMode === 'submitters_ml') return <div style={styles.wrapper}><SubmittersMLHub onBack={() => setViewMode('hub')} /></div>;
+  if (viewMode === 'project_hub_workflow') {
+  // Check if they have at least read access
+  if (!canViewProjectHubWorkflow) {
+    return (
+      <div style={{ ...styles.wrapper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+          <Lock size={64} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
+          <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '10px' }}>Access Denied</h2>
+          <p>You do not have permission to access the Project Hub Workflow.</p>
+          <button onClick={() => setViewMode('hub')} style={{ marginTop: '20px', padding: '10px 20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', cursor: 'pointer' }}>Return to Hub</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height: '100vh', padding: '20px', background: '#020617' }}>
+      <ProjectHubWorkflow 
+        onBack={() => setViewMode('hub')} 
+      />
     </div>
-  </div>
-)}
-
-        <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: '2rem' 
-        }}>
-          {visibleProjects.length > 0 ? (
-            visibleProjects.map((project) => (
-            <div 
-              key={project.id}
-              onClick={() => { 
-                if(project.id === 'audio_merge') setViewMode('form'); 
-                else if(project.id === 'video_archival') setViewMode('video_archival'); 
-                else if(project.id === 'submitters_ml') setViewMode('submitters_ml');
-                else toast.info("Project coming soon"); 
-              }}
-              style={{ background: '#131b2e', borderRadius: '24px', padding: '32px', border: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', cursor: 'pointer', minHeight: '320px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <span style={{ 
-                    padding: '0.35rem 0.85rem', 
-                    borderRadius: '0.5rem', 
-                    fontSize: '0.65rem', 
-                    fontWeight: 800, 
-                    textTransform: 'uppercase', 
-                    letterSpacing: '0.05em', 
-                    color: project.status === 'APPROVED' ? '#34d399' : project.status === 'PENDING_APPROVAL' ? '#fbbf24' : '#94a3b8' 
-                }}>
-                </span>
-                <ArrowRight size={20} color="#64748b" />
-              </div>
-
-              <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem', lineHeight: 1.1 }}>{project.title}</h3>
-              <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: 'auto', fontWeight: 500 }}>{project.description}</p>
-              
-              <div style={{ marginTop: '2rem' }}>
-  {project.id !== 'submitters_ml' && (  // ✅ ADD THIS CONDITION
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' }}>
-          <span>Completion Status</span>
-          <span style={{ color: 'white' }}>{project.progress}%</span>
-      </div>
-      <div style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '9999px', height: '0.35rem', overflow: 'hidden' }}>
-          <div style={{ 
-              width: `${project.progress}%`, 
-              height: '100%', 
-              background: '#f59e0b',
-          }} />
-      </div>
-    </>
-  )}
-</div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
-                 <div style={{ display: 'flex' }}>
-                    {/* --- AUDIO MERGE CARD (Uses 'userList') --- */}
-                    {project.id === 'audio_merge' ? (
-                        <>
-                            {userList.slice(0, 3).map((u, i) => (
-                                <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
-                                    {getInitials(u.name)}
-                                </div>
-                            ))}
-                            {userList.length > 3 && (
-                                <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{userList.length - 3}</div>
-                            )}
-                        </>
-                    ) : project.id === 'video_archival' ? (
-                        
-                        /* --- WISDOM REELS CARD (Uses 'wisdomUserList') --- */
-                        <>
-                            {wisdomUserList.length > 0 ? (
-                                <>
-                                    {wisdomUserList.slice(0, 3).map((u, i) => (
-                                        <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
-                                            {getInitials(u.name)}
-                                        </div>
-                                    ))}
-                                    {wisdomUserList.length > 3 && (
-                                        <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{wisdomUserList.length - 3}</div>
-                                    )}
-                                </>
-                            ) : (
-                                /* Fallback if wisdom list is empty */
-                                <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div>
-                            )}
-                        </>
-                    ) : project.id === 'submitters_ml' ? (
-                        /* --- SUBMITTERS ML CARD (Uses 'submittersMLUserList') --- */
-                        <>
-                            {submittersMLUserList.length > 0 ? (
-                                <>
-                                    {submittersMLUserList.slice(0, 3).map((u, i) => (
-                                        <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
-                                            {getInitials(u.name)}
-                                        </div>
-                                    ))}
-                                    {submittersMLUserList.length > 3 && (
-                                        <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{submittersMLUserList.length - 3}</div>
-                                    )}
-                                </>
-                            ) : (
-                                <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div>
-                            )}
-                        </>
-                    ) : (
-                        /* --- OTHER CARDS (Fallbacks) --- */
-                        <>
-                            {[1, 2].map(id => (
-                                <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>
-                                    {id === 1 ? 'JD' : 'AS'}
-                                </div>
-                            ))}
-                            <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+3</div>
-                        </>
-                    )}
-                 </div>
-                 <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>{project.stats.value} Items</span>
-              </div>
-            </div>
-          ))
-          ) : (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", color: "#64748b", padding: "40px" }}>
-              You do not have access to any projects. Please contact an Administrator.
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (viewMode === 'video_archival') {
-    return (
-      <div style={styles.wrapper}>
-        <VideoArchivalProject onBack={() => setViewMode('hub')} userEmail={userEmail} />
-      </div>
-    );
-  }
-
-  if (viewMode === 'submitters_ml') {
-    return (
-      <div style={styles.wrapper}>
-        <SubmittersMLHub onBack={() => setViewMode('hub')} />
-      </div>
-    );
-  }
-
+  );
+}
   if (!canViewAudioMerge) {
       return (
           <div style={{ ...styles.wrapper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ textAlign: 'center', color: '#94a3b8' }}>
-                  <Lock size={64} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
-                  <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '10px' }}>Access Denied</h2>
-                  <p>You do not have permission to access the Audio Merge Project form.</p>
-                  <button 
-                    onClick={() => setViewMode('hub')}
-                    style={{ marginTop: '20px', padding: '10px 20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', cursor: 'pointer' }}
-                  >
-                    Return to Hub
-                  </button>
-              </div>
+              <div style={{ textAlign: 'center', color: '#94a3b8' }}><Lock size={64} style={{ margin: '0 auto 20px', opacity: 0.5 }} /><h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '10px' }}>Access Denied</h2><p>You do not have permission to access the Audio Merge Project form.</p><button onClick={() => setViewMode('hub')} style={{ marginTop: '20px', padding: '10px 20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', cursor: 'pointer' }}>Return to Hub</button></div>
           </div>
       );
   }
 
-  const isCurrentEntryEditable = activeEntry ? canEditEntry(activeEntry) : false;
-
   return (
     <div style={styles.wrapper}>
-      <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+      <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; } .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }`}</style>
       
       <div style={styles.header(isCompact)}>
         <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)' }}>
@@ -1973,182 +1542,258 @@ const handleSendComment = async () => {
                 <ArrowLeft size={20} />
             </button>
         </div>
-
         <div style={{ textAlign: 'center' }}>
-           
             <h1 style={styles.title(isCompact)}>Audio Merge Project</h1>
         </div>
       </div>
 
       <input type="file" ref={fileInputRef} onChange={handleFileScan} style={{ display: "none" }} multiple />
 
-      <div style={{ 
-          ...styles.mainContainer, 
-          display: isMobile ? "flex" : "grid",
-          flexDirection: isMobile ? "column" : "row",
-          gridTemplateColumns: isMobile ? "none" : getGridTemplate(), 
-          gap: isCompact ? "12px" : "20px",
-          position: "relative"
-      }}>
+      <div style={{ ...styles.mainContainer, display: isMobile ? "flex" : "grid", flexDirection: isMobile ? "column" : "row", gridTemplateColumns: isMobile ? "none" : getGridTemplate(), gap: isCompact ? "12px" : "20px", position: "relative" }}>
         
         {/* COLUMN 1: FORM */}
         {(!isTableView || (isMobile && (showMobileForm || isEditing))) && (
-            <div style={{
-                ...styles.columnScroll,
-                display: isMobile ? ((showMobileForm || isEditing) ? 'block' : 'none') : 'block',
-                width: isMobile ? "100%" : "auto",
-                paddingBottom: isMobile ? "20px" : "100px" 
-            }} className="hide-scrollbar">
+            <div style={{ ...styles.columnScroll, display: isMobile ? ((showMobileForm || isEditing) ? 'block' : 'none') : 'block', width: isMobile ? "100%" : "auto", paddingBottom: isMobile ? "20px" : "100px" }} className="hide-scrollbar">
                 <div style={styles.unifiedCard(isCompact)}>
                     
                     {isMobile && (
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                            <button 
-                                type="button"
-                                onClick={() => { setShowMobileForm(false); handleCancelSelection(); }}
-                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}
-                            >
-                                <ArrowLeft size={20} /> Back to Queue
-                            </button>
+                            <button type="button" onClick={() => { setShowMobileForm(false); handleCancelSelection(); }} style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}><ArrowLeft size={20} /> Back to Queue</button>
                         </div>
                     )}
+
+                    {/* Step Wizard Header */}
+                    {renderStepIndicator()}
 
                     {isEditing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(245, 158, 11, 0.1)", border: "1px solid #f59e0b", borderRadius: 8, color: "#f59e0b", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Pencil size={14}/> Editing Mode - Changes will update the entry</div>}
                     {isViewing && <div style={{marginBottom: 15, padding: "8px 12px", background: "rgba(59, 130, 246, 0.1)", border: "1px solid #3b82f6", borderRadius: 8, color: "#3b82f6", fontSize: "0.8rem", fontWeight: 600, display: "flex", alignItems: "center", gap: 8}}><Eye size={14}/> View Mode - Read Only</div>}
 
-                    <div style={styles.sectionBlock}>
-                        <SectionTitle icon={Database} title="Event Details" theme={colors.core} />
-                        <div style={styles.gridFields}>
-                    
-    <SearchableSelect label="Event Code" name="fkEventCode" options={eventCodeOptions.map(opt => opt.EventCode)} value={formData.fkEventCode} onChange={handleChange} theme={colors.core} required={true} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-    {renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
-    {renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}
-    {renderField("Event Category", "NewEventCategory", colors.core, {medium: true,required: true, disabled: !hasEditAccess || isViewing  })}
-   
+                    {/* STEP 1: EVENT DETAILS */}
+                    {currentStep === 1 && (
+                        <div className="animate-in fade-in duration-300" style={styles.sectionBlock}>
+                            <SectionTitle icon={Database} title="Event Details" theme={colors.core} />
+                            <div style={styles.gridFields}>
+                                <SearchableSelect label="Event Code" name="fkEventCode" options={eventCodeOptions.map(opt => opt.EventCode)} value={formData.fkEventCode} onChange={handleChange} theme={colors.core} required={true} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                                {renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
+                                {renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}
+                                {renderField("Event Category", "NewEventCategory", colors.core, {medium: true,required: true, disabled: !hasEditAccess || isViewing  })}
+                            </div>
+                        </div>
+                    )}
 
+                    {/* STEP 2: DMS DETAILS */}
+                    {currentStep === 2 && (
+                        <div className="animate-in fade-in duration-300" style={styles.sectionBlock}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <SectionTitle icon={FileAudio} title="DMS details" theme={colors.tech} />
+                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}><FileSearch size={14} /> Scan File</button>
+                            </div>
+
+                            <div style={styles.gridFields}>
+                                {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
+                                {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
+                                {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                                {renderField("File Size", "Filesize", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                                {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                                {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing, uppercase: true })}
+                                {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
+                                {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { disabled: !hasEditAccess || isViewing })}
+                                <div style={styles.gridFields}>
+                                    <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                                </div>
+                                {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
+                            </div>
                         </div>
-                    </div>
-                    <div style={styles.sectionBlock}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <SectionTitle icon={FileAudio} title="DMS details" theme={colors.tech} />
-                            
-                            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}>
-                                <FileSearch size={14} /> Scan File
-                            </button>
+                    )}
+
+                    {/* STEP 3: MEDIALOG DETAILS */}
+                    {currentStep === 3 && (
+                        <div className="animate-in fade-in duration-300" style={{...styles.sectionBlock, marginBottom: 0}}>
+                            {/* IF CREATING NEW: SHOW MULTI-SELECT BATCH TABLE */}
+                            {(!isEditing && !isViewing) ? (
+                                <div style={{ gridColumn: "1 / -1" }}>
+                                    <SectionTitle icon={LinkIcon} title="Batch Link MediaLog Entries " theme={colors.tech} />
+                                    {!formData.fkEventCode ? (
+                                        <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+                                            Please select an Event Code to view available MediaLog entries for batch processing.
+                                        </div>
+                                    ) : mlIdOptions.length === 0 ? (
+                                        <div style={{ padding: '16px', textAlign: 'center', color: '#f87171', background: 'rgba(239,68,68,0.05)', borderRadius: 8, border: '1px dashed rgba(239,68,68,0.2)', fontSize: '0.85rem' }}>
+                                            No MediaLog entries found for this Event Code.
+                                        </div>
+                                    ) : (
+                                        <div style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, marginTop: 6, maxHeight: '350px' }} className="custom-scrollbar">
+                                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '0.75rem', color: '#e2e8f0', textAlign: 'left', tableLayout: 'fixed' }}>
+                                                <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+                                                    <tr>
+                                                        <th style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)', width: 40, minWidth: 40, position: 'sticky', left: 0, background: '#1e293b', zIndex: 21 }}>
+                                                            <div onClick={() => {
+                                                                if (selectedMlIds.size === mlIdOptions.length) setSelectedMlIds(new Set());
+                                                                else setSelectedMlIds(new Set(mlIdOptions.map(opt => opt.MLUniqueID)));
+                                                            }} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'center' }}>
+                                                                {selectedMlIds.size === mlIdOptions.length && mlIdOptions.length > 0 ? <CheckSquare size={16} color="#3b82f6" /> : <Square size={16} color="#64748b" />}
+                                                            </div>
+                                                        </th>
+                                                        {BATCH_TABLE_COLUMNS.map(col => (
+                                                            <th key={col.id} style={{ 
+                                                                padding: '10px 12px', 
+                                                                borderBottom: '1px solid rgba(255,255,255,0.1)', 
+                                                                width: batchColWidths[col.id], 
+                                                                minWidth: batchColWidths[col.id],
+                                                                maxWidth: batchColWidths[col.id],
+                                                                position: col.sticky ? 'sticky' : 'static', 
+                                                                left: col.sticky ? col.left : 'auto', 
+                                                                background: '#1e293b', 
+                                                                zIndex: col.sticky ? 21 : 20, 
+                                                                borderRight: col.sticky ? '1px solid rgba(255,255,255,0.1)' : 'none' 
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col.label}</span>
+                                                                    <div onMouseDown={(e) => handleBatchResizeStart(e, col.id)} style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}>
+                                                                        <GripVertical size={12} />
+                                                                    </div>
+                                                                </div>
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {mlIdOptions.map(opt => {
+                                                        const isSelected = selectedMlIds.has(opt.MLUniqueID);
+                                                        return (
+                                                            <tr key={opt.MLUniqueID} 
+                                                                onClick={() => {
+                                                                    const newSet = new Set(selectedMlIds);
+                                                                    if (isSelected) newSet.delete(opt.MLUniqueID);
+                                                                    else newSet.add(opt.MLUniqueID);
+                                                                    setSelectedMlIds(newSet);
+                                                                }}
+                                                                style={{ 
+                                                                    background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent', 
+                                                                    cursor: 'pointer', transition: 'background 0.2s' 
+                                                                }}
+                                                                onMouseEnter={(e) => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                                                                onMouseLeave={(e) => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
+                                                            >
+                                                                <td style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'sticky', left: 0, background: isSelected ? '#16233a' : '#0f172a', zIndex: 1, textAlign: 'center' }}>
+                                                                    {isSelected ? <CheckSquare size={16} color="#3b82f6" /> : <Square size={16} color="#64748b" />}
+                                                                </td>
+                                                                {BATCH_TABLE_COLUMNS.map(col => {
+                                                                    const cellValue = col.id === 'Detail' ? `${opt.Detail} ${opt.SubDetail ? `- ${opt.SubDetail}` : ''}` : opt[col.id];
+                                                                    return (
+                                                                        <td key={col.id} style={{ 
+                                                                            padding: '10px 12px', 
+                                                                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                                            width: batchColWidths[col.id], 
+                                                                            minWidth: batchColWidths[col.id],
+                                                                            maxWidth: batchColWidths[col.id],
+                                                                            whiteSpace: 'nowrap', 
+                                                                            overflow: 'hidden', 
+                                                                            textOverflow: 'ellipsis',
+                                                                            position: col.sticky ? 'sticky' : 'static', 
+                                                                            left: col.sticky ? col.left : 'auto', 
+                                                                            background: col.sticky ? (isSelected ? '#16233a' : '#0f172a') : 'transparent', 
+                                                                            zIndex: col.sticky ? 1 : 'auto', 
+                                                                            borderRight: col.sticky ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                                                                            fontWeight: col.id === 'MLUniqueID' ? 600 : 400
+                                                                        }} title={cellValue}>
+                                                                            {cellValue}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        )
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                // IF EDITING OR VIEWING: SHOW ORIGINAL SINGLE RECORD FIELDS
+                                <div>
+                                    <SectionTitle icon={FileAudio} title="MediaLog Details" theme={colors.tech} />
+                                    <div style={styles.gridFields}>
+                                        <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                                        {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Patrank", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                        {renderField("SatsangStart", "SatsangStart", colors.core, { full: true,disabled: !hasEditAccess || isViewing })}
+                                        {renderField("SatsangEnd", "SatsangEnd", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("fkCity", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                        {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Detail", "Detail", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Remarks", "Remarks", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {/* WIZARD ACTION BUTTONS */}
+                    <div style={{ marginTop: 'auto', paddingTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            {(isEditing || isViewing) && ( <button type="button" onClick={handleCancelSelection} style={styles.cancelBtn}> {isEditing ? "Cancel Edit" : "Close"} </button> )}
+                            {!isEditing && !isViewing && ( <button type="button" onClick={handleResetForm} title="Reset Form" style={styles.resetBtn} disabled={isResetting}> <RotateCcw size={16} className={isResetting ? "animate-spin" : ""} /> </button> )}
                         </div>
 
-                        <div style={styles.gridFields}>
-                         {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
-                        {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
-                        {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        {renderField("File Size", "Filesize", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing, uppercase: true })}
-                        {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
-                        {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                        <div style={styles.gridFields}>
-                        <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            {currentStep > 1 && (
+                                <button type="button" onClick={() => handleSetStep(currentStep - 1)} style={{...styles.cancelBtn, border: '1px solid rgba(255,255,255,0.2)'}}>Back</button>
+                            )}
+
+                            {currentStep < 3 ? (
+                                <button type="button" onClick={() => handleSetStep(currentStep + 1)} style={{...styles.addBtn(false, false), width: '120px', flex: 'none'}}>Next</button>
+                            ) : isViewing ? ( 
+                                <button type="button" onClick={enableEditing} disabled={!isCurrentEntryEditable} title={!isCurrentEntryEditable ? "Only entries marked 'Needs Revision' can be edited." : ""} style={{ ...styles.addBtn(false, true), opacity: isCurrentEntryEditable ? 1 : 0.5, cursor: isCurrentEntryEditable ? 'pointer' : 'not-allowed', width: 'auto' }}> 
+                                    <Pencil size={18} style={{marginRight:6}}/> Edit This Entry 
+                                </button> 
+                            ) : ( 
+                                <button type="button" onClick={handleSaveDraft} style={{...styles.addBtn(isEditing, false), padding: '0 20px', width: 'auto'}} disabled={!hasEditAccess} title={!hasEditAccess ? "Only users with edit access can add or update" : ""}> 
+                                    {isEditing ? (<> <Save size={18} /> Update Entry </>) : (<> <Plus size={18} /> Add to Queue {selectedMlIds.size > 0 && `(${selectedMlIds.size})`}</>)} 
+                                </button> 
+                            )}
                         </div>
-                          {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
-                        </div>
-                    </div>
-                   
-                    
-                    <div style={{...styles.sectionBlock, marginBottom: 0}}><br/>
-                        <SectionTitle icon={FileAudio} title="MediaLog Details" theme={colors.tech} />
-                        <div style={styles.gridFields}>
-                            <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                           
-                            {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
-                            {renderField("Patrank", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
-                                {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
-                                {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                {renderField("SatsangStart", "SatsangStart", colors.core, { full: true,disabled: !hasEditAccess || isViewing })}
-                                {renderField("SatsangEnd", "SatsangEnd", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                    {renderField("fkCity", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                    {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
-                            {renderField("Detail", "Detail", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                            {renderField("Remarks", "Remarks", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                        </div>
-                    </div>
-                    
-                    <div style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
-                        {(isEditing || isViewing) && ( <button type="button" onClick={handleCancelSelection} style={styles.cancelBtn}> {isEditing ? "Cancel Edit" : "Close"} </button> )}
-                        {!isEditing && !isViewing && ( <button type="button" onClick={handleResetForm} title="Reset Form" style={styles.resetBtn} disabled={isResetting}> <RotateCcw size={16} className={isResetting ? "animate-spin" : ""} /> </button> )}
-                        {isViewing ? ( 
-                            <button 
-                                type="button" 
-                                onClick={enableEditing} 
-                                disabled={!isCurrentEntryEditable}
-                                title={!isCurrentEntryEditable ? "Only entries marked 'Needs Revision' can be edited." : ""}
-                                style={{ ...styles.addBtn(false, true), opacity: isCurrentEntryEditable ? 1 : 0.5, cursor: isCurrentEntryEditable ? 'pointer' : 'not-allowed' }}
-                            > 
-                                <Pencil size={18} style={{marginRight:6}}/> Edit This Entry 
-                            </button> 
-                        ) : ( 
-                            <button type="button" onClick={handleSaveDraft} style={styles.addBtn(isEditing, false)} disabled={!hasEditAccess} title={!hasEditAccess ? "Only users with edit access can add or update" : ""}> {isEditing ? (<> <Save size={18} /> Update Entry </>) : (<> <Plus size={18} /> Add to Queue </>)} </button> 
-                        )}
                     </div>
                 </div>
             </div>
         )}
 
         {/* COLUMN 2: PENDING QUEUE */}
-        <div style={{ 
-            ...styles.columnScroll, 
-            height: "100%", 
-            overflowY: "auto", 
-            gridColumn: isTableView && !isMobile ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", 
-            display: isMobile ? ((!showMobileForm && !isEditing && !isCommentsOpen) ? 'block' : 'none') : 'block',
-            width: isMobile ? "100%" : "auto"
-        }} className="hide-scrollbar">
+        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView && !isMobile ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", display: isMobile ? ((!showMobileForm && !isEditing && !isCommentsOpen) ? 'block' : 'none') : 'block', width: isMobile ? "100%" : "auto" }} className="hide-scrollbar">
             <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
                 
                 <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
                         <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
-                            <button 
-                                onClick={() => setIsTableView(false)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                            >
-                                <LayoutList size={14} /> List
-                            </button>
-                            <button 
-                                onClick={() => setIsTableView(true)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                            >
-                                <TableProperties size={14} /> Table
-                            </button>
+                            <button onClick={() => setIsTableView(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><LayoutList size={14} /> List</button>
+                            <button onClick={() => setIsTableView(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><TableProperties size={14} /> Table</button>
                         </div>
                         <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
                     </div>
 
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
-                         
-
+                         {isTableView && queue.length > 0 && (
+                            <button 
+                                onClick={exportToCSV} 
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)' }}
+                                title="Export to CSV"
+                            >
+                                <Download size={14} /> Export
+                            </button>
+                        )}
+                        
                          {isTableView && queue.length > 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Group by:</span>
                                 <div style={{ position: 'relative' }}>
-                                   <select
-  value={groupByField}
-  onChange={(e) => setGroupByField(e.target.value)}
-  style={{
-    background: '#202d4b',           
-    border: '2px solid #474f5c',
-    color: '#ffffff',
-    fontSize: '0.75rem',
-    padding: '6px 10px',  
-    borderRadius: 6,
-    outline: 'none',
-    cursor: 'pointer',
-    
-  }}
->
-
+                                   <select value={groupByField} onChange={(e) => setGroupByField(e.target.value)} style={{ background: '#202d4b', border: '2px solid #474f5c', color: '#ffffff', fontSize: '0.75rem', padding: '6px 10px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}>
                                         <option value="none">None</option>
+                                        <option value="RecordingCode">Recording Code</option>
                                         <option value="_status">Status</option>
-                                        <option value="fkEventCode">Event Code</option>
                                         <option value="EventName">Event Name</option>
                                         <option value="Yr">Year</option>
                                         <option value="NewEventCategory">Event Category</option>
@@ -2160,35 +1805,67 @@ const handleSendComment = async () => {
                                 </div>
                             </div>
                         )}
-
-                        {queue.length > 0 && !isTableView && (<span onClick={() => setIsGrouped(!isGrouped)} style={{ fontSize: '0.75rem', color: isGrouped ? '#3b82f6' : '#667fa3', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: isGrouped ? 600 : 400 }}><ListFilter size={14} /> Group by Status</span>)}
-                        {queue.length > 0 && !isTableView && (<span style={{fontSize: '0.8rem', color: '#94a3b8', cursor: 'pointer'}} onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))}>Select All</span>)}
+                        {queue.length > 0 && !isTableView && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <ListFilter size={14} color="#94a3b8" />
+                                <select value={groupByField} onChange={(e) => setGroupByField(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.75rem', outline: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                    <option value="RecordingCode">Recording Code</option>
+                                    <option value="_status">Status</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
+                        )}
+                        {queue.length > 0 && !isTableView && groupByField === 'none' && (<span style={{fontSize: '0.8rem', color: '#94a3b8', cursor: 'pointer'}} onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))}>Select All</span>)}
                     </div>
                 </div>
 
                 {queue.length === 0 ? (
                     <div style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}><Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} /><p>Empty</p></div>
                 ) : (
-                    isTableView ? (
-                        renderTableView()
-                    ) : (
+                    isTableView ? ( renderTableView() ) : (
                         <div style={{ overflowY: 'auto', flex: 1 }} className="hide-scrollbar">
-                            {isGrouped ? (
+                            {groupByField !== 'none' ? (
                                 <div>
                                     {(() => {
-                                        const groups = getGroupedQueue(queue, '_status');
-                                        const renderGroup = (statusId: string, label: string) => {
-                                            const groupItems = groups[statusId];
-                                            if(!groupItems || groupItems.length === 0) return null;
-                                            const isExpanded = expandedGroups.has(statusId);
-                                            return (
-                                                <div key={statusId}>
-                                                    <div onClick={() => toggleGroup(statusId)} style={styles.groupTitle(statusId, isExpanded)}>{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} {label} ({groupItems.length})</div>
-                                                    {isExpanded && groupItems.map(renderQueueItem)}
-                                                </div>
-                                            )
-                                        };
-                                        return ( <>{renderGroup('incomplete', 'Submitted to MM')} {renderGroup('revision', 'Needs Revision')} {renderGroup('inwarding', 'Inwarding')} {renderGroup('submission_confirmed', 'Submission Confirmed')} {renderGroup('complete', 'Complete')}</> );
+                                        const groups = getGroupedQueue(queue, groupByField);
+                                        const groupKeys = Object.keys(groups).sort((a, b) => {
+                                            if (groupByField === '_status') {
+                                                const order = ['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'];
+                                                return order.indexOf(a) - order.indexOf(b);
+                                            }
+                                            return a.localeCompare(b);
+                                        });
+                                        
+                                        return (
+                                            <>
+                                                {groupKeys.map(groupKey => {
+                                                    const groupItems = groups[groupKey];
+                                                    if(!groupItems || groupItems.length === 0) return null;
+                                                    const isExpanded = expandedGroups.has(groupKey);
+                                                    
+                                                    let displayLabel = groupKey;
+                                                    if (groupByField === '_status') {
+                                                        displayLabel = STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey;
+                                                    } else {
+                                                        displayLabel = groupKey === 'Uncategorized' || !groupKey ? `No ${groupByField}` : groupKey;
+                                                    }
+
+                                                    return (
+                                                        <div key={groupKey}>
+                                                            <div onClick={() => toggleGroup(groupKey)} style={styles.groupTitle(groupKey, isExpanded)}>
+                                                                <div onClick={(e) => handleGroupSelect(groupItems, e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
+                                                                    {groupItems.length > 0 && groupItems.every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={14} color="#10b981" /> : <Square size={14} color="#64748b" />}
+                                                                </div>
+                                                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} 
+                                                                <span style={{flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{displayLabel}</span>
+                                                                <span>({groupItems.length})</span>
+                                                            </div>
+                                                            {isExpanded && groupItems.map(renderQueueItem)}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </>
+                                        );
                                     })()}
                                 </div>
                             ) : ( queue.map(renderQueueItem) )}
@@ -2196,38 +1873,19 @@ const handleSendComment = async () => {
                     )
                 )}
 
-                {/* Mobile FAB to Add New */}
                 {isMobile && !showMobileForm && !isEditing && !isCommentsOpen && hasEditAccess && (
-                     <button 
-                         onClick={() => setShowMobileForm(true)}
-                         style={{ position: "fixed", bottom: queue.length > 0 && selectedIndices.size > 0 ? "90px" : "30px", right: "20px", width: "56px", height: "56px", borderRadius: "28px", background: "linear-gradient(to right, #6366f1, #a855f7)", color: "white", border: "none", boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, cursor: "pointer" }}
-                     >
-                         <Plus size={28} />
-                     </button>
+                     <button onClick={() => setShowMobileForm(true)} style={{ position: "fixed", bottom: queue.length > 0 && selectedIndices.size > 0 ? "90px" : "30px", right: "20px", width: "56px", height: "56px", borderRadius: "28px", background: "linear-gradient(to right, #6366f1, #a855f7)", color: "white", border: "none", boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, cursor: "pointer" }}><Plus size={28} /></button>
                 )}
             </div>
         </div>
 
         {/* COLUMN 3: COMMUNICATION / DETAILS */}
         {isCommentsOpen && !(isMobile && (showMobileForm || isEditing)) ? (
-            <div style={{
-                ...styles.commentCard, 
-                gridColumn: isMobile ? '1' : isTablet ? '2' : 'auto', 
-                zIndex: 100,
-                ...(isMobile ? {
-                    position: 'fixed',
-                    inset: 0,
-                    borderRadius: 0,
-                    height: '100dvh',
-                    background: '#0b1120'
-                } : {})
-            }}>
+            <div style={{ ...styles.commentCard, gridColumn: isMobile ? '1' : isTablet ? '2' : 'auto', zIndex: 100, ...(isMobile ? { position: 'fixed', inset: 0, borderRadius: 0, height: '100dvh', background: '#0b1120' } : {}) }}>
                 <div style={styles.chatHeader}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
                         <div><h4 style={{margin: 0, color: '#fff', fontSize: '0.95rem', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{activeEntry.EventName}</h4><span style={{fontSize: '0.75rem', color: '#3b82f6'}}>{activeEntry.fkEventCode}</span></div>
-                        <button onClick={handleCloseComments} style={{background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6}}>
-                            {isMobile ? <><ArrowLeft size={18} /> Back</> : <X size={18} />}
-                        </button>
+                        <button onClick={handleCloseComments} style={{background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6}}>{isMobile ? <><ArrowLeft size={18} /> Back</> : <X size={18} />}</button>
                     </div>
                     <div style={{marginTop: 15, padding: 10, background: 'rgba(0,0,0,0.2)', borderRadius: 8, fontSize: '0.75rem', color: '#cbd5e1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8}}>
                             <div><span style={{color:'#64748b'}}>DRCode:</span> {activeEntry.RecordingCode}</div> 
@@ -2255,47 +1913,12 @@ const handleSendComment = async () => {
                     <div ref={chatBottomRef} />
                 </div>
                 <div style={styles.chatFooter}>
-                    
                     {showUserDropdown && ( 
-                        <div style={{ 
-                            position: "absolute", 
-                            bottom: "100%", 
-                            left: 10,
-                            marginBottom: 10, 
-                            background: "#1e293b", 
-                            border: "1px solid #3b82f6", 
-                            borderRadius: 12, 
-                            zIndex: 100, 
-                            padding: "8px 0", 
-                            boxShadow: "0 -4px 20px rgba(0,0,0,0.5)", 
-                            width: "280px",
-                            maxWidth: "90vw",
-                            maxHeight: "250px", 
-                            overflowY: "auto",
-                            display: "flex",
-                            flexDirection: "column"
-                        }} className="hide-scrollbar"> 
-                            <div style={{padding: "4px 12px", fontSize: "0.7rem", color: "#94a3b8", textTransform: "uppercase", fontWeight: 700, position: 'sticky', top: 0, background: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
-                                Select User
-                            </div> 
-                            {userList.length > 0 ? ( 
-                                userList.map((u, idx) => ( 
-                                    <div key={idx} 
-                                        style={{ padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "0.85rem", borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 2 }} 
-                                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)"} 
-                                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} 
-                                        onClick={() => { setCommentInput(commentInput + `@${u.name} `); setShowUserDropdown(false); }}
-                                    > 
-                                        <div style={{fontWeight: 600}}>{u.name}</div> 
-                                        <div style={{fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={u.email}>{u.email}</div> 
-                                    </div> 
-                                )) 
-                            ) : ( 
-                                <div style={{padding: "12px", color: "#94a3b8", fontSize: "0.8rem", textAlign: "center"}}>Loading users...</div> 
-                            )} 
+                        <div style={{ position: "absolute", bottom: "100%", left: 10, marginBottom: 10, background: "#1e293b", border: "1px solid #3b82f6", borderRadius: 12, zIndex: 100, padding: "8px 0", boxShadow: "0 -4px 20px rgba(0,0,0,0.5)", width: "280px", maxWidth: "90vw", maxHeight: "250px", overflowY: "auto", display: "flex", flexDirection: "column" }} className="hide-scrollbar"> 
+                            <div style={{padding: "4px 12px", fontSize: "0.7rem", color: "#94a3b8", textTransform: "uppercase", fontWeight: 700, position: 'sticky', top: 0, background: '#1e293b', borderBottom: '1px solid rgba(255,255,255,0.1)'}}>Select User</div> 
+                            {userList.length > 0 ? ( userList.map((u, idx) => ( <div key={idx} style={{ padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "0.85rem", borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 2 }} onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} onClick={() => { setCommentInput(commentInput + `@${u.name} `); setShowUserDropdown(false); }}> <div style={{fontWeight: 600}}>{u.name}</div> <div style={{fontSize: '0.75rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={u.email}>{u.email}</div> </div> )) ) : ( <div style={{padding: "12px", color: "#94a3b8", fontSize: "0.8rem", textAlign: "center"}}>Loading users...</div> )} 
                         </div> 
                     )}
-
                     <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
                          {(replyTo || editingCommentId) && ( <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: "4px 10px", marginBottom: 6, borderRadius: 6, background: editingCommentId ? "rgba(245, 158, 11, 0.15)" : "rgba(59, 130, 246, 0.15)", borderLeft: `3px solid ${editingCommentId ? "#f59e0b" : "#3b82f6"}`, fontSize: "0.75rem", color: "#fff" }}> <span> {editingCommentId ? ( <><b>Editing</b> your message...</> ) : ( <>Replying to: <b>{replyTo.user}</b></> )} </span> <button onClick={handleCancelChatAction} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#cbd5e1" }}> <X size={14} /> </button> </div> )}
                         <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
@@ -2310,15 +1933,7 @@ const handleSendComment = async () => {
       </div>
 
       {queue.length > 0 && (
-        <div style={{
-            ...styles.actionBar,
-            bottom: isMobile ? "20px" : "30px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: isMobile ? "calc(100% - 40px)" : "auto",
-            justifyContent: "space-between",
-            padding: isMobile ? "10px 15px" : "10px 20px"
-        }}>
+        <div style={{ ...styles.actionBar, bottom: isMobile ? "20px" : "30px", left: "50%", transform: "translateX(-50%)", width: isMobile ? "calc(100% - 40px)" : "auto", justifyContent: "space-between", padding: isMobile ? "10px 15px" : "10px 20px" }}>
             <span style={{ color: "#fff", fontSize: "0.9rem", fontWeight: 600 }}>{selectedIndices.size} Selected</span>
             <button type="button" onClick={handleUploadSelected} disabled={isSubmitting || selectedIndices.size === 0 || !canApprove} style={{ background: `linear-gradient(to right, #10b981, #059669)`, border: "none", borderRadius: "100px", padding: "0 30px", height: "44px", fontSize: "0.9rem", fontWeight: "600", color: "white", display: "flex", alignItems: "center", gap: "8px", cursor: selectedIndices.size === 0 || !canApprove ? 'not-allowed' : 'pointer', opacity: selectedIndices.size === 0 || !canApprove ? 0.5 : 1, boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)", }} title={!canApprove ? "Only users with edit access can approve" : ""}>
                 {isSubmitting ? ( <> <Activity className="animate-spin" size={18} /> Processing... </> ) : ( <> <UploadCloud size={18} /> Approve Selected </> )}
@@ -2331,71 +1946,62 @@ const handleSendComment = async () => {
         if (!item) return null;
         const currentStatus = item._status || 'incomplete';
         return (
-            <div 
-                className="hide-scrollbar" 
-                style={{ 
-                    position: 'fixed', 
-                    top: dropdownPos.top, 
-                    left: dropdownPos.left, 
-                    background: '#1e293b', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    borderRadius: 8, 
-                    padding: 5, 
-                    zIndex: 9999, 
-                    width: '180px', 
-                    maxHeight: '300px', 
-                    overflowY: 'auto', 
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.8)' 
-                }}
-            >
-                {STATUS_OPTIONS.map(opt => (
-                    <div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}>
-                        <opt.icon size={14} color={opt.color} /> {opt.label}
-                    </div>
-                ))}
+            <div className="hide-scrollbar" style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 5, zIndex: 9999, width: '180px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.8)' }}>
+                {STATUS_OPTIONS.map(opt => (<div key={opt.id} onClick={(e) => updateStatus(item._id, opt.id, e)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', fontSize: '0.75rem', color: '#fff', cursor: 'pointer', borderRadius: 4, background: currentStatus === opt.id ? 'rgba(255,255,255,0.1)' : 'transparent' }}><opt.icon size={14} color={opt.color} /> {opt.label}</div>))}
             </div>
         );
       })()}
 
-      {/* --- DUPLICATE DR WARNING MODAL (CUSTOM UI) --- */}
-      {duplicateWarning && (
-        <div style={{ 
-            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', 
-            zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' 
-        }}>
-            <div className="animate-in fade-in zoom-in duration-200" style={{ 
-                background: '#1e293b', border: '1px solid #ef4444', borderRadius: '16px', 
-                padding: '24px', width: '90%', maxWidth: '420px', 
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', 
-                display: 'flex', flexDirection: 'column', gap: '16px' 
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
-                    <AlertCircle size={28} />
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#fff' }}>Duplicate Recording Code</h3>
+      {/* --- MULTIPLE ADD CONFIRMATION MODAL --- */}
+      {showMultiAddConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="animate-in fade-in zoom-in duration-200" style={{ background: '#1e293b', border: '1px solid #3b82f6', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#3b82f6' }}>
+                    <ListChecks size={28} />
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#fff' }}>Confirm Batch Add</h3>
                 </div>
                 <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
-                    The Recording Code <strong style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>{duplicateWarning}</strong> is already used in the queue!
+                    Are you sure you want to add the following MediaLog entries to the queue for Recording Code <strong style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>{formData.RecordingCode || 'N/A'}</strong>?
+                </p>
+                <div style={{ marginTop: '5px', maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px', borderRadius: '8px' }} className="custom-scrollbar">
+                    <ul style={{ margin: 0, paddingLeft: '20px', color: '#fff', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {Array.from(selectedMlIds).map(id => (
+                            <li key={id} style={{ fontWeight: 600, color: '#3b82f6', letterSpacing: '0.5px' }}>{id}</li>
+                        ))}
+                    </ul>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', gap: '10px' }}>
+                    <button onClick={() => setShowMultiAddConfirm(false)} style={styles.cancelBtn}>Cancel</button>
+                    <button 
+                        onClick={processAddQueue} disabled={isSubmitting}
+                        style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 24px', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        {isSubmitting ? <><Activity className="animate-spin" size={16}/> Processing</> : 'Confirm & Add'}
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* --- DUPLICATE DR WARNING MODAL --- */}
+      {duplicateWarning && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="animate-in fade-in zoom-in duration-200" style={{ background: '#1e293b', border: '1px solid #ef4444', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#ef4444' }}>
+                    <AlertCircle size={28} />
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#fff' }}>Duplicate Combination</h3>
+                </div>
+                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
+                    The entry <strong style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>{duplicateWarning}</strong> is already present in the queue!
                     <br/><br/>
-                    Please use a unique DR code before submitting.
+                    Please verify your Recording Code and ML ID selection.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                    <button 
-                        onClick={() => setDuplicateWarning(null)}
-                        style={{ 
-                            background: '#ef4444', color: '#fff', border: 'none', 
-                            borderRadius: '8px', padding: '10px 24px', fontWeight: 600, 
-                            cursor: 'pointer', transition: 'all 0.2s' 
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
-                    >
-                        Got it
-                    </button>
+                    <button onClick={() => setDuplicateWarning(null)} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 24px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>Got it</button>
                 </div>
             </div>
         </div>
       )}
     </div>
   );
-}
+} 
