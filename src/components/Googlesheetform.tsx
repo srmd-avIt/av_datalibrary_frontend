@@ -13,7 +13,7 @@ import {
   // Hub Icons
   Layout, Wand2, Video, FileText, ArrowRight, ArrowLeft,
   // New Icons for Table View
-  TableProperties, LayoutList, Grip, GripVertical,
+  TableProperties, LayoutList, Grip, GripVertical,ArrowUpDown,ArrowDown, ArrowUp, Filter, Group, Ungroup,
   // Submitters ML Icons
   Users, Search, SearchCheck, ListTree, Link as LinkIcon
 } from "lucide-react";
@@ -30,6 +30,8 @@ import { SearchDetailsByMLID } from "./SearchDetailsByMLID";
 import { MLSummaryByEventCode } from "./MLSummaryByEventCode";
 import { SearchNewMediaExtensively } from "./SearchNewMediaExtensively";
 import { ProjectHubWorkflow } from "./ProjectHubWorkflow";
+import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
+import { FilterConfig, FilterGroup } from "./types"; // Assuming types are in ./types.ts
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL;
 const cleanBaseUrl = API_BASE_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
@@ -83,16 +85,25 @@ const TABLE_COLUMNS = [
 
 const BATCH_TABLE_COLUMNS = [
   { id: 'MLUniqueID', label: 'ML Unique ID', width: 130, sticky: true, left: 40 },
+  { id: 'Detail', label: 'Detail', width: 250 },
+  { id: 'SubDetail', label: 'Sub Detail', width: 120 },
+  { id: 'SubDuration', label: 'Sub Duration', width: 100 },
   { id: 'fkGranth', label: 'Granth', width: 120 },
   { id: 'Number', label: 'Patrank', width: 100 },
   { id: 'Topic', label: 'Topic', width: 180 },
-  { id: 'ContentFrom', label: 'Date From', width: 100 },
   { id: 'SatsangStart', label: 'Satsang Start', width: 100 },
   { id: 'SatsangEnd', label: 'Satsang End', width: 100 },
-  { id: 'fkCity', label: 'City', width: 120 },
-  { id: 'SubDuration', label: 'Sub Duration', width: 100 },
-  { id: 'Detail', label: 'Detail', width: 250 },
+  { id: 'Segment Category', label: 'Segment Category', width: 140 },
+  { id: 'ContentFrom', label: 'Date From', width: 100 },
+  { id: 'ContentTo', label: 'Date To', width: 100 },
+  { id: 'FootageType', label: 'Footage Type', width: 120 },
+  { id: 'EditingStatus', label: 'Editing Status', width: 130 },
   { id: 'Remarks', label: 'Remarks', width: 200 },
+  { id: 'CounterFrom', label: 'Counter From', width: 120 },
+  { id: 'CounterTo', label: 'Counter To', width: 120 },
+  { id: 'FootageSrNo', label: 'Footage Sr No', width: 120 },
+  { id: 'LogSerialNo', label: 'Log Serial No', width: 120 }, 
+  
 ];
 
 // --- HELPERS ---
@@ -206,7 +217,7 @@ const mapSheetRowToQueueItem = (row: any) => {
         PreservationStatus: getVal(['Preservation Status', 'PreservationStatus']) || "Pending",
         RecordingRemarks: getVal(['Recording Remarks', 'RecordingRemarks']),
         MLUniqueID: mlId,
-        
+         DistributionDriveLink: getVal(['Distribution Drive Link', 'DistributionDriveLink']),
         fkGranth: getVal(['fkGranth', 'Granth']),
         Number: getVal(['Number', 'Patrank']),
         Topic: getVal(['Topic']),
@@ -306,8 +317,22 @@ const styles = {
       if (key === 'submission_confirmed') color = '#24fbf0';
       if (key === 'incomplete') color = '#f87171';
       
-      return { color, fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' as 'uppercase', marginTop: 20, marginBottom: 10, padding: "8px 5px", display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', opacity: isActive ? 1 : 0.7, transition: "opacity 0.2s" }
-  },
+     return { 
+        color, 
+        fontSize: '0.75rem', 
+        fontWeight: 800, 
+        textTransform: 'uppercase' as 'uppercase', 
+        marginTop: 4, // Reduced from 20
+        marginBottom: 2, // Reduced from 10
+        padding: "8px 5px", 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 8, 
+        cursor: 'pointer', 
+        opacity: isActive ? 1 : 0.7, 
+        transition: "opacity 0.2s" 
+    }
+},
   // Update header height to 40px strictly for vertical sticky calculation
   tableHeader: { height: '40px', padding: '0 10px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase' as 'uppercase', color: '#94a3b8', background: 'rgba(30, 41, 59, 0.95)', position: 'sticky' as 'sticky', top: 0, zIndex: 20, whiteSpace: 'nowrap' as 'nowrap', borderBottom: '2px solid rgba(255,255,255,0.08)', userSelect: 'none' as 'none' },
   tableCell: { padding: '8px 10px', fontSize: '0.8rem', color: '#e2e8f0', borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' as 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'ellipsis' },
@@ -475,14 +500,93 @@ export function GoogleSheetForm({ config, userEmail }: { config: any; userEmail?
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth >= 768 && windowWidth < 1280;
   const isCompact = windowWidth < 1440 || windowHeight < 800; 
-  
+  const [isQueueExpanded, setIsQueueExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
  const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival' | 'submitters_ml' | 'project_hub_workflow'>('hub');
   
   const [isTableView, setIsTableView] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+// Inside GoogleSheetForm component...
 
+ const [mlIdOptions, setMlIdOptions] = useState<any[]>([]); // Move this here!
+  const [mlAdvancedFilters, setMlAdvancedFilters] = useState<FilterGroup[]>([]);
+  const [mlSortConfig, setMlSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ 
+    key: 'MLUniqueID', 
+    direction: 'asc' 
+  });
+
+  // --- 2. DEFINE CONFIGURATIONS ---
+  // Define this ONCE. Delete the other 'batchFilterConfigs' at line 663.
+  const batchFilterConfigs: FilterConfig[] = [
+    { key: 'MLUniqueID', label: 'ML Unique ID', type: 'text' },
+    { key: 'Detail', label: 'Detail', type: 'text' },
+    {key:'SubDetail', label:'Sub Detail', type:'text'},
+    {key:'SubDuration', label:'Sub Duration', type:'text'},
+    { key: 'Topic', label: 'Topic', type: 'text' },
+    { key: 'fkGranth', label: 'Granth', type: 'text' },
+    { key: 'Number', label: 'Patrank', type: 'text' },
+    {key:'SatsangStart',  label:'Satsang Start', type:'text'},
+    {key:'SatsangEnd',  label:'Satsang End', type:'text'},
+    { key: 'ContentFrom', label: 'Date From', type: 'date' },
+    { key: 'Segment Category', label: 'Segment Category', type: 'text' },
+    {key: 'ContentFrom', label: 'Date From', type: 'date' },
+    {key: 'ContentTo', label: 'Date To', type: 'date' },
+    {key:'FootageType', label:'Footage Type', type:'text'},
+    {key:'EditingStatus', label:'Editing Status', type:'text'},
+    {key:'Remarks', label:'Remarks', type:'text'},
+    {key:'CounterFrom', label:'Counter From', type:'text'},
+    {key:'CounterTo', label:'Counter To', type:'text'},
+    {key:'FootageSrNo', label:'Footage Sr No', type:'text'},
+    {key:'LogSerialNo', label:'Log Serial No', type:'text'},
+
+  ];
+
+ const [mlSortConfigs, setMlSortConfigs] = useState<{ key: string; direction: 'asc' | 'desc' }[]>([]);
+  // This must come AFTER mlIdOptions is declared
+  const filteredAndSortedMlOptions = useMemo(() => {
+    let result = [...mlIdOptions];
+
+    if (mlAdvancedFilters.length > 0) {
+      result = result.filter(item => {
+        return mlAdvancedFilters.every(group => {
+          const groupResults = group.rules.map(rule => {
+            const val = String(item[rule.field] || "").toLowerCase();
+            const target = String(rule.value || "").toLowerCase();
+            switch (rule.operator) {
+              case "contains": return val.includes(target);
+              case "equals": return val === target;
+              case "starts_with": return val.startsWith(target);
+              case "is_empty": return !val;
+              case "is_not_empty": return !!val;
+              default: return true;
+            }
+          });
+          return group.logic === "OR" ? groupResults.some(r => r) : groupResults.every(r => r);
+        });
+      });
+    }
+
+    if (mlSortConfig.key && mlSortConfig.direction) {
+      result.sort((a, b) => {
+        const valA = String(a[mlSortConfig.key] || "").toLowerCase();
+        const valB = String(b[mlSortConfig.key] || "").toLowerCase();
+        if (valA < valB) return mlSortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return mlSortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [mlIdOptions, mlAdvancedFilters, mlSortConfig]);
+  
+
+// Helper to handle sort clicks
+const handleMlSort = (key: string) => {
+  setMlSortConfig(prev => ({
+    key,
+    direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+  }));
+};
   // --- NEW WIZARD STATE ---
   const [currentStep, setCurrentStep] = useState<number>(1);
 
@@ -546,7 +650,7 @@ const hasProjectHubWriteAccess = useMemo(() => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  const [groupByField, setGroupByField] = useState<string>('RecordingCode');
+ const [groupByField, setGroupByField] = useState<string>('EventName_RecordingName');
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 }); 
 
   // Queue Table Column Widths
@@ -564,9 +668,9 @@ const hasProjectHubWriteAccess = useMemo(() => {
   });
 
   const [eventCodeOptions, setEventCodeOptions] = useState<{ EventCode: string, EventName: string, Yr?: string, NewEventCategory?: string }[]>([]);
-  const [mlIdOptions, setMlIdOptions] = useState<any[]>([]);
   const [userList, setUserList] = useState<{name: string, email: string}[]>([]); 
-  
+ 
+
   const [wisdomUserList, setWisdomUserList] = useState<{name: string, email: string}[]>([]);
   const [submittersMLUserList, setSubmittersMLUserList] = useState<{name: string, email: string}[]>([]);
   const [wisdomPickedCount, setWisdomPickedCount] = useState(0);
@@ -584,6 +688,8 @@ const hasProjectHubWriteAccess = useMemo(() => {
           return new Set(['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete']); 
       }
   });
+
+
 
   const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set());
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null); 
@@ -795,9 +901,11 @@ const hasProjectHubWriteAccess = useMemo(() => {
             totalDuration += meta.duration;
             if (meta.width > maxRes.w) maxRes = { w: meta.width, h: meta.height };
         });
-
+ const totalMB = totalBytes / (1024 * 1024); // Convert bytes to MB
+    const filesizeNumeric = parseFloat(totalMB.toFixed(2)); // Result: 5.08
         let bitrateKbps = filesMetadata.length > 0 ? filesMetadata[0].bitrate : null;
-        if (!bitrateKbps) bitrateKbps = totalDuration > 0 ? ((totalBytes * 8) / totalDuration) / 1000 : 0;
+    if (!bitrateKbps) bitrateKbps = totalDuration > 0 ? ((totalBytes * 8) / totalDuration) / 1000 : 0;
+    const bitrateNumeric = Math.floor(bitrateKbps || 0); // Result: 320
         
         const bitrateString = bitrateKbps > 0 ? `${Math.floor(bitrateKbps)} kbps` : "";
         const dimensionStr = maxRes.w > 0 ? `${maxRes.w}x${maxRes.h}` : "";
@@ -808,12 +916,22 @@ const hasProjectHubWriteAccess = useMemo(() => {
         else if (maxRes.h >= 720) quality = "HD Ready";
         else if (maxRes.h > 0) quality = "SD";
 
-        setFormData(prev => ({
-            ...prev, RecordingName: recordingName, NoOfFiles: mediaFiles.length.toString(), Filesize: formatBytes(totalBytes),
-            FilesizeInBytes: totalBytes.toString(), fkMediaName: fileTypeString, Duration: formatDuration(totalDuration), 
-            AudioTotalDuration: formatDuration(totalDuration), AudioBitrate: bitrateString, Dimension: dimensionStr || prev.Dimension,
-            Masterquality: quality || prev.Masterquality, files: filesMetadata, 
-        }));
+       setFormData(prev => ({
+        ...prev, 
+        RecordingName: recordingName, 
+        NoOfFiles: mediaFiles.length.toString(), 
+        // Only the number goes here:
+        Filesize: filesizeNumeric.toString(), 
+        FilesizeInBytes: totalBytes.toString(), 
+        fkMediaName: fileTypeString, 
+        Duration: formatDuration(totalDuration), 
+        AudioTotalDuration: formatDuration(totalDuration), 
+        // Only the number goes here:
+        AudioBitrate: bitrateNumeric.toString(), 
+        Dimension: maxRes.w > 0 ? `${maxRes.w}x${maxRes.h}` : prev.Dimension,
+        Masterquality: quality || prev.Masterquality, 
+        files: filesMetadata, 
+    }));
 
         toast.success("File(s) scanned and fields populated!", { id: toastId });
     } catch (err) {
@@ -826,15 +944,31 @@ const hasProjectHubWriteAccess = useMemo(() => {
   const handleChange = async (e: any) => {
     const { name, value } = e.target;
     
-    if (name === "fkEventCode") {
-        const selectedEvent = eventCodeOptions.find(opt => opt.EventCode === value);
-        setSelectedMlIds(new Set());
-        setMlIdOptions([]);
-        setFormData(prev => ({
-            ...prev, fkEventCode: value, EventName: selectedEvent?.EventName || "", Yr: selectedEvent?.Yr || "", NewEventCategory: selectedEvent?.NewEventCategory || "",
-            MLUniqueID: "", Detail: "", fkGranth: "", Number: "", Topic: "", ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", SubDuration: "", Remarks: ""
-        }));
+   if (name === "fkEventCode")  {
+    let actualCode = value;
+
+    // Check if the value contains the " - " separator (meaning it came from a dropdown selection)
+    if (value.includes(" - ")) {
+        const parts = value.split(" - ");
+        actualCode = parts[parts.length - 1]; // Extract just the Code (the last part)
     }
+       const selectedEvent = eventCodeOptions.find(opt => opt.EventCode === actualCode);
+    
+    // We only want to store the Code in the database/form state
+  
+        setSelectedMlIds(new Set());
+    setMlIdOptions([]);
+    setFormData(prev => ({
+        ...prev, 
+        fkEventCode: actualCode, // Only store the code
+        EventName: selectedEvent?.EventName || "", 
+        Yr: selectedEvent?.Yr || "", 
+        NewEventCategory: selectedEvent?.NewEventCategory || "",
+        MLUniqueID: "", Detail: "", fkGranth: "", Number: "", Topic: "", 
+        ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", 
+        SubDuration: "", Remarks: ""
+    }));
+}
     else if (name === "MLUniqueID") {
         const selectedML = mlIdOptions.find(opt => opt.MLUniqueID === value);
         setFormData(prev => ({
@@ -848,10 +982,18 @@ const hasProjectHubWriteAccess = useMemo(() => {
     }
   };
 
-  const handleSelectEntry = (item: any) => { 
-      setFormData(item); setActiveCommentId(item._id); setEditingId(null); setShowMobileForm(false); 
-      setCurrentStep(1); 
-  };
+ // Find this function (around line 520) and update it:
+const handleSelectEntry = (item: any) => { 
+    setFormData(item); 
+    setActiveCommentId(item._id); 
+    setEditingId(null); 
+    setShowMobileForm(false); 
+    setCurrentStep(1); 
+    
+    // --- ADD THESE TWO LINES ---
+    setIsQueueExpanded(false); // Collapses the full-screen queue
+    setIsTableView(false);     // Switches from Table view back to List/Form view
+};
   
   const handleEditClick = (item: any, e: any) => { 
       e.stopPropagation(); 
@@ -891,29 +1033,63 @@ const hasProjectHubWriteAccess = useMemo(() => {
 
   const toggleGroup = (group: string) => { const newSet = new Set(expandedGroups); if (newSet.has(group)) newSet.delete(group); else newSet.add(group); setExpandedGroups(newSet); };
   
-  function parseDurationToSeconds(duration: string): number {
-      const parts = duration.split(':').map(Number);
-      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-      if (parts.length === 2) return parts[0] * 60 + parts[1];
-      return 0;
-  }
+  function parseDurationToSeconds(duration: any): number {
+    if (!duration) return 0;
+    // If it's already a number (seconds), just return it
+    if (typeof duration === 'number') return duration;
+    
+    // If it's a string, parse it
+    const parts = String(duration).trim().split(':').map(Number);
+    if (parts.length === 3) {
+        // hh:mm:ss
+        return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+    } else if (parts.length === 2) {
+        // mm:ss
+        return (parts[0] * 60) + parts[1];
+    } else if (parts.length === 1 && !isNaN(parts[0])) {
+        // Just seconds as a string
+        return parts[0];
+    }
+    return 0;
+}
   function isValidDurationFormat(duration: string): boolean { return /^(\d{2}):[0-5]\d:[0-5]\d$/.test(duration) || /^[0-5]?\d:[0-5]\d$/.test(duration); }
 
-  function validateForm(formData: any) {
-      const errors: {[key: string]: string} = {};
-      if (!formData.RecordingCode || formData.RecordingCode.length !== 11) errors.RecordingCode = "DR code must be exactly 11 characters.";
-      else if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) errors.RecordingCode = "First 7 characters of DR code must match the Event Code.";
-      
-      if (formData.MLUniqueID && formData.fkEventCode && formData.MLUniqueID.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) errors.MLUniqueID = "First 7 characters of ML Unique ID must match the Event Code.";
-      
-      if (formData.Duration && !isValidDurationFormat(formData.Duration)) errors.Duration = "Duration must be in hh:mm:ss format.";
-      if (formData.Duration && formData.SubDuration) {
-          if (Math.abs(parseDurationToSeconds(formData.Duration) - parseDurationToSeconds(formData.SubDuration)) > 60) errors.Duration = "Difference between Duration and MLID's SubDuration is more than 60 seconds.";
-      }
-      if (!formData.fkEventCode) errors.fkEventCode = "Event Code is required.";
-      if (!formData.RecordingCode) errors.RecordingCode = "Recording Code is required.";
-      return errors;
-  }
+function validateForm(formData: any, selectedMlList: any[] = []) {
+    const errors: { [key: string]: string } = {};
+
+    // 1. Basic Fields
+    if (!formData.fkEventCode) errors.fkEventCode = "Event Code is required.";
+    if (!formData.RecordingCode) errors.RecordingCode = "Recording Code is required.";
+    
+    // 2. Format Validations
+    if (formData.RecordingCode && formData.RecordingCode.length !== 11) {
+        errors.RecordingCode = "Recording Code must be 11 chars.";
+    }
+
+    // 3. DURATION DRIFT RULE (60s)
+    const scanSeconds = parseDurationToSeconds(formData.Duration);
+
+    const checkDrift = (subDur: any) => {
+        if (!scanSeconds || !subDur) return false;
+        const mlSeconds = parseDurationToSeconds(subDur);
+        return Math.abs(scanSeconds - mlSeconds) > 60;
+    };
+
+    // Check single ML linked in the form (Step 3 manual or Edit mode)
+    if (formData.SubDuration && checkDrift(formData.SubDuration)) {
+        errors.Duration = `Duration Drift: Scan (${formData.Duration}) and ML (${formData.SubDuration}) differ by > 60s.`;
+    }
+
+    // Check all MLs selected in the Table (Batch mode)
+    if (selectedMlList.length > 0) {
+        const driftVioaltion = selectedMlList.find(ml => checkDrift(ml.SubDuration));
+        if (driftVioaltion) {
+            errors.Duration = `Drift Error in Batch: ML ID ${driftVioaltion.MLUniqueID} (${driftVioaltion.SubDuration}) differs from Scan (${formData.Duration}) by more than 60s.`;
+        }
+    }
+
+    return errors;
+}
 
   const processAddQueue = async () => {
       setShowMultiAddConfirm(false);
@@ -991,63 +1167,111 @@ const hasProjectHubWriteAccess = useMemo(() => {
   };
 
   const handleSaveDraft = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const errors = validateForm(formData);
-      setFormErrors(errors);
-      if (Object.keys(errors).length > 0) { toast.error("Please fix the errors in the form."); return; }
-      
-      if (!formData.RecordingCode || formData.RecordingCode.length !== 11) { toast.error("Recording Code must be exactly 11 characters."); return; }
-      if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) { toast.error("First 7 characters of DR code must match the Event Code."); return; }
-      if (!formData.fkEventCode || !formData.RecordingCode) { toast.error("Event Code and Recording Code are required."); return; }
+    e.preventDefault();
 
-      let isDuplicateDR = false;
-      let dupId = "";
-      
-      if (!isEditing && selectedMlIds.size > 0) {
-          for (const mlid of selectedMlIds) {
-              if (queue.some(item => item.RecordingCode === formData.RecordingCode && item.MLUniqueID === mlid)) {
-                  isDuplicateDR = true; dupId = mlid; break;
-              }
-          }
-      } else {
-          isDuplicateDR = queue.some(item => item.RecordingCode === formData.RecordingCode && item.MLUniqueID === formData.MLUniqueID && item._id !== editingId);
-          dupId = formData.MLUniqueID;
-      }
+    // 1. GATHER DATA FOR VALIDATION
+    // We filter the available ML options to get the full objects (including SubDuration) 
+    // for everything the user has checked in the table.
+    const selectedMlDataObjects = mlIdOptions.filter(opt => selectedMlIds.has(opt.MLUniqueID));
 
-      if (isDuplicateDR) {
-          setFormErrors(prev => ({ ...prev, RecordingCode: "This Recording Code + ML ID combo is already in use." }));
-          setDuplicateWarning(`${formData.RecordingCode} (ML ID: ${dupId || 'N/A'})`);
-          return;
-      }
+    // 2. RUN VALIDATION
+    // We pass the current formData AND the list of selected ML objects
+    const errors = validateForm(formData, selectedMlDataObjects);
+    setFormErrors(errors);
 
-      if (editingId) {
-          const existingItem = queue.find(item => item._id === editingId);
-          const updatedItem = { ...formData, _id: editingId, comments: existingItem?.comments || [], _status: existingItem?._status || 'incomplete', QcStatus: existingItem?.QcStatus || 'Submitted to MM' };
+    // If there are errors (including the 60s duration drift), stop and show toast
+    if (Object.keys(errors).length > 0) {
+        if (errors.Duration) {
+            toast.error(errors.Duration);
+        } else {
+            toast.error("Please fix the errors in the form.");
+        }
+        return;
+    }
 
-          setQueue(prev => prev.map(item => item._id === editingId ? updatedItem : item));
+    // 3. ADDITIONAL STRICTURES
+    if (!formData.RecordingCode || formData.RecordingCode.length !== 11) {
+        toast.error("Recording Code must be exactly 11 characters.");
+        return;
+    }
+    if (formData.fkEventCode && formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
+        toast.error("First 7 characters of DR code must match the Event Code.");
+        return;
+    }
 
-          try {
-              const token = localStorage.getItem('app-token');
-              const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
-                  method: "PUT", headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
-                  body: JSON.stringify({ ...updatedItem, Logchats: formatLogchats(updatedItem.comments) }),
-              });
-              if (!res.ok) throw new Error("Failed to sync update to Sheet");
-              toast.success("Entry Updated in Google Sheet");
-          } catch (error) {
-              console.error(error);
-              toast.error("Updated locally, but failed to sync with Google Sheet");
-          }
-          setEditingId(null); setFormData(initialFormState); setActiveCommentId(null); setCurrentStep(1); setShowMobileForm(false);
-          
-      } else {
-          if (!isEditing && mlIdOptions.length > 0 && selectedMlIds.size > 0) {
-              setShowMultiAddConfirm(true); 
-          } else {
-              processAddQueue(); 
-          }
-      }
-  };
+    // 4. DUPLICATE CHECK
+    let isDuplicateDR = false;
+    let dupId = "";
+
+    if (!isEditing && selectedMlIds.size > 0) {
+        // Check every selected ML ID in the batch
+        for (const mlid of selectedMlIds) {
+            if (queue.some(item => item.RecordingCode === formData.RecordingCode && item.MLUniqueID === mlid)) {
+                isDuplicateDR = true;
+                dupId = mlid;
+                break;
+            }
+        }
+    } else {
+        // Check single entry
+        isDuplicateDR = queue.some(item => 
+            item.RecordingCode === formData.RecordingCode && 
+            item.MLUniqueID === formData.MLUniqueID && 
+            item._id !== editingId
+        );
+        dupId = formData.MLUniqueID;
+    }
+
+    if (isDuplicateDR) {
+        setFormErrors(prev => ({ ...prev, RecordingCode: "Duplicate found." }));
+        setDuplicateWarning(`${formData.RecordingCode} (ML ID: ${dupId || 'N/A'})`);
+        return;
+    }
+
+    // 5. EXECUTE SAVE/UPDATE
+    if (editingId) {
+        // EDIT MODE: Update existing item
+        const existingItem = queue.find(item => item._id === editingId);
+        const updatedItem = { 
+            ...formData, 
+            _id: editingId, 
+            comments: existingItem?.comments || [], 
+            _status: existingItem?._status || 'incomplete', 
+            QcStatus: existingItem?.QcStatus || 'Submitted to MM' 
+        };
+
+        setQueue(prev => prev.map(item => item._id === editingId ? updatedItem : item));
+
+        try {
+            const token = localStorage.getItem('app-token');
+            const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings`, {
+                method: "PUT", 
+                headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+                body: JSON.stringify({ ...updatedItem, Logchats: formatLogchats(updatedItem.comments) }),
+            });
+            if (!res.ok) throw new Error("Failed to sync update to Sheet");
+            toast.success("Entry Updated in Google Sheet");
+        } catch (error) {
+            console.error(error);
+            toast.error("Updated locally, but failed to sync with Google Sheet");
+        }
+        
+        // Reset view
+        setEditingId(null); 
+        setFormData(initialFormState); 
+        setActiveCommentId(null); 
+        setCurrentStep(1); 
+        setShowMobileForm(false);
+        
+    } else {
+        // ADD MODE: Check if we show Multi-Add confirmation or just process
+        if (!isEditing && mlIdOptions.length > 0 && selectedMlIds.size > 0) {
+            setShowMultiAddConfirm(true); 
+        } else {
+            processAddQueue(); 
+        }
+    }
+};
 
   const handleResetForm = () => { 
       setIsResetting(true); 
@@ -1230,10 +1454,13 @@ const hasProjectHubWriteAccess = useMemo(() => {
   const isCurrentEntryEditable = activeEntry ? canEditEntry(activeEntry) : false;
   
   const getGridTemplate = () => { 
-      if (isTableView) return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
-      if (isCommentsOpen) return windowWidth < 1280 ? "1.2fr 1fr 1fr" : windowWidth < 1500 ? "3fr 1.5fr 2fr" : "3.5fr 2fr 2fr"; 
-      return windowWidth < 1280 ? "1.2fr 0.8fr 0fr" : "4fr 2fr 0fr"; 
-  };
+    // If expanded, hide the form column (0fr)
+    if (isQueueExpanded) return isCommentsOpen ? "0fr 1.6fr 1fr" : "0fr 1fr 0fr";
+    
+    if (isTableView) return isCommentsOpen ? "0fr 2.5fr 1.5fr" : "0fr 1fr 0fr"; 
+    if (isCommentsOpen) return windowWidth < 1280 ? "1.2fr 1fr 1fr" : windowWidth < 1500 ? "3fr 1.5fr 2fr" : "3.5fr 2fr 2fr"; 
+    return windowWidth < 1280 ? "1.2fr 0.8fr 0fr" : "4fr 2fr 0fr"; 
+};
   
   const renderField = (label: string, name: string, theme: any, options: any = {}) => ( 
       <div style={{ ...styles.inputWrapper, gridColumn: options.full ? "1 / -1" : options.medium ? "span 2" : "auto" }}> 
@@ -1250,15 +1477,26 @@ const hasProjectHubWriteAccess = useMemo(() => {
       </div> 
   );
   
-  const getGroupedQueue = (data: any[], groupBy: string) => { 
-      const groups: any = {}; 
-      data.forEach(item => { 
-          let key = item[groupBy] || 'Uncategorized';
-          if (!groups[key]) groups[key] = []; 
-          groups[key].push(item); 
-      }); 
-      return groups; 
-  };
+const getGroupedQueue = (data: any[], groupBy: string) => { 
+    const groups: any = {}; 
+    data.forEach(item => { 
+        // Hierarchy: Event Name -> DR Filename
+        if (groupBy === 'EventName_RecordingName') {
+            const eventKey = item.EventName || 'Uncategorized Event';
+            const drFileKey = item.RecordingName || 'Uncategorized DR File';
+            
+            if (!groups[eventKey]) groups[eventKey] = {};
+            if (!groups[eventKey][drFileKey]) groups[eventKey][drFileKey] = [];
+            
+            groups[eventKey][drFileKey].push(item);
+        } else {
+            let key = item[groupBy] || 'Uncategorized';
+            if (!groups[key]) groups[key] = []; 
+            groups[key].push(item); 
+        }
+    }); 
+    return groups; 
+};
 
   const renderQueueItem = (item: any) => { 
       const isSelected = selectedIndices.has(item._id); const isActive = activeCommentId === item._id; 
@@ -1293,97 +1531,117 @@ const hasProjectHubWriteAccess = useMemo(() => {
       );
   };
 
-  const renderTableView = () => {
-      const groups = getGroupedQueue(queue, groupByField);
-      const groupKeys = Object.keys(groups).sort();
+const renderTableView = () => {
+    const groups = getGroupedQueue(queue, groupByField);
+    const groupKeys = Object.keys(groups).sort();
 
-      return (
-          <div ref={tableContainerRef} style={{ height: "100%", width: "100%", overflow: "auto", position: 'relative' }} className="custom-scrollbar">
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, tableLayout: 'fixed' }}>
-                  <thead>
-                      <tr>
-                           {TABLE_COLUMNS.map((col) => (
-                               <th key={col.id} style={{ ...styles.tableHeader, width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id], position: 'sticky', left: col.frozen ? (col.id === 'select' ? 0 : 40) : 'auto', zIndex: col.frozen ? 21 : 20, boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none' }}>
-                                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                                      {col.id === 'select' ? ( 
-                                          <div style={{display: 'flex', justifyContent: 'center', width: '100%'}}>
-                                              {groupByField === 'none' && (
-                                                  <div onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))} style={{cursor: 'pointer', display: 'flex'}}> 
-                                                      {selectedIndices.size === queue.length && queue.length > 0 ? <CheckSquare size={16} color="#10b981"/> : <Square size={16} color="#64748b"/>} 
-                                                  </div>
-                                              )}
-                                          </div> 
-                                      ) : ( <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>{col.label}</span> )}
-                                      {col.id !== 'select' && ( <div onMouseDown={(e) => handleResizeStart(e, col.id)} style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}><GripVertical size={12} /></div> )}
-                                  </div>
-                               </th>
-                           ))}
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {groupKeys.map(groupKey => {
-                          const isExpanded = expandedGroups.has(groupKey);
-                          return (
-                          <React.Fragment key={groupKey}>
-                              {groupByField !== 'none' && (
-                                  <tr 
-                                      onClick={() => toggleGroup(groupKey)} 
-                                      style={{ cursor: 'pointer' }}
-                                  >
-                                      <td 
-                                          colSpan={TABLE_COLUMNS.length} 
-                                          style={{ 
-                                              background: '#1e293b', 
-                                              padding: 0, 
-                                              borderTop: '1px solid rgba(255,255,255,0.1)', 
-                                              position: 'sticky', 
-                                              top: '40px', 
-                                              zIndex: 15,
-                                              transition: 'background 0.2s'
-                                          }}
-                                          onMouseEnter={(e) => e.currentTarget.style.background = '#283548'} 
-                                          onMouseLeave={(e) => e.currentTarget.style.background = '#1e293b'}
-                                      >
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', position: 'sticky', left: 0, width: 'max-content' }}>
-                                              <div onClick={(e) => handleGroupSelect(groups[groupKey], e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
-                                                  {groups[groupKey].length > 0 && groups[groupKey].every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="#64748b" />}
-                                              </div>
-                                              {isExpanded ? <ChevronDown size={16} color="#3b82f6" /> : <ChevronRight size={16} color="#94a3b8" />}
-                                              <span style={{ color: '#3b82f6', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                  {groupByField === '_status' 
-                                                      ? (STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey)
-                                                      : (groupKey === 'Uncategorized' || !groupKey ? `No ${groupByField}` : groupKey)}
-                                                  <span style={{opacity: 0.5, marginLeft: 6, fontWeight: 400}}>({groups[groupKey].length})</span>
-                                              </span>
-                                          </div>
-                                      </td>
-                                  </tr>
-                              )}
-                              
-                              {(groupByField === 'none' || isExpanded) && groups[groupKey].map((item: any) => {
-                                  const isSelected = selectedIndices.has(item._id); const isActive = activeCommentId === item._id; const currentStatus = item._status || 'incomplete';
-                                  const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
+    return (
+        <div ref={tableContainerRef} style={{ height: "100%", width: "100%", overflow: "auto", position: 'relative' }} className="custom-scrollbar">
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, tableLayout: 'fixed' }}>
+                <thead>
+                    <tr>
+                         {TABLE_COLUMNS.map((col) => (
+                             <th key={col.id} style={{
+  ...styles.tableHeader,
+  width: colWidths[col.id],
+  minWidth: colWidths[col.id],
+  maxWidth: colWidths[col.id],
+  position: col.frozen ? 'sticky' : 'static',
+  left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined,
+  zIndex: col.frozen ? 21 : 20,
+  boxShadow: col.frozen && col.id === 'actions'
+    ? '2px 0 5px rgba(0,0,0,0.5)'
+    : 'none'
+}}>
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                    {col.id === 'select' ? ( 
+                                        <div style={{display: 'flex', justifyContent: 'center', width: '100%'}}>
+                                            {groupByField === 'none' && (
+                                                <div onClick={() => setSelectedIndices(new Set(queue.map(q => q._id)))} style={{cursor: 'pointer', display: 'flex'}}> 
+                                                    {selectedIndices.size === queue.length && queue.length > 0 ? <CheckSquare size={16} color="#10b981"/> : <Square size={16} color="#64748b"/>} 
+                                                </div>
+                                            )}
+                                        </div> 
+                                    ) : ( <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>{col.label}</span> )}
+                                    {col.id !== 'select' && ( <div onMouseDown={(e) => handleResizeStart(e, col.id)} style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}><GripVertical size={12} /></div> )}
+                                </div>
+                             </th>
+                         ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {groupKeys.map(groupKey => {
+                        const isExpanded = expandedGroups.has(groupKey);
+                        
+                        // FIX: Detect nested folders and flatten them for table rows
+                        const groupValue = groups[groupKey];
+                        const isHierarchical = !Array.isArray(groupValue);
+                        const groupItems = isHierarchical ? Object.values(groupValue).flat() : groupValue;
 
-                                  return (
-                                      <tr key={item._id} onClick={() => handleSelectEntry(item)} style={styles.tableRow(isActive)}>
-                                          {TABLE_COLUMNS.map(col => {
-                                              const commonStyle = { ...styles.tableCell, width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id], position: col.frozen ? 'sticky' : undefined, left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined, zIndex: col.frozen ? 5 : undefined, background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none' } as React.CSSProperties;
-                                              if (col.id === 'select') return <td key={col.id} style={{...commonStyle, textAlign: 'center'}} onClick={(e) => toggleSelection(item._id, e)}>{isSelected ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="rgba(255,255,255,0.3)" />}</td>;
-                                              if (col.id === 'actions') return <td key={col.id} style={commonStyle}><div style={{display: 'flex', gap: 6, justifyContent: 'center'}}><button onClick={(e) => { e.stopPropagation(); handleSelectEntry(item); }} style={{background: 'transparent', border: 'none', cursor: 'pointer', color: item.comments?.length > 0 ? '#3b82f6' : '#64748b'}}><MessageSquare size={16} /></button></div></td>;
-                                              if (col.id === 'status') return <td key={col.id} style={commonStyle}><div onClick={hasEditAccess ? (e) => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setDropdownPos({ top: rect.bottom + 4, left: rect.left }); setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id); } : undefined} style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, width: 'fit-content' }}><statusConfig.icon size={12} strokeWidth={3} /> {statusConfig.label}</div></td>;
-                                              return <td key={col.id} style={{...commonStyle, fontWeight: col.id === 'RecordingCode' ? 600 : 400, color: col.id === 'RecordingCode' ? '#fff' : '#e2e8f0'}} title={item[col.id]}>{item[col.id]}</td>;
-                                          })}
-                                      </tr>
-                                  );
-                              })}
-                          </React.Fragment>
-                      )})}
-                      {queue.length === 0 && ( <tr><td colSpan={TABLE_COLUMNS.length} style={{ padding: "40px 0", textAlign: "center", color: "rgba(255,255,255,0.2)" }}><Inbox size={48} style={{ marginBottom: 10, opacity: 0.5 }} /><p>Queue is Empty</p></td></tr> )}
-                  </tbody>
-              </table>
-          </div>
-      );
-  };
+                        return (
+                        <React.Fragment key={groupKey}>
+                            {groupByField !== 'none' && (
+                                <tr 
+                                    onClick={() => toggleGroup(groupKey)} 
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <td 
+                                        colSpan={TABLE_COLUMNS.length} 
+                                        style={{ 
+                                            background: '#1e293b', 
+                                            padding: 0, 
+                                            borderTop: '1px solid rgba(255,255,255,0.1)', 
+                                            position: 'sticky', 
+                                            top: '40px', 
+                                            zIndex: 15,
+                                            transition: 'background 0.2s'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', position: 'sticky', left: 0, width: 'max-content' }}>
+                                            <div onClick={(e) => handleGroupSelect(groupItems, e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
+                                                {groupItems.length > 0 && groupItems.every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="#64748b" />}
+                                            </div>
+                                            {isExpanded ? <ChevronDown size={16} color="#3b82f6" /> : <ChevronRight size={16} color="#94a3b8" />}
+                                            <span style={{ color: '#3b82f6', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                {groupByField === '_status' 
+                                                    ? (STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey)
+                                                    : (groupKey === 'Uncategorized' || !groupKey ? `No ${groupByField}` : groupKey)}
+                                                
+                                                {/* ACTIVE COLOR BLUE COUNT */}
+                                                <span style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '1px 8px', borderRadius: '4px', marginLeft: 8, fontWeight: 'bold' }}>
+                                                    {groupItems.length}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            
+                            {(groupByField === 'none' || isExpanded) && groupItems.map((item: any) => {
+                                const isSelected = selectedIndices.has(item._id); 
+                                const isActive = activeCommentId === item._id; 
+                                const currentStatus = item._status || 'incomplete';
+                                const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
+
+                                return (
+                                    <tr key={item._id} onClick={() => handleSelectEntry(item)} style={styles.tableRow(isActive)}>
+                                        {TABLE_COLUMNS.map(col => {
+                                            const commonStyle = { ...styles.tableCell, width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id], position: col.frozen ? 'sticky' : undefined, left: col.frozen ? (col.id === 'select' ? 0 : 40) : undefined, zIndex: col.frozen ? 5 : undefined, background: col.frozen ? (isActive ? 'rgba(59, 130, 246, 0.2)' : '#0f172a') : undefined, boxShadow: col.frozen && col.id === 'actions' ? '2px 0 5px rgba(0,0,0,0.5)' : 'none' } as React.CSSProperties;
+                                            if (col.id === 'select') return <td key={col.id} style={{...commonStyle, textAlign: 'center'}} onClick={(e) => toggleSelection(item._id, e)}>{isSelected ? <CheckSquare size={16} color="#10b981" /> : <Square size={16} color="rgba(255,255,255,0.3)" />}</td>;
+                                            if (col.id === 'actions') return <td key={col.id} style={commonStyle}><div style={{display: 'flex', gap: 6, justifyContent: 'center'}}><button onClick={(e) => { e.stopPropagation(); handleSelectEntry(item); }} style={{background: 'transparent', border: 'none', cursor: 'pointer', color: item.comments?.length > 0 ? '#3b82f6' : '#64748b'}}><MessageSquare size={16} /></button></div></td>;
+                                            if (col.id === 'status') return <td key={col.id} style={commonStyle}><div onClick={hasEditAccess ? (e) => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setDropdownPos({ top: rect.bottom + 4, left: rect.left }); setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id); } : undefined} style={{ ...styles.statusBadge(currentStatus), cursor: hasEditAccess ? "pointer" : "not-allowed", opacity: hasEditAccess ? 1 : 0.5, width: 'fit-content' }}><statusConfig.icon size={12} strokeWidth={3} /> {statusConfig.label}</div></td>;
+                                            return <td key={col.id} style={{...commonStyle, fontWeight: col.id === 'RecordingCode' ? 600 : 400, color: col.id === 'RecordingCode' ? '#fff' : '#e2e8f0'}} title={item[col.id]}>{item[col.id]}</td>;
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </React.Fragment>
+                    )})}
+                </tbody>
+            </table>
+        </div>
+    );
+};
 
   const renderStepIndicator = () => {
     return (
@@ -1552,8 +1810,16 @@ const hasProjectHubWriteAccess = useMemo(() => {
       <div style={{ ...styles.mainContainer, display: isMobile ? "flex" : "grid", flexDirection: isMobile ? "column" : "row", gridTemplateColumns: isMobile ? "none" : getGridTemplate(), gap: isCompact ? "12px" : "20px", position: "relative" }}>
         
         {/* COLUMN 1: FORM */}
-        {(!isTableView || (isMobile && (showMobileForm || isEditing))) && (
-            <div style={{ ...styles.columnScroll, display: isMobile ? ((showMobileForm || isEditing) ? 'block' : 'none') : 'block', width: isMobile ? "100%" : "auto", paddingBottom: isMobile ? "20px" : "100px" }} className="hide-scrollbar">
+      {(!isTableView || (isMobile && (showMobileForm || isEditing))) && (
+    <div style={{ 
+        ...styles.columnScroll, 
+        display: (isQueueExpanded && !isMobile) ? 'none' : isMobile ? ((showMobileForm || isEditing) ? 'block' : 'none') : 'block',
+        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", // Smooth slide
+        opacity: isQueueExpanded ? 0 : 1,
+        transform: isQueueExpanded ? "translateX(-20px)" : "translateX(0)",
+        width: isMobile ? "100%" : "auto" 
+    }} className="hide-scrollbar">
+
                 <div style={styles.unifiedCard(isCompact)}>
                     
                     {isMobile && (
@@ -1573,7 +1839,20 @@ const hasProjectHubWriteAccess = useMemo(() => {
                         <div className="animate-in fade-in duration-300" style={styles.sectionBlock}>
                             <SectionTitle icon={Database} title="Event Details" theme={colors.core} />
                             <div style={styles.gridFields}>
-                                <SearchableSelect label="Event Code" name="fkEventCode" options={eventCodeOptions.map(opt => opt.EventCode)} value={formData.fkEventCode} onChange={handleChange} theme={colors.core} required={true} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                              <SearchableSelect 
+    label="Event Code" 
+    name="fkEventCode" 
+    // Dropdown still shows concatenated for easy searching
+    options={eventCodeOptions.map(opt => `${opt.EventName} - ${opt.EventCode}`)} 
+    // BOX VALUE: Only show the code
+    value={formData.fkEventCode || ""} 
+    onChange={handleChange} 
+    theme={colors.core} 
+    required={true} 
+    disabled={!hasEditAccess || isViewing} 
+    isCompact={isCompact} 
+    full={true} 
+/>
                                 {renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
                                 {renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}
                                 {renderField("Event Category", "NewEventCategory", colors.core, {medium: true,required: true, disabled: !hasEditAccess || isViewing  })}
@@ -1581,97 +1860,239 @@ const hasProjectHubWriteAccess = useMemo(() => {
                         </div>
                     )}
 
-                    {/* STEP 2: DMS DETAILS */}
-                    {currentStep === 2 && (
-                        <div className="animate-in fade-in duration-300" style={styles.sectionBlock}>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                <SectionTitle icon={FileAudio} title="DMS details" theme={colors.tech} />
-                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}><FileSearch size={14} /> Scan File</button>
-                            </div>
+                   {/* STEP 2: DMS DETAILS */}
+{currentStep === 2 && (
+    <div className="animate-in fade-in duration-300" style={styles.sectionBlock}>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <SectionTitle icon={FileAudio} title="DMS details" theme={colors.tech} />
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!hasEditAccess || isViewing} style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", border: "1px solid rgba(6, 182, 212, 0.3)", borderRadius: "6px", padding: "4px 10px", fontSize: "0.75rem", fontWeight: 600, cursor: hasEditAccess && !isViewing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", opacity: hasEditAccess && !isViewing ? 1 : 0.5 }}><FileSearch size={14} /> Scan File</button>
+        </div>
 
-                            <div style={styles.gridFields}>
-                                {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
-                                {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
-                                {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                                {renderField("File Size", "Filesize", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                                {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                                {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing, uppercase: true })}
-                                {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
-                                {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { disabled: !hasEditAccess || isViewing })}
-                                <div style={styles.gridFields}>
-                                    <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                                </div>
-                                {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
-                            </div>
-                        </div>
-                    )}
+        <div style={styles.gridFields}>
+            {renderField("Recording Code", "RecordingCode", colors.core, { required: true, disabled: !hasEditAccess || isViewing })}
+            {renderField("Recording Name", "RecordingName", colors.core, { required: true, full: true, disabled: !hasEditAccess || isViewing })}
+            
+            {/* NEW: Distribution Drive Link (Text field) */}
+            {renderField("Distribution Drive Link", "DistributionDriveLink", colors.tech, { full: true, disabled: !hasEditAccess || isViewing })}
 
-                    {/* STEP 3: MEDIALOG DETAILS */}
-                    {currentStep === 3 && (
-                        <div className="animate-in fade-in duration-300" style={{...styles.sectionBlock, marginBottom: 0}}>
-                            {/* IF CREATING NEW: SHOW MULTI-SELECT BATCH TABLE */}
-                            {(!isEditing && !isViewing) ? (
-                                <div style={{ gridColumn: "1 / -1" }}>
-                                    <SectionTitle icon={LinkIcon} title="Batch Link MediaLog Entries " theme={colors.tech} />
-                                    {!formData.fkEventCode ? (
-                                        <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
-                                            Please select an Event Code to view available MediaLog entries for batch processing.
-                                        </div>
-                                    ) : mlIdOptions.length === 0 ? (
-                                        <div style={{ padding: '16px', textAlign: 'center', color: '#f87171', background: 'rgba(239,68,68,0.05)', borderRadius: 8, border: '1px dashed rgba(239,68,68,0.2)', fontSize: '0.85rem' }}>
-                                            No MediaLog entries found for this Event Code.
-                                        </div>
-                                    ) : (
-                                        <div style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, marginTop: 6, maxHeight: '350px' }} className="custom-scrollbar">
-                                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '0.75rem', color: '#e2e8f0', textAlign: 'left', tableLayout: 'fixed' }}>
-                                                <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
-                                                    <tr>
-                                                        <th style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)', width: 40, minWidth: 40, position: 'sticky', left: 0, background: '#1e293b', zIndex: 21 }}>
-                                                            <div onClick={() => {
-                                                                if (selectedMlIds.size === mlIdOptions.length) setSelectedMlIds(new Set());
-                                                                else setSelectedMlIds(new Set(mlIdOptions.map(opt => opt.MLUniqueID)));
-                                                            }} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'center' }}>
-                                                                {selectedMlIds.size === mlIdOptions.length && mlIdOptions.length > 0 ? <CheckSquare size={16} color="#3b82f6" /> : <Square size={16} color="#64748b" />}
-                                                            </div>
-                                                        </th>
-                                                        {BATCH_TABLE_COLUMNS.map(col => (
-                                                            <th key={col.id} style={{ 
-                                                                padding: '10px 12px', 
-                                                                borderBottom: '1px solid rgba(255,255,255,0.1)', 
-                                                                width: batchColWidths[col.id], 
-                                                                minWidth: batchColWidths[col.id],
-                                                                maxWidth: batchColWidths[col.id],
-                                                                position: col.sticky ? 'sticky' : 'static', 
-                                                                left: col.sticky ? col.left : 'auto', 
-                                                                background: '#1e293b', 
-                                                                zIndex: col.sticky ? 21 : 20, 
-                                                                borderRight: col.sticky ? '1px solid rgba(255,255,255,0.1)' : 'none' 
-                                                            }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col.label}</span>
-                                                                    <div onMouseDown={(e) => handleBatchResizeStart(e, col.id)} style={{ cursor: 'col-resize', padding: '0 2px', opacity: 0.5, marginLeft: 4 }}>
-                                                                        <GripVertical size={12} />
-                                                                    </div>
-                                                                </div>
-                                                            </th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {mlIdOptions.map(opt => {
-                                                        const isSelected = selectedMlIds.has(opt.MLUniqueID);
-                                                        return (
-                                                            <tr key={opt.MLUniqueID} 
-                                                                onClick={() => {
-                                                                    const newSet = new Set(selectedMlIds);
-                                                                    if (isSelected) newSet.delete(opt.MLUniqueID);
-                                                                    else newSet.add(opt.MLUniqueID);
-                                                                    setSelectedMlIds(newSet);
-                                                                }}
-                                                                style={{ 
-                                                                    background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent', 
-                                                                    cursor: 'pointer', transition: 'background 0.2s' 
-                                                                }}
+            {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
+            
+            {/* UPDATED: File Size (Number with decimal support) */}
+            {renderField("File Size", "Filesize", colors.tech, { 
+                type: "number", 
+                step: "0.01", 
+                disabled: !hasEditAccess || isViewing 
+            })}
+            
+            {/* UPDATED: Audio Bitrate (Number) */}
+            {renderField("Audio Bitrate", "AudioBitrate", colors.tech, { 
+                type: "number", 
+                disabled: !hasEditAccess || isViewing 
+            })}
+
+            {renderField("FilesizeInBytes", "FilesizeInBytes", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
+            {renderField("Media Type", "fkMediaName", colors.tech, { disabled: !hasEditAccess || isViewing, uppercase: true })}
+            {renderField("No. Of Files", "NoOfFiles", colors.tech, { type: "number", disabled: !hasEditAccess || isViewing })}
+            
+            <div style={{ gridColumn: "span 2" }}>
+                <SearchableSelect label="Master Quality" name="Masterquality" options={MASTER_QUALITY_OPTIONS} value={formData.Masterquality} onChange={handleChange} theme={colors.class} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+            </div>
+            {renderField("DMS Remarks", "RecordingRemarks", colors.qc, { full: true, disabled: !hasEditAccess || isViewing })}
+        </div>
+    </div>
+)}
+
+                   {/* STEP 3: MEDIALOG DETAILS */}
+{currentStep === 3 && (
+  <div className="animate-in fade-in duration-300" style={{...styles.sectionBlock, marginBottom: 0}}>
+    {(!isEditing && !isViewing) ? (
+      <div style={{ gridColumn: "1 / -1" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <SectionTitle icon={LinkIcon} title="Batch Link MediaLog Entries" theme={colors.tech} />
+          
+          {/* FILTER BAR */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <AdvancedFiltersClickUp 
+              filters={batchFilterConfigs} 
+              onFiltersChange={setMlAdvancedFilters} 
+              data={mlIdOptions}
+            />
+            {mlAdvancedFilters.length > 0 && (
+              <button 
+                onClick={() => setMlAdvancedFilters([])}
+                style={{ fontSize: '0.7rem', color: '#f87171', background: 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                Reset Filters
+              </button>
+            )}
+
+             {/* NEW SORT BUTTON */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOpenStatusDropdown(openStatusDropdown === 'ml-sort' ? null : 'ml-sort')}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  height: "2rem",
+                  padding: "0 12px",
+                  backgroundColor: mlSortConfig.key ? "rgba(59, 130, 246, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "6px",
+                  color: mlSortConfig.key ? "#3b82f6" : "#f1f5f9",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                <ArrowUpDown size={14} /> 
+                Sort {mlSortConfig.key && `(${BATCH_TABLE_COLUMNS.find(c => c.id === mlSortConfig.key)?.label})`}
+              </button>
+
+              {/* SORT POPOVER */}
+              {openStatusDropdown === 'ml-sort' && (
+                <div style={{
+                  position: 'absolute', right: 0, top: '110%', width: '280px', 
+                  backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', 
+                  borderRadius: '12px', padding: '16px', zIndex: 1000,
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>Sort by fields</span>
+                    <button onClick={() => setOpenStatusDropdown(null)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={14}/></button>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Field Selector */}
+                    <select 
+                      value={mlSortConfig.key || ""} 
+                      onChange={(e) => setMlSortConfig(prev => ({ ...prev, key: e.target.value }))}
+                      style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '8px', borderRadius: '6px', fontSize: '0.8rem' }}
+                    >
+                      <option value="">Select field...</option>
+                      {BATCH_TABLE_COLUMNS.map(col => (
+                        <option key={col.id} value={col.id}>{col.label}</option>
+                      ))}
+                    </select>
+
+                    {/* Direction Selector */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <select 
+                        value={mlSortConfig.direction || "asc"} 
+                        onChange={(e) => setMlSortConfig(prev => ({ ...prev, direction: e.target.value as 'asc' | 'desc' }))}
+                        style={{ flex: 1, background: '#0f172a', border: '1px solid #334155', color: '#fff', padding: '8px', borderRadius: '6px', fontSize: '0.8rem' }}
+                      >
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                      </select>
+                      
+                      <button 
+                        onClick={() => setMlSortConfig({ key: '', direction: 'asc' })}
+                        style={{ padding: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', color: '#f87171' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* RESET ALL BUTTON */}
+            {(mlAdvancedFilters.length > 0 || mlSortConfig.key) && (
+              <button 
+                onClick={() => { setMlAdvancedFilters([]); setMlSortConfig({ key: '', direction: 'asc' }); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer' }}
+              >
+                <RotateCcw size={12} /> Clear All
+              </button>
+            )}
+          </div>
+        </div>
+          
+
+        
+
+        {!formData.fkEventCode ? (
+          <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.05)', fontSize: '0.85rem' }}>
+            Please select an Event Code to view available MediaLog entries.
+          </div>
+        ) : filteredAndSortedMlOptions.length === 0 ? (
+          <div style={{ padding: '16px', textAlign: 'center', color: '#f87171', background: 'rgba(239,68,68,0.05)', borderRadius: 8, border: '1px dashed rgba(239,68,68,0.2)', fontSize: '0.85rem' }}>
+            No MediaLog entries match your current filters.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, marginTop: 6, maxHeight: '350px' }} className="custom-scrollbar">
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '0.75rem', color: '#e2e8f0', textAlign: 'left', tableLayout: 'fixed' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+                <tr>
+                  <th style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)', width: 40, minWidth: 40, position: 'sticky', left: 0, background: '#1e293b', zIndex: 21 }}>
+                    <div onClick={() => {
+                      if (selectedMlIds.size === filteredAndSortedMlOptions.length) setSelectedMlIds(new Set());
+                      else setSelectedMlIds(new Set(filteredAndSortedMlOptions.map(opt => opt.MLUniqueID)));
+                    }} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'center' }}>
+                      {selectedMlIds.size === filteredAndSortedMlOptions.length && filteredAndSortedMlOptions.length > 0 ? <CheckSquare size={16} color="#3b82f6" /> : <Square size={16} color="#64748b" />}
+                    </div>
+                  </th>
+            {BATCH_TABLE_COLUMNS.map(col => (
+  <th 
+    key={col.id} 
+    style={{ 
+      padding: 0,
+      borderBottom: '1px solid rgba(255,255,255,0.1)', 
+      width: batchColWidths[col.id], 
+      background: '#1e293b',
+      position: col.sticky ? 'sticky' : 'static',
+      left: col.sticky ? col.left : 'auto',
+      zIndex: col.sticky ? 21 : 20,
+    }}
+  >
+    <div style={{ display: 'flex', alignItems: 'center', height: '100%', width: '100%' }}>
+      
+      {/* 1. Label Area (Trigger Sort on click) */}
+      <div 
+        onClick={() => handleMlSort(col.id)} 
+        style={{ 
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '10px 8px 10px 12px', flex: 1, 
+          cursor: 'pointer', overflow: 'hidden', userSelect: 'none'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {col.label}
+        </span>
+        {mlSortConfig.key === col.id && (
+          mlSortConfig.direction === 'asc' ? <ArrowUp size={12} color="#3b82f6" /> : <ArrowDown size={12} color="#3b82f6" />
+        )}
+      </div>
+
+      {/* 2. Resizer (Does NOT trigger sort) */}
+      <div 
+        onMouseDown={(e) => { e.stopPropagation(); handleBatchResizeStart(e, col.id); }}
+        onClick={(e) => e.stopPropagation()}
+        style={{ cursor: 'col-resize', width: '10px', height: '24px', opacity: 0.3 }}
+      >
+        <GripVertical size={10} />
+      </div>
+    </div>
+  </th>
+))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAndSortedMlOptions.map(opt => {
+                  const isSelected = selectedMlIds.has(opt.MLUniqueID);
+                  return (
+                    <tr key={opt.MLUniqueID} 
+                        onClick={() => {
+                          const newSet = new Set(selectedMlIds);
+                          if (isSelected) newSet.delete(opt.MLUniqueID);
+                          else newSet.add(opt.MLUniqueID);
+                          setSelectedMlIds(newSet);
+                        }}
+                        style={{ background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent', cursor: 'pointer' }}
                                                                 onMouseEnter={(e) => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
                                                                 onMouseLeave={(e) => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
                                                             >
@@ -1715,16 +2136,29 @@ const hasProjectHubWriteAccess = useMemo(() => {
                                     <SectionTitle icon={FileAudio} title="MediaLog Details" theme={colors.tech} />
                                     <div style={styles.gridFields}>
                                         <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+                                        {renderField("Detail", "Detail", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })} 
+                                        {renderField("SubDetail", "SubDetail", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })} 
+                                         {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
                                         {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Patrank", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
+                                        
+                                        {renderField("Number", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
                                         {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
+                                         {renderField("SatsangStart", "SatsangStart", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                          {renderField("SatsangEnd", "SatsangEnd", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                           {renderField("Segment Category", "Segment Category", colors.core, { disabled: !hasEditAccess || isViewing })}
                                         {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("SatsangStart", "SatsangStart", colors.core, { full: true,disabled: !hasEditAccess || isViewing })}
-                                        {renderField("SatsangEnd", "SatsangEnd", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                        {renderField("fkCity", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Detail", "Detail", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Date To", "ContentTo", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Footage Type", "FootageType", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Editing Status", "EditingStatus", colors.core, { disabled: !hasEditAccess || isViewing })}
                                         {renderField("Remarks", "Remarks", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("CounterFrom", "CounterFrom", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("CounterTo", "CounterTo", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Footage Sr No", "FootageSrNo", colors.core, { disabled: !hasEditAccess || isViewing })}
+                                        {renderField("Log Serial No", "LogSerialNo", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
+                                        
+                                       
+                                       
+                                        
                                     </div>
                                 </div>
                             )}
@@ -1761,17 +2195,37 @@ const hasProjectHubWriteAccess = useMemo(() => {
         )}
 
         {/* COLUMN 2: PENDING QUEUE */}
-        <div style={{ ...styles.columnScroll, height: "100%", overflowY: "auto", gridColumn: isTableView && !isMobile ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", display: isMobile ? ((!showMobileForm && !isEditing && !isCommentsOpen) ? 'block' : 'none') : 'block', width: isMobile ? "100%" : "auto" }} className="hide-scrollbar">
+       <div style={{ 
+    ...styles.columnScroll, 
+    height: "100%", 
+    overflowY: "auto", 
+    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", // Smooth slide
+    gridColumn: (isQueueExpanded || isTableView) && !isMobile ? (isCommentsOpen ? "1 / span 2" : "1 / -1") : "auto", 
+    display: isMobile ? ((!showMobileForm && !isEditing && !isCommentsOpen) ? 'block' : 'none') : 'block', 
+    width: isMobile ? "100%" : "auto" 
+}} className="hide-scrollbar">
             <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
                 
                 <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
-                        <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
-                            <button onClick={() => setIsTableView(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><LayoutList size={14} /> List</button>
-                            <button onClick={() => setIsTableView(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><TableProperties size={14} /> Table</button>
-                        </div>
-                        <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
-                    </div>
+                   <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
+    <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
+        <button onClick={() => setIsTableView(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><LayoutList size={14} /> List</button>
+        <button onClick={() => setIsTableView(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><TableProperties size={14} /> Table</button>
+    </div>
+
+    {/* NEW EXPAND/COLLAPSE BUTTON */}
+    {!isMobile && (
+        <button 
+            onClick={() => setIsQueueExpanded(!isQueueExpanded)} 
+            title={isQueueExpanded ? "Show Form" : "Expand View"}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: isQueueExpanded ? 'rgba(59, 130, 246, 0.2)' : 'rgba(30, 41, 59, 0.5)', color: isQueueExpanded ? '#3b82f6' : '#94a3b8', cursor: 'pointer', transition: 'all 0.3s ease' }}
+        >
+            {isQueueExpanded ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
+        </button>
+    )}
+
+    <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
+</div>
 
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
                          {isTableView && queue.length > 0 && (
@@ -1792,6 +2246,7 @@ const hasProjectHubWriteAccess = useMemo(() => {
                                 <div style={{ position: 'relative' }}>
                                    <select value={groupByField} onChange={(e) => setGroupByField(e.target.value)} style={{ background: '#202d4b', border: '2px solid #474f5c', color: '#ffffff', fontSize: '0.75rem', padding: '6px 10px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}>
                                         <option value="none">None</option>
+                                         <option value="EventName_RecordingName">Event DRFilename </option>
                                         <option value="RecordingCode">Recording Code</option>
                                         <option value="_status">Status</option>
                                         <option value="EventName">Event Name</option>
@@ -1809,6 +2264,7 @@ const hasProjectHubWriteAccess = useMemo(() => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <ListFilter size={14} color="#94a3b8" />
                                 <select value={groupByField} onChange={(e) => setGroupByField(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.75rem', outline: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                  <option value="EventName_RecordingName">Event DRFilename </option>
                                     <option value="RecordingCode">Recording Code</option>
                                     <option value="_status">Status</option>
                                     <option value="none">None</option>
@@ -1824,51 +2280,100 @@ const hasProjectHubWriteAccess = useMemo(() => {
                 ) : (
                     isTableView ? ( renderTableView() ) : (
                         <div style={{ overflowY: 'auto', flex: 1 }} className="hide-scrollbar">
-                            {groupByField !== 'none' ? (
-                                <div>
-                                    {(() => {
-                                        const groups = getGroupedQueue(queue, groupByField);
-                                        const groupKeys = Object.keys(groups).sort((a, b) => {
-                                            if (groupByField === '_status') {
-                                                const order = ['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'];
-                                                return order.indexOf(a) - order.indexOf(b);
-                                            }
-                                            return a.localeCompare(b);
-                                        });
-                                        
-                                        return (
-                                            <>
-                                                {groupKeys.map(groupKey => {
-                                                    const groupItems = groups[groupKey];
-                                                    if(!groupItems || groupItems.length === 0) return null;
-                                                    const isExpanded = expandedGroups.has(groupKey);
-                                                    
-                                                    let displayLabel = groupKey;
-                                                    if (groupByField === '_status') {
-                                                        displayLabel = STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey;
-                                                    } else {
-                                                        displayLabel = groupKey === 'Uncategorized' || !groupKey ? `No ${groupByField}` : groupKey;
-                                                    }
+                        {groupByField !== 'none' ? (
+    <div style={{ paddingBottom: '100px' }}>
+        {(() => {
+            const groups = getGroupedQueue(queue, groupByField);
+            const groupKeys = Object.keys(groups).sort();
 
-                                                    return (
-                                                        <div key={groupKey}>
-                                                            <div onClick={() => toggleGroup(groupKey)} style={styles.groupTitle(groupKey, isExpanded)}>
-                                                                <div onClick={(e) => handleGroupSelect(groupItems, e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
-                                                                    {groupItems.length > 0 && groupItems.every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={14} color="#10b981" /> : <Square size={14} color="#64748b" />}
-                                                                </div>
-                                                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} 
-                                                                <span style={{flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{displayLabel}</span>
-                                                                <span>({groupItems.length})</span>
-                                                            </div>
-                                                            {isExpanded && groupItems.map(renderQueueItem)}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </>
-                                        );
-                                    })()}
+            // --- LEVEL 1: EVENT NAME FOLDERS ---
+            if (groupByField === 'EventName_RecordingName') {
+             return groupKeys.map(eventKey => {
+    const drGroups = groups[eventKey];
+    const drFileNames = Object.keys(drGroups).sort();
+    const isEventExpanded = expandedGroups.has(eventKey);
+    const totalEntriesInEvent = Object.values(drGroups).flat().length;
+
+    return (
+        <div key={eventKey} style={{ marginBottom: 4 }}>
+            {/* EVENT HEADER */}
+            <div onClick={() => toggleGroup(eventKey)} 
+                 style={{ ...styles.groupTitle('complete', isEventExpanded), margin: 0, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                {isEventExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />} 
+                <LayoutList size={14} style={{ opacity: 0.6 }} />
+                <span style={{ flex: 1, color: '#fff', fontSize: '0.8rem', fontWeight: 600 }}>{eventKey}</span>
+                
+                {/* ACTIVE COLOR COUNT FOR EVENT */}
+                <span style={{ color: '#3b82f6', fontSize: '0.85rem', fontWeight: '800', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    {totalEntriesInEvent}
+                </span>
+            </div>
+
+            {isEventExpanded && (
+                <div style={{ marginLeft: 12, borderLeft: '1px solid rgba(255,255,255,0.1)', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {drFileNames.map(drName => {
+                        const items = drGroups[drName];
+                        const subGroupKey = `${eventKey}_${drName}`;
+                        const isDrExpanded = expandedGroups.has(subGroupKey);
+
+                        return (
+                            <div key={drName}>
+                                <div onClick={() => toggleGroup(subGroupKey)} 
+                                     style={{ ...styles.groupTitle('revision', isDrExpanded), margin: '2px 0', padding: '6px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
+                                    <div onClick={(e) => handleGroupSelect(items, e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
+                                        {items.length > 0 && items.every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={14} color="#10b981" /> : <Square size={14} color="#64748b" />}
+                                    </div>
+                                    {isDrExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                    <FileText size={12} style={{ opacity: 0.6 }} />
+                                    <span style={{ fontSize: '0.75rem', flex: 1, color: '#cbd5e1', fontWeight: 500 }}>{drName}</span>
+                                    
+                                    {/* ACTIVE COLOR COUNT FOR FILENAME */}
+                                    <span style={{ color: '#3b82f6', fontSize: '0.75rem', fontWeight: '700' }}>
+                                        {items.length}
+                                    </span>
                                 </div>
-                            ) : ( queue.map(renderQueueItem) )}
+
+                                {isDrExpanded && (
+                                    <div style={{ marginLeft: 20, marginTop: 4 }}>
+                                        {items.map(renderQueueItem)}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+});
+            }
+
+            // STANDARD SINGLE-LEVEL GROUPING (Status, etc.)
+            return groupKeys.map(groupKey => {
+                const groupItems = groups[groupKey];
+                const isExpanded = expandedGroups.has(groupKey);
+                let displayLabel = groupKey;
+                if (groupByField === '_status') displayLabel = STATUS_OPTIONS.find(s => s.id === groupKey)?.label || groupKey;
+                
+                return (
+                    <div key={groupKey}>
+                        <div onClick={() => toggleGroup(groupKey)} style={styles.groupTitle(groupKey, isExpanded)}>
+                            <div onClick={(e) => handleGroupSelect(groupItems, e)} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: 4 }}>
+                                {groupItems.length > 0 && groupItems.every((item: any) => selectedIndices.has(item._id)) ? <CheckSquare size={14} color="#10b981" /> : <Square size={14} color="#64748b" />}
+                            </div>
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />} 
+                            <span style={{flex: 1}}>{displayLabel}</span>
+                            <span>({groupItems.length})</span>
+                        </div>
+                        {isExpanded && groupItems.map(renderQueueItem)}
+                    </div>
+                );
+            });
+        })()}
+    </div>
+) : (
+    queue.map(renderQueueItem)
+)}
                         </div>
                     )
                 )}

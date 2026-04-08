@@ -1,7 +1,17 @@
+/// <reference types="vite/client" />
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Save, Plus, Layers, FileAudio, FileText, Trash2, CheckCircle2, FolderOpen, Loader2, Search, MessageSquare, Edit, Database } from "lucide-react";
+import { ArrowLeft, Save, Plus, Layers, FileAudio, FileText, Trash2, CheckCircle2, FolderOpen, Loader2, Search, MessageSquare, Edit, Database, UserX, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import mediaInfoFactory from 'mediainfo.js';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuItem
+} from "../components/ui/dropdown-menu";
+import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar";
 
 // --- HELPERS ---
 const generateCode = (prefix: string, length: number) => {
@@ -74,15 +84,19 @@ const bucketAudioBitrate = (kbps: number): string => {
   return Math.round(kbps).toString();
 };
 
-const determineMasterQuality = (filename: string, isPhoto: boolean): string => {
-  if (isPhoto) return "Photos";
-  const fn = filename.toUpperCase();
+const determineMasterQuality = (name: string, isPhoto: boolean): string => {
+  const fn = name.toUpperCase();
+  // Check for Photos first (isPhoto boolean or starts with P)
+  if (isPhoto || fn.startsWith('P') || fn.includes('_P')) return "Photos";
+  
+  // Pattern matching for Video and Audio
   if (fn.includes("_0") || fn.includes("_1") || fn.includes("_9")) return "Video - High Res";
   if (fn.includes("_A") || fn.includes("_B") || fn.includes("_C") || fn.includes("_D") || fn.includes("_E") || fn.includes("_F") || fn.includes("_G")) return "Video - Low Res";
   if (fn.includes("_M") || fn.includes("_N")) return "Audio - Low Res";
   if (fn.includes("_W") || fn.includes("_X")) return "Audio - High Res";
   if (fn.includes("_H") || fn.includes("_I") || fn.includes("_J") || fn.includes("_K")) return "Project File";
-  return "";
+  
+  return " "; // Default fallback
 };
 
 // --- HARDENED NATIVE HTML5 EXTRACTOR ---
@@ -206,17 +220,16 @@ const calculateSmartFillValue = (startValue: string, step: number, shouldIncreme
 const recalculateMLSerials = (rows: any[], currentEventCode: string) => {
   const dmCodeCounts: Record<string, number> = {};
   return rows.map((row, idx) => {
-    // 1. Auto-fetch Event Code from project
     const eventCode = currentEventCode || row.eventCode;
     
     if (!row.dmCode) return { ...row, eventCode, logSrNo: "", mlUniqueId: "", footageSrNo: (idx + 1).toString() }; 
 
-    // 2. Calculate Log Serial (001, 002...) per DM Code
     dmCodeCounts[row.dmCode] = (dmCodeCounts[row.dmCode] || 0) + 1;
     const serialNum = dmCodeCounts[row.dmCode];
-    const logSerialFormatted = String(serialNum).padStart(3, '0');
     
-    // 3. ML Unique ID = Digital Media Code + "." + Log Serial
+    // CHANGE THIS LINE: Remove padStart to get 1, 2, 3 instead of 001, 002, 003
+    const logSerialFormatted = String(serialNum); 
+    
     const mlUniqueId = `${row.dmCode}.${logSerialFormatted}`;
     
     return {
@@ -715,7 +728,7 @@ const ML_COLUMNS = [
     key: "segmentCategory", 
     label: "Segment Category", 
     type: "select", 
-    options: [" ", "Other Clips","Pujan","Pravachan","Prasangik Udbodhan","SU","SU - GM","SU - Extracted","SU - Revision","SU - Capsule","Satsang","Informal Satsang","Nemiji:Satsang","SRMD - Shibirs/Session/Training/Workshops","Non-SRMD - Shibirs/Session/Training/Workshops","SU:SRMD - Shibirs/Session/Training/Workshops","Pratishtha","Padhramani","Padhramani:Pratishtha","Meditation","Drama/Skit","Prarthana","Bhakti","Celebrations","Celebrations:Bhakti","Celebrations:Drama/Skit","Celebrations:Heartfelt Experience","Heartfelt Experiences","Highlights","Highlights - Informal","Highlights - Mixed","PEP - Post Event Promo","Satsang Clips","Other Clips","Promo","Documentary","Other Edited Videos","Product/Webseries","Event/Feel Good Reel","Bhakti:Drama/Skit"],
+    options: [" ","Pujan","Pravachan","Prasangik Udbodhan","SU","SU - GM","SU - Extracted","SU - Revision","SU - Capsule","Satsang","Informal Satsang","Nemiji:Satsang","SRMD - Shibirs/Session/Training/Workshops","Non-SRMD - Shibirs/Session/Training/Workshops","SU:SRMD - Shibirs/Session/Training/Workshops","Pratishtha","Padhramani","Padhramani:Pratishtha","Meditation","Drama/Skit","Prarthana","Bhakti","Celebrations","Celebrations:Bhakti","Celebrations:Drama/Skit","Celebrations:Heartfelt Experience","Heartfelt Experiences","Highlights","Highlights - Informal","Highlights - Mixed","PEP - Post Event Promo","Satsang Clips","Other Clips","Promo","Documentary","Other Edited Videos","Product/Webseries","Event/Feel Good Reel","Bhakti:Drama/Skit"],
     disabled: false, 
     styling: { width: "180px" } 
   },
@@ -755,7 +768,7 @@ const ML_COLUMNS = [
   { key: "audioMp3DrCode", label: "Audio MP3 DR Code", type: "text", disabled: false, styling: { width: "140px" } },
   { key: "audioWavDrCode", label: "Audio WAV DR Code", type: "text", disabled: false, styling: { width: "140px" } },
   { key: "remarks", label: "Remarks", type: "text", disabled: false, styling: { width: "140px" } },
-  { key: "footagePrivacy", label: "Footage (VERY PRIVATE?)", type: "select", options: ["No", "Yes", "Confidential"], disabled: false, styling: { width: "130px" } },
+  { key: "footagePrivacy", label: "Footage (VERY PRIVATE?)", type: "select", options: [" ", "Informal"], disabled: false, styling: { width: "130px" } },
   { key: "bapaNotPresent", label: "If Bapa NOT Present", type: "text", disabled: false, styling: { width: "130px" } },
   { key: "guidanceReceived", label: "Guidance from PPG/Hierarchy", type: "text", disabled: false, styling: { width: "160px" } },
   { key: "eventRefRemarks", label: "Event Reference - Remarks/Counters", type: "text", disabled: false, styling: { width: "160px" } },
@@ -765,7 +778,7 @@ const ML_COLUMNS = [
   { key: "subTitlesLanguage", label: "Sub Titles Language", type: "text", disabled: false, styling: { width: "130px" } },
   { key: "editingTypeAudio", label: "Editing Type (Audio)", type: "text", disabled: false, styling: { width: "130px" } },
   { key: "bhajanTypeTheme", label: "Bhajan Type/Theme", type: "text", disabled: false, styling: { width: "130px" } },
-  { key: "grading", label: "Grading", type: "select", options: ["A", "B", "C", "D", "Pending"], disabled: false, styling: { width: "90px" } }
+  { key: "grading", label: "Grading", type: "text", disabled: false, styling: { width: "90px" } }
 ];
 
 // --- STYLES ---
@@ -790,9 +803,17 @@ const styles = {
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" },
   inputWrapper: { display: "flex", flexDirection: "column" as "column", gap: "4px" },
   label: { fontSize: "0.7rem", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase" as "uppercase" },
-  input: {
-    backgroundColor: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff",
-    height: "36px", borderRadius: "6px", padding: "0 10px", outline: "none", fontSize: "0.85rem", width: "100%"
+ input: {
+    backgroundColor: "rgba(0,0,0,0.3)", 
+    border: "1px solid rgba(255,255,255,0.1)", 
+    color: "#fff",
+    height: "36px", 
+    borderRadius: "6px", 
+    padding: "0 10px", 
+    outline: "none", 
+    fontSize: "0.85rem", 
+    width: "100%",
+    colorScheme: "dark" // <--- ADD THIS LINE
   },
  tableWrapper: { 
   overflowX: "auto" as "auto", 
@@ -849,7 +870,227 @@ export function ProjectHubWorkflow({ onBack }: { onBack: () => void }) {
   // Application View State
   const [viewMode, setViewMode] = useState<'list' | 'editor' | 'template-select'>('list');
   const [savedProjects, setSavedProjects] = useState<any[]>([]);
+type User = { id: string; name: string; avatar?: string; role?: string };
+const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('app-token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableUsers(data);
+      }
+    } catch (error) {
+      console.error("Error fetching users for assignee list:", error);
+    }
+  };
+  fetchUsers();
+}, []);
+const [assigneeSearch, setAssigneeSearch] = useState("");
+const renderAssigneePicker = () => {
+  // Split the string into an array to handle multiple selected users
+  const selectedNames = project.assignee ? project.assignee.split(", ") : [];
+  
+  // Filter users based on the search query
+  const filteredUsers = availableUsers.filter(u => 
+    u.name.toLowerCase().includes(assigneeSearch.toLowerCase())
+  );
 
+  const toggleUser = (userName: string) => {
+    let newSelection;
+    if (selectedNames.includes(userName)) {
+      newSelection = selectedNames.filter(name => name !== userName);
+    } else {
+      newSelection = [...selectedNames, userName];
+    }
+    setProject({ ...project, assignee: newSelection.join(", ") });
+  };
+
+  return (
+    <div style={{ ...styles.inputWrapper, gridColumn: "auto" }}>
+      <span style={styles.label}>Assignees</span>
+
+      <div style={{ position: "relative" }}>
+        <DropdownMenu onOpenChange={(open) => !open && setAssigneeSearch("")}>
+          <DropdownMenuTrigger asChild>
+            <div
+              style={{
+                ...styles.input,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                cursor: "pointer",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                padding: "4px 8px",
+                height: "auto",
+                minHeight: "36px",
+                flexWrap: "wrap"
+              }}
+            >
+              {selectedNames.length > 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                   <div style={{ display: "flex", marginLeft: "4px" }}>
+                    {selectedNames.slice(0, 3).map((name, i) => {
+                      const u = availableUsers.find(user => user.name === name);
+                      return (
+                        <Avatar key={name} style={{ 
+                          height: 22, width: 22, 
+                          border: "2px solid #0f172a", 
+                          marginLeft: i === 0 ? 0 : -8,
+                          zIndex: 10 - i 
+                        }}>
+                          <AvatarImage src={u?.avatar} />
+                          <AvatarFallback style={{ fontSize: '8px', background: '#2563eb' }}>{name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                      );
+                    })}
+                    {selectedNames.length > 3 && (
+                      <div style={{ 
+                        fontSize: '10px', background: '#334155', height: 22, width: 22, 
+                        borderRadius: '50%', display: 'flex', alignItems: 'center', 
+                        justifyContent: 'center', marginLeft: -8, border: "2px solid #0f172a",
+                        zIndex: 1
+                      }}>+{selectedNames.length - 3}</div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: "0.8rem", color: "#fff", marginLeft: "4px" }}>
+                    {selectedNames.length === 1 ? selectedNames[0] : `${selectedNames.length} Assigned`}
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#64748b" }}>
+                  <Plus size={14} />
+                  <span style={{ fontSize: "0.85rem" }}>Assign...</span>
+                </div>
+              )}
+              <ChevronDown size={14} style={{ marginLeft: "auto", opacity: 0.5 }} />
+            </div>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            style={{
+              width: "280px",
+              background: "#0f172a",
+              border: "1px solid #334155",
+              color: "#fff",
+              borderRadius: "8px",
+              padding: "8px",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)"
+            }}
+          >
+            {/* SEARCH INPUT */}
+            <div style={{ position: "relative", marginBottom: "8px" }}>
+              <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+              <input
+                autoFocus
+                placeholder="Search team members..."
+                value={assigneeSearch}
+                onChange={(e) => setAssigneeSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  background: "#1e293b",
+                  border: "1px solid #334155",
+                  borderRadius: "6px",
+                  padding: "6px 10px 6px 32px",
+                  color: "#fff",
+                  fontSize: "13px",
+                  outline: "none"
+                }}
+              />
+            </div>
+
+            <DropdownMenuSeparator style={{ background: "#334155" }} />
+
+            <div style={{ maxHeight: "240px", overflowY: "auto", marginTop: "4px" }} className="custom-scrollbar">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((u) => {
+                  const isSelected = selectedNames.includes(u.name);
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleUser(u.name);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 10px",
+                        cursor: "pointer",
+                        borderRadius: "6px",
+                        background: isSelected ? "rgba(37, 99, 235, 0.15)" : "transparent",
+                        marginBottom: "2px"
+                      }}
+                      onMouseEnter={e => !isSelected && (e.currentTarget.style.background = "#1e293b")}
+                      onMouseLeave={e => !isSelected && (e.currentTarget.style.background = "transparent")}
+                    >
+                      <div style={{ 
+                        width: 16, height: 16, border: "1px solid #475569", borderRadius: "4px",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: isSelected ? "#2563eb" : "transparent",
+                        borderColor: isSelected ? "#2563eb" : "#475569"
+                      }}>
+                        {isSelected && <CheckCircle2 size={12} color="#fff" />}
+                      </div>
+
+                      <Avatar style={{ height: 26, width: 26 }}>
+                        <AvatarImage src={u.avatar} />
+                        <AvatarFallback style={{ background: "#334155", fontSize: "10px" }}>
+                          {u.name.split(" ").map(n => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: "13px", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {u.name}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>{u.role}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: "20px", textAlign: "center", color: "#64748b", fontSize: "12px" }}>
+                  No members found
+                </div>
+              )}
+            </div>
+
+            {selectedNames.length > 0 && (
+              <>
+                <DropdownMenuSeparator style={{ background: "#334155" }} />
+                <div
+                  onClick={() => setProject({ ...project, assignee: "" })}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    color: "#f87171",
+                    fontSize: "13px"
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(248, 113, 113, 0.1)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <UserX size={14} />
+                  <span>Clear All</span>
+                </div>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+};
   // Load Saved Projects from Local Storage on mount
   useEffect(() => {
     const saved = localStorage.getItem('avdept_projectHubData');
@@ -994,7 +1235,7 @@ export function ProjectHubWorkflow({ onBack }: { onBack: () => void }) {
   // ==========================================
   // EXCEL DRAG & DOUBLE CLICK TO FILL LOGIC
   // ==========================================
-  const applyDragFill = () => {
+ const applyDragFill = () => {
     if (!dragState) return;
     const { table, startRow, currentRow, currentCol, startValue } = dragState;
     const minRow = Math.min(startRow, currentRow);
@@ -1002,44 +1243,43 @@ export function ProjectHubWorkflow({ onBack }: { onBack: () => void }) {
 
     const columns = table === 'DR' ? DR_COLUMNS : ML_COLUMNS;
     const colDef = columns.find(c => c.key === currentCol);
-    const disabled = colDef?.disabled;
-    const isSelect = colDef?.type === 'select' || colDef?.type === 'dr-select' || colDef?.type === 'date';
+    if (colDef?.disabled) { setDragState(null); return; }
+
+    const isSelect = colDef?.type === 'select' || colDef?.type === 'dr-select';
 
     if (table === 'DR') {
       let newRows = [...drRows];
       for (let i = minRow; i <= maxRow; i++) {
-        if (i !== startRow && !disabled) {
-          const step = i - startRow;
-          newRows[i] = { ...newRows[i], [currentCol]: calculateSmartFillValue(startValue, step, !isSelect) };
-        }
+        const step = i - startRow;
+        newRows[i] = { ...newRows[i], [currentCol]: calculateSmartFillValue(startValue, step, !isSelect) };
       }
       setDrRows(newRows);
     } 
     else if (table === 'ML') {
       let newRows = [...mlRows];
       for (let i = minRow; i <= maxRow; i++) {
-        if (i !== startRow && !disabled) {
-          const step = i - startRow;
-          newRows[i] = { ...newRows[i], [currentCol]: calculateSmartFillValue(startValue, step, !isSelect) };
-          
-          if (currentCol === 'counterFrom' || currentCol === 'counterTo') {
-            const fromSec = parseTimeToSeconds(newRows[i].counterFrom);
-            const toSec = parseTimeToSeconds(newRows[i].counterTo);
-            newRows[i].duration = (toSec >= fromSec && newRows[i].counterTo && newRows[i].counterFrom) ? formatSecondsToTime(toSec - fromSec) : (newRows[i].counterTo && newRows[i].counterFrom ? "Invalid" : "");
-          }
+        const step = i - startRow;
+        newRows[i] = { ...newRows[i], [currentCol]: calculateSmartFillValue(startValue, step, !isSelect) };
+        
+        // Auto-calculate durations for dragged counters
+        if (['counterFrom', 'counterTo', 'lowResCounterFrom', 'lowResCounterTo'].includes(currentCol)) {
+          newRows[i].subDuration = calculateDuration(newRows[i].counterFrom, newRows[i].counterTo);
+          newRows[i].totalDuration = newRows[i].subDuration;
+          newRows[i].lowResTotalDuration = calculateDuration(newRows[i].lowResCounterFrom, newRows[i].lowResCounterTo);
         }
       }
+      // Re-trigger serial numbers if DM code was dragged
       if (currentCol === 'dmCode') newRows = recalculateMLSerials(newRows, project.autoEventCode);
       setMlRows(newRows);
     }
     setDragState(null);
   };
 
-  const handleDoubleClickFill = (table: 'DR' | 'ML', startRow: number, currentCol: string, startValue: any) => {
+ const handleDoubleClickFill = (table: 'DR' | 'ML', startRow: number, currentCol: string, startValue: any) => {
     const columns = table === 'DR' ? DR_COLUMNS : ML_COLUMNS;
     const colDef = columns.find(c => c.key === currentCol);
     if (colDef?.disabled) return;
-    const isSelect = colDef?.type === 'select' || colDef?.type === 'dr-select' || colDef?.type === 'date';
+    const isSelect = colDef?.type === 'select' || colDef?.type === 'dr-select';
 
     if (table === 'DR') {
       let newRows = [...drRows];
@@ -1051,10 +1291,10 @@ export function ProjectHubWorkflow({ onBack }: { onBack: () => void }) {
       let newRows = [...mlRows];
       for (let i = startRow + 1; i < newRows.length; i++) {
         newRows[i] = { ...newRows[i], [currentCol]: calculateSmartFillValue(startValue, i - startRow, !isSelect) };
-        if (currentCol === 'counterFrom' || currentCol === 'counterTo') {
-          const fromSec = parseTimeToSeconds(newRows[i].counterFrom);
-          const toSec = parseTimeToSeconds(newRows[i].counterTo);
-          newRows[i].duration = (toSec >= fromSec && newRows[i].counterTo && newRows[i].counterFrom) ? formatSecondsToTime(toSec - fromSec) : (newRows[i].counterTo && newRows[i].counterFrom ? "Invalid" : "");
+        if (['counterFrom', 'counterTo', 'lowResCounterFrom', 'lowResCounterTo'].includes(currentCol)) {
+           newRows[i].subDuration = calculateDuration(newRows[i].counterFrom, newRows[i].counterTo);
+           newRows[i].totalDuration = newRows[i].subDuration;
+           newRows[i].lowResTotalDuration = calculateDuration(newRows[i].lowResCounterFrom, newRows[i].lowResCounterTo);
         }
       }
       if (currentCol === 'dmCode') newRows = recalculateMLSerials(newRows, project.autoEventCode);
@@ -1101,62 +1341,64 @@ const handleTemplateSelect = (templateName: string) => {
         ...p, 
         template: templateName,
         name: p.name || templateName,
-         location: tpl.project.location,
+        location: tpl.project.location,
         country: tpl.project.country,
         state: tpl.project.state,
         city: tpl.project.city
       }));
 
-      const newDrs: any[] = [];
       let newMls: any[] = [];
 
-      // 1. Generate DR Rows based on Template
-      tpl.dr.forEach((drTpl: any) => {
-        const newDrCode = generateCode('DR-', 4);
-        newDrs.push({ ...emptyDrRow, ...drTpl, dmCode: newDrCode });
-      });
-
-      // 2. Logic for "Pravachan at Yogi" - Create 8 specific ML entries
+      // Logic for "Pravachan at Yogi"
       if (templateName === "Pravachan at Yogi") {
-        const contentDetailsList = [
-          "Pujya Gurudevshri's Entry",
-          "Announcement",
-          "Video :",
-          "Mangalacharan",
-          "Pravachan",
-          "End Bhakti",
-          "Arti",
-          "Pujya Gurudevshri Blessing Mumukshus"
-        ];
-        
-        // Use the DM code generated for the first DR row as the default link
-        const dmCode = newDrs[0]?.dmCode || "";
-
-      newMls = contentDetailsList.map((cd) => ({
+        const yogiDetails = ["Pujya Gurudevshri's Entry", "Announcement", "Video :", "Mangalacharan", "Pravachan", "End Bhakti", "Arti", "Pujya Gurudevshri Blessing Mumukshus"];
+        newMls = yogiDetails.map(detail => ({
           ...emptyMlRow,
-          contentDetails: cd,
-          dmCode: dmCode,
-          timeOfDay: "Eve", // Auto-fill as requested
+          contentDetails: detail,
+          timeOfDay: "Eve",
           contentLocation: "Yogi Sabhagruh",
-          contentCountry: "India",
-          contentState: "Maharashtra",
-          contentCity: "Mumbai",
-          editingStatus: "Unedited", // Optional: set a default from your new list
-          footageType: "AS IT IS"     // Optional: set a default from your new list
+          contentCountry: "India", contentState: "Maharashtra", contentCity: "Mumbai",
+          editingStatus: "Unedited", footageType: "AS IT IS", dmCode: ""
         }));
-      } else {
-        // Default behavior for other templates (creates 1 ML row per DR row)
-        newMls = newDrs.map(dr => ({
+      } 
+      // Logic for "Satsang Shibir" (8 Step Sequence)
+      else if (templateName === "Satsang Shibir") {
+        const shibirDetails = ["Pujya Gurudevshri's Entry", "Announcement :", "Video : ", "Mangalacharan", "Pravachan 1", "End Bhakti", "Arti", "Pujya Gurudevshri Blessing Mumukshus"];
+        newMls = shibirDetails.map(detail => ({
           ...emptyMlRow,
-          dmCode: dr.dmCode,
+          contentDetails: detail,
+          contentSpeaker: detail === "Pravachan 1" ? "Pujya Gurudevshri" : "",
+          editingStatus: "Semi-Edited",
+          footageType: "AS IT IS",
+          contentCountry: "India", contentState: "Gujarat", contentCity: "Dharampur",
+          dmCode: ""
+        }));
+      }
+      // Logic for "Bapa Katha"
+      else if (templateName === "Bapa Katha") {
+        newMls = [{
+          ...emptyMlRow,
+          editingStatus: "Unedited",
+          footageType: "AS IT IS - Camera",
+          contentDetails: "Experience - ",
+          contentSubDetails: "Approx Duration - ",
+          contentCountry: "India", contentState: "Maharashtra", contentCity: "Mumbai",
+          dmCode: ""
+        }];
+      } else {
+        // Default for others
+        newMls = tpl.dr.map((drTpl: any) => ({
+          ...emptyMlRow,
+          contentDetails: drTpl.folderName || "",
           contentLocation: tpl.project.location || "",
           contentCountry: tpl.project.country || "",
           contentState: tpl.project.state || "",
-          contentCity: tpl.project.city || ""
+          contentCity: tpl.project.city || "",
+          dmCode: ""
         }));
       }
 
-      setDrRows(newDrs);
+      setDrRows([]); 
       setMlRows(recalculateMLSerials(newMls, project.autoEventCode)); 
     } else {
       setProject(p => ({ ...p, template: "" }));
@@ -1169,46 +1411,122 @@ const generateContCodes = () => {
     if (project.contCodeCount < 1) return toast.error("Count must be at least 1");
     
     const generatedCodes = generateContentCodes(project.contCodeType, project.contCodeCount);
-    
-    const newDrs: any[] = [];
     const newMls: any[] = [];
 
-    // Define the special labels for Pravachan at Yogi
-    const pravachanDetails = [
-      "Pujya Gurudevshri's Entry",
-      "Announcement",
-      "Video :",
-      "Mangalacharan",
-      "Pravachan",
-      "End Bhakti",
-      "Arti",
-      "Pujya Gurudevshri Blessing Mumukshus"
-    ];
+    // Sequences for templates
+    const yogiDetails = ["Pujya Gurudevshri's Entry", "Announcement", "Video :", "Mangalacharan", "Pravachan", "End Bhakti", "Arti", "Pujya Gurudevshri Blessing Mumukshus"];
+    const shibirDetails = ["Pujya Gurudevshri's Entry", "Announcement :", "Video : ", "Mangalacharan", "Pravachan 1", "End Bhakti", "Arti", "Pujya Gurudevshri Blessing Mumukshus"];
+    const gmDetails = ["Announcements", "Paper and Exam Solving - ", "Playback Bhakti", "Sadguru Udghosh", "Pujya Gurudevshri Blessing Mumukshus"];
 
-    // For each generated Digital Media Code
     generatedCodes.forEach((code) => {
-      // Create one DR row per code
-      newDrs.push({ 
-        ...emptyDrRow, 
-        dmCode: code 
-      });
-
-      // Check if the selected template is Pravachan at Yogi
-   if (project.template === "Pravachan at Yogi") {
-        pravachanDetails.forEach((detail) => {
+      // --- NEW CASE: PRODUCTION SATSANG ---
+      if (project.template === "Production Satsang") {
+        newMls.push({
+          ...emptyMlRow,
+          dmCode: code,
+          timeOfDay: "Morn",
+          editingStatus: "Edited",
+          footageType: "Extracted",
+          contentDetails: "Sadguru Udghosh Extracted",
+          segmentCategory: "SU - Extracted",
+          contentSpeaker: "Pujya Gurudevshri Rakeshji",
+          contentCountry: "India",
+          contentState: "Gujarat",
+          contentCity: "Dharampur",
+          contentLocation: "Shrimad Rajchandra Ashram , Dharampur",
+          topicGivenBy: "Pujya Gurudevshri",
+          
+        });
+      }
+      // CASE: GM
+      else if (project.template === "GM") {
+        gmDetails.forEach((detail) => {
+          newMls.push({
+            ...emptyMlRow,
+            dmCode: code,
+            timeOfDay: "Morn",
+            editingStatus: "Semi-Edited",
+            footageType: "AS IT IS",
+            contentDetails: detail,
+            segmentCategory: detail === "Sadguru Udghosh" ? "SU - GM" : "",
+            contentSpeaker: detail === "Sadguru Udghosh" ? "Pujya Gurudevshri" : "",
+            topicGivenBy: detail === "Sadguru Udghosh" ? "Pujya Gurudevshri" : "",
+            contentCountry: "India",
+            contentState: "Gujarat",
+            contentCity: "Dharampur",
+            contentLocation: "Shrimad Rajchandra Ashram , Dharampur"
+          });
+        });
+      }
+      // CASE: SADGURU UDGHOSH
+      else if (project.template === "Sadguru Udghosh") {
+        newMls.push({
+          ...emptyMlRow,
+          dmCode: code,
+          timeOfDay: "Morn",
+          editingStatus: "Edited",
+          contentDetails: "Sadguru Udghosh",
+          contentSubDetails: "Raj Sabhagruh",
+          segmentCategory: "SU - Revision",
+          contentSpeaker: "Pujya Gurudevshri Rakeshji",
+          contentCountry: "India",
+          contentState: "Gujarat",
+          contentCity: "Dharampur",
+          contentLocation: "Shrimad Rajchandra Ashram, Dharampur",
+          topicGivenBy: "Pujya Gurudevshri"
+        });
+      }
+      // CASE: SATSANG SHIBIR ... (Keep existing code)
+      else if (project.template === "Satsang Shibir") {
+        shibirDetails.forEach((detail) => {
+          newMls.push({
+            ...emptyMlRow,
+            dmCode: code,
+            timeOfDay: "Morn",
+            contentDetails: detail,
+            contentSpeaker: detail === "Pravachan 1" ? "Pujya Gurudevshri" : "",
+            editingStatus: "Semi-Edited",
+            footageType: "AS IT IS",
+            contentLocation: "Shrimad Rajchandra Ashram, Dharampur",
+            contentCountry: "India",
+            contentState: "Gujarat",
+            contentCity: "Dharampur"
+          });
+        });
+      } 
+      // CASE: BAPA KATHA ... (Keep existing code)
+      else if (project.template === "Bapa Katha") {
+        newMls.push({
+          ...emptyMlRow,
+          dmCode: code,
+          editingStatus: "Unedited",
+          footageType: "AS IT IS - Camera",
+          contentDetails: "Experience - ",
+          contentSubDetails: "Approx Duration - ",
+          contentCountry: "India",
+          contentState: "Maharashtra",
+          contentCity: "Mumbai"
+        });
+      }
+      // CASE: PRAVACHAN AT YOGI ... (Keep existing code)
+      else if (project.template === "Pravachan at Yogi") {
+        yogiDetails.forEach((detail) => {
           newMls.push({
             ...emptyMlRow,
             dmCode: code,
             contentDetails: detail,
             timeOfDay: "Eve",
+            contentSpeaker: detail === "Pravachan" ? "Pujya Gurudevshri" : "",
             contentCountry: "India",
             contentState: "Maharashtra",
             contentCity: "Mumbai",
-            contentLocation: "Yogi Sabhagruh"
+            contentLocation: "Yogi Sabhagruh",
+            editingStatus: "Unedited",
+            footageType: "AS IT IS"
           });
         });
-      } else {
-        // Default behavior: Create 1 ML row for this code
+      } 
+      else {
         newMls.push({
           ...emptyMlRow,
           dmCode: code,
@@ -1220,161 +1538,147 @@ const generateContCodes = () => {
       }
     });
 
-    setDrRows(newDrs);
+    setDrRows([]);
     setMlRows(recalculateMLSerials(newMls, project.autoEventCode));
-
-    toast.success(`Project created with ${project.contCodeCount} digital master(s)!`);
+    toast.success(`Project created with ${newMls.length} rows in ML Layer!`);
     setViewMode('editor');
     setIsProjectCreated(true);
   };
-
   // ==========================================
   // SCAN FOLDER LOGIC WITH MODAL YIELD FIX
   // ==========================================
-  const extractFolderMetadata = async (files: FileList): Promise<any[]> => {
-    const scannedRows: any[] = [];
-    const MEDIA_EXTENSIONS = {
-      '.avi': true, '.mp4': true, '.mov': true, '.mxf': true, '.mkv': true, 
-      '.mpg': true, '.mts': true, '.2ts': true, '.peg': true, '.vob': true, 
-      '.m4v': true, '.m2t': true, '.mp3': true, '.wav': true
-    };
-    
-    const AUDIO_EXTENSIONS = {'.mp3': true, '.wav': true};
-    const VIDEO_EXTENSIONS = {
-      '.avi': true, '.mp4': true, '.mov': true, '.mxf': true, '.mkv': true,
-      '.mpg': true, '.mts': true, '.2ts': true, '.peg': true, '.vob': true,
-      '.m4v': true, '.m2t': true
-    };
-    
-    const PHOTO_EXTENSIONS = {
-      '.jpg': true, '.jpeg': true, '.png': true, '.gif': true, '.bmp': true,
-      '.tif': true, '.tiff': true, '.heic': true, '.webp': true
-    };
-
-    // Group files by folder
-    const folderMap = new Map<string, File[]>();
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.name.startsWith('.')) continue;
-      if (file.name.toLowerCase() === 'desktop.ini') continue;
-      
-      // @ts-ignore
-      const webkitPath = file.webkitRelativePath || '';
-      const folderPath = webkitPath ? webkitPath.substring(0, webkitPath.lastIndexOf('/')) : 'Scanned Directory';
-      
-      if (!folderMap.has(folderPath)) {
-        folderMap.set(folderPath, []);
-      }
-      folderMap.get(folderPath)!.push(file);
-    }
-
-    // Process each folder
-    let srNo = 1;
-    for (const [folderPath, filesInFolder] of folderMap) {
-      const folderName = folderPath.split('/').pop() || folderPath;
-      const subFolders = folderPath.split('/').filter(f => f);
-      
-      // Create summary row for folder
-      let totalFiles = 0;
-      let totalSize = 0;
-      let totalDuration = 0;
-      const formats = new Set<string>();
-      const videoBitrates = new Set<string>();
-      const audioBitrates = new Set<string>();
-      let hasVideo = false;
-      let hasAudio = false;
-      let hasPhoto = false;
-      let masterQualityDetected = "";
-
-      for (const file of filesInFolder) {
-        totalFiles++;
-        totalSize += file.size;
-        
-        const ext = ('.' + file.name.split('.').pop()?.toLowerCase()).toLowerCase();
-        
-        if (ext in PHOTO_EXTENSIONS) {
-          formats.add(ext.toUpperCase().slice(1) || 'PHOTO_NO_EXT');
-          hasPhoto = true;
-          masterQualityDetected = "Photos";
-        } else if (ext === '.zip') {
-          formats.add('ZIP');
-        } else if (ext in AUDIO_EXTENSIONS) {
-          formats.add(ext.toUpperCase().slice(1));
-          hasAudio = true;
-          // Here you would call HTML5 audio metadata extraction
-          // For now, placeholder for bitrate extraction
-        } else if (ext in VIDEO_EXTENSIONS) {
-          formats.add(ext === '.2ts' ? '.2TS' : ext.toUpperCase().slice(1));
-          hasVideo = true;
-          // Here you would call HTML5 video metadata extraction
-        }
-
-        // Detect master quality from filename
-        const fileNameUpper = file.name.toUpperCase();
-        if (fileNameUpper.includes('_0') || fileNameUpper.includes('_1') || fileNameUpper.includes('_9')) {
-          masterQualityDetected = "Video - High Res";
-        } else if (fileNameUpper.includes('_A') || fileNameUpper.includes('_B') || fileNameUpper.includes('_C') ||
-                   fileNameUpper.includes('_D') || fileNameUpper.includes('_E') || fileNameUpper.includes('_F') ||
-                   fileNameUpper.includes('_G')) {
-          masterQualityDetected = "Video - Low Res";
-        } else if (fileNameUpper.includes('_M') || fileNameUpper.includes('_N')) {
-          masterQualityDetected = "Audio - Low Res";
-        } else if (fileNameUpper.includes('_W') || fileNameUpper.includes('_X')) {
-          masterQualityDetected = "Audio - High Res";
-        } else if (fileNameUpper.includes('_H') || fileNameUpper.includes('_I') || 
-                   fileNameUpper.includes('_J') || fileNameUpper.includes('_K')) {
-          masterQualityDetected = "Project File";
-        }
-      }
-
-      const formatSummary = formats.size > 1 ? 'MULTIPLE' : (formats.size === 1 ? Array.from(formats)[0] : 'N/A');
-      const videoBitrateSummary = videoBitrates.size > 1 ? 'MULTIPLE' : (videoBitrates.size === 1 ? Array.from(videoBitrates)[0] : null);
-      const audioBitrateSummary = audioBitrates.size > 1 ? 'MULTIPLE' : (audioBitrates.size === 1 ? Array.from(audioBitrates)[0] : null);
-
-      // Determine final master quality
-      if (!masterQualityDetected) {
-        if (hasPhoto) masterQualityDetected = "Photos";
-        else if (hasVideo) masterQualityDetected = "Video Content";
-        else if (hasAudio) masterQualityDetected = "Audio Content";
-      }
-
-      const digitalCodeExtracted = extractDigitalCode(folderName);
-      
-      const row = {
-        ...emptyDrRow,
-        srNo: srNo.toString(),
-        folderName: subFolders[0] || folderName,
-        subFolder1: subFolders[1] || '',
-        subFolder2: subFolders[2] || '',
-        subFolder3: subFolders[3] || '',
-        subFolder4: subFolders[4] || '',
-        dmFolderFileName: folderName,
-        noOfFiles: totalFiles.toString(),
-        formatType: formatSummary,
-        videoBitrate: hasVideo ? videoBitrateSummary : '',
-        audioBitrate: hasAudio ? audioBitrateSummary : '',
-        fileSizeBytes: totalSize.toString(),
-        duration: totalDuration > 0 ? formatSecondsToTime(totalDuration) : '',
-        fileSizeGb: (totalSize / (1024 ** 3)).toFixed(2),
-        visibleFilesize: formatBytes(totalSize),
-        filePath: folderPath,
-         dmCode: digitalCodeExtracted || folderName,// ← AUTO-POPULATED from folder name
-        masterQuality: masterQualityDetected,
-        _comments: {}
-      };
-
-      scannedRows.push(row);
-      srNo++;
-    }
-
-    return scannedRows;
+// --- UPDATED METADATA EXTRACTOR ---
+// --- UPDATED METADATA EXTRACTOR WITH FALLBACK LOGIC ---
+const extractFolderMetadata = async (files: FileList): Promise<any[]> => {
+  const scannedRows: any[] = [];
+  
+  const AUDIO_EXTENSIONS = {'.mp3': true, '.wav': true};
+  const VIDEO_EXTENSIONS = {
+    '.avi': true, '.mp4': true, '.mov': true, '.mxf': true, '.mkv': true,
+    '.mpg': true, '.mts': true, '.2ts': true, '.peg': true, '.vob': true,
+    '.m4v': true, '.m2t': true
+  };
+  
+  const PHOTO_EXTENSIONS = {
+    '.jpg': true, '.jpeg': true, '.png': true, '.gif': true, '.bmp': true,
+    '.tif': true, '.tiff': true, '.heic': true, '.webp': true
   };
 
- const handleFolderScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Group files by folder
+  const folderMap = new Map<string, File[]>();
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (file.name.startsWith('.') || file.name.toLowerCase() === 'desktop.ini') continue;
+    // @ts-ignore
+    const webkitPath = file.webkitRelativePath || '';
+    const folderPath = webkitPath ? webkitPath.substring(0, webkitPath.lastIndexOf('/')) : 'Scanned Directory';
+    if (!folderMap.has(folderPath)) folderMap.set(folderPath, []);
+    folderMap.get(folderPath)!.push(file);
+  }
+
+  let srNo = 1;
+  for (const [folderPath, filesInFolder] of folderMap) {
+    const folderName = folderPath.split('/').pop() || folderPath;
+    const subFolders = folderPath.split('/').filter(f => f);
+    
+    // 1. Identify "Primary File" for metadata analysis
+    const primaryFile = filesInFolder.find(f => {
+        const ext = ('.' + f.name.split('.').pop()?.toLowerCase());
+        return ext in VIDEO_EXTENSIONS || ext in AUDIO_EXTENSIONS;
+    }) || filesInFolder[0];
+
+    const fileNameOnly = primaryFile ? primaryFile.name : folderName;
+
+    // --- NEW: FETCH BITRATES AND DURATION ---
+    let detectedVBitrate = "";
+    let detectedABitrate = "";
+    let detectedDuration = "";
+
+    if (primaryFile) {
+        const ext = ('.' + primaryFile.name.split('.').pop()?.toLowerCase());
+        const isVideo = ext in VIDEO_EXTENSIONS;
+        const isAudio = ext in AUDIO_EXTENSIONS;
+
+        // Calls your existing extractMediaMetadata function
+        const meta = await extractMediaMetadata(primaryFile, isVideo, isAudio);
+        detectedVBitrate = meta.vBitrate; 
+        detectedABitrate = meta.aBitrate; 
+        detectedDuration = meta.duration;
+    }
+    // ----------------------------------------
+
+    // Existing Digital Code Priority Logic
+    let drCode = extractDigitalCode(fileNameOnly);
+    if (!drCode) drCode = extractDigitalCode(folderName);
+
+    let totalFiles = 0;
+    let totalSize = 0;
+    const formats = new Set<string>();
+    let hasVideo = false;
+    let hasAudio = false;
+    let hasPhoto = false;
+    let masterQualityDetected = "";
+
+    // 2. Process all files in group
+    for (const file of filesInFolder) {
+      totalFiles++;
+      totalSize += file.size;
+      const ext = ('.' + file.name.split('.').pop()?.toLowerCase()).toLowerCase();
+      
+      if (ext in PHOTO_EXTENSIONS) {
+        formats.add(ext.toUpperCase().slice(1));
+        hasPhoto = true;
+      } else if (ext in AUDIO_EXTENSIONS) {
+        formats.add(ext.toUpperCase().slice(1));
+        hasAudio = true;
+      } else if (ext in VIDEO_EXTENSIONS) {
+        formats.add(ext === '.2ts' ? '2TS' : ext.toUpperCase().slice(1));
+        hasVideo = true;
+      }
+
+      // CHANGE THIS LINE: Pass drCode (or fileName if code missing) to the helper
+      const mq = determineMasterQuality(drCode || fileNameOnly, hasPhoto);
+      if (mq && !masterQualityDetected) masterQualityDetected = mq;
+    }
+
+    const formatSummary = formats.size > 1 ? 'MULTIPLE' : (formats.size === 1 ? Array.from(formats)[0] : 'N/A');
+
+     const row = {
+      ...emptyDrRow,
+      srNo: srNo.toString(),
+      folderName: subFolders[0] || folderName,
+      subFolder1: subFolders[1] || '',
+      subFolder2: subFolders[2] || '',
+      dmFolderFileName: fileNameOnly, 
+      noOfFiles: totalFiles.toString(),
+      formatType: formatSummary,
+
+      // --- POPULATE BITRATES & DURATION ---
+      videoBitrate: detectedVBitrate, 
+      audioBitrate: detectedABitrate, 
+      duration: detectedDuration,
+      // ------------------------------------
+
+      fileSizeBytes: totalSize.toString(),
+      fileSizeGb: (totalSize / (1024 ** 3)).toFixed(2),
+      visibleFilesize: formatBytes(totalSize),
+      filePath: folderPath,
+      dmCode: drCode || fileNameOnly, 
+      masterQuality: masterQualityDetected || (hasVideo ? "Video" : hasAudio ? "Audio" : ""),
+      _comments: {}
+    };
+
+    scannedRows.push(row);
+    srNo++;
+  }
+
+  return scannedRows;
+};
+const handleFolderScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const files = e.target.files;
   if (!files || files.length === 0) return;
 
+  // Switch to DR tab to show the results
   setActiveTab('DR');
   setIsScanning(true);
   
@@ -1382,24 +1686,17 @@ const generateContCodes = () => {
     const scannedRows = await extractFolderMetadata(files);
     
     if (scannedRows.length > 0) {
+      // 1. Update DR rows ONLY
       setDrRows(prev => {
         const updated = [...prev, ...scannedRows];
         return updated.map((row, idx) => ({ ...row, srNo: (idx + 1).toString() }));
       });
 
-      // Create ML rows with Auto-filled Event Code and DM Code
-      const newMlRows = scannedRows.map(dr => ({
-        ...emptyMlRow,
-        eventCode: project.autoEventCode, // <--- AUTO FILL EVENT CODE
-        dmCode: dr.digitalCode || dr.dmFolderFileName, // <--- AUTO FILL DM CODE
-        contentLocation: project.location || '',
-        contentCountry: project.country || '',
-        contentState: project.state || '',
-        contentCity: project.city || ''
-      }));
-
-      setMlRows(prev => recalculateMLSerials([...prev, ...newMlRows], project.autoEventCode));
-      toast.success(`Scanned ${scannedRows.length} folders!`);
+      // --- LOGIC REMOVED FROM HERE ---
+      // We no longer generate newMlRows and call setMlRows here.
+      // This ensures the ML layer is not affected by the folder scan.
+      
+      toast.success(`Scanned ${scannedRows.length} folders into DR Layer!`);
     }
   } catch (error) {
     toast.error('Error scanning folder');
@@ -1409,25 +1706,127 @@ const generateContCodes = () => {
 };
 
   const addDrRow = () => setDrRows([...drRows, {...emptyDrRow, dmCode: generateCode('DR-', 4)}]);
-  const addMlRow = () => {
-  const newRow = { 
-    ...emptyMlRow, 
-    eventCode: project.autoEventCode, // Pre-fill Event Code
-    contentLocation: project.location || "", 
-    contentCountry: project.country || "", 
-    contentState: project.state || "", 
-    contentCity: project.city || "" 
+const addMlRow = () => {
+    let autoFilledFields = {};
+    const lastRow = mlRows.length > 0 ? mlRows[mlRows.length - 1] : null;
+
+    if (project.template === "Production Satsang") {
+      autoFilledFields = {
+        timeOfDay: "Morn",
+        editingStatus: "Edited",
+        footageType: "Extracted",
+        contentDetails: "Sadguru Udghosh Extracted",
+        segmentCategory: "SU - Extracted",
+        contentSpeaker: "Pujya Gurudevshri Rakeshji",
+        contentCountry: "India",
+        contentState: "Gujarat",
+        contentCity: "Dharampur",
+        contentLocation: "Shrimad Rajchandra Ashram, Dharampur",
+        topicGivenBy: "Pujya Gurudevshri",
+       
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    }
+    else if (project.template === "GM") {
+      const gmDetails = ["Announcements", "Paper and Exam Solving - ", "Playback Bhakti", "Sadguru Udghosh", "Pujya Gurudevshri Blessing Mumukshus"];
+      const nextIndex = mlRows.length % gmDetails.length;
+      const currentDetail = gmDetails[nextIndex];
+      autoFilledFields = {
+        timeOfDay: "Morn",
+        editingStatus: "Semi-Edited",
+        footageType: "AS IT IS",
+        contentDetails: currentDetail,
+        segmentCategory: currentDetail === "Sadguru Udghosh" ? "SU - GM" : "",
+        contentSpeaker: currentDetail === "Sadguru Udghosh" ? "Pujya Gurudevshri" : "",
+        topicGivenBy: currentDetail === "Sadguru Udghosh" ? "Pujya Gurudevshri" : "",
+        contentCountry: "India",
+        contentState: "Gujarat",
+        contentCity: "Dharampur",
+        contentLocation: "Shrimad Rajchandra Ashram, Dharampur",
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    }
+    else if (project.template === "Sadguru Udghosh") {
+      autoFilledFields = {
+        timeOfDay: "Morn",
+        editingStatus: "Edited",
+        contentDetails: "Sadguru Udghosh",
+        contentSubDetails: "Raj Sabhagruh",
+        segmentCategory: "SU - Revision",
+        contentSpeaker: "Pujya Gurudevshri Rakeshji",
+        contentCountry: "India",
+        contentState: "Gujarat",
+        contentCity: "Dharampur",
+        contentLocation: "Shrimad Rajchandra Ashram, Dharampur",
+        topicGivenBy: "Pujya Gurudevshri",
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    }
+    else if (project.template === "Satsang Shibir") {
+      const shibirDetails = ["Pujya Gurudevshri's Entry", "Announcement :", "Video : ", "Mangalacharan", "Pravachan 1", "End Bhakti", "Arti", "Pujya Gurudevshri Blessing Mumukshus"];
+      const nextIndex = mlRows.length % shibirDetails.length;
+      const currentDetail = shibirDetails[nextIndex];
+      autoFilledFields = {
+        timeOfDay: "Morn",
+        contentDetails: currentDetail,
+        contentSpeaker: currentDetail === "Pravachan 1" ? "Pujya Gurudevshri" : "",
+        editingStatus: "Semi-Edited",
+        footageType: "AS IT IS",
+        contentLocation: "Shrimad Rajchandra Ashram, Dharampur",
+        contentCountry: "India", contentState: "Gujarat", contentCity: "Dharampur",
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    } 
+    else if (project.template === "Bapa Katha") {
+      autoFilledFields = {
+        editingStatus: "Unedited",
+        footageType: "AS IT IS - Camera",
+        contentDetails: "Experience - ",
+        contentSubDetails: "Approx Duration - ",
+        contentCountry: "India", contentState: "Maharashtra", contentCity: "Mumbai",
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    }
+    else if (project.template === "Pravachan at Yogi") {
+      const yogiDetails = ["Pujya Gurudevshri's Entry", "Announcement", "Video :", "Mangalacharan", "Pravachan", "End Bhakti", "Arti", "Pujya Gurudevshri Blessing Mumukshus"];
+      const nextIndex = mlRows.length % yogiDetails.length;
+      autoFilledFields = {
+        contentDetails: yogiDetails[nextIndex],
+        timeOfDay: "Eve",
+        contentSpeaker: yogiDetails[nextIndex] === "Pravachan" ? "Pujya Gurudevshri" : "",
+        contentLocation: "Yogi Sabhagruh",
+        contentCountry: "India", contentState: "Maharashtra", contentCity: "Mumbai",
+        editingStatus: "Semi-Edited", footageType: "AS IT IS",
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    } else {
+      autoFilledFields = {
+        contentLocation: project.location || "",
+        contentCountry: project.country || "",
+        contentState: project.state || "",
+        contentCity: project.city || "",
+        dmCode: lastRow ? lastRow.dmCode : ""
+      };
+    }
+
+    const newRow = { ...emptyMlRow, ...autoFilledFields, eventCode: project.autoEventCode };
+    setMlRows(prev => recalculateMLSerials([...prev, newRow], project.autoEventCode));
   };
-  setMlRows(prev => recalculateMLSerials([...prev, newRow], project.autoEventCode));
-};
   const removeDrRow = (index: number) => setDrRows(drRows.filter((_, i) => i !== index));
   const removeMlRow = (index: number) => setMlRows(prev => recalculateMLSerials(prev.filter((_, i) => i !== index), project.autoEventCode));
 
   const updateDr = (index: number, field: string, value: string) => {
-    const updated = [...drRows];
-    updated[index][field] = value;
-    setDrRows(updated);
-  };
+  const updated = [...drRows];
+  updated[index][field] = value;
+
+  // NEW LOGIC: If Digital Code is changed, automatically update Master Quality
+  if (field === 'dmCode') {
+    const isPhoto = value.toUpperCase().startsWith('P');
+    updated[index].masterQuality = determineMasterQuality(value, isPhoto);
+  }
+
+  setDrRows(updated);
+};
 
  const updateMl = (index: number, field: string, value: string) => {
   let updated = [...mlRows];
@@ -1460,13 +1859,13 @@ const generateContCodes = () => {
     </div>
   );
 
- const renderTableCell = (tableType: 'DR' | 'ML', col: any, row: any, idx: number, onChange: (i: number, f: string, v: string) => void) => {
+const renderTableCell = (tableType: 'DR' | 'ML', col: any, row: any, idx: number, onChange: (i: number, f: string, v: string) => void) => {
     const isDraggingThisCol = dragState?.currentCol === col.key && dragState?.table === tableType;
     const minRow = dragState ? Math.min(dragState.startRow, dragState.currentRow) : -1;
     const maxRow = dragState ? Math.max(dragState.startRow, dragState.currentRow) : -1;
     const isHighlighted = isDraggingThisCol && idx >= minRow && idx <= maxRow;
 
-    // BASE STYLE FOR ALL CELLS
+    // Base style for all cells
     let inputStyle: any = { 
       ...styles.cellInput, 
       ...col.styling,
@@ -1476,80 +1875,51 @@ const generateContCodes = () => {
       opacity: col.disabled ? 0.6 : 1,
     };
 
-    // COMPACT DROPDOWN STYLING
-   const selectStyle = {
+    // Style for dropdowns to look like Excel cells
+    const selectStyle = {
       ...inputStyle,
-      height: "28px", 
-      fontSize: "0.75rem",
-      padding: "0 4px",
-      cursor: "pointer",
-      color: row[col.key] ? "#fff" : "#94a3b8",
-      textAlign: "center",
-      
       appearance: "none",
-      backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-      backgroundRepeat: "no-repeat",
-      backgroundPosition: "right 4px center",
-      backgroundSize: "10px"
+      cursor: "pointer",
+      textAlign: "center" as "center",
+      color: row[col.key] ? "#fff" : "#94a3b8"
     };
 
-    // ==========================================
-    // DURATION FIELD COLOR CODING
-    // ==========================================
-    if ((col.key === 'subDuration' || col.key === 'totalDuration' || col.key === 'lowResTotalDuration') && row[col.key]) {
-      if (row[col.key] === 'Invalid') {
-        inputStyle.color = '#ef4444';
-        inputStyle.fontWeight = 600;
-      } else if (row[col.key] !== '00:00:00' && row[col.key] !== '') {
-        inputStyle.color = '#10b981';
-        inputStyle.fontWeight = 600;
-      }
+    // Duration Color Coding
+    if (['subDuration', 'totalDuration', 'lowResTotalDuration'].includes(col.key) && row[col.key]) {
+      if (row[col.key] === 'Invalid') { inputStyle.color = '#ef4444'; inputStyle.fontWeight = 600; }
+      else if (row[col.key] !== '00:00:00') { inputStyle.color = '#10b981'; inputStyle.fontWeight = 600; }
     }
 
     let inputElement;
 
-   if (col.type === "dr-select" || col.type === "select") {
-      return (
-        <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <select 
-            value={row[col.key]} 
-            disabled={col.disabled} 
-            onChange={e => onChange(idx, col.key, e.target.value)} 
-            style={selectStyle}
-          >
-            <option value="" style={{color: "black"}}>-- Select --</option>
-            {(col.type === "dr-select" ? drRows.filter(dr=>dr.dmCode).map(dr => ({value: dr.dmCode, label: dr.dmCode})) : col.options.map((opt: string) => ({value: opt, label: opt}))).map((item: any) => (
-              <option key={item.value} value={item.value} style={{color: "black"}}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      );
-    } else if (col.type === "select") {
+    // Handle Dropdowns
+    if (col.type === "dr-select" || col.type === "select") {
+      const options = col.type === "dr-select" 
+        ? drRows.filter(dr => dr.dmCode).map(dr => ({ value: dr.dmCode, label: dr.dmCode }))
+        : col.options.map((opt: string) => ({ value: opt, label: opt }));
+
       inputElement = (
         <select 
           value={row[col.key]} 
           disabled={col.disabled} 
           onChange={e => onChange(idx, col.key, e.target.value)} 
-          style={{...inputStyle, color: row[col.key] ? "#fff" : "#94a3b8"}}
+          style={selectStyle}
         >
           <option value="" style={{color: "black"}}>-- Select --</option>
-          {col.options.map((opt: string) => (
-            <option key={opt} value={opt} style={{color: "black"}}>
-              {opt}
-            </option>
+          {options.map((item: any) => (
+            <option key={item.value} value={item.value} style={{color: "black"}}>{item.label}</option>
           ))}
         </select>
       );
-    } else {
+    } 
+    // Handle Standard Inputs
+    else {
       inputElement = (
         <input 
           type={col.type || "text"}
           value={row[col.key] || ""}
           disabled={col.disabled}
           placeholder={col.placeholder || ""}
-          title={row[col.key] || ""}
           onChange={e => onChange(idx, col.key, e.target.value)}
           style={inputStyle}
         />
@@ -1560,21 +1930,27 @@ const generateContCodes = () => {
 
     return (
       <div 
-        style={{ position: "relative", width: "100%", height: "100%" }}
+        style={{ position: "relative", width: "100%", height: "100%", minHeight: "38px" }}
         onContextMenu={(e) => handleContextMenu(e, tableType, idx, col.key)}
         onMouseEnter={() => { if (dragState && dragState.table === tableType) setDragState(p => p ? { ...p, currentRow: idx } : null); }}
       >
         {inputElement}
         {comment && (<div title={comment} style={{ position: "absolute", top: 0, right: 0, borderTop: "8px solid #ef4444", borderLeft: "8px solid transparent", pointerEvents: "none" }} />)}
         
+        {/* The Drag Fill Handle (Blue Square) */}
         {!col.disabled && (
           <div 
-            onMouseDown={(e) => { e.preventDefault(); setDragState({ table: tableType, startRow: idx, currentRow: idx, currentCol: col.key, startValue: row[col.key] }); }}
+            onMouseDown={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                setDragState({ table: tableType, startRow: idx, currentRow: idx, currentCol: col.key, startValue: row[col.key] }); 
+            }}
             onDoubleClick={() => handleDoubleClickFill(tableType, idx, col.key, row[col.key])}
             style={{
-              position: "absolute", bottom: -1, right: -1, width: 7, height: 7, 
+              position: "absolute", bottom: 2, right: 2, width: 8, height: 8, 
               backgroundColor: "#3b82f6", cursor: "crosshair", zIndex: 10,
-              opacity: (isHighlighted || row[col.key]) ? 1 : 0
+              border: "1px solid white",
+              display: (row[col.key] || isHighlighted) ? "block" : "none"
             }}
           />
         )}
@@ -1624,11 +2000,48 @@ const generateContCodes = () => {
                   <tr key={proj.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", transition: "background 0.2s" }} className="hover:bg-white/5">
                     <td style={{...styles.td, padding: "12px 16px", fontWeight: "bold", color: "#fff"}}>{proj.metadata.name || "Untitled Project"}</td>
                     <td style={{...styles.td, padding: "12px 16px", color: "#3b82f6"}}>{proj.metadata.autoEventCode}</td>
-                    <td style={{...styles.td, padding: "12px 16px", color: "#94a3b8"}}>{proj.metadata.assignee || "—"}</td>
+                    <td style={{...styles.td, padding: "12px 16px", color: "#94a3b8"}}>
+  <div style={{ display: "flex", alignItems: "center", gap: "4px", justifyContent: "center" }}>
+    {proj.metadata.assignee ? proj.metadata.assignee.split(", ").map((name: string) => {
+      // Find user data to get avatar image if it exists
+      const avatarColors = ['#ef7a44', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'];
+      const userData = availableUsers.find(u => u.name === name);
+      const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+      
+      // Select a consistent color based on the name string
+      const colorIndex = name.length % avatarColors.length;
+      const bgColor = avatarColors[colorIndex];
+
+      return (
+        <div key={name} title={name} style={{ display: 'flex' }}>
+          <Avatar style={{ height: 26, width: 26, border: "2px solid #0f172a" }}>
+            <AvatarImage src={userData?.avatar} />
+            <AvatarFallback style={{ 
+              fontSize: '10px', 
+              fontWeight: 'bold', 
+              background: bgColor, 
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%'
+            }}>
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      );
+    }) : (
+      <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Unassigned</span>
+    )}
+  </div>
+</td>
                     <td style={{...styles.td, padding: "12px 16px", color: "#94a3b8"}}>{proj.metadata.dateCreated || "—"}</td>
                     <td style={{...styles.td, padding: "12px 16px"}}>
                       <span style={{ background: "rgba(16, 185, 129, 0.2)", color: "#10b981", padding: "4px 12px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: 600 }}>Draft</span>
                     </td>
+                   
                     <td style={{...styles.td, padding: "12px 16px", textAlign: "right"}}>
                       <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                         <button onClick={(e) => handlePushToDB(e, proj)} style={{ background: "rgba(16, 185, 129, 0.2)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.5)", borderRadius: "6px", padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", fontWeight: 600 }}>
@@ -1666,6 +2079,22 @@ const generateContCodes = () => {
   if (viewMode === 'editor' && !isProjectCreated) {
     return (
       <div style={styles.wrapper} className="custom-scrollbar animate-in fade-in zoom-in-95 duration-300">
+       <style>
+      {`
+        /* Target the calendar icon specifically */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+         
+          cursor: pointer;
+          padding: 5px;
+          border-radius: 3px;
+          transition: background 0.2s;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+          
+        }
+      `}
+    </style>
         <div style={styles.header}>
           <button onClick={() => setViewMode('list')} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "50%", width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}><ArrowLeft size={18} /></button>
           <h2 style={{ fontSize: "1.5rem", margin: 0, fontWeight: "bold" }}>Create New Project</h2>
@@ -1676,7 +2105,7 @@ const generateContCodes = () => {
           <div style={styles.grid}>
             {renderInput("Name", project.name, v => setProject({...project, name: v}), "text", "span 2")}
             {renderInput("Auto Event Code", project.autoEventCode, () => {}, "text", "auto", true)}
-            {renderInput("Assignee", project.assignee, v => setProject({...project, assignee: v}), "text", "auto")}
+            {renderAssigneePicker()}
             {renderInput("Date Created", project.dateCreated, () => {}, "text", "auto", true)}
             {renderInput("Submitter's Deadline", project.submitterDeadline, v => setProject({...project, submitterDeadline: v}), "date", "auto")}
             {renderInput("Event From", project.eventFrom, v => setProject({...project, eventFrom: v}), "date", "auto")}
@@ -1697,70 +2126,212 @@ const generateContCodes = () => {
     const selectedCodeType = CONTENT_CODE_TYPES.find(t => t.value === project.contCodeType);
     
     return (
-      <div style={styles.wrapper} className="custom-scrollbar animate-in fade-in zoom-in-95 duration-300">
-        <div style={styles.header}>
-          <button onClick={() => setViewMode('editor')} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "50%", width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}><ArrowLeft size={18} /></button>
-          <h2 style={{ fontSize: "1.5rem", margin: 0, fontWeight: "bold" }}>Configure Project</h2>
+     <div>
+  {/* Scrollbar Hide + Smooth UX */}
+  <style>
+    {`
+      /* Hide scrollbar */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 0px;
+        height: 0px;
+      }
+
+      .custom-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+    `}
+  </style>
+
+  <div
+    style={{
+      ...styles.wrapper,
+      overflowY: "auto",
+      scrollBehavior: "smooth"
+    }}
+    className="custom-scrollbar animate-in fade-in zoom-in-95 duration-300"
+  >
+    <div style={styles.header}>
+      <button
+        onClick={() => setViewMode('editor')}
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.2)",
+          borderRadius: "50%",
+          width: 40,
+          height: 40,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#fff",
+          cursor: "pointer"
+        }}
+      >
+        <ArrowLeft size={18} />
+      </button>
+
+      <h2 style={{ fontSize: "1.5rem", margin: 0, fontWeight: "bold" }}>
+        Configure Project
+      </h2>
+    </div>
+
+    <div style={styles.section}>
+      <h3 style={{ margin: "0 0 20px 0", color: "#fff" }}>
+        Step 2: Select Template & Content Code Type
+      </h3>
+
+      <div style={{ ...styles.grid, marginBottom: "20px" }}>
+        {/* Template */}
+        <div style={styles.inputWrapper}>
+          <span style={styles.label}>Template Type</span>
+
+          <select
+            value={project.template}
+            onChange={(e) => handleTemplateSelect(e.target.value)}
+            style={{
+              ...styles.input,
+              cursor: "pointer",
+              backgroundColor: "#1e293b",
+              color: "#e1edf1",
+              border: "1px solid #55585fc4"
+            }}
+          >
+            <option value="">-- Select Template --</option>
+            {Object.keys(TEMPLATES).map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </div>
 
-        <div style={styles.section}>
-          <h3 style={{ margin: "0 0 20px 0", color: "#fff" }}>Step 2: Select Template & Content Code Type</h3>
-          
-          <div style={{...styles.grid, marginBottom: "20px"}}>
-            <div style={styles.inputWrapper}>
-              <span style={styles.label}>Template Type</span>
-              <select value={project.template} onChange={(e) => handleTemplateSelect(e.target.value)} style={{...styles.input, cursor: "pointer"}}>
-                <option value="">-- Select Template --</option>
-                {Object.keys(TEMPLATES).map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
+        {/* Content Code Type */}
+        <div style={styles.inputWrapper}>
+          <span style={styles.label}>Cont Code Type</span>
 
-            <div style={styles.inputWrapper}>
-              <span style={styles.label}>Content Code Type</span>
-              <select value={project.contCodeType} onChange={(e) => setProject({...project, contCodeType: e.target.value})} style={{...styles.input, cursor: "pointer"}}>
-                <option value="">-- Select Content Code Type --</option>
-                {CONTENT_CODE_TYPES.map(cct => (
-                  <option key={cct.value} value={cct.value}>{cct.label}</option>
-                ))}
-              </select>
-            </div>
+          <select
+            value={project.contCodeType}
+            onChange={(e) =>
+              setProject({ ...project, contCodeType: e.target.value })
+            }
+            style={{
+              ...styles.input,
+              cursor: "pointer",
+              backgroundColor: "#1e293b",
+              color: "#e0e9ec",
+              border: "1px solid #474749b6"
+            }}
+          >
+            <option value="">-- Select Cont Code Type --</option>
+            {CONTENT_CODE_TYPES.map(cct => (
+              <option key={cct.value} value={cct.value}>
+                {cct.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <div style={styles.inputWrapper}>
-              <span style={styles.label}>Number of Codes to Generate</span>
-              <input 
-                type="number" 
-               
-                value={project.contCodeCount} 
-                onChange={(e) => setProject({...project, contCodeCount: Math.max(1, parseInt(e.target.value) || 1)})} 
-                style={styles.input}
-              />
-            </div>
-          </div>
+        {/* Number Input */}
+        <div style={styles.inputWrapper}>
+          <span style={styles.label}>Number of Codes to Generate</span>
 
-          {selectedCodeType && (
-            <div style={{ background: "rgba(59, 130, 246, 0.1)", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "8px", padding: "16px", marginBottom: "20px" }}>
-              <p style={{ margin: "0 0 8px 0", color: "#3b82f6", fontWeight: 600, fontSize: "0.9rem" }}>📊 Content Code Summary</p>
-              <div style={{ color: "#e2e8f0", fontSize: "0.85rem" }}>
-                <p style={{ margin: "0 0 6px 0" }}>
-                  <span style={{ color: "#3b82f6", fontWeight: 600 }}>Type:</span> {selectedCodeType.label}
-                </p>
-               
-                <p style={{ margin: 0 }}>
-                  <span style={{ color: "#3b82f6", fontWeight: 600 }}>Total Generating:</span> {project.contCodeCount} code(s)
-                  {project.template && <span> from template <span style={{ color: "#a855f7", fontWeight: 600 }}>{project.template}</span></span>}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: "10px", marginTop: 20 }}>
-            <button onClick={() => setViewMode('editor')} style={{...styles.buttonSecondary}}>Back</button>
-            {project.contCodeType && (
-              <button onClick={generateContCodes} style={styles.buttonSuccess}>Generate Codes & Create Project</button>
-            )}
-          </div>
+          <input
+            type="number"
+            value={project.contCodeCount}
+            onChange={(e) =>
+              setProject({
+                ...project,
+                contCodeCount: Math.max(
+                  1,
+                  parseInt(e.target.value) || 1
+                )
+              })
+            }
+            style={{
+              ...styles.input,
+              backgroundColor: "#1e293b",
+              color: "#e0e9ec",
+              border: "1px solid #474749b6",
+              outline: "none"
+            }}
+          />
         </div>
       </div>
+
+      {/* Summary */}
+      {selectedCodeType && (
+        <div
+          style={{
+            background: "rgba(59, 130, 246, 0.1)",
+            border: "1px solid rgba(59, 130, 246, 0.3)",
+            borderRadius: "8px",
+            padding: "16px",
+            marginBottom: "20px"
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 8px 0",
+              color: "#3b82f6",
+              fontWeight: 600,
+              fontSize: "0.9rem"
+            }}
+          >
+            📊 Cont Code Summary
+          </p>
+
+          <div style={{ color: "#e2e8f0", fontSize: "0.85rem" }}>
+            <p style={{ margin: "0 0 6px 0" }}>
+              <span style={{ color: "#3b82f6", fontWeight: 600 }}>
+                Type:
+              </span>{" "}
+              {selectedCodeType.label}
+            </p>
+
+            <p style={{ margin: 0 }}>
+              <span style={{ color: "#3b82f6", fontWeight: 600 }}>
+                Total Generating:
+              </span>{" "}
+              {project.contCodeCount} code(s)
+              {project.template && (
+                <span>
+                  {" "}from template{" "}
+                  <span style={{ color: "#a855f7", fontWeight: 600 }}>
+                    {project.template}
+                  </span>
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Buttons */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: "10px",
+          marginTop: 20
+        }}
+      >
+        <button
+          onClick={() => setViewMode('editor')}
+          style={{ ...styles.buttonSecondary }}
+        >
+          Back
+        </button>
+
+        {project.contCodeType && (
+          <button
+            onClick={generateContCodes}
+            style={styles.buttonSuccess}
+          >
+            Generate Codes & Create Project
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
     );
   }
 
@@ -1772,7 +2343,31 @@ const generateContCodes = () => {
 
   return (
     <div style={styles.wrapper} className="custom-scrollbar animate-in slide-in-from-right-8 duration-300">
+<style>
+{`
+  input[type="date"] {
+    color: #fff;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cpath d='M3 10h18'/%3E%3Cpath d='M16 2v4'/%3E%3Cpath d='M8 2v4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 18px 18px;
+    padding-right: 38px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
 
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+  }
+
+  input[type="date"]::-moz-calendar-picker-indicator,
+  input[type="date"]::-ms-clear,
+  input[type="date"]::-ms-expand {
+    display: none;
+  }
+`}
+</style>
       {/* BEAUTIFUL PROCESSING / SCANNING MODAL */}
       {isScanning && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999999, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1816,7 +2411,17 @@ const generateContCodes = () => {
           <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: isProjectCreated ? "#10b981" : "#fff" }}><Layers size={18}/> 1. Project Metadata {isProjectCreated && <CheckCircle2 size={16} color="#10b981"/>}</h3>
           {showTemplateSelect && !isProjectCreated && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-300">
-              <select value={project.template} onChange={(e) => handleTemplateSelect(e.target.value)} style={{...styles.input, width: "250px", border: "1px solid #3b82f6", cursor: "pointer"}}>
+              <select
+  value={project.contCodeType}
+  onChange={(e) => setProject({...project, contCodeType: e.target.value})}
+  style={{
+    ...styles.input,
+    cursor: "pointer",
+    backgroundColor: "#1e293b",
+    color: "#38bdf8",
+    border: "1px solid #38bdf8"
+  }}
+>
                 <option value="">-- Apply Standard Template (Optional) --</option>
                 <option value="Sadguru Udghosh">Sadguru Udghosh</option>
                 <option value="Pravachan Series">Pravachan Series</option>
@@ -1825,12 +2430,21 @@ const generateContCodes = () => {
           )}
         </div>
         <div style={styles.grid}>
-          {renderInput("Project Name", project.name, v => setProject({...project, name: v}), "text", "span 2", isProjectCreated)}
+          {renderInput("Name", project.name, v => setProject({...project, name: v}), "text", "span 2", isProjectCreated)}
           {renderInput("Event Code (Auto)", project.autoEventCode, () => {}, "text", "auto", true)}
-          {renderInput("Project Type", project.projectType, v => setProject({...project, projectType: v}), "text", "auto", isProjectCreated)}
-          {renderInput("Event Date From", project.dateFrom, val => setProject({...project, dateFrom: val}), "date", "auto", isProjectCreated)}
-          {renderInput("Event Date To", project.dateTo, val => setProject({...project, dateTo: val}), "date", "auto", isProjectCreated)}
-          {renderInput("Primary Location", project.location, v => setProject({...project, location: v}), "text", "span 2", isProjectCreated)}
+         {renderInput(
+  "Submitter's deadline",
+  project.submitterDeadline,
+  v => setProject({ ...project, submitterDeadline: v }),
+  "date",
+  "auto",
+  isProjectCreated
+)}
+          {renderInput("Event Date From", project.eventFrom, val => setProject({...project, eventFrom: val}), "date", "auto", isProjectCreated)}
+          {renderInput("Event Date To", project.eventTo, val => setProject({...project, eventTo: val}), "date", "auto", isProjectCreated)}
+         
+        
+          
         </div>
         {!isProjectCreated && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
