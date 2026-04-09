@@ -15,7 +15,9 @@ import {
   // New Icons for Table View
   TableProperties, LayoutList, Grip, GripVertical,ArrowUpDown,ArrowDown, ArrowUp, Filter, Group, Ungroup,
   // Submitters ML Icons
-  Users, Search, SearchCheck, ListTree, Link as LinkIcon
+  Users, Search, SearchCheck, ListTree, Link as LinkIcon,
+  ChevronsRight,
+  ChevronsLeft
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -1033,21 +1035,21 @@ const handleSelectEntry = (item: any) => {
 
   const toggleGroup = (group: string) => { const newSet = new Set(expandedGroups); if (newSet.has(group)) newSet.delete(group); else newSet.add(group); setExpandedGroups(newSet); };
   
-  function parseDurationToSeconds(duration: any): number {
+function parseDurationToSeconds(duration: any): number {
     if (!duration) return 0;
-    // If it's already a number (seconds), just return it
     if (typeof duration === 'number') return duration;
     
-    // If it's a string, parse it
-    const parts = String(duration).trim().split(':').map(Number);
+    // Clean string and split by colon
+    const parts = String(duration).trim().split(':').map(val => parseInt(val, 10) || 0);
+    
     if (parts.length === 3) {
-        // hh:mm:ss
+        // Format hh:mm:ss
         return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
     } else if (parts.length === 2) {
-        // mm:ss
+        // Format mm:ss (treat as minutes and seconds)
         return (parts[0] * 60) + parts[1];
-    } else if (parts.length === 1 && !isNaN(parts[0])) {
-        // Just seconds as a string
+    } else if (parts.length === 1) {
+        // Just seconds
         return parts[0];
     }
     return 0;
@@ -1057,34 +1059,37 @@ const handleSelectEntry = (item: any) => {
 function validateForm(formData: any, selectedMlList: any[] = []) {
     const errors: { [key: string]: string } = {};
 
-    // 1. Basic Fields
     if (!formData.fkEventCode) errors.fkEventCode = "Event Code is required.";
     if (!formData.RecordingCode) errors.RecordingCode = "Recording Code is required.";
     
-    // 2. Format Validations
-    if (formData.RecordingCode && formData.RecordingCode.length !== 11) {
-        errors.RecordingCode = "Recording Code must be 11 chars.";
+    // 1. Check Duration Format for manual entry
+    const durationRegex = /^(\d{1,2}:)?([0-5]?\d):([0-5]\d)$/;
+    if (formData.Duration && !durationRegex.test(formData.Duration)) {
+        errors.Duration = "Invalid Format. Use HH:MM:SS or MM:SS";
+        return errors; // Stop here if format is wrong
     }
 
-    // 3. DURATION DRIFT RULE (60s)
     const scanSeconds = parseDurationToSeconds(formData.Duration);
 
     const checkDrift = (subDur: any) => {
         if (!scanSeconds || !subDur) return false;
         const mlSeconds = parseDurationToSeconds(subDur);
-        return Math.abs(scanSeconds - mlSeconds) > 60;
+        const diff = Math.abs(scanSeconds - mlSeconds);
+        return diff > 60; // Returns true if drift is more than 60 seconds
     };
 
-    // Check single ML linked in the form (Step 3 manual or Edit mode)
-    if (formData.SubDuration && checkDrift(formData.SubDuration)) {
-        errors.Duration = `Duration Drift: Scan (${formData.Duration}) and ML (${formData.SubDuration}) differ by > 60s.`;
+    // 2. Check single ML (Manual Step 3 or Edit Mode)
+    if (formData.MLUniqueID && formData.SubDuration) {
+        if (checkDrift(formData.SubDuration)) {
+            errors.Duration = `Drift Error: Entered Duration (${formData.Duration}) and ML (${formData.SubDuration}) differ by > 60s.`;
+        }
     }
 
-    // Check all MLs selected in the Table (Batch mode)
+    // 3. Check Batch MLs (Step 3 Table Selection)
     if (selectedMlList.length > 0) {
-        const driftVioaltion = selectedMlList.find(ml => checkDrift(ml.SubDuration));
-        if (driftVioaltion) {
-            errors.Duration = `Drift Error in Batch: ML ID ${driftVioaltion.MLUniqueID} (${driftVioaltion.SubDuration}) differs from Scan (${formData.Duration}) by more than 60s.`;
+        const driftViolation = selectedMlList.find(ml => checkDrift(ml.SubDuration));
+        if (driftViolation) {
+            errors.Duration = `Drift Error in Batch: ML ID ${driftViolation.MLUniqueID} (${driftViolation.SubDuration}) differs from Entered Duration (${formData.Duration}) by more than 60s.`;
         }
     }
 
@@ -1166,27 +1171,24 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
       }
   };
 
-  const handleSaveDraft = async (e: React.FormEvent) => {
+const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. GATHER DATA FOR VALIDATION
-    // We filter the available ML options to get the full objects (including SubDuration) 
-    // for everything the user has checked in the table.
     const selectedMlDataObjects = mlIdOptions.filter(opt => selectedMlIds.has(opt.MLUniqueID));
-
-    // 2. RUN VALIDATION
-    // We pass the current formData AND the list of selected ML objects
     const errors = validateForm(formData, selectedMlDataObjects);
     setFormErrors(errors);
 
-    // If there are errors (including the 60s duration drift), stop and show toast
     if (Object.keys(errors).length > 0) {
+        // If there is a drift error, show it specifically
         if (errors.Duration) {
-            toast.error(errors.Duration);
+            toast.error(errors.Duration, {
+                duration: 5000,
+                style: { background: '#7f1d1d', color: '#fff', border: '1px solid #ef4444' }
+            });
         } else {
-            toast.error("Please fix the errors in the form.");
+            toast.error("Please fix form errors.");
         }
-        return;
+        return; // BLOCK SAVING
     }
 
     // 3. ADDITIONAL STRICTURES
@@ -1407,14 +1409,56 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
   };
 
   const handleSetStep = (s: number) => {
-    if (s === 2 && !formData.fkEventCode) {
-        toast.error("Please select an Event Code first.");
-        return;
+    // 1. Validation for moving FROM Step 1 TO Step 2
+    if (s === 2) {
+        if (!formData.fkEventCode) {
+            toast.error("Please select an Event Code first.");
+            return;
+        }
+        if (!formData.EventName || !formData.Yr) {
+            toast.error("Please complete all Event Details.");
+            return;
+        }
     }
-    if (s === 3 && !formData.fkEventCode) {
-        toast.error("Please select an Event Code first.");
-        return;
+
+    // 2. Validation for moving FROM Step 2 TO Step 3 (DMS Details check)
+    if (s === 3) {
+        // Ensure Step 1 was actually done
+        if (!formData.fkEventCode) {
+            toast.error("Please select an Event Code first.");
+            setCurrentStep(1);
+            return;
+        }
+
+        // --- DMS DETAILS VALIDATION ---
+        if (!formData.RecordingCode || formData.RecordingCode.length !== 11) {
+            toast.error("Recording Code must be exactly 11 characters.");
+            setFormErrors(prev => ({ ...prev, RecordingCode: "Must be 11 chars" }));
+            return;
+        }
+
+        // Logic check: First 7 chars of DR must match first 7 of Event Code
+        if (formData.RecordingCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
+            toast.error(`DR Code prefix must match Event Code (${formData.fkEventCode.slice(0, 7)})`);
+            setFormErrors(prev => ({ ...prev, RecordingCode: "Prefix mismatch" }));
+            return;
+        }
+
+        if (!formData.RecordingName) {
+            toast.error("Recording Name is required.");
+            setFormErrors(prev => ({ ...prev, RecordingName: "Required" }));
+            return;
+        }
+
+      
+
+      
+        
+        // Clear errors if everything is valid
+        setFormErrors({});
     }
+
+    // If all checks pass, allow changing the step
     setCurrentStep(s);
   };
 
@@ -1875,7 +1919,12 @@ const renderTableView = () => {
             {/* NEW: Distribution Drive Link (Text field) */}
             {renderField("Distribution Drive Link", "DistributionDriveLink", colors.tech, { full: true, disabled: !hasEditAccess || isViewing })}
 
-            {renderField("Duration", "Duration", colors.tech, { disabled: !hasEditAccess || isViewing })}
+           {renderField("Duration", "Duration", colors.tech, { 
+    type: "text", 
+    pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$", 
+    placeholder: "hh:mm:ss", 
+    disabled: !hasEditAccess || isViewing 
+})}
             
             {/* UPDATED: File Size (Number with decimal support) */}
             {renderField("File Size", "Filesize", colors.tech, { 
@@ -2206,26 +2255,45 @@ const renderTableView = () => {
 }} className="hide-scrollbar">
             <div style={{ ...styles.queueCard(isCompact), height: "100%", overflowY: "hidden", paddingRight: "8px", display: "flex", flexDirection: "column" }}>
                 
-                <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
-                   <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
-    <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
-        <button onClick={() => setIsTableView(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><LayoutList size={14} /> List</button>
-        <button onClick={() => setIsTableView(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}><TableProperties size={14} /> Table</button>
+            <div style={{...styles.queueHeader, marginBottom: 10, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 15}}>
+    <div style={{display: 'flex', alignItems: 'center', gap: 15}}>
+        
+        {/* 1. EXPAND/COLLAPSE BUTTON (Moved to the start) */}
+        {!isMobile && (
+            <button 
+                onClick={() => setIsQueueExpanded(!isQueueExpanded)} 
+                title={isQueueExpanded ? "Show Form" : "Expand Queue View"}
+                style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    width: '32px', 
+                    height: '32px', 
+                    borderRadius: '8px', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    background: isQueueExpanded ? 'rgba(59, 130, 246, 0.2)' : 'rgba(30, 41, 59, 0.5)', 
+                    color: isQueueExpanded ? '#3b82f6' : '#94a3b8', 
+                    cursor: 'pointer', 
+                    transition: 'all 0.3s ease' 
+                }}
+            >
+                {/* Changed to Chevrons for a "Slide" feel */}
+                {isQueueExpanded ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+            </button>
+        )}
+
+        {/* 2. LIST/TABLE TOGGLE */}
+        <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
+            <button onClick={() => setIsTableView(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: !isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: !isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+                <LayoutList size={14} /> List
+            </button>
+            <button onClick={() => setIsTableView(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: 'none', background: isTableView ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: isTableView ? '#fff' : '#94a3b8', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+                <TableProperties size={14} /> Table
+            </button>
+        </div>
+
+        <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
     </div>
-
-    {/* NEW EXPAND/COLLAPSE BUTTON */}
-    {!isMobile && (
-        <button 
-            onClick={() => setIsQueueExpanded(!isQueueExpanded)} 
-            title={isQueueExpanded ? "Show Form" : "Expand View"}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: isQueueExpanded ? 'rgba(59, 130, 246, 0.2)' : 'rgba(30, 41, 59, 0.5)', color: isQueueExpanded ? '#3b82f6' : '#94a3b8', cursor: 'pointer', transition: 'all 0.3s ease' }}
-        >
-            {isQueueExpanded ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
-        </button>
-    )}
-
-    <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
-</div>
 
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
                          {isTableView && queue.length > 0 && (
