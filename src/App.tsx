@@ -62,7 +62,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       {key:"EventID", label:"Event ID", sortable:true, editable:true},
       {key:"SubmittedDate", label:"Submitted Date", sortable:true, editable:true},
        { key: "Yr", label: "Year", sortable: true, editable: true }, 
-       {key:"fkEventCategory", label:"Event Category", sortable:true, filterable:true, render: categoryTagRenderer, editable:true},
+       
         { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true },
         {key:"NewEventFrom", label:"Event From", sortable:true, editable:true},
         { key: "NewEventTo", label: "Event To", sortable: true, editable: true },
@@ -1235,10 +1235,9 @@ digitalrecordings_gsheet: {
        { key: "EventCode", label: "Event Code", sortable: true, editable: true }, 
        { key: "Yr", label: "Year", sortable: true, editable: true }, 
        { key: "SubmittedDate", label: "Submitted Date", sortable: true, editable: true }, 
-       { key: "FromDate", label: "From Date", sortable: true, editable: true }, 
-       { key: "ToDate", label: "To Date", sortable: true, editable: true }, 
+       
        { key: "EventName", label: "Event Name", sortable: true, editable: true }, 
-       { key: "fkEventCategory", label: "Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
+      
        { key: "NewEventCategory", label: "New Event Category", sortable: true, filterable: true, render: categoryTagRenderer, editable: true }, 
        { key: "EventRemarks", label: "Event Remarks", sortable: true, editable: true }, 
        { key: "EventMonth", label: "Event Month", sortable: true, editable: true }, 

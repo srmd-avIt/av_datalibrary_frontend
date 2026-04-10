@@ -261,6 +261,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "Venue", label: "Venue", sortable: true, editable: true },
       { key: "Guidance", label: "Guidance", sortable: true, editable: true },
       { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      {key:"EventRefMLID", label:"EventRefMLID", sortable:true, editable:true},
       { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
       { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
