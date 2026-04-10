@@ -87,8 +87,62 @@ const VIEW_CONFIGS: Record<string, any> = {
     ],
   },
   satsang_dashboard: {
-    title: "Satsang Dashboard",
-  },
+  title: "Satsang Dashboard",
+  apiEndpoint: "/newmedialog/satsang-dashboard", // Added this
+  idKey: "MLUniqueID",
+  detailsType: "medialog",
+  // Copy the columns here so the Column Management UI can see them
+ columns: [
+      { key: "Yr", label: "Year", sortable: true, editable: true },
+
+      {
+        key: "EventName - EventCode", label: "Event Name - EventCode", sortable: true, editable: true,
+        render: (_v: any, row: any) => {
+          const en = row.EventName || row.EventRefName || "";
+          const ec = row.EventCode || row.fkEventCode || "";
+          return `${en}${en && ec ? " - " : ""}${ec}`;
+        },
+      },
+      { key: "MLUniqueID", label: "MLUniqueID", sortable: true, editable: true },
+      { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
+      { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
+      { key: "ContentTo", label: "Content To", sortable: true, editable: true }, 
+      {
+        key: "DetailSub", label: "Detail - SubDetail", sortable: true, editable: true,
+        render: (_v: any, row: any) => {
+          const d = row.Detail || row.DetailMain || "";
+          const s = row.SubDetail || row.DetailSub || "";
+          return `${d}${d && s ? " - " : ""}${s}`;
+        },
+      },
+      { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkGranth", label: "Granth", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Language", label: "Language", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SubDuration", label: "Sub Duration", sortable: true, editable: true },
+      { key: "Segment Category", label: "Segment Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkOccasion", label: "Occasion", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "NewEventCategory", label: "New Event Category", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCountry", label: "Country", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkState", label: "State", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "fkCity", label: "City", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Venue", label: "Venue", sortable: true, editable: true },
+      { key: "Guidance", label: "Guidance", sortable: true, editable: true },
+      { key: "Remarks", label: "Remarks", sortable: true, editable: true },
+      {key:"EventRefMLID", label:"EventRefMLID", sortable:true, editable:true},
+      { key: "Synopsis", label: "Synopsis", sortable: true, editable: true },
+      { key: "Keywords", label: "Keywords", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "SatsangStart", label: "Satsang Start Words", sortable: true, editable: true },
+      { key: "SatsangEnd", label: "Satsang End Words", sortable: true, editable: true },
+      { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
+      { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
+      { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
+      { key: "NewEventFrom", label: "Event From Date", sortable: true, editable: true },
+      { key: "NewEventTo", label: "Event To Date", sortable: true, editable: true },
+    ],
+},
   medialog_all: {
     title: " ML formal & Informal",
     apiEndpoint: "/newmedialog",
@@ -1760,22 +1814,19 @@ case "column-management":
     </div>
   );
 
- case "satsang_dashboard":
+ // Inside App.tsx -> renderView() function -> case "satsang_dashboard"
+case "satsang_dashboard":
   return (
     <div style={{ padding: isMobile ? "0px" : "16px 24px" }}>
       {!isMobile && (
-        <h1
-          style={{
-            fontSize: "28px",
-            fontWeight: 700,
-            color: "#ffffff",
-            marginBottom: "8px"
-          }}
-        >
+        <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#ffffff", marginBottom: "8px" }}>
           {VIEW_CONFIGS.satsang_dashboard.title}
         </h1>
       )}
-      <SatsangDashboard />
+      <SatsangDashboard 
+        columns={activeColumns} // Pass the managed columns here
+        onShowDetails={(item) => handlePushSidebar(item)} 
+      />
     </div>
   );
 

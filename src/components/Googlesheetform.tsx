@@ -1170,7 +1170,7 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
           setIsSubmitting(false);
       }
   };
-
+const [validationError, setValidationError] = useState<{ title: string; message: string } | null>(null);
 const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1178,17 +1178,17 @@ const handleSaveDraft = async (e: React.FormEvent) => {
     const errors = validateForm(formData, selectedMlDataObjects);
     setFormErrors(errors);
 
+   if (errors.Duration) {
+        setValidationError({
+            title: "Duration Validation Failed",
+            message: errors.Duration
+        });
+        return; // Stop the saving process
+    }
+
     if (Object.keys(errors).length > 0) {
-        // If there is a drift error, show it specifically
-        if (errors.Duration) {
-            toast.error(errors.Duration, {
-                duration: 5000,
-                style: { background: '#7f1d1d', color: '#fff', border: '1px solid #ef4444' }
-            });
-        } else {
-            toast.error("Please fix form errors.");
-        }
-        return; // BLOCK SAVING
+        toast.error("Please fix form errors.");
+        return;
     }
 
     // 3. ADDITIONAL STRICTURES
@@ -2575,6 +2575,49 @@ const renderTableView = () => {
             </div>
         </div>
       )}
+
+      {/* --- DURATION/DRIFT VALIDATION ERROR MODAL --- */}
+{validationError && (
+  <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="animate-in fade-in zoom-in duration-200" style={{ background: '#1e293b', border: '1px solid #f87171', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#f87171' }}>
+              <XCircle size={28} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#fff' }}>{validationError.title}</h3>
+          </div>
+          
+          <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '8px' }}>
+              <p style={{ color: '#fca5a5', fontSize: '0.95rem', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
+                  {validationError.message}
+              </p>
+          </div>
+
+          <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0 }}>
+              Tip: Ensure your duration matches the MediaLog duration within 60 seconds and follows the HH:MM:SS format.
+          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button 
+                onClick={() => setValidationError(null)} 
+                style={{ 
+                    background: '#ef4444', 
+                    color: '#fff', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    padding: '10px 24px', 
+                    fontWeight: 600, 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+              >
+                  Close & Fix
+              </button>
+          </div>
+      </div>
+  </div>
+)}
     </div>
   );
 } 

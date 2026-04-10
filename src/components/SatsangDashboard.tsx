@@ -278,7 +278,13 @@ const VIEW_CONFIGS: Record<string, any> = {
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 
-export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { type: string; data: any; title: string }) => void }) {
+export function SatsangDashboard({ 
+  onShowDetails, 
+  columns // Add this prop
+}: { 
+  onShowDetails?: (item: { type: string; data: any; title: string }) => void,
+  columns?: any[] // Add this type
+}){
   const [isMobile, setIsMobile] = useState(false);
   const [searchFilters, setSearchFilters] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any> | undefined>(undefined);
@@ -371,8 +377,9 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
 
   useEffect(() => {
     if (!appliedFilters) return;
-    setSearchLoading(true);
-    fetch(`${API_BASE_URL}${satsangCategoryConfig.apiEndpoint}?${new URLSearchParams(appliedFilters).toString()}`)
+     const endpoint = "/newmedialog/satsang-dashboard"; 
+    
+    fetch(`${API_BASE_URL}${endpoint}?${new URLSearchParams(appliedFilters).toString()}`)
       .then(res => res.json())
       .then(data => {
         setSearchResult(data.data || []);
@@ -469,7 +476,15 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
           <div style={{ padding: "20px", flex: 1, overflowY: "auto" }}>
             {appliedFilters && satsangCategoryConfig ? (
               <div style={{ backgroundColor: "#0f172a", borderRadius: "12px", overflow: "hidden", border: "1px solid #1e293b" }}>
-                <ClickUpListViewUpdated title="" columns={satsangCategoryConfig.columns} apiEndpoint={satsangCategoryConfig.apiEndpoint} viewId={satsangCategoryConfig.idKey || "medialog_satsang_category"} idKey={satsangCategoryConfig.idKey} initialFilters={appliedFilters} onViewChange={() => { setAppliedFilters(undefined); setShowMobileResults(false); }} onRowSelect={handleRowSelect} />
+              <ClickUpListViewUpdated 
+                title="" 
+                columns={columns || satsangCategoryConfig.columns} // Dynamic Columns from props, fallback to config
+                apiEndpoint="/newmedialog/satsang-dashboard" 
+                viewId="satsang_dashboard" 
+                idKey="MLUniqueID" 
+                initialFilters={appliedFilters} 
+                onRowSelect={handleRowSelect} 
+            />
               </div>
             ) : (<p style={{ color: "#ef4444" }}>Configuration not found.</p>)}
           </div>
@@ -691,7 +706,16 @@ export function SatsangDashboard({ onShowDetails }: { onShowDetails?: (item: { t
       {appliedFilters && (
         <div className="mt-6 w-full overflow-x-auto">
           {satsangCategoryConfig ? (
-            <ClickUpListViewUpdated title="Search Results" columns={satsangCategoryConfig.columns} apiEndpoint={satsangCategoryConfig.apiEndpoint} viewId={satsangCategoryConfig.idKey || 'medialog_satsang_category'} idKey={satsangCategoryConfig.idKey} initialFilters={appliedFilters} onViewChange={() => setAppliedFilters(undefined)} onRowSelect={handleRowSelect} />
+           <ClickUpListViewUpdated 
+            title="Search Results" 
+            columns={columns || satsangCategoryConfig.columns} // Managed columns passed from App.tsx, fallback to config
+            apiEndpoint="/newmedialog/satsang-dashboard" 
+            viewId="satsang_dashboard"
+            idKey="MLUniqueID" 
+            initialFilters={appliedFilters} 
+            onViewChange={() => setAppliedFilters(undefined)} 
+            onRowSelect={handleRowSelect} 
+          />
           ) : (
             <Card><CardHeader><CardTitle>Error</CardTitle></CardHeader><CardContent><p className="text-red-500">Satsang Category view configuration not found.</p></CardContent></Card>
           )}
