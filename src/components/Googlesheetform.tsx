@@ -607,11 +607,16 @@ const handleMlSort = (key: string) => {
       (p.actions.includes("read") || p.actions.includes("write"))
     );
   }, [loggedInUser]);
+// Inside GoogleSheetForm component
+
 const canViewProjectHubWorkflow = useMemo(() => {
   if (!loggedInUser) return false;
+  // Owners and Admins usually see everything
   if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+  
+  // Check specifically for the "Submission & Que Sheet" resource
   return !!loggedInUser.permissions?.some((p: any) => 
-    p.resource === "Project Hub Workflow" && 
+    p.resource === "Submission & Que Sheet" && 
     (p.actions.includes("read") || p.actions.includes("write"))
   );
 }, [loggedInUser]);
@@ -619,8 +624,9 @@ const canViewProjectHubWorkflow = useMemo(() => {
 const hasProjectHubWriteAccess = useMemo(() => {
   if (!loggedInUser) return false;
   if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+  
   return !!loggedInUser.permissions?.some((p: any) => 
-    p.resource === "Project Hub Workflow" && p.actions.includes("write")
+    p.resource === "Submission & Que Sheet" && p.actions.includes("write")
   );
 }, [loggedInUser]);
   const canViewWisdomReels = useMemo(() => {
@@ -631,6 +637,8 @@ const hasProjectHubWriteAccess = useMemo(() => {
       (p.actions.includes("read") || p.actions.includes("write"))
     );
   }, [loggedInUser]);
+
+  
   
   const canViewSubmittersML = useMemo(() => {
     if (!loggedInUser) return false;
@@ -1727,7 +1735,7 @@ const renderTableView = () => {
   { id: 'audio_merge', title: 'Audio Merge Project', description: 'Ingest, process, and approve new Digital Recordings (DRs) with automated metadata scanning.', icon: Wand2, color: colors.primary, stats: { label: 'In Progress', value: queue.length }, progress: audioMergeProgress, tags: ['Audio', 'Ingest'], isVisible: canViewAudioMerge },
   
   // NEW PROJECT HUB WORKFLOW CARD ADDED HERE
-  { 
+ { 
   id: 'project_hub_workflow', 
   title: 'Submission & Que Sheet', 
   description: 'Create projects, manage media files (DR), and add media logs (ML) with templates and auto-validations.', 
@@ -1737,9 +1745,8 @@ const renderTableView = () => {
   progress: 100, 
   tags: ['DR', 'ML', 'Projects'], 
   status: "APPROVED", 
-  isVisible: canViewProjectHubWorkflow // Updated from true to permission check
+  isVisible: canViewProjectHubWorkflow // This now correctly points to "Submission & Que Sheet"
 },
-
   { id: 'video_archival', title: 'Wisdom Reels Archival', description: 'Track satsangs used for reels and manage editing workflow.', icon: Video, color: colors.secondary, stats: { label: 'Picked', value: wisdomPickedCount }, progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, tags: ['Video', 'Archive'], status: "PENDING_APPROVAL", isVisible: canViewWisdomReels },
   { id: 'submitters_ml', title: 'Submitters ML', description: 'Manage ML references, extensive searches, and ML summaries by event code.', icon: Users, color: colors.success, stats: { label: 'Modules', value: 5 }, tags: ['ML', 'Search'], status: "APPROVED", isVisible: canViewSubmittersML }
 ];
@@ -1803,16 +1810,18 @@ const renderTableView = () => {
 
   if (viewMode === 'video_archival') return <div style={styles.wrapper}><VideoArchivalProject onBack={() => setViewMode('hub')} userEmail={userEmail} /></div>;
   if (viewMode === 'submitters_ml') return <div style={styles.wrapper}><SubmittersMLHub onBack={() => setViewMode('hub')} /></div>;
-  if (viewMode === 'project_hub_workflow') {
-  // Check if they have at least read access
+ if (viewMode === 'project_hub_workflow') {
+  // Use the same permission check here
   if (!canViewProjectHubWorkflow) {
     return (
       <div style={{ ...styles.wrapper, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', color: '#94a3b8' }}>
           <Lock size={64} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
           <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '10px' }}>Access Denied</h2>
-          <p>You do not have permission to access the Project Hub Workflow.</p>
-          <button onClick={() => setViewMode('hub')} style={{ marginTop: '20px', padding: '10px 20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', cursor: 'pointer' }}>Return to Hub</button>
+          <p>You do not have permission to access the Submission & Que Sheet.</p>
+          <button onClick={() => setViewMode('hub')} style={{ ...styles.resetBtn, width: 'auto', padding: '0 20px' }}>
+            Return to Hub
+          </button>
         </div>
       </div>
     );
@@ -1822,6 +1831,7 @@ const renderTableView = () => {
     <div style={{ height: '100vh', padding: '20px', background: '#020617' }}>
       <ProjectHubWorkflow 
         onBack={() => setViewMode('hub')} 
+         
       />
     </div>
   );
