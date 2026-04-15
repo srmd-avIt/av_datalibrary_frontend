@@ -52,6 +52,7 @@ declare global {
 
 const APP_RESOURCES = [
   "Home",
+  "Project Hub",
   "Satsang Search",
   "Events",
   "Non Event Production",
@@ -105,6 +106,15 @@ const APP_RESOURCES = [
   "Prasangik Udbodhan",
   "Nemiji Sessions",
   "Submission & Que Sheet"
+];
+
+
+const ALL_ROLES = [
+  "Admin", 
+  "Guest", 
+  "Submitter", 
+  "Ingester", 
+  "Data Validator"
 ];
 
 type AccessLevel = "No Access" | "View Only" | "Edit Access";
@@ -487,14 +497,31 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     }
   };
   
-  const AddUserForm = ({ onAddUser }: { onAddUser: (data: any) => void }) => {
-    const [formData, setFormData] = useState({ name: "", email: "", role: "Member" as "Member" | "Admin" | "Guest", department: "", location: "", teams: [] as string[] });
+const AddUserForm = ({ onAddUser }: { onAddUser: (data: any) => void }) => {
+  const [formData, setFormData] = useState({ 
+    name: "", 
+    email: "", 
+    roles: [] as string[], // Changed from 'role' string to 'roles' array
+    department: "", 
+    location: "", 
+    teams: [] as string[] 
+  });
+  const handleRoleToggle = (role: string) => {
+    setFormData(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+    }));
+  };
     const handleTeamChange = (team: string, checked: boolean) => setFormData(prev => ({ ...prev, teams: checked ? [...prev.teams, team] : prev.teams.filter(t => t !== team) }));
     const handleSubmit = () => {
-      if (!formData.name || !formData.email) { toast.error("Name and Email are required."); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { toast.error("Please enter a valid email address."); return; }
-      onAddUser(formData);
-    };
+    if (!formData.name || !formData.email || formData.roles.length === 0) { 
+        toast.error("Name, Email, and at least one Role are required."); 
+        return; 
+    }
+    onAddUser(formData);
+  };
     return (
       <div className="space-y-4 pt-4">
         <div className="space-y-2"><Label htmlFor="name" className="text-white">Full Name </Label><Input id="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Jane Doe"/></div>
@@ -503,35 +530,75 @@ const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
           <div className="space-y-2"><Label htmlFor="department" className="text-white">Department</Label><Input id="department" value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} placeholder="e.g., Engineering"/></div>
           <div className="space-y-2"><Label htmlFor="location" className="text-white">Location</Label><Input id="location" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="e.g., San Francisco, CA"/></div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-         <div className="space-y-2">
-  <Label htmlFor="role" className="text-white">Role</Label>
+       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+  <Label style={{ color: "white" }}>Roles</Label>
 
-  <Select
-    value={formData.role || undefined}  // <-- IMPORTANT for placeholder
-    onValueChange={(value) =>
-      setFormData({ ...formData, role: value as any })
-    }
-  >
-    <SelectTrigger
-      className={formData.role ? "text-black" : "text-gray-400"} // placeholder gray
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant="outline"
+        style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: "white",
+          color: "black",
+          border: "1px solid #ccc",
+          padding: "8px 12px",
+          borderRadius: "6px",
+          cursor: "pointer"
+        }}
+      >
+        {formData.roles.length > 0
+          ? formData.roles.join(", ")
+          : "Select Roles..."}
+
+        <ChevronDown
+          style={{
+            marginLeft: "8px",
+            height: "16px",
+            width: "16px",
+            opacity: 0.5
+          }}
+        />
+      </Button>
+    </DropdownMenuTrigger>
+
+    <DropdownMenuContent
+      style={{
+        width: "100%",
+        minWidth: "300px",
+        backgroundColor: "white",
+        border: "1px solid #ddd",
+        borderRadius: "6px",
+        padding: "8px",
+        boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+      }}
     >
-      <SelectValue placeholder="Select Role" />
-    </SelectTrigger>
-
-    <SelectContent>
-      <SelectItem value="Guest">Guest</SelectItem>
-      <SelectItem value="Admin">Admin</SelectItem>
-    </SelectContent>
-  </Select>
+      {ALL_ROLES.map((role) => (
+        <DropdownMenuCheckboxItem
+          key={role}
+          checked={formData.roles.includes(role)}
+          onCheckedChange={() => handleRoleToggle(role)}
+          style={{
+            padding: "6px 10px",
+            cursor: "pointer"
+          }}
+        >
+          {role}
+        </DropdownMenuCheckboxItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
 </div>
 
-         
-        </div>
-        <div className="flex gap-3 pt-2"><Button onClick={handleSubmit} className="flex-1">Add User</Button><Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)} className="flex items-center gap-2"><XCircle className="h-4 w-4"/>Cancel</Button></div>
-      </div>
-    );
-  };
+      
+
+      <Button onClick={handleSubmit} className="w-full mt-4">Add User</Button>
+    </div>
+  );
+};
   
   const UserProfile = ({ user }: { user: User }) => (
     <div className="space-y-6"><div className="flex items-center gap-4"><Avatar style={{ width: "4rem", height: "4rem" }}><AvatarImage src={user.avatar}/>
