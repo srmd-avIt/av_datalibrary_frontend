@@ -1834,25 +1834,22 @@ const getGroupedQueue = (data: any[], groupBy: string) => {
         </div>
     )}
 </div>
-                      <button 
-    onClick={(e) => { 
-        if (!canEditEntry(item)) { 
-            e.stopPropagation(); 
-            toast.error("Entry is locked. Only entries marked 'Needs Revision' can be edited by you."); 
-            return; 
-        } 
-        handleEditClick(item, e); 
-    }} 
-    style={{ 
-        background: 'transparent', 
-        border: 'none', 
-        color: canEditEntry(item) ? '#f59e0b' : 'rgba(100, 116, 139, 0.3)', 
-        cursor: canEditEntry(item) ? 'pointer' : 'not-allowed', 
-        padding: 5 
-    }}
->
-    <Pencil size={16} />
-</button>
+                   {canEditEntry(item) && (
+        <button 
+            onClick={(e) => { 
+                handleEditClick(item, e); 
+            }} 
+            style={{ 
+                background: 'transparent', 
+                border: 'none', 
+                color: '#f59e0b', 
+                cursor: 'pointer', 
+                padding: 5 
+            }}
+        >
+            <Pencil size={16} />
+        </button>
+    )}
                   </div>
               </div>
           </div>
@@ -2020,13 +2017,15 @@ const renderTableRow = (item: any) => {
                             </button>
 
                             {/* 3. CLICKING PENCIL ICON: Switches to Form View in Edit Mode */}
-                            <button 
-                                onClick={(e) => handleEditClick(item, e)} 
-                                title="Edit Entry" 
-                                style={{background: 'transparent', border: 'none', cursor: 'pointer', color: editingId === item._id ? '#f59e0b' : '#64748b', padding: 0}}
-                            >
-                                <Pencil size={15} />
-                            </button>
+                               {canEditEntry(item) && (
+                <button 
+                    onClick={(e) => handleEditClick(item, e)} 
+                    title="Edit Entry" 
+                    style={{background: 'transparent', border: 'none', cursor: 'pointer', color: editingId === item._id ? '#f59e0b' : '#64748b', padding: 0}}
+                >
+                    <Pencil size={15} />
+                </button>
+            )}
                         </div>
                     </td>
                 );
@@ -2339,7 +2338,7 @@ const renderTableRow = (item: any) => {
                         <div className="animate-in fade-in duration-300" style={styles.sectionBlock}>
                             <SectionTitle icon={Database} title="Event Details" theme={colors.core} />
                             <div style={styles.gridFields}>
-                   <SearchableSelect 
+                 <SearchableSelect 
     label="Event Code" 
     name="fkEventCode" 
     options={eventCodeOptions.map(opt => `${opt.EventName} - ${opt.EventCode}`)} 
@@ -2347,9 +2346,10 @@ const renderTableRow = (item: any) => {
     onChange={handleChange} 
     theme={colors.core} 
     required={true} 
-    // <--- Important: use isLocked
     isCompact={isCompact} 
     full={true} 
+    // ADD THIS LINE BELOW:
+    disabled={!hasEditAccess || isViewing} 
 />
                                 {renderField("Event Name", "EventName", colors.core, { full: true,required: true, disabled: !hasEditAccess || isViewing  })}
                                 {renderField("Year", "Yr", colors.core, { required: true, disabled: !hasEditAccess || isViewing  })}

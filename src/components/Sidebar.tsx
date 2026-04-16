@@ -218,6 +218,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
   const isHomeViewActive = activeView === "dashboard";
 
   const allMenuItems = [
+    { id: "dashboard", label: "Home", icon: Home },
     { id: "digitalrecordings_gsheet", label: "Project Hub", icon: LayoutGrid },
     {
         id: "list_parent",
@@ -351,10 +352,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
             </div>
           )}
 
-          <div onClick={() => handleMenuClick("dashboard")} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px", borderRadius: "12px", cursor: "pointer", background: isHomeViewActive ? "rgba(59,130,246,0.2)" : "transparent", border: isHomeViewActive ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent" }}>
-            <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(to bottom right, #3b82f6, #2dd4bf)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}><Home style={{ width: "20px", height: "20px" }} /></div>
-            <span style={{ fontSize: "14px", fontWeight: 500, color: "#fff" }}>Home</span>
-          </div>
+          
         </div>
 
         <nav style={{ flex: 1, padding: "16px 12px", overflowY: "auto" }}>
@@ -409,10 +407,7 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
             </div>
           )}
 
-          <div onClick={() => handleMenuClick("dashboard")} style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: collapsed ? 0 : "12px", padding: "8px", borderRadius: "12px", cursor: "pointer", background: isHomeViewActive ? "rgba(59,130,246,0.2)" : "transparent", border: isHomeViewActive ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent" }}>
-            <div style={{ width: collapsed ? "32px" : "40px", height: collapsed ? "32px" : "40px", borderRadius: "12px", background: "linear-gradient(to bottom right, #3b82f6, #2dd4bf)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}><Home size={collapsed ? 16 : 20} /></div>
-            {!collapsed && <span style={{ fontSize: "14px", fontWeight: 500, color: "#fff" }}>Home</span>}
-          </div>
+          
         </div>
 
         <nav style={{ flex: 1, padding: collapsed ? "8px" : "16px", overflowY: "auto" }}>
