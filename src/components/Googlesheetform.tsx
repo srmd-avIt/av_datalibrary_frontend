@@ -43,6 +43,7 @@ const PRESERVATION_STATUS_OPTIONS = ["Preserve"];
 const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res"];
 
 const STATUS_OPTIONS = [
+    { id: "pending", label: "No Status", icon: FileText, color: "#94a3b8" },
   { id: "incomplete", label: "Submitted to MM", icon: AlertCircle, color: "#f87171" },
   { id: "revision", label: "Needs Revision", icon: RotateCcw, color: "#60a5fa" },
   { id: "inwarding", label: "Inwarding", icon: Loader2, color: "#f59e42" },
@@ -60,7 +61,7 @@ const TABLE_COLUMNS = [
   { id: 'Yr', label: 'Year', width: 60 },
   { id: 'NewEventCategory', label: 'Event Category', width: 140 },
   { id: 'RecordingName', label: 'Audio Recording Name', width: 250 },
-  { id: 'Detail', label: 'Detail', width: 200 },
+  
   { id: 'Duration', label: 'Duration', width: 80 },
   { id: 'Filesize', label: 'File Size', width: 90 },
   { id: 'FilesizeInBytes', label: 'Bytes', width: 100 },
@@ -69,26 +70,37 @@ const TABLE_COLUMNS = [
   { id: 'NoOfFiles', label: 'No. Files', width: 80 },
   { id: 'AudioBitrate', label: 'Audio Bitrate', width: 100 },
   { id: 'Masterquality', label: 'Master Quality', width: 120 },
-  { id: 'PreservationStatus', label: 'Preservation', width: 120 },
+  
   { id: 'RecordingRemarks', label: 'DMS Remarks', width: 200 },
+  { id: 'Detail', label: 'Detail', width: 200 },
+  { id: 'SubDetail', label: 'Sub Detail', width: 250 },
   { id: 'MLUniqueID', label: 'ML Unique ID', width: 130 },
   
   { id: 'fkGranth', label: 'Granth', width: 120 },
   { id: 'Number', label: 'Number', width: 80 },
   { id: 'Topic', label: 'Topic', width: 200 },
   { id: 'ContentFrom', label: 'Date From', width: 100 },
+   { id: 'ContentTo', label: 'Date To', width: 100 }, 
   { id: 'SatsangStart', label: 'Satsang Start', width: 80 },
-  { id: 'SatsangEnd', label: 'Satsang End', width: 80 },
+  { id: 'SatsangEnd', label: 'Satsang End', width: 100 },
   { id: 'fkCity', label: 'City', width: 120 },
   { id: 'SubDuration', label: 'Sub Duration', width: 100 },
   
   { id: 'Remarks', label: 'Remarks', width: 200 },
+   { id: 'Segment Category', label: 'Segment Category', width: 140 },
+  { id: 'FootageType', label: 'Footage Type', width: 120 },
+  { id: 'EditingStatus', label: 'Editing Status', width: 130 },
+  { id: 'CounterFrom', label: 'Counter From', width: 120 },
+  { id: 'CounterTo', label: 'Counter To', width: 120 },
+  { id: 'FootageSrNo', label: 'Footage Sr No', width: 120 },
+  { id: 'LogSerialNo', label: 'Log Serial No', width: 120 },
+  {id: 'EventRefMLID', label: 'Event Ref MLID', width: 130 },
 ];
 
 const BATCH_TABLE_COLUMNS = [
   { id: 'MLUniqueID', label: 'ML Unique ID', width: 130, sticky: true, left: 40 },
   { id: 'Detail', label: 'Detail', width: 250 },
-  { id: 'SubDetail', label: 'Sub Detail', width: 120 },
+  { id: 'SubDetail', label: 'Sub Detail', width: 250 },
   { id: 'SubDuration', label: 'Sub Duration', width: 100 },
   { id: 'fkGranth', label: 'Granth', width: 120 },
   { id: 'Number', label: 'Patrank', width: 100 },
@@ -105,6 +117,7 @@ const BATCH_TABLE_COLUMNS = [
   { id: 'CounterTo', label: 'Counter To', width: 120 },
   { id: 'FootageSrNo', label: 'Footage Sr No', width: 120 },
   { id: 'LogSerialNo', label: 'Log Serial No', width: 120 }, 
+  {id: 'EventRefMLID', label: 'Event Ref MLID', width: 130 },
   
 ];
 
@@ -226,19 +239,26 @@ const mapSheetRowToQueueItem = (row: any) => {
         Masterquality: getVal(['Master Quality', 'Masterquality']),
         PreservationStatus: getVal(['Preservation Status', 'PreservationStatus']) || "Pending",
         RecordingRemarks: getVal(['Recording Remarks', 'RecordingRemarks']),
-        MLUniqueID: mlId,
-         DistributionDriveLink: getVal(['Distribution Drive Link', 'DistributionDriveLink']),
-        fkGranth: getVal(['fkGranth', 'Granth']),
-        Number: getVal(['Number', 'Patrank']),
+        MLUniqueID: getVal(['ML Unique ID', 'MLUniqueID']),
+        Detail: getVal(['Detail']),
+        SubDetail: getVal(['Sub Detail', 'SubDetail']),
         Topic: getVal(['Topic']),
+        fkGranth: getVal(['Granth', 'fkGranth']),
+        fkCity: getVal(['City', 'fkCity']), 
+        SubDuration: getVal(['Sub Duration', 'SubDuration']),
+        Number: getVal(['Number', 'Patrank']),
         ContentFrom: getVal(['Date From', 'ContentFrom']),
+        ContentTo: getVal(['Date To', 'ContentTo']),
         SatsangStart: getVal(['Satsang Start', 'SatsangStart']),
         SatsangEnd: getVal(['Satsang End', 'SatsangEnd']),
-        fkCity: getVal(['City', 'fkCity']),
-        SubDuration: getVal(['Sub Duration', 'SubDuration']),
-        Detail: getVal(['Detail']),
-        Remarks: getVal(['Remarks']),
-        
+        "Segment Category": getVal(['Segment Category']),
+        FootageType: getVal(['Footage Type', 'FootageType']),
+        EditingStatus: getVal(['Editing Status', 'EditingStatus']),
+        CounterFrom: getVal(['Counter From', 'CounterFrom']),
+        CounterTo: getVal(['Counter To', 'CounterTo']),
+        FootageSrNo: getVal(['Footage Sr No', 'FootageSrNo']),
+        LogSerialNo: getVal(['Log Serial No', 'LogSerialNo']),
+        EventRefMLID: getVal(['Event Ref MLID', 'EventRefMLID']), 
         AudioWAVDRCode: getVal(['Audio WAV DR Code', 'AudioWAVDRCode']),
         AudioMP3DRCode: getVal(['Audio MP3 DR Code', 'AudioMP3DRCode']),
         comments: parseLogchats(getVal(['Logchats'])),
@@ -545,46 +565,58 @@ const workflow = useMemo(() => {
 // RULE: Determine if fields are read-only
 const isRecordLockedForUser = (item: any) => {
     if (workflow.isAdmin) return false; 
-    const status = (item._status || 'incomplete').toLowerCase();
 
-    // 1. SUBMITTER: Only unlocked if status is 'revision'
-    // If status is 'incomplete', 'inwarding', or 'submission_confirmed', they are LOCKED.
+    const status = (item._status || 'pending').toLowerCase().trim();
+
+    // 1. SUBMITTER logic
     if (workflow.isSubmitter && !workflow.isIngester && !workflow.isValidator) {
-        return status !== 'revision'; 
+        // Submitter can ONLY edit if status is 'pending' or 'revision'
+        return status !== 'pending' && status !== 'revision'; 
     }
     
-    // 2. INGESTER: Ingesters can only change status. Data fields are ALWAYS locked for them.
+    // 2. INGESTER logic
     if (workflow.isIngester && !workflow.isValidator) {
+        // Ingesters can change status, but data fields are ALWAYS locked for them,
+        // ESPECIALLY during the 'revision' phase.
         return true; 
     }
 
-    // 3. VALIDATOR: Only unlocks data if entry is 'submission_confirmed'
+    // 3. VALIDATOR logic
     if (workflow.isValidator) {
+        // Validators only unlock data if status is 'submission_confirmed'
         return status !== 'submission_confirmed';
     }
     
     return true; 
 };
-
 // RULE: Define status flow
+// Around line 457
 const getAllowedStatusTransitions = (item: any) => {
-    const current = (item._status || 'incomplete').toLowerCase().trim();
+    const current = (item._status || 'pending').toLowerCase().trim();
     
-    // 1. ADMIN & DATA VALIDATOR: Get full access to all options
+    // Admins and Validators always see everything
     if (workflow.isAdmin || workflow.isValidator) {
         return STATUS_OPTIONS.map(s => s.id);
     }
 
     const allowed: string[] = [];
-    // 2. SUBMITTER: Can ONLY move revision -> inwarding
-    if (workflow.isSubmitter && current === 'revision') {
-        allowed.push('inwarding');
+    
+    // 1. Logic for NEW records
+    if (workflow.isSubmitter && current === 'pending') {
+        allowed.push('incomplete'); // "Submitted to MM"
     }
 
-    // 3. INGESTER: Can move early stages to Revision or Confirmed
+    // 2. Logic for REVISION records (YOUR REQUEST)
+    if (workflow.isSubmitter && current === 'revision') {
+        // Show BOTH options to the Submitter
+        allowed.push('incomplete'); // This is "Submitted to MM"
+        allowed.push('inwarding');  // This is "Inwarding"
+    }
+
+    // 3. Logic for Ingesters
     if (workflow.isIngester) {
-        if (['incomplete', 'inwarding', 'revision'].includes(current)) {
-            allowed.push('revision', 'submission_confirmed');
+        if (current === 'incomplete' || current === 'inwarding' || current === 'revision') {
+            allowed.push('revision', 'inwarding', 'submission_confirmed');
         }
     }
 
@@ -773,10 +805,24 @@ const hasEditAccess =
     
   const canApprove = hasEditAccess;
 
-  const canEditEntry = (item: any) => {
-    const status = item._status || 'incomplete';
-    return hasEditAccess && status === 'revision';
-  };
+ const canEditEntry = (item: any) => {
+    const status = (item._status || '').toLowerCase().trim();
+    
+    // 1. Identify if the user is strictly a Submitter (not an Ingester or Validator)
+    // We also allow Admins to see it for troubleshooting, but follow the Submitter rule
+    const isStrictSubmitter = workflow.isSubmitter && !workflow.isIngester && !workflow.isValidator;
+    const isAdmin = workflow.isAdmin;
+
+    // 2. Only show the edit icon if:
+    // - The user is a Submitter or Admin
+    // - AND the status is strictly 'revision' (Needs Revision)
+    if (isStrictSubmitter || isAdmin) {
+        return status === 'revision';
+    }
+
+    // Ingesters and Validators NEVER see the edit pencil icon
+    return false;
+};
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -830,18 +876,11 @@ const frozenColumnData = useMemo(() => {
   const [wisdomPickedCount, setWisdomPickedCount] = useState(0);
   const [wisdomTotalCount, setWisdomTotalCount] = useState(0);
 
-  const [queue, setQueue] = useState<any[]>(() => { try { const saved = localStorage.getItem(STORAGE_KEY); return saved ? JSON.parse(saved) : []; } catch (e) { return []; } });
-  
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-      try { 
-          const saved = localStorage.getItem(STORAGE_KEY); 
-          const parsedQueue = saved ? JSON.parse(saved) : []; 
-          const defaultGroups = parsedQueue.map((q:any) => q.RecordingCode || 'Uncategorized');
-          return new Set([...defaultGroups, 'incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete']); 
-      } catch (e) { 
-          return new Set(['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete']); 
-      }
-  });
+const [queue, setQueue] = useState<any[]>([]);
+
+const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    new Set(['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'])
+);
 
 
 
@@ -858,11 +897,11 @@ const frozenColumnData = useMemo(() => {
   const activeEntry = queue.find(q => q._id === activeCommentId);
   const isCommentsOpen = !!activeCommentId && !!activeEntry;
 
-  const initialFormState = {Key: "",fkEventCode: "", EventName: "", Yr: "", NewEventCategory: "", RecordingName: "", RecordingCode: "", Duration: "", DistributionDriveLink: "",  Dimension: "", Masterquality: "", fkMediaName: "", Filesize: "", FilesizeInBytes: "", NoOfFiles: "1", RecordingRemarks: "", CounterError: "", ReasonError: "", MasterProductTitle: "", fkDistributionLabel: "", ProductionBucket: "", fkDigitalMasterCategory: "", AudioBitrate: "", AudioTotalDuration: "", QcRemarksCheckedOn: "", PreservationStatus: "Preserve", QCSevak: "", QcStatus: "", SubmittedDate: "", PresStatGuidDt: "", InfoOnCassette: "", IsInformal: "", AssociatedDR: "", Teams: "", MLUniqueID: "", Detail: "", AudioWAVDRCode: "", fkGranth: "", Number: "", Topic: "", ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", SubDuration: "", Remarks: "", files: [] as any[] };
+  const initialFormState = {Key: "",fkEventCode: "", EventName: "", Yr: "", NewEventCategory: "", RecordingName: "", RecordingCode: "", Duration: "", DistributionDriveLink: "",  Dimension: "", Masterquality: "", fkMediaName: "", Filesize: "", FilesizeInBytes: "", NoOfFiles: "1", RecordingRemarks: "", CounterError: "", ReasonError: "", MasterProductTitle: "", fkDistributionLabel: "", ProductionBucket: "", fkDigitalMasterCategory: "", AudioBitrate: "", AudioTotalDuration: "", QcRemarksCheckedOn: "", PreservationStatus: "Preserve", QCSevak: "", QcStatus: "", SubmittedDate: "", PresStatGuidDt: "", InfoOnCassette: "", IsInformal: "", AssociatedDR: "", Teams: "", MLUniqueID: "", Detail: "", AudioWAVDRCode: "", fkGranth: "", Number: "", Topic: "", ContentFrom: "", SatsangStart: "", SatsangEnd: "", fkCity: "", SubDuration: "", Remarks: "", EventRefMLID: "", files: [] as any[] };
   const [formData, setFormData] = useState(initialFormState);
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(queue)); }, [queue]);
+
   
   useEffect(() => { if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: "smooth" }); }, [activeEntry?.comments, activeCommentId]);
 
@@ -953,34 +992,48 @@ const frozenColumnData = useMemo(() => {
     };
     fetchWisdomPickedCount();
   }, [canViewWisdomReels]);
+useEffect(() => {
+    if (viewMode === 'form') {
+        fetchSheetData(); // Immediate sync when entering the project
+    }
+}, [viewMode]);
+// AUTO-REFRESH LOGIC
+useEffect(() => {
+    const autoRefreshInterval = setInterval(() => {
+        // Do not refresh if the user is currently typing a comment or editing a form
+        const isUserBusy = editingId || isSubmitting || commentInput.trim().length > 0;
 
-  const fetchSheetData = async () => {
-    try {
-      const token = localStorage.getItem('app-token');
-      const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings?limit=500`, { 
-          headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
-      });
-      if (res.ok) {
-        const result = await res.json();
-        if (result.data && Array.isArray(result.data)) {
-          const freshQueue = result.data.map(mapSheetRowToQueueItem);
-          const savedData = localStorage.getItem(STORAGE_KEY);
-          const localQueue = savedData ? JSON.parse(savedData) : [];
-
-          const mergedQueue = freshQueue.map((freshItem: any) => {
-              const localItem = localQueue.find((l: any) => l._id === freshItem._id);
-              if (localItem) {
-                  return { ...freshItem, _status: localItem._status, QcStatus: localItem.QcStatus, comments: localItem.comments?.length > 0 ? localItem.comments : freshItem.comments };
-              }
-              return freshItem; 
-          });
-
-          setQueue(mergedQueue);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedQueue));
+        if (!isUserBusy) {
+            fetchSheetData(); // This hits your API and gets the latest StatusID for all rows
         }
-      }
-    } catch (error) { console.error("Error syncing with Google Sheet:", error); }
-  };
+    }, 1000); // 1 second
+
+    return () => clearInterval(autoRefreshInterval);
+}, [editingId, isSubmitting, commentInput]);
+
+ const fetchSheetData = async () => {
+    try {
+        const token = localStorage.getItem('app-token');
+        const res = await fetch(`${cleanBaseUrl}/api/google-sheet/digital-recordings?limit=500`, { 
+            headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+        });
+        
+        if (res.ok) {
+            const result = await res.json();
+            if (result.data && Array.isArray(result.data)) {
+                const freshQueue = result.data.map(mapSheetRowToQueueItem);
+                
+                // Compare stringified versions to avoid unnecessary re-renders
+                if (JSON.stringify(queue) !== JSON.stringify(freshQueue)) {
+                    setQueue(freshQueue);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(freshQueue));
+                }
+            }
+        }
+    } catch (error) { 
+        console.error("Error syncing:", error); 
+    }
+};
 
   useEffect(() => { if(canViewAudioMerge) fetchSheetData(); }, [canViewAudioMerge]);
 
@@ -1126,9 +1179,30 @@ const frozenColumnData = useMemo(() => {
     else if (name === "MLUniqueID") {
         const selectedML = mlIdOptions.find(opt => opt.MLUniqueID === value);
         setFormData(prev => ({
-            ...prev, MLUniqueID: value, Detail: selectedML?.Detail || "", fkGranth: selectedML?.fkGranth || "", Number: selectedML?.Number || "",
-            Topic: selectedML?.Topic || "", ContentFrom: selectedML?.ContentFrom || "", SatsangStart: selectedML?.SatsangStart || "",
-            SatsangEnd: selectedML?.SatsangEnd || "", fkCity: selectedML?.fkCity || "", SubDuration: selectedML?.SubDuration || "", Remarks: selectedML?.Remarks || "",
+            ...prev,
+            ...selectedML,
+            MLUniqueID: value,
+            Detail: selectedML.Detail || "",
+            SubDetail: selectedML.SubDetail || "",
+            fkGranth: selectedML.fkGranth || "",
+            Number: selectedML.Number || "",
+            Topic: selectedML.Topic || "",
+            ContentFrom: selectedML.ContentFrom || "",
+            ContentTo: selectedML.ContentTo || "",
+            SatsangStart: selectedML.SatsangStart || "",
+            SatsangEnd: selectedML.SatsangEnd || "",
+            fkCity: selectedML.fkCity || "",
+            SubDuration: selectedML.SubDuration || "",
+            Remarks: selectedML.Remarks || "",
+            EventRefMLID: selectedML.EventRefMLID || "",
+            // --- ADD THESE MISSING ONES ---
+            "Segment Category": selectedML["Segment Category"] || "",
+            FootageType: selectedML.FootageType || "",
+            EditingStatus: selectedML.EditingStatus || "",
+            CounterFrom: selectedML.CounterFrom || "",
+            CounterTo: selectedML.CounterTo || "",
+            FootageSrNo: selectedML.FootageSrNo || "",
+            LogSerialNo: selectedML.LogSerialNo || ""
         }));
     }
     else {
@@ -1303,19 +1377,29 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
                 _id: itemUniqueKey, // Unique ID for frontend state
                 MLUniqueID: mlid,
                 Detail: mlDetails.Detail || "",
+                SubDetail: mlDetails.SubDetail || "",
                 fkGranth: mlDetails.fkGranth || "",
                 Number: mlDetails.Number || "",
                 Topic: mlDetails.Topic || "",
                 ContentFrom: mlDetails.ContentFrom || "",
+                 ContentTo: mlDetails.ContentTo || "", 
                 SatsangStart: mlDetails.SatsangStart || "",
-                SatsangEnd: mlDetails.SatsangEnd || "",
+                 SatsangEnd: mlDetails.SatsangEnd || "", 
+                  "Segment Category": mlDetails["Segment Category"] || "",
+    FootageType: mlDetails.FootageType || "",
+    EditingStatus: mlDetails.EditingStatus || "",
+    CounterFrom: mlDetails.CounterFrom || "",
+    CounterTo: mlDetails.CounterTo || "",
+    FootageSrNo: mlDetails.FootageSrNo || "",
+    LogSerialNo: mlDetails.LogSerialNo || "",     // Ensure this is here
+                 EventRefMLID: mlDetails.EventRefMLID || "", 
                 fkCity: mlDetails.fkCity || "",
                 SubDuration: mlDetails.SubDuration || "",
                 Remarks: mlDetails.Remarks || "",
                 comments: [],
-                _status: 'incomplete',
-                QcStatus: 'Submitted to MM',
-                "QC Status": 'Submitted to MM'
+                _status: 'pending',          // Changed from 'incomplete'
+                QcStatus: 'No Status',    // Changed from 'Submitted to MM'
+                "QC Status": 'No Status'
             });
         }
     } else {
@@ -1326,9 +1410,9 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
             Key: singleKey,
             _id: singleKey,
             comments: [],
-            _status: 'incomplete',
-            QcStatus: 'Submitted to MM',
-            "QC Status": 'Submitted to MM'
+            _status: 'pending',          // Changed from 'incomplete'
+            QcStatus: 'No Status',    // Changed from 'Submitted to MM'
+            "QC Status": 'No Status'
         });
     }
 
@@ -1797,25 +1881,51 @@ const getGroupedQueue = (data: any[], groupBy: string) => {
       const isItemEditing = editingId === item._id; const currentStatus = item._status || 'incomplete';
       const statusConfig = STATUS_OPTIONS.find(s => s.id === currentStatus) || STATUS_OPTIONS[0];
       const isEditable = canEditEntry(item);
-
+const allowedTransitions = getAllowedStatusTransitions(item);
       return (
           <div key={item._id} style={styles.queueItem(isActive, isItemEditing)} onClick={() => handleSelectEntry(item)}>
               <div style={{display: "flex", alignItems: "flex-start", gap: "10px"}}>
                   <div onClick={(e) => toggleSelection(item._id, e)} style={{ paddingTop: 2, flexShrink: 0 }}>{isSelected ? <CheckSquare size={18} color="#10b981" /> : <Square size={18} color="rgba(255,255,255,0.3)" />}</div>
                   <div style={{flex: 1, minWidth: 0 }}>
-                      <div title={item.RecordingCode || "Untitled"} style={{ fontWeight: '600', color: isItemEditing ? '#f59e0b' : isActive ? '#3b82f6' : '#fff', fontSize: '0.9rem', marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.RecordingCode || "No Recording Code"}</div>
+         <div 
+    title={item.RecordingCode || "Untitled"} 
+    style={{ 
+        fontWeight: '600', 
+        color: isItemEditing ? '#f59e0b' : isActive ? '#3b82f6' : '#fff', 
+        fontSize: '0.9rem', 
+        marginBottom: 4, 
+        whiteSpace: "nowrap", 
+        overflow: "hidden", 
+        textOverflow: "ellipsis",
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
+    }}
+>
+    {item.RecordingCode || "No Recording Code"}
+
+    {/* ONLY SHOW IF LOCKED IS TRUE */}
+    {isRecordLockedForUser(item) ? (
+        <Lock size={12} style={{ color: '#94a3b8', opacity: 0.6 }} />
+    ) : null} 
+</div>
                       <div style={{ fontSize: '0.75rem', color: '#94a3b8', whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.EventName}</div>
                       <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>{item.comments?.length > 0 && (<span style={{fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '1px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3}}><MessageSquare size={10} /> {item.comments.length}</span>)}</div>
                   </div>
                   <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, marginTop: -2}}>
               <div style={{position: 'relative'}}>
-    <div 
-    onClick={(workflow.isValidator || workflow.isIngester || workflow.isAdmin) ? (e) => { 
-        e.stopPropagation(); 
-        setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id); 
-    } : undefined} 
-    style={{ ...styles.statusBadge(currentStatus), cursor: "pointer", width: 'fit-content' }}
->
+   <div 
+      onClick={(allowedTransitions.length > 0) ? (e) => { 
+          e.stopPropagation(); 
+          setOpenStatusDropdown(openStatusDropdown === item._id ? null : item._id); 
+      } : undefined} 
+      style={{ 
+          ...styles.statusBadge(currentStatus), 
+          cursor: (allowedTransitions.length > 0) ? "pointer" : "default",
+          opacity: (allowedTransitions.length > 0) ? 1 : 0.7, // Mute if they can't click
+          width: 'fit-content' 
+      }}
+  >
         <statusConfig.icon size={12} strokeWidth={3} /> 
         {!isCompact && (currentStatus === 'revision' ? 'Needs Revision' : currentStatus)}
     </div>
@@ -2029,22 +2139,15 @@ const renderTableRow = (item: any) => {
                         </div>
                     </td>
                 );
-                const allowedTransitions = getAllowedStatusTransitions(item);
-            if (col.id === 'status') {
+                
+      if (col.id === 'status') {
     const allowedTransitions = getAllowedStatusTransitions(item);
     const isDropdownOpen = openStatusDropdown === item._id;
+    const isLocked = isRecordLockedForUser(item); // Check the lock state
 
     return (
-        <td 
-            key={col.id} 
-            style={{ 
-                ...commonStyle, 
-                overflow: 'visible', // Allow dropdown to pop out
-                zIndex: isDropdownOpen ? 100 : 1 // Ensure this row stays on top when open
-            }}
-        >
-            {/* FIX: This relative wrapper acts as the anchor for the absolute dropdown */}
-            <div style={{ position: 'relative', width: 'fit-content' }}>
+        <td key={col.id} style={{ ...commonStyle, overflow: 'visible', zIndex: isDropdownOpen ? 100 : 1 }}>
+            <div style={{ position: 'relative', width: 'fit-content', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div 
                     onClick={(allowedTransitions.length > 0) ? (e) => {
                         e.stopPropagation();
@@ -2060,6 +2163,16 @@ const renderTableRow = (item: any) => {
                     <statusConfig.icon size={12} strokeWidth={3} /> 
                     {statusConfig.label}
                 </div>
+                
+                {/* ICON SHOWS ONLY IF isLocked IS TRUE */}
+                {isLocked && (
+  <Lock 
+    size={14} 
+    style={{ color: '#64748b', flexShrink: 0 }}
+  >
+    <title>Record is locked (Read-Only)</title>
+  </Lock>
+)}
 
                 {/* DROPDOWN MENU */}
                 {isDropdownOpen && (
@@ -2112,7 +2225,9 @@ const renderTableRow = (item: any) => {
     );
 }
                 
-                return <td key={col.id} style={{...commonStyle, fontWeight: (col.id === 'RecordingCode' || col.id === 'MLUniqueID') ? 600 : 400, color: (col.id === 'RecordingCode' || col.id === 'MLUniqueID') ? '#fff' : '#e2e8f0'}} title={item[col.id]}>{item[col.id]}</td>;
+                return    <td key={col.id} style={{...commonStyle, fontWeight: (col.id === 'RecordingCode' || col.id === 'MLUniqueID') ? 600 : 400, color: (col.id === 'RecordingCode' || col.id === 'MLUniqueID') ? '#fff' : '#e2e8f0'}} title={String(item[col.id] || "")}>
+        {item[col.id] !== undefined && item[col.id] !== null ? String(item[col.id]) : ""}
+    </td>
             })}
         </tr>
     );
@@ -2640,32 +2755,40 @@ const renderTableRow = (item: any) => {
                                 // IF EDITING OR VIEWING: SHOW ORIGINAL SINGLE RECORD FIELDS
                                 <div>
                                     <SectionTitle icon={FileAudio} title="MediaLog Details" theme={colors.tech} />
-                                    <div style={styles.gridFields}>
-                                        <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-                                        {renderField("Detail", "Detail", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })} 
-                                        {renderField("SubDetail", "SubDetail", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })} 
-                                         {renderField("SubDuration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Granth", "fkGranth", colors.core, {medium: true, disabled: !hasEditAccess || isViewing })}
-                                        
-                                        {renderField("Number", "Number", colors.core, {  disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
-                                         {renderField("SatsangStart", "SatsangStart", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                          {renderField("SatsangEnd", "SatsangEnd", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                           {renderField("Segment Category", "Segment Category", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Date To", "ContentTo", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Footage Type", "FootageType", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Editing Status", "EditingStatus", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Remarks", "Remarks", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                        {renderField("CounterFrom", "CounterFrom", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                        {renderField("CounterTo", "CounterTo", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Footage Sr No", "FootageSrNo", colors.core, { disabled: !hasEditAccess || isViewing })}
-                                        {renderField("Log Serial No", "LogSerialNo", colors.core, {full: true, disabled: !hasEditAccess || isViewing })}
-                                        
-                                       
-                                       
-                                        
-                                    </div>
+                                <div style={styles.gridFields}>
+    {/* Identification */}
+    <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
+    {renderField("Event Ref MLID", "EventRefMLID", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Footage Sr No", "FootageSrNo", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Log Serial No", "LogSerialNo", colors.core, { disabled: !hasEditAccess || isViewing })}
+
+    {/* Content */}
+    {renderField("Detail", "Detail", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })} 
+    {renderField("SubDetail", "SubDetail", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })} 
+    {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
+    {renderField("Granth", "fkGranth", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })}
+    {renderField("Patrank", "Number", colors.core, { disabled: !hasEditAccess || isViewing })}
+
+    {/* Time */}
+    {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Date To", "ContentTo", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Satsang Start", "SatsangStart", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Satsang End", "SatsangEnd", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Sub Duration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
+
+    {/* Categorization */}
+    {renderField("Segment Category", "Segment Category", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })}
+    {renderField("Footage Type", "FootageType", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Editing Status", "EditingStatus", colors.core, { disabled: !hasEditAccess || isViewing })}
+
+    {/* Technical */}
+    {renderField("Counter From", "CounterFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("Counter To", "CounterTo", colors.core, { disabled: !hasEditAccess || isViewing })}
+    {renderField("City", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
+
+    {/* Remarks */}
+    {renderField("Remarks", "Remarks", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
+</div>
                                 </div>
                             )}
                         </div>
@@ -2685,11 +2808,23 @@ const renderTableRow = (item: any) => {
 
                             {currentStep < 3 ? (
                                 <button type="button" onClick={() => handleSetStep(currentStep + 1)} style={{...styles.addBtn(false, false), width: '120px', flex: 'none'}}>Next</button>
-                            ) : isViewing ? ( 
-                                <button type="button" onClick={enableEditing} disabled={!isCurrentEntryEditable} title={!isCurrentEntryEditable ? "Only entries marked 'Needs Revision' can be edited." : ""} style={{ ...styles.addBtn(false, true), opacity: isCurrentEntryEditable ? 1 : 0.5, cursor: isCurrentEntryEditable ? 'pointer' : 'not-allowed', width: 'auto' }}> 
-                                    <Pencil size={18} style={{marginRight:6}}/> Edit This Entry 
-                                </button> 
-                            ) : ( 
+                            )  : isViewing ? ( 
+    <button 
+        type="button" 
+        onClick={enableEditing} 
+        /* Only show/enable this button if the user is a Submitter/Admin and status is Revision/Pending */
+        disabled={!canEditEntry(activeEntry)} 
+        style={{ 
+            ...styles.addBtn(false, true), 
+            opacity: canEditEntry(activeEntry) ? 1 : 0.5, 
+            cursor: canEditEntry(activeEntry) ? 'pointer' : 'not-allowed', 
+            display: canEditEntry(activeEntry) ? 'flex' : 'none', // Hide completely for Ingesters/Validators
+            width: 'auto' 
+        }}
+    > 
+        <Pencil size={18} style={{marginRight:6}}/> Edit This Entry 
+    </button> 
+) : ( 
                                 <button type="button" onClick={handleSaveDraft} style={{...styles.addBtn(isEditing, false), padding: '0 20px', width: 'auto'}} disabled={!hasEditAccess} title={!hasEditAccess ? "Only users with edit access can add or update" : ""}> 
                                     {isEditing ? (<> <Save size={18} /> Update Entry </>) : (<> <Plus size={18} /> Add to Queue {selectedMlIds.size > 0 && `(${selectedMlIds.size})`}</>)} 
                                 </button> 
@@ -2724,7 +2859,7 @@ const renderTableRow = (item: any) => {
         
         {/* 1. EXPAND/COLLAPSE BUTTON (Moved to the start) */}
        {/* UPDATED EXPAND/COLLAPSE BUTTON */}
-
+ 
 
         {/* 2. LIST/TABLE TOGGLE */}
         <div style={{ display: 'flex', background: 'rgba(30, 41, 59, 0.5)', borderRadius: 8, padding: 2 }}>
@@ -2736,7 +2871,9 @@ const renderTableRow = (item: any) => {
             </button>
         </div>
 
-        <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length})</span>
+        <span style={{fontSize: '0.9rem', fontWeight: 700}}>Queue ({queue.length}) 
+            
+        </span>
     </div>
 
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
