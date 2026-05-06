@@ -43,7 +43,7 @@ const PRESERVATION_STATUS_OPTIONS = ["Preserve"];
 const MASTER_QUALITY_OPTIONS = ["Audio - High Res", "Audio - Low Res"];
 
 const STATUS_OPTIONS = [
-    { id: "pending", label: "No Status", icon: FileText, color: "#94a3b8" },
+    { id: "pending", label: "To Do", icon: FileText, color: "#94a3b8" },
   { id: "incomplete", label: "Submitted to MM", icon: AlertCircle, color: "#f87171" },
   { id: "revision", label: "Needs Revision", icon: RotateCcw, color: "#60a5fa" },
   { id: "inwarding", label: "Inwarding", icon: Loader2, color: "#f59e42" },
@@ -357,6 +357,8 @@ const styles = {
         case 'revision': bg="rgba(59, 130, 246, 0.15)"; color="#60a5fa"; border="#2563eb"; break;
         case 'inwarding': bg="rgba(245, 158, 66, 0.15)"; color="#f59e42"; border="#f59e42"; break;
         case 'submission_confirmed': bg="rgba(251, 191, 36, 0.15)"; color="#24fbf0"; border="#24fbf0"; break;
+         case 'pending': 
+            bg="rgba(148, 163, 184, 0.15)"; color="#94a3b8"; border="#475569"; break; 
         default: bg="rgba(239, 68, 68, 0.15)";  color="#f87171"; border="#dc2626"; break;
     }
     return { display: "flex", alignItems: "center", gap: 5, fontSize: "0.65rem", fontWeight: "700", textTransform: "uppercase" as "uppercase", background: bg, color: color, border: `1px solid ${border}`, padding: "2px 8px", borderRadius: "100px", cursor: "pointer", transition: "all 0.2s" };
@@ -1398,8 +1400,8 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
                 Remarks: mlDetails.Remarks || "",
                 comments: [],
                 _status: 'pending',          // Changed from 'incomplete'
-                QcStatus: 'No Status',    // Changed from 'Submitted to MM'
-                "QC Status": 'No Status'
+                QcStatus: 'To Do',    // Changed from 'Submitted to MM'
+                "QC Status": 'To Do'
             });
         }
     } else {
@@ -1411,8 +1413,8 @@ function validateForm(formData: any, selectedMlList: any[] = []) {
             _id: singleKey,
             comments: [],
             _status: 'pending',          // Changed from 'incomplete'
-            QcStatus: 'No Status',    // Changed from 'Submitted to MM'
-            "QC Status": 'No Status'
+            QcStatus: 'To Do',    // Changed from 'Submitted to MM'
+            "QC Status": 'To Do'
         });
     }
 
