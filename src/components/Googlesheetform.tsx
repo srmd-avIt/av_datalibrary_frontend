@@ -1729,13 +1729,13 @@ const handleSaveDraft = async (e: React.FormEvent) => {
             // 1. We send the data to the Approval endpoint (which saves to MySQL)
             // Note: The backend update I gave you in the previous message 
             // will now also update the Google Sheet status to 'approved'
-            const finalPayload = { 
-                ...cleanPayload, 
-                _status: 'approved', 
-                Key: item.Key, // Ensure the Key is sent so backend can find the row in the sheet
-                LastModifiedBy: userEmail || "System", 
-                Logchats: formatLogchats(comments || []) 
-            };
+   const finalPayload = { 
+    ...cleanPayload, 
+    _status: item._status, // Pass current status (complete)
+    Key: item.Key,         // This is the most important part!
+    LastModifiedBy: userEmail || "System", 
+    Logchats: formatLogchats(comments || []) 
+};
 
             const res = await fetch(`${cleanBaseUrl}/api/digitalrecording/approve`, {
                 method: "POST", 
