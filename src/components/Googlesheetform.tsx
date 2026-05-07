@@ -571,11 +571,11 @@ const isRecordLockedForUser = (item: any) => {
     const status = (item._status || 'pending').toLowerCase().trim();
 
     // 1. SUBMITTER logic
-    if (workflow.isSubmitter && !workflow.isIngester && !workflow.isValidator) {
-        // Submitter can ONLY edit if status is 'pending' or 'revision'
-        return status !== 'pending' && status !== 'revision'; 
+      if (workflow.isSubmitter && !workflow.isIngester && !workflow.isValidator) {
+        // If you want MediaLog fields LOCKED during revision, 
+        // they should only be editable when 'pending'
+        return status !== 'pending'; 
     }
-    
     // 2. INGESTER logic
     if (workflow.isIngester && !workflow.isValidator) {
         // Ingesters can change status, but data fields are ALWAYS locked for them,
@@ -1323,10 +1323,38 @@ function parseDurationToSeconds(duration: any): number {
 
 function validateForm(formData: any, selectedMlList: any[] = []) {
     const errors: { [key: string]: string } = {};
-    let driftWarning: string | null = null; // New variable for soft warnings
+    let driftWarning: string | null = null;
 
     if (!formData.fkEventCode) errors.fkEventCode = "Event Code is required.";
-    if (!formData.RecordingCode) errors.RecordingCode = "Recording Code is required.";
+    
+    // --- RECORDING CODE VALIDATION ---
+    const drCode = (formData.RecordingCode || "").toUpperCase();
+    const quality = formData.Masterquality; // "Audio - High Res" or "Audio - Low Res"
+
+    if (!drCode) {
+        errors.RecordingCode = "Recording Code is required.";
+    } else if (drCode.length !== 11) {
+        // PRESERVED: Exactly 11 characters rule
+        errors.RecordingCode = "Recording Code must be exactly 11 characters.";
+    } else if (formData.fkEventCode && drCode.slice(0, 7) !== formData.fkEventCode.slice(0, 7)) {
+        // PRESERVED: Prefix matching Event Code rule
+        errors.RecordingCode = `Prefix must match Event Code (${formData.fkEventCode.slice(0, 7)})`;
+    } else {
+        // NEW: Master Quality vs _M / _W check
+        if (quality === "Audio - Low Res") {
+            if (drCode.includes("_W")) {
+                errors.RecordingCode = "Conflict: Low Res (MP3) cannot contain '_W'. Must use '_M'.";
+            } else if (!drCode.includes("_M")) {
+                errors.RecordingCode = "Invalid: Low Res (MP3) code must contain '_M'.";
+            }
+        } else if (quality === "Audio - High Res") {
+            if (drCode.includes("_M")) {
+                errors.RecordingCode = "Conflict: High Res (WAV) cannot contain '_M'. Must use '_W'.";
+            } else if (!drCode.includes("_W")) {
+                errors.RecordingCode = "Invalid: High Res (WAV) code must contain '_W'.";
+            }
+        }
+    }
     
     // 1. Check Duration Format for manual entry
      const durationRegex = /^(\d{1,2}:)?([0-5]?\d):([0-5]\d)$/;
@@ -1729,6 +1757,18 @@ const finalPayload = {
 
     // 2. Validation for moving FROM Step 2 TO Step 3 (DMS Details check)
     if (s === 3) {
+
+          const { errors, driftWarning } = validateForm(formData);
+        
+        // This blocks moving to Step 3 if:
+        // 1. Length is not 11
+        // 2. Prefix doesn't match Event Code
+        // 3. Suffix (_M/_W) conflicts with Master Quality
+        if (errors.RecordingCode) {
+            setFormErrors(errors);
+            toast.error(errors.RecordingCode);
+            return; 
+        }
         // Ensure Step 1 was actually done
         if (!formData.fkEventCode) {
             toast.error("Please select an Event Code first.");
@@ -1756,7 +1796,7 @@ const finalPayload = {
             return;
         }
 
-      const { errors, driftWarning } = validateForm(formData);
+     
     
     // If hard errors exist, stop
     if (Object.keys(errors).length > 0) {
@@ -2759,37 +2799,37 @@ const renderTableRow = (item: any) => {
                                     <SectionTitle icon={FileAudio} title="MediaLog Details" theme={colors.tech} />
                                 <div style={styles.gridFields}>
     {/* Identification */}
-    <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={!hasEditAccess || isViewing} isCompact={isCompact} medium={true} />
-    {renderField("Event Ref MLID", "EventRefMLID", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Footage Sr No", "FootageSrNo", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Log Serial No", "LogSerialNo", colors.core, { disabled: !hasEditAccess || isViewing })}
+    <SearchableSelect label="ML Unique ID" name="MLUniqueID" options={mlIdOptions.map(opt => opt.MLUniqueID)} value={formData.MLUniqueID} onChange={handleChange} theme={colors.core} disabled={isLocked || isViewing}  isCompact={isCompact} medium={true} />
+    {renderField("Event Ref MLID", "EventRefMLID", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("Footage Sr No", "FootageSrNo", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("Log Serial No", "LogSerialNo", colors.core, { disabled: isLocked || isViewing })}
 
-    {/* Content */}
-    {renderField("Detail", "Detail", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })} 
-    {renderField("SubDetail", "SubDetail", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })} 
-    {renderField("Topic", "Topic", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
-    {renderField("Granth", "fkGranth", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })}
-    {renderField("Patrank", "Number", colors.core, { disabled: !hasEditAccess || isViewing })}
+                    {/* Content */}
+                    {renderField("Detail", "Detail", colors.core, { medium: true, disabled: isLocked || isViewing })} 
+                    {renderField("SubDetail", "SubDetail", colors.core, { medium: true, disabled: isLocked || isViewing })} 
+                    {renderField("Topic", "Topic", colors.core, { full: true, disabled: isLocked || isViewing })}
+                    {renderField("Granth", "fkGranth", colors.core, { medium: true, disabled: isLocked || isViewing })}
+                    {renderField("Patrank", "Number", colors.core, { disabled: isLocked || isViewing })}
 
-    {/* Time */}
-    {renderField("Date From", "ContentFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Date To", "ContentTo", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Satsang Start", "SatsangStart", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Satsang End", "SatsangEnd", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Sub Duration", "SubDuration", colors.core, { disabled: !hasEditAccess || isViewing })}
+                    {/* Time */}
+                    {renderField("Date From", "ContentFrom", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("Date To", "ContentTo", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("Satsang Start", "SatsangStart", colors.core, { full: true, disabled: isLocked || isViewing })}
+                    {renderField("Satsang End", "SatsangEnd", colors.core, { full: true, disabled: isLocked || isViewing })}
+                    {renderField("Sub Duration", "SubDuration", colors.core, { disabled: isLocked || isViewing })}
 
-    {/* Categorization */}
-    {renderField("Segment Category", "Segment Category", colors.core, { medium: true, disabled: !hasEditAccess || isViewing })}
-    {renderField("Footage Type", "FootageType", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Editing Status", "EditingStatus", colors.core, { disabled: !hasEditAccess || isViewing })}
+                    {/* Categorization */}
+                    {renderField("Segment Category", "Segment Category", colors.core, { medium: true, disabled: isLocked || isViewing })}
+                    {renderField("Footage Type", "FootageType", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("Editing Status", "EditingStatus", colors.core, { disabled: isLocked || isViewing })}
 
-    {/* Technical */}
-    {renderField("Counter From", "CounterFrom", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("Counter To", "CounterTo", colors.core, { disabled: !hasEditAccess || isViewing })}
-    {renderField("City", "fkCity", colors.core, { disabled: !hasEditAccess || isViewing })}
+                    {/* Technical */}
+                    {renderField("Counter From", "CounterFrom", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("Counter To", "CounterTo", colors.core, { disabled: isLocked || isViewing })}
+                    {renderField("City", "fkCity", colors.core, { disabled: isLocked || isViewing })}
 
-    {/* Remarks */}
-    {renderField("Remarks", "Remarks", colors.core, { full: true, disabled: !hasEditAccess || isViewing })}
+                    {/* Remarks */}
+                    {renderField("Remarks", "Remarks", colors.core, { full: true, disabled: isLocked || isViewing })}
 </div>
                                 </div>
                             )}
