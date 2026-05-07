@@ -220,8 +220,8 @@ const mapSheetRowToQueueItem = (row: any) => {
     return {
         _id: permanentKey || (recCode && mlId ? `${recCode}_${mlId}` : Math.random().toString(36).substring(2, 9)),
         Key: permanentKey,
-        _status: status,
-        StatusID: status,
+        _status: statusID, // This will be 'approved' for completed items
+        StatusID: statusID,
         QcStatus: getVal(['QC Status', 'QcStatus']), 
         fkEventCode: getVal(['Event Code', 'fkEventCode']), 
         EventName: getVal(['Event Name', 'EventName', 'Recording Name', 'RecordingName']), 
@@ -1023,9 +1023,15 @@ useEffect(() => {
         if (res.ok) {
             const result = await res.json();
             if (result.data && Array.isArray(result.data)) {
-                const freshQueue = result.data.map(mapSheetRowToQueueItem);
+                const freshQueue = result.data
+                    .map(mapSheetRowToQueueItem)
+                    // --- ADD THIS FILTER ---
+                    // Hide anything marked 'approved' in the Google Sheet
+                    .filter((item: any) => {
+                        const status = (item._status || '').toLowerCase().trim();
+                        return status !== 'approved';
+                    });
                 
-                // Compare stringified versions to avoid unnecessary re-renders
                 if (JSON.stringify(queue) !== JSON.stringify(freshQueue)) {
                     setQueue(freshQueue);
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(freshQueue));
@@ -1703,44 +1709,66 @@ const handleSaveDraft = async (e: React.FormEvent) => {
       });
   };
 
-  const handleUploadSelected = async () => {
-      if (selectedIndices.size === 0) return;
-      const selectedItems = queue.filter(item => selectedIndices.has(item._id));
-      if (selectedItems.some(item => item._status !== 'complete')) { toast.error(`Cannot approve! Items must be marked 'Complete'.`); return; }
-      
-      setIsSubmitting(true);
-      const token = localStorage.getItem('app-token');
-      let failedIds: string[] = [];
+ const handleUploadSelected = async () => {
+    if (selectedIndices.size === 0) return;
+    const selectedItems = queue.filter(item => selectedIndices.has(item._id));
+    
+    if (selectedItems.some(item => item._status !== 'complete')) { 
+        toast.error(`Cannot approve! Items must be marked 'Complete'.`); 
+        return; 
+    }
+    
+    setIsSubmitting(true);
+    const token = localStorage.getItem('app-token');
+    let failedIds: string[] = [];
 
-      for (const item of selectedItems) {
-          try {
+    for (const item of selectedItems) {
+        try {
             const { _id, comments, ...cleanPayload } = item; 
-const finalPayload = { 
-    ...cleanPayload, 
-    _status: item._status, // Explicitly ensure this is sent
-    LastModifiedBy: userEmail || "System", 
-    Logchats: formatLogchats(comments || []) 
+            
+            // 1. We send the data to the Approval endpoint (which saves to MySQL)
+            // Note: The backend update I gave you in the previous message 
+            // will now also update the Google Sheet status to 'approved'
+            const finalPayload = { 
+                ...cleanPayload, 
+                _status: 'approved', 
+                Key: item.Key, // Ensure the Key is sent so backend can find the row in the sheet
+                LastModifiedBy: userEmail || "System", 
+                Logchats: formatLogchats(comments || []) 
+            };
+
+            const res = await fetch(`${cleanBaseUrl}/api/digitalrecording/approve`, {
+                method: "POST", 
+                headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : '' },
+                body: JSON.stringify(finalPayload),
+            });
+
+            if (!res.ok) throw new Error("Approval failed");
+
+        } catch (error: any) { 
+            console.error(error); 
+            failedIds.push(item._id); 
+            toast.error(`Error approving ${item.RecordingCode}`); 
+        }
+    }
+
+    // 2. Remove approved items from the UI immediately
+    setQueue(prev => prev.filter(item => !selectedIndices.has(item._id) || failedIds.includes(item._id)));
+    setSelectedIndices(new Set());
+    
+    if (activeCommentId && !failedIds.includes(activeCommentId)) {
+        setActiveCommentId(null);
+    }
+
+    if (failedIds.length === 0) {
+        toast.success("Approved and moved to Database. Entries hidden from Queue.");
+    }
+    
+    setIsSubmitting(false);
+    
+    // 3. Force a fresh sync to make sure we are aligned with the server
+    fetchSheetData();
 };
-             await fetch(`${cleanBaseUrl}/api/digitalrecording/approve`, {
-                  method: "POST", headers: { "Content-Type": "application/json", "Authorization": token ? `Bearer ${token}` : '' },
-                  body: JSON.stringify(finalPayload),
-              }).then(async res => { 
-                  if (!res.ok) {
-                      let errMsg = "DB Transaction Failed";
-                      try { const err = await res.json(); errMsg = err.message || err.error || JSON.stringify(err); } 
-                      catch (e) { errMsg = await res.text(); }
-                      throw new Error(errMsg);
-                  }
-              });
-          } catch (error: any) { console.error(error); failedIds.push(item._id); toast.error(<><b>Approval Error</b><div>{error.message}</div></>); }
-      }
-      setQueue(prev => prev.filter(item => !selectedIndices.has(item._id) || failedIds.includes(item._id)));
-      setSelectedIndices(new Set());
-      if (activeCommentId && !failedIds.includes(activeCommentId)) setActiveCommentId(null);
-      if (failedIds.length === 0) toast.success("Entries Approved & Linked successfully");
-      else toast.warning(`Some entries failed to approve.`);
-      setIsSubmitting(false);
-  };
 
   const handleSetStep = (s: number) => {
     // 1. Validation for moving FROM Step 1 TO Step 2
