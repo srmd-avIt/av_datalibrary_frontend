@@ -534,8 +534,28 @@ export function AdvancedFiltersClickUp({
           </SelectContent>
         </ShadcnSelect>
       );
-    } 
-    
+    }
+
+    // Handle _status field with an exact-match dropdown to prevent 'incomplete' matching 'complete'
+    if (field === '_status') {
+      const statusOptions = [
+        { value: 'pending', label: 'To Do' },
+        { value: 'incomplete', label: 'Submitted to MM' },
+        { value: 'revision', label: 'Needs Revision' },
+        { value: 'inwarding', label: 'Inwarding' },
+        { value: 'submission_confirmed', label: 'Submission Confirmed' },
+        { value: 'complete', label: 'Complete' },
+      ];
+      return (
+        <ShadcnSelect value={value || ""} onValueChange={(selectedValue: string) => updateFilterRule(groupId, rule.id, { value: selectedValue, operator: 'equals' })}>
+          <SelectTrigger style={commonStyle}><SelectValue placeholder="Select status..." /></SelectTrigger>
+          <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
+            {statusOptions.map(option => (<StyledSelectItem key={option.value} value={option.value}>{option.label}</StyledSelectItem>))}
+          </SelectContent>
+        </ShadcnSelect>
+      );
+    }
+
     // --- MODIFICATION: Handle multi-select fields ---
     if (['AuxFileType', 'Keywords'].includes(field)) {
       const dynamicFieldKey = field as DynamicFieldKey;

@@ -51,6 +51,13 @@ const STATUS_OPTIONS = [
   { id: "complete", label: "Complete", icon: CheckCircle, color: "#34d399" }
 ];
 
+const MAIN_QUEUE_FILTER_CONFIGS: FilterConfig[] = [
+  { key: 'fkEventCode', label: 'Event Code', type: 'text' },
+  { key: 'Yr', label: 'Year', type: 'text' },
+  { key: 'NewEventCategory', label: 'Event Category', type: 'text' },
+  { key: '_status', label: 'Status', type: 'text' }, // Changed key to _status
+];
+
 const TABLE_COLUMNS = [
   { id: 'select', label: '', width: 40, frozen: true },
   { id: 'actions', label: 'Actions', width: 70, frozen: true },
@@ -880,6 +887,41 @@ const frozenColumnData = useMemo(() => {
 
 const [queue, setQueue] = useState<any[]>([]);
 
+const [mainAdvancedFilters, setMainAdvancedFilters] = useState<FilterGroup[]>([]);
+const [mainTableSortConfig, setMainTableSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: '', direction: 'asc' });
+
+const filteredQueue = useMemo(() => {
+    if (mainAdvancedFilters.length === 0) return queue;
+
+    return queue.filter(item => {
+        return mainAdvancedFilters.every(group => {
+            const groupResults = group.rules.map(rule => {
+                const val = String(item[rule.field] || "").toLowerCase();
+                const target = String(rule.value || "").toLowerCase();
+                switch (rule.operator) {
+                    case "contains": return val.includes(target);
+                    case "equals": return val === target;
+                    case "starts_with": return val.startsWith(target);
+                    case "is_empty": return !val;
+                    case "is_not_empty": return !!val;
+                    default: return true;
+                }
+            });
+            return group.logic === "OR" ? groupResults.some(r => r) : groupResults.every(r => r);
+        });
+    });
+}, [queue, mainAdvancedFilters]);
+
+const sortedAndFilteredQueue = useMemo(() => {
+    if (!mainTableSortConfig.key) return filteredQueue;
+    return [...filteredQueue].sort((a, b) => {
+        const dir = mainTableSortConfig.direction === 'asc' ? 1 : -1;
+        const valA = String(a[mainTableSortConfig.key] || "");
+        const valB = String(b[mainTableSortConfig.key] || "");
+        return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * dir;
+    });
+}, [filteredQueue, mainTableSortConfig]);
+
 const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(['incomplete', 'revision', 'inwarding', 'submission_confirmed', 'complete'])
 );
@@ -907,12 +949,7 @@ const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
   
   useEffect(() => { if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: "smooth" }); }, [activeEntry?.comments, activeCommentId]);
 
-  useEffect(() => {
-    const handleScroll = () => { if (openStatusDropdown) setOpenStatusDropdown(null); };
-    const div = tableContainerRef.current;
-    if (div) div.addEventListener('scroll', handleScroll);
-    return () => { if (div) div.removeEventListener('scroll', handleScroll); };
-  }, [openStatusDropdown]);
+ 
   
   useEffect(() => { setOpenStatusDropdown(null); }, [isTableView]);
 
@@ -1852,18 +1889,29 @@ const handleSaveDraft = async (e: React.FormEvent) => {
   };
 
   const exportToCSV = () => {
-    if (queue.length === 0) {
+    if (filteredQueue.length === 0) {
         toast.error("No data to export");
         return;
     }
     
     const exportCols = TABLE_COLUMNS.filter(col => col.id !== 'select' && col.id !== 'actions');
-    
     const headers = exportCols.map(col => `"${col.label}"`).join(",");
     
-    const csvRows = queue.map(row => {
+    const csvRows = filteredQueue.map(row => {
         return exportCols.map(col => {
-            let val = row[col.id] || "";
+            let val = "";
+
+            // Special handling for Status mapping
+            if (col.id === 'status') {
+                const currentStatusId = row._status || row.StatusID || "";
+                const statusObj = STATUS_OPTIONS.find(s => s.id === currentStatusId);
+                val = statusObj ? statusObj.label : currentStatusId;
+            } else {
+                // Get standard values
+                val = row[col.id] || "";
+            }
+
+            // Clean data for CSV format
             val = String(val).replace(/"/g, '""');
             return `"${val}"`;
         }).join(",");
@@ -1880,8 +1928,7 @@ const handleSaveDraft = async (e: React.FormEvent) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
+};
   const isEditing = !!editingId;
   const isViewing = !!activeCommentId && !isEditing;
   const isCurrentEntryEditable = activeEntry ? canEditEntry(activeEntry) : false;
@@ -2037,7 +2084,7 @@ const allowedTransitions = getAllowedStatusTransitions(item);
   };
 
 const renderTableView = () => {
-    const groups = getGroupedQueue(queue, groupByField);
+     const groups = getGroupedQueue(sortedAndFilteredQueue, groupByField);
     const groupKeys = Object.keys(groups).sort();
 
     return (
@@ -2139,7 +2186,7 @@ const renderTableView = () => {
                             })}
 
                             {/* STANDARD VIEW (Non-hierarchical expansion) */}
-                            {isEventExpanded && !isHierarchical && eventItems.map((item: any) => renderTableRow(item))}
+                            {!isHierarchical && (groupByField === 'none' || isEventExpanded) && eventItems.map((item: any) => renderTableRow(item))}
                         </React.Fragment>
                     )})}
                 </tbody>
@@ -2246,7 +2293,9 @@ const renderTableRow = (item: any) => {
 
                 {/* DROPDOWN MENU */}
                 {isDropdownOpen && (
-                    <div className="hide-scrollbar" style={{ 
+                    <div className="hide-scrollbar" 
+                     onWheel={(e) => e.stopPropagation()} 
+                    style={{ 
                         position: 'absolute', 
                         top: '100%', 
                         left: 0, 
@@ -2949,19 +2998,33 @@ const renderTableRow = (item: any) => {
                     <div style={{display:'flex', alignItems: 'center', gap: 15, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start'}}>
                        {isTableView && queue.length > 0 && (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+            onClick={exportToCSV}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)' }}
+            title="Export to CSV"
+        >
+            <Download size={14} /> Export
+        </button>
+        <AdvancedFiltersClickUp
+            filters={MAIN_QUEUE_FILTER_CONFIGS}
+            onFiltersChange={setMainAdvancedFilters}
+            data={queue}
+        />
         {/* FREEZE COLUMN DROPDOWN */}
         <div style={{ position: 'relative' }}>
-            <select 
-                value={freezeThreshold || ""} 
+            <select
+                value={freezeThreshold || ""}
                 onChange={(e) => setFreezeThreshold(e.target.value || null)}
-                style={{ 
-                    background: 'rgb(35, 56, 90)', 
-                    border: '1px solid rgba(59, 130, 246, 0.3)', 
-                    color: '#f0f1f3', 
-                    fontSize: '0.75rem', 
-                    padding: '4px 8px', 
-                    borderRadius: 6, 
-                    outline: 'none', 
+                style={{
+                    background: 'rgb(35, 56, 90)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    color: '#f0f1f3',
+                    fontSize: '0.75rem',
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    outline: 'none',
                     cursor: 'pointer',
                     fontWeight: 600
                 }}
@@ -2972,18 +3035,58 @@ const renderTableRow = (item: any) => {
                 ))}
             </select>
         </div>
-                            <button 
-                                onClick={exportToCSV} 
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)' }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)' }}
-                                title="Export to CSV"
-                            >
-                                <Download size={14} /> Export
-                            </button>
-                        </div>
+    </div>
 )}
-                        
+
+                        {isTableView && queue.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <ArrowUpDown size={14} color="#94a3b8" />
+                                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Sort by:</span>
+                                <select
+                                    value={mainTableSortConfig.key}
+                                    onChange={(e) => setMainTableSortConfig(prev => ({ ...prev, key: e.target.value }))}
+                                    style={{ background: '#202d4b', border: '2px solid #474f5c', color: '#ffffff', fontSize: '0.75rem', padding: '6px 10px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}
+                                >
+                                    <option value="">None</option>
+                                    <option value="_status">Status</option>
+                                    <option value="RecordingCode">Audio DRCode</option>
+                                    <option value="fkEventCode">Event Code</option>
+                                    <option value="EventName">Event Name</option>
+                                    <option value="Yr">Year</option>
+                                    <option value="NewEventCategory">Event Category</option>
+                                    <option value="RecordingName">Recording Name</option>
+                                    <option value="Duration">Duration</option>
+                                    <option value="Filesize">File Size</option>
+                                    <option value="fkMediaName">Media Type</option>
+                                    <option value="MLUniqueID">ML Unique ID</option>
+                                    <option value="fkGranth">Granth</option>
+                                    <option value="Number">Number</option>
+                                    <option value="fkCity">City</option>
+                                    <option value="ContentFrom">Date From</option>
+                                    <option value="ContentTo">Date To</option>
+                                </select>
+                                {mainTableSortConfig.key && (
+                                    <button
+                                        onClick={() => setMainTableSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', borderRadius: 6, border: '2px solid #474f5c', background: '#202d4b', color: '#ffffff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                                        title={mainTableSortConfig.direction === 'asc' ? 'Ascending — click to switch to Descending' : 'Descending — click to switch to Ascending'}
+                                    >
+                                        {mainTableSortConfig.direction === 'asc' ? <ArrowUp size={13} color="#3b82f6" /> : <ArrowDown size={13} color="#3b82f6" />}
+                                        {mainTableSortConfig.direction === 'asc' ? 'Asc' : 'Desc'}
+                                    </button>
+                                )}
+                                {mainTableSortConfig.key && (
+                                    <button
+                                        onClick={() => setMainTableSortConfig({ key: '', direction: 'asc' })}
+                                        style={{ display: 'flex', alignItems: 'center', padding: '5px 6px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer' }}
+                                        title="Clear sort"
+                                    >
+                                        <X size={13} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                          {isTableView && queue.length > 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Group by:</span>
@@ -3027,7 +3130,7 @@ const renderTableRow = (item: any) => {
                         {groupByField !== 'none' ? (
     <div style={{ paddingBottom: '100px' }}>
         {(() => {
-            const groups = getGroupedQueue(queue, groupByField);
+             const groups = getGroupedQueue(filteredQueue, groupByField); 
             const groupKeys = Object.keys(groups).sort();
 
             // --- LEVEL 1: EVENT NAME FOLDERS ---
@@ -3113,7 +3216,7 @@ return (
         })()}
     </div>
 ) : (
-    queue.map(renderQueueItem)
+    filteredQueue.map(renderQueueItem) 
 )}
                         </div>
                     )
