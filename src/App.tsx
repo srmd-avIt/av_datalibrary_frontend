@@ -168,16 +168,20 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-          editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || "";
-          const s = row.SubDetail || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
+  key: "DetailSub",
+  label: "Detail - SubDetail",
+  sortable: true,
+  editable: true,
+  render: (v: any, row: any) => {
+    // If v exists (it will be the edited string from pendingChanges), show it
+    if (v) return v; 
+    
+    // Otherwise calculate from parts
+    const d = row.Detail || "";
+    const s = row.SubDetail || "";
+    return `${d}${d && s ? " - " : ""}${s}`;
+  },
+},
       // Topic / Number / Granth / language / durations / categories
       { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
@@ -280,17 +284,21 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
-      {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-        editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || "";
-          const s = row.SubDetail || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
+     {
+  key: "DetailSub",
+  label: "Detail - SubDetail",
+  sortable: true,
+  editable: true,
+  render: (v: any, row: any) => {
+    // If v exists (it will be the edited string from pendingChanges), show it
+    if (v) return v; 
+    
+    // Otherwise calculate from parts
+    const d = row.Detail || "";
+    const s = row.SubDetail || "";
+    return `${d}${d && s ? " - " : ""}${s}`;
+  },
+},
       // Topic / Number / Granth / language / durations / categories
       { key: "Topic", label: "Topic", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "Number", label: "Number", sortable: true, render: categoryTagRenderer, editable: true },
@@ -534,16 +542,20 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       { key: "fkDigitalRecordingCode", label: "DR Code", sortable: true, editable: true },
       {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-         editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || "";
-          const s = row.SubDetail || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
+  key: "DetailSub",
+  label: "Detail - SubDetail",
+  sortable: true,
+  editable: true,
+  render: (v: any, row: any) => {
+    // If v exists (it will be the edited string from pendingChanges), show it
+    if (v) return v; 
+    
+    // Otherwise calculate from parts
+    const d = row.Detail || "";
+    const s = row.SubDetail || "";
+    return `${d}${d && s ? " - " : ""}${s}`;
+  },
+},
        
       { key: "EditingStatus", label: "Editing Status", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "FootageType", label: "Footage Type", sortable: true, render: categoryTagRenderer, editable: true },
@@ -694,16 +706,20 @@ const VIEW_CONFIGS: Record<string, any> = {
       // Requested primary columns
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-         editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || row.DetailMain || "";
-          const s = row.SubDetail || row.DetailSub || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
+  key: "DetailSub",
+  label: "Detail - SubDetail",
+  sortable: true,
+  editable: true,
+  render: (v: any, row: any) => {
+    // If v exists (it will be the edited string from pendingChanges), show it
+    if (v) return v; 
+    
+    // Otherwise calculate from parts
+    const d = row.Detail || "";
+    const s = row.SubDetail || "";
+    return `${d}${d && s ? " - " : ""}${s}`;
+  },
+},
       {key:"IsStartPage", label:"IsStartPage", sortable:true, editable:true},
       {key:"IsEndPage", label:"IsEndPage", sortable:true, editable:true},
       {key:"IsInformal", label:"IsInformal", sortable:true, editable:true},
@@ -793,16 +809,20 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "ContentFrom", label: "Content From", sortable: true, editable: true },
       { key: "ContentTo", label: "Content To", sortable: true, editable: true },
       {
-        key: "DetailSub",
-        label: "Detail - SubDetail",
-        sortable: true,
-         editable: true,
-        render: (_v: any, row: any) => {
-          const d = row.Detail || row.DetailMain || "";
-          const s = row.SubDetail || row.DetailSub || "";
-          return `${d}${d && s ? " - " : ""}${s}`;
-        },
-      },
+  key: "DetailSub",
+  label: "Detail - SubDetail",
+  sortable: true,
+  editable: true,
+  render: (v: any, row: any) => {
+    // If v exists (it will be the edited string from pendingChanges), show it
+    if (v) return v; 
+    
+    // Otherwise calculate from parts
+    const d = row.Detail || "";
+    const s = row.SubDetail || "";
+    return `${d}${d && s ? " - " : ""}${s}`;
+  },
+},
       {key:"TimeOfDay", label:"Time Of Day", sortable:true, editable:true, render: categoryTagRenderer},
       {key:"EditingStatus", label:"Editing Status", sortable:true, editable:true, render: categoryTagRenderer},
       {key:"VideoDistribution", label:"Video Distribution", sortable:true, editable:true, render: categoryTagRenderer},

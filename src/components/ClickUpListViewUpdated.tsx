@@ -728,11 +728,33 @@ export function ClickUpListViewUpdated({
 
   const finalItemsWithPendingChanges = useMemo(() => {
     if (!pendingChanges || Object.keys(pendingChanges).length === 0) return finalItems;
-    return finalItems.map(item => {
+     return finalItems.map(item => {
       const rowId = item[idKey];
       const changes = pendingChanges[rowId];
       if (!changes) return item;
-      return { ...item, ...changes };
+
+      // Start with a merge of existing data and changes
+      let mergedItem = { ...item, ...changes };
+
+      // FIX: If the user edited a concatenated field, we must update the 
+      // underlying columns so the 'render' function shows the change.
+      
+      // 1. Handle DetailSub (Detail + SubDetail)
+      if (changes.DetailSub && typeof changes.DetailSub === 'string') {
+        const parts = changes.DetailSub.split(' - ');
+        mergedItem.Detail = parts[0]?.trim() || '';
+        mergedItem.SubDetail = parts[1]?.trim() || '';
+      }
+
+      // 2. Handle EventDisplay or "EventName - EventCode"
+      const eventKey = changes.EventDisplay ? 'EventDisplay' : (changes["EventName - EventCode"] ? "EventName - EventCode" : null);
+      if (eventKey && typeof changes[eventKey] === 'string') {
+        const parts = changes[eventKey].split(' - ');
+        mergedItem.EventName = parts[0]?.trim() || '';
+        mergedItem.EventCode = parts[1]?.trim() || '';
+      }
+
+      return mergedItem;
     });
   }, [finalItems, pendingChanges, idKey]);
 
