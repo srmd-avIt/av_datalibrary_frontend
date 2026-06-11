@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from 'date-fns';
 import {
@@ -409,39 +409,50 @@ export function ClickUpListViewUpdated({
     })()
   );
 
-  // 🚀 NEW: Fetch User Layout from Google Sheets DB on load
- // 🚀 FETCH USING USER ID
-  useEffect(() => {
-    const fetchUserColumnLayout = async () => {
-      if (!user?.id || !viewId) return;
-      
-      try {
-        const token = localStorage.getItem('app-token');
-        // REVERTED to using userId=${user.id}
-        const res = await fetch(`${API_BASE_URL}/api/user-column-preferences?viewId=${viewId}&userId=${user.id}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-          }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.visible && Array.isArray(data.visible) && data.visible.length > 0) {
-             setColumnOrder(data.visible); 
-          }
-          if (data.hidden && Array.isArray(data.hidden)) {
-             setHiddenColumns(data.hidden);
-          }
+  const fetchUserColumnLayout = useCallback(async () => {
+    if (!user?.id || !viewId) return;
+    try {
+      const token = localStorage.getItem('app-token');
+      const res = await fetch(`${API_BASE_URL}/user-column-preferences?viewId=${viewId}&userId=${user.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
         }
-      } catch (error) {
-        console.error("Failed to load user column preferences from DB", error);
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.visible && Array.isArray(data.visible) && data.visible.length > 0) {
+          setColumnOrder(data.visible);
+        }
+        if (data.hidden && Array.isArray(data.hidden)) {
+          setHiddenColumns(data.hidden);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load user column preferences from DB", error);
+    }
+  }, [viewId, user?.id, setColumnOrder, setHiddenColumns]);
+
+  useEffect(() => {
+    fetchUserColumnLayout();
+
+    // Re-fetch when user switches back to this tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUserColumnLayout();
       }
     };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    fetchUserColumnLayout();
-  }, [viewId, user?.id, setColumnOrder, setHiddenColumns]);
+    // Poll every 30 seconds so open tabs pick up admin changes
+    const pollInterval = setInterval(fetchUserColumnLayout, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
+    };
+  }, [fetchUserColumnLayout]);
   
   const [viewColumnSizing, setViewColumnSizing] = useLocalStorageState<Record<string, Record<string, number>>>(`${localStorageKeyPrefix}-viewColumnSizing`, {});
 
