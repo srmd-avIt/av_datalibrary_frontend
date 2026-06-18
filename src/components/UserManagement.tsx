@@ -105,7 +105,10 @@ const APP_RESOURCES = [
   "GM (PPG Approved)",
   "Prasangik Udbodhan",
   "Nemiji Sessions",
-  "Submission & Que Sheet"
+  "Submission & Que Sheet",
+  "Data Library - SRT Submission",
+  "SRT Submission - Satsang Category",
+  "SRT Submission - AUX ML Updates"
 ];
 
 

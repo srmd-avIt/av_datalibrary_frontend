@@ -25,7 +25,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import * as mm from 'music-metadata-browser';
 
 // --- IMPORT THE NEW COMPONENTS HERE ---
-import { VideoArchivalProject } from "./VideoArchivalProject"; 
+import { SRTSubmissionProject } from "./SRTSubmissionProject";
+import { VideoArchivalProject } from "./VideoArchivalProject";
 import { CheckMLReference } from "./CheckMLReference";
 import { SearchNewMLEventCode } from "./SearchNewMLEventCode";
 import { SearchDetailsByMLID } from "./SearchDetailsByMLID";
@@ -639,7 +640,7 @@ const getAllowedStatusTransitions = (item: any) => {
  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
- const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival' | 'submitters_ml' | 'project_hub_workflow'>('hub');
+ const [viewMode, setViewMode] = useState<'hub' | 'form' | 'video_archival' | 'submitters_ml' | 'project_hub_workflow' | 'srt_submission'>('hub');
   
   const [isTableView, setIsTableView] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -800,9 +801,18 @@ const hasProjectHubWriteAccess = useMemo(() => {
   const canViewSubmittersML = useMemo(() => {
     if (!loggedInUser) return false;
     if (loggedInUser.role === "Owner" || loggedInUser.role === "Admin") return true;
-    return !!loggedInUser.permissions?.some(p => 
-        p.resource === "Submitters ML" && 
+    return !!loggedInUser.permissions?.some(p =>
+        p.resource === "Submitters ML" &&
         (p.actions.includes("read") || p.actions.includes("write"))
+    );
+  }, [loggedInUser]);
+
+  const canViewSRTSubmission = useMemo(() => {
+    if (!loggedInUser) return false;
+    if (loggedInUser.role === "Admin" || loggedInUser.role === "Owner") return true;
+    return !!loggedInUser.permissions?.some((p: any) =>
+      p.resource === "Data Library - SRT Submission" &&
+      (p.actions.includes("read") || p.actions.includes("write"))
     );
   }, [loggedInUser]);
 
@@ -880,10 +890,15 @@ const frozenColumnData = useMemo(() => {
   const [userList, setUserList] = useState<{name: string, email: string}[]>([]); 
  
 
-  const [wisdomUserList, setWisdomUserList] = useState<{name: string, email: string}[]>([]);
-  const [submittersMLUserList, setSubmittersMLUserList] = useState<{name: string, email: string}[]>([]);
+  const [wisdomUserList, setWisdomUserList] = useState<{name: string, email: string, avatar?: string}[]>([]);
+  const [submittersMLUserList, setSubmittersMLUserList] = useState<{name: string, email: string, avatar?: string}[]>([]);
   const [wisdomPickedCount, setWisdomPickedCount] = useState(0);
   const [wisdomTotalCount, setWisdomTotalCount] = useState(0);
+
+  const [srtSubmissionUserList, setSrtSubmissionUserList] = useState<{name: string, email: string, avatar?: string}[]>([]);
+  const [projectHubUserList, setProjectHubUserList] = useState<{name: string, email: string, avatar?: string}[]>([]);
+  const [srtConfirmedCount, setSrtConfirmedCount] = useState(0);
+  const [srtTotalCount, setSrtTotalCount] = useState(0);
 
 const [queue, setQueue] = useState<any[]>([]);
 
@@ -989,20 +1004,20 @@ const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
       const fetchWisdomUsers = async () => {
         try {
             const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/users/wisdom-list`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
-            if (res.ok) setWisdomUserList(await res.json()); else setWisdomUserList([]);
-        } catch (e) { console.error("Error fetching wisdom users", e); }
+            const res = await fetch(`${cleanBaseUrl}/api/users`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
+            if (res.ok) {
+                const users = await res.json();
+                setWisdomUserList(users.filter((u: any) => u.role === "Admin" || u.role === "Owner" || u.permissions?.some((p: any) => p.resource === "Wisdom Reels Archival" && (p.actions.includes("read") || p.actions.includes("write")))));
+                setSrtSubmissionUserList(users.filter((u: any) => u.role === "Admin" || u.role === "Owner" || u.permissions?.some((p: any) => p.resource === "Data Library - SRT Submission" && (p.actions.includes("read") || p.actions.includes("write")))));
+                setSubmittersMLUserList(users.filter((u: any) => u.role === "Admin" || u.role === "Owner" || u.permissions?.some((p: any) => p.resource === "Submitters ML" && (p.actions.includes("read") || p.actions.includes("write")))));
+                setProjectHubUserList(users.filter((u: any) => u.role === "Admin" || u.role === "Owner" || u.permissions?.some((p: any) => p.resource === "Submission & Que Sheet" && (p.actions.includes("read") || p.actions.includes("write")))));
+            }
+        } catch (e) { console.error("Error fetching app users", e); }
       };
 
-      const fetchSubmittersMLUsers = async () => {
-        try {
-            const token = localStorage.getItem('app-token');
-            const res = await fetch(`${cleanBaseUrl}/api/users/submitters-ml-list`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
-            if (res.ok) setSubmittersMLUserList(await res.json()); else setSubmittersMLUserList([]);
-        } catch (e) { console.error("Error fetching submitters ML users", e); }
-      };
-
-      fetchData(); fetchUsers(); fetchWisdomUsers(); fetchSubmittersMLUsers();
+      fetchData(); 
+      fetchUsers(); 
+      fetchWisdomUsers();
   }, []);
 
   useEffect(() => {
@@ -1031,6 +1046,25 @@ const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     };
     fetchWisdomPickedCount();
   }, [canViewWisdomReels]);
+
+  useEffect(() => {
+    const fetchSRTCounts = async () => {
+      if (!canViewSRTSubmission) return;
+      try {
+        const token = localStorage.getItem('app-token');
+        const res = await fetch(`${cleanBaseUrl}/api/google-sheet/aux-ml-status?limit=10000`, { headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) } });
+        if (res.ok) {
+           const data = await res.json();
+           const allItems = data.data || [];
+           const confirmed = allItems.filter((i: any) => i["MM Status"] === "Confirmed").length;
+           setSrtConfirmedCount(confirmed);
+           setSrtTotalCount(allItems.length);
+        }
+      } catch (e) { console.error("Error fetching SRT counts", e); }
+    };
+    fetchSRTCounts();
+  }, [canViewSRTSubmission]);
+
 useEffect(() => {
     if (viewMode === 'form') {
         fetchSheetData(); // Immediate sync when entering the project
@@ -2385,8 +2419,29 @@ const renderTableRow = (item: any) => {
     );
   };
 
+  const renderUserStack = (list: any[]) => {
+    if (!list || list.length === 0) {
+      return <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div>;
+    }
+    return (
+      <>
+        {list.slice(0, 3).map((u, i) => (
+          <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700, overflow: 'hidden' }}>
+            {u.avatar ? <img src={u.avatar} alt={u.name} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : getInitials(u.name)}
+          </div>
+        ))}
+        {list.length > 3 && (
+          <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>
+            +{list.length - 3}
+          </div>
+        )}
+      </>
+    );
+  };
+
   if (viewMode === 'hub') {
       const totalItems = queue.length; const completedItems = queue.filter(i => i._status === 'complete').length; const audioMergeProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      const srtProgress = srtTotalCount > 0 ? Math.round((srtConfirmedCount / srtTotalCount) * 100) : 0;
      const allProjects = [
   { id: 'audio_merge', title: 'Audio Merge Project', description: 'Ingest, process, and approve new Digital Recordings (DRs) with automated metadata scanning.', icon: Wand2, color: colors.primary, stats: { label: 'In Progress', value: queue.length }, progress: audioMergeProgress, tags: ['Audio', 'Ingest'], isVisible: canViewAudioMerge },
   
@@ -2404,7 +2459,8 @@ const renderTableRow = (item: any) => {
   isVisible: canViewProjectHubWorkflow // This now correctly points to "Submission & Que Sheet"
 },
   { id: 'video_archival', title: 'Wisdom Reels Archival', description: 'Track satsangs used for reels and manage editing workflow.', icon: Video, color: colors.secondary, stats: { label: 'Picked', value: wisdomPickedCount }, progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, tags: ['Video', 'Archive'], status: "PENDING_APPROVAL", isVisible: canViewWisdomReels },
-  { id: 'submitters_ml', title: 'Submitters ML', description: 'Manage ML references, extensive searches, and ML summaries by event code.', icon: Users, color: colors.success, stats: { label: 'Modules', value: 5 }, tags: ['ML', 'Search'], status: "APPROVED", isVisible: canViewSubmittersML }
+  { id: 'submitters_ml', title: 'Submitters ML', description: 'Manage ML references, extensive searches, and ML summaries by event code.', icon: Users, color: colors.success, stats: { label: 'Modules', value: 5 }, tags: ['ML', 'Search'], status: "APPROVED", isVisible: canViewSubmittersML },
+  { id: 'srt_submission', title: 'Data Library - SRT Submission', description: 'View Satsang Category records and track AUX ML updation status for SRT submissions.', icon: FileText, color: { from: "#6366f1", to: "#a855f7" }, stats: { label: 'Confirmed', value: srtConfirmedCount }, progress: srtProgress, tags: ['Satsang', 'AUX', 'SRT'], status: "APPROVED", isVisible: canViewSRTSubmission }
 ];
       const visibleProjects = allProjects.filter(p => p.isVisible);
 
@@ -2431,10 +2487,11 @@ const renderTableRow = (item: any) => {
               visibleProjects.map((project) => (
               <div key={project.id} onClick={() => { 
   if(project.id === 'audio_merge') setViewMode('form'); 
-  else if(project.id === 'project_hub_workflow') setViewMode('project_hub_workflow'); // Added route here
-  else if(project.id === 'video_archival') setViewMode('video_archival'); 
-  else if(project.id === 'submitters_ml') setViewMode('submitters_ml'); 
-  else toast.info("Project coming soon"); 
+  else if(project.id === 'project_hub_workflow') setViewMode('project_hub_workflow');
+  else if(project.id === 'video_archival') setViewMode('video_archival');
+  else if(project.id === 'submitters_ml') setViewMode('submitters_ml');
+  else if(project.id === 'srt_submission') setViewMode('srt_submission');
+  else toast.info("Project coming soon");
 }} style={{ background: '#131b2e', borderRadius: '24px', padding: '32px', border: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', cursor: 'pointer', minHeight: '320px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                   <span style={{ padding: '0.35rem 0.85rem', borderRadius: '0.5rem', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: project.status === 'APPROVED' ? '#34d399' : project.status === 'PENDING_APPROVAL' ? '#fbbf24' : '#94a3b8' }}></span>
@@ -2452,9 +2509,14 @@ const renderTableRow = (item: any) => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
                    <div style={{ display: 'flex' }}>
-                      {project.id === 'audio_merge' ? ( <>{userList.slice(0, 3).map((u, i) => ( <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{getInitials(u.name)}</div> ))} {userList.length > 3 && ( <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{userList.length - 3}</div> )}</> ) : project.id === 'video_archival' ? ( <>{wisdomUserList.length > 0 ? ( <>{wisdomUserList.slice(0, 3).map((u, i) => ( <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{getInitials(u.name)}</div> ))} {wisdomUserList.length > 3 && ( <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{wisdomUserList.length - 3}</div> )}</> ) : ( <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div> )}</> ) : project.id === 'submitters_ml' ? ( <>{submittersMLUserList.length > 0 ? ( <>{submittersMLUserList.slice(0, 3).map((u, i) => ( <div key={i} title={u.name} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: i === 0 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{getInitials(u.name)}</div> ))} {submittersMLUserList.length > 3 && ( <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+{submittersMLUserList.length - 3}</div> )}</> ) : ( <div style={{ fontSize: '0.65rem', color: '#64748b', fontStyle: 'italic' }}>No users</div> )}</> ) : ( <>{[1, 2].map(id => ( <div key={id} style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: '#334155', marginLeft: id === 1 ? 0 : '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'white', fontWeight: 700 }}>{id === 1 ? 'JD' : 'AS'}</div> ))} <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', border: '2px solid #131b2e', backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8' }}>+3</div></> )}
+                      {project.id === 'audio_merge' ? renderUserStack(userList)
+                       : project.id === 'video_archival' ? renderUserStack(wisdomUserList)
+                       : project.id === 'submitters_ml' ? renderUserStack(submittersMLUserList)
+                       : project.id === 'srt_submission' ? renderUserStack(srtSubmissionUserList)
+                       : project.id === 'project_hub_workflow' ? renderUserStack(projectHubUserList)
+                       : renderUserStack([])}
                    </div>
-                   <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>{project.stats.value} Items</span>
+                   <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b' }}>{project.stats.value} {project.stats.label}</span>
                 </div>
               </div>
             ))
@@ -2466,6 +2528,7 @@ const renderTableRow = (item: any) => {
 
   if (viewMode === 'video_archival') return <div style={styles.wrapper}><VideoArchivalProject onBack={() => setViewMode('hub')} userEmail={userEmail} /></div>;
   if (viewMode === 'submitters_ml') return <div style={styles.wrapper}><SubmittersMLHub onBack={() => setViewMode('hub')} /></div>;
+  if (viewMode === 'srt_submission') return <SRTSubmissionProject onBack={() => setViewMode('hub')} userEmail={userEmail} />;
  if (viewMode === 'project_hub_workflow') {
   // Use the same permission check here
   if (!canViewProjectHubWorkflow) {

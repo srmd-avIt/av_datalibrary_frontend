@@ -379,19 +379,39 @@ export function Sidebar({ activeView, onViewChange, collapsed, onToggleCollapse,
       <style dangerouslySetInnerHTML={{ __html: sidebarScrollCss }} />
       <div style={{ width: collapsed ? "64px" : "288px", height: "100%", display: "flex", flexDirection: "column", background: "rgba(15,23,42,0.95)", borderRight: "1px solid rgba(100,116,139,0.3)", transition: "all 0.3s ease", position: "relative", borderTopRightRadius: "16px", borderBottomRightRadius: "16px" }}>
         
-        <Button variant="ghost" size="sm" onClick={onToggleCollapse} style={{ position: "absolute", top: "1.5rem", right: collapsed ? "-0.75rem" : "0.75rem", borderRadius: "9999px", backgroundColor: "rgb(30,41,59)", zIndex: 50, border: "1px solid rgba(51,65,85,0.5)" }}>
-          {collapsed ? <ChevronRight size={12} color="#cbd5e1" /> : <ChevronLeft size={12} color="#cbd5e1" />}
-        </Button>
 
         <div style={{ padding: collapsed ? "12px" : "24px", borderBottom: "1px solid rgba(100,116,139,0.3)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: "12px", marginBottom: "16px" }}>
-            <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(to right, #3b82f6, #9333ea)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Database size={20} color="#fff" /></div>
-            {!collapsed && (
-              <div>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: 0 }}>Data Library</h2>
-                <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Analytics Dashboard</p>
-              </div>
-            )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", gap: "16px", marginBottom: "16px", flexDirection: collapsed ? "column" : "row" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "linear-gradient(to right, #3b82f6, #9333ea)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Database size={20} color="#fff" /></div>
+              {!collapsed && (
+                <div>
+                  <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#fff", margin: 0 }}>Data Library</h2>
+                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: 0 }}>Analytics Dashboard</p>
+                </div>
+              )}
+            </div>
+            
+            <Button 
+              variant="ghost" 
+              onClick={onToggleCollapse}
+              title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              style={{ 
+                width: collapsed ? "40px" : "32px", 
+                height: collapsed ? "40px" : "32px", 
+                borderRadius: "12px", 
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                flexShrink: 0,
+                backgroundColor: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)"
+              }}
+            >
+              {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </Button>
           </div>
 
           {user && !collapsed && (
