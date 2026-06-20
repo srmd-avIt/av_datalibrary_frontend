@@ -892,48 +892,47 @@ function AuxMLDetailPanel({ row, onClose, token, onSuccess, canEdit = false, can
     onClose();
   };
 
-  const startEdit = () => {
-    setRemarksEdit(row["Remarks"] || "");
-    setMmStatusEdit("");
-    setEditMode(true);
-    setEditError("");
-  };
+ const startEdit = () => {
+  setRemarksEdit(row["Remarks"] || "");
+  // Initialize with the current status so it's not automatically blank
+  setMmStatusEdit(row["MM Status"] || ""); 
+  setEditMode(true);
+  setEditError("");
+};
 
   const cancelEdit = () => {
     setEditMode(false);
     setEditError("");
   };
 
-  const handleSaveEdit = async () => {
-    const isBlankStatus = !row["MM Status"];
-    if (isBlankStatus && !mmStatusEdit) {
-      setEditError("Please select MM Status to resubmit.");
-      return;
-    }
-    setEditSaving(true);
-    setEditError("");
-    const payload = {
-      ...row,
-      "Remarks": remarksEdit,
-      "MM Status": isBlankStatus ? mmStatusEdit : "",
-      "Status Changed Timestamp": formatTimestamp(new Date()),
-    };
-    try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`${API_BASE}/google-sheet/aux-ml-status`, {
-        method: "PATCH", headers, body: JSON.stringify(payload),
-      });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to save."); }
-      setEditMode(false);
-      onSuccess?.();
-      onClose();
-    } catch (err: any) {
-      setEditError(err.message || "An error occurred.");
-    } finally {
-      setEditSaving(false);
-    }
+const handleSaveEdit = async () => {
+  setEditSaving(true);
+  setEditError("");
+
+  const payload = {
+    ...row,
+    "Remarks": remarksEdit,
+    // This will now send whatever is selected in the UI (Status or Blank)
+    "MM Status": mmStatusEdit, 
+    "Status Changed Timestamp": formatTimestamp(new Date()),
   };
+
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/google-sheet/aux-ml-status`, {
+      method: "PATCH", headers, body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to save."); }
+    setEditMode(false);
+    onSuccess?.();
+    onClose();
+  } catch (err: any) {
+    setEditError(err.message || "An error occurred.");
+  } finally {
+    setEditSaving(false);
+  }
+};
 
   return (
     <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(420px, 95vw)", background: "#0f172a", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", zIndex: 1050, boxShadow: "-8px 0 32px rgba(0,0,0,0.6)", animation: "slideInRight 0.2s ease-out" }}>
@@ -1173,61 +1172,73 @@ function AuxMLDetailPanel({ row, onClose, token, onSuccess, canEdit = false, can
           </>
         )}
 
-        {!mlLoading && !mlRecord && editMode && (
-          <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Related ML</span>
-              <span style={{ fontSize: "0.85rem", color: relatedML ? "#a5b4fc" : "#334155", fontWeight: relatedML ? 600 : 400 }}>{relatedML || "—"}</span>
-            </div>
-            {row["MM Status"] ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>MM Status</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <MMStatusBadge value={row["MM Status"]} />
-                  <span style={{ fontSize: "0.72rem", color: "#f87171", fontStyle: "italic" }}>will be cleared on save</span>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  MM Status <span style={{ color: "#f87171", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>*required</span>
-                </span>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {MM_STATUS_OPTIONS.map(opt => {
-                    const colors = MM_STATUS_COLORS[opt] || { bg: "rgba(100,116,139,0.15)", border: "rgba(100,116,139,0.3)", text: "#94a3b8" };
-                    const active = mmStatusEdit === opt;
-                    return (
-                      <button key={opt} type="button" onClick={() => setMmStatusEdit(opt)}
-                        style={{ padding: "7px 14px", borderRadius: "8px", border: `1px solid ${active ? colors.border : "rgba(255,255,255,0.08)"}`, background: active ? colors.bg : "rgba(255,255,255,0.03)", color: active ? colors.text : "#64748b", fontSize: "0.8rem", fontWeight: active ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Remarks</label>
-              <textarea
-                value={remarksEdit}
-                onChange={e => setRemarksEdit(e.target.value)}
-                placeholder="Add remarks…"
-                rows={4}
-                style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(99,102,241,0.4)", borderRadius: "8px", padding: "9px 12px", color: "#e2e8f0", fontSize: "0.85rem", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
-              />
-            </div>
-            {editError && <p style={{ margin: 0, fontSize: "0.78rem", color: "#f87171" }}>{editError}</p>}
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-              <button onClick={cancelEdit} style={{ padding: "8px 16px", borderRadius: "8px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.82rem", cursor: "pointer", fontWeight: 600 }}>
-                Cancel
-              </button>
-              <button onClick={handleSaveEdit} disabled={editSaving} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 18px", borderRadius: "8px", background: "linear-gradient(135deg,#6366f1,#a855f7)", border: "none", color: "white", fontSize: "0.82rem", cursor: editSaving ? "not-allowed" : "pointer", fontWeight: 600, opacity: editSaving ? 0.7 : 1 }}>
-                {editSaving && <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />}
-                {editSaving ? "Saving…" : (row["MM Status"] ? "Save & Clear Status" : "Resubmit")}
-              </button>
-            </div>
-          </div>
-        )}
+      {!mlLoading && !mlRecord && editMode && (
+  <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Related ML</span>
+      <span style={{ fontSize: "0.85rem", color: relatedML ? "#a5b4fc" : "#334155", fontWeight: relatedML ? 600 : 400 }}>{relatedML || "—"}</span>
+    </div>
+
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        MM Status
+      </span>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        {MM_STATUS_OPTIONS.map(opt => {
+          const colors = MM_STATUS_COLORS[opt] || { bg: "rgba(100,116,139,0.15)", border: "rgba(100,116,139,0.3)", text: "#94a3b8" };
+          const active = mmStatusEdit === opt;
+          return (
+            <button key={opt} type="button" onClick={() => setMmStatusEdit(opt)}
+              style={{ padding: "7px 14px", borderRadius: "8px", border: `1px solid ${active ? colors.border : "rgba(255,255,255,0.08)"}`, background: active ? colors.bg : "rgba(255,255,255,0.03)", color: active ? colors.text : "#64748b", fontSize: "0.8rem", fontWeight: active ? 700 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+              {opt}
+            </button>
+          );
+        })}
+        
+        {/* BLANK LOGIC BUTTON: Allows user to clear the status while keeping remarks */}
+        <button 
+          type="button" 
+          onClick={() => setMmStatusEdit("")}
+          style={{ 
+            padding: "7px 14px", borderRadius: "8px", 
+            border: `1px solid ${mmStatusEdit === "" ? "rgba(248,113,113,0.4)" : "rgba(255,255,255,0.08)"}`, 
+            background: mmStatusEdit === "" ? "rgba(248,113,113,0.1)" : "rgba(255,255,255,0.03)", 
+            color: mmStatusEdit === "" ? "#f87171" : "#64748b", 
+            fontSize: "0.8rem", cursor: "pointer" 
+          }}
+        >
+          None (Clear)
+        </button>
+      </div>
+      {mmStatusEdit === "" && row["MM Status"] !== "" && (
+        <span style={{ fontSize: "0.65rem", color: "#f87171", fontStyle: "italic" }}>Status will be cleared on save</span>
+      )}
+    </div>
+
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <label style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Remarks</label>
+      <textarea
+        value={remarksEdit}
+        onChange={e => setRemarksEdit(e.target.value)}
+        placeholder="Add remarks…"
+        rows={4}
+        style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(99,102,241,0.4)", borderRadius: "8px", padding: "9px 12px", color: "#e2e8f0", fontSize: "0.85rem", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
+      />
+    </div>
+    
+    {editError && <p style={{ margin: 0, fontSize: "0.78rem", color: "#f87171" }}>{editError}</p>}
+    
+    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+      <button onClick={cancelEdit} style={{ padding: "8px 16px", borderRadius: "8px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.82rem", cursor: "pointer", fontWeight: 600 }}>
+        Cancel
+      </button>
+      <button onClick={handleSaveEdit} disabled={editSaving} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 18px", borderRadius: "8px", background: "linear-gradient(135deg,#6366f1,#a855f7)", border: "none", color: "white", fontSize: "0.82rem", cursor: editSaving ? "not-allowed" : "pointer", fontWeight: 600, opacity: editSaving ? 0.7 : 1 }}>
+        {editSaving && <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />}
+        Save Changes
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
