@@ -32,6 +32,7 @@ import { SearchNewMLEventCode } from "./SearchNewMLEventCode";
 import { SearchDetailsByMLID } from "./SearchDetailsByMLID";
 import { MLSummaryByEventCode } from "./MLSummaryByEventCode";
 import { SearchNewMediaExtensively } from "./SearchNewMediaExtensively";
+import { SearchMLByDRCode } from "./SearchMLByDRCode";
 import { ProjectHubWorkflow } from "./ProjectHubWorkflow";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { FilterConfig, FilterGroup } from "./types"; // Assuming types are in ./types.ts
@@ -458,6 +459,7 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
   const allTabs = useMemo(() => [
     { id: "check-ml-reference", label: "Check ML Reference", icon: CheckSquare, permissionKey: "Check ML Reference" },
     { id: "search-new-ml-event-code", label: "Search ML by EventCode", icon: Search, permissionKey: "Search ML by EventCode" },
+    { id: "search-ml-by-dr-code", label: "Search ML by DR Code", icon: Database, permissionKey: "Search ML by DR Code" },
     { id: "Search Details by MLID", label: "Search New Media for Person Event", icon: Eye, permissionKey: "Search New Media for Person Event" },
     { id: "Search New Media Extensively", label: "Search New Media Extensively", icon: SearchCheck, permissionKey: "Search New Media Extensively" },
     { id: "ML Summary by event code", label: "ML Summary by event code", icon: ListTree, permissionKey: "ML Summary by event code" }
@@ -536,6 +538,7 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
             <div style={{ flex: 1, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden" }} className="custom-scrollbar">
               {activeTab === "check-ml-reference" && <CheckMLReference />}
               {activeTab === "search-new-ml-event-code" && <SearchNewMLEventCode />}
+              {activeTab === "search-ml-by-dr-code" && <SearchMLByDRCode />}
               {activeTab === "Search Details by MLID" && <SearchDetailsByMLID />}
               {activeTab === "Search New Media Extensively" && <SearchNewMediaExtensively />}
               {activeTab === "ML Summary by event code" && <MLSummaryByEventCode />}

@@ -96,6 +96,7 @@ const APP_RESOURCES = [
   "Submitters ML",
   "Check ML Reference",
   "Search ML by EventCode",
+  "Search ML by DR Code",
   "Search New Media for Person Event",
   "Search New Media Extensively",
   "ML Summary by event code",

@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { 
-  ArrowLeft, ListTree, FileText, X, Loader2, RefreshCw, ChevronRight, 
-  Plus, Search, ChevronLeft, ChevronDown, Pencil, Check, Filter, 
-  SlidersHorizontal, CheckSquare, Square, Calendar, Mail, Layers
+import {
+  ArrowLeft, ListTree, FileText, X, Loader2, RefreshCw, ChevronRight,
+  Plus, Search, ChevronLeft, ChevronDown, Pencil, Check, Filter,
+  SlidersHorizontal, CheckSquare, Square, Calendar, Mail, Layers, Lock
 } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
@@ -978,20 +978,14 @@ const handleSaveEdit = async () => {
               </p>
               <p style={{ margin: "1px 0 0", fontSize: "0.7rem", color: "#64748b" }}>AUX ML Updations Status</p>
             </div>
-            {canEdit && !editMode ? (
+            {canEdit && !editMode && row["MM Status"] === "Confirmed" ? (
+              <span style={{ display: "flex", alignItems: "center", gap: "4px", padding: "5px 10px", borderRadius: "7px", background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0 }}>
+                <Lock size={11} /> Locked
+              </span>
+            ) : canEdit && !editMode ? (
               <button onClick={startEdit} title={row["MM Status"] ? "Edit remarks" : "Resubmit"} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "7px", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
                 <Pencil size={11} /> {row["MM Status"] ? "Edit" : "Resubmit"}
               </button>
-            ) : canEdit ? (
-              <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                <button onClick={cancelEdit} style={{ padding: "5px 10px", borderRadius: "7px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
-                  Cancel
-                </button>
-                <button onClick={handleSaveEdit} disabled={editSaving} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "7px", background: "linear-gradient(135deg,#6366f1,#a855f7)", border: "none", color: "white", fontSize: "0.75rem", fontWeight: 600, cursor: editSaving ? "not-allowed" : "pointer", opacity: editSaving ? 0.7 : 1 }}>
-                  {editSaving ? <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={11} />}
-                  {editSaving ? "Saving…" : "Save"}
-                </button>
-              </div>
             ) : null}
           </>
         )}
@@ -1853,6 +1847,11 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
               </p>
               <p style={{ margin: "1px 0 0", fontSize: "0.68rem", color: "#64748b" }}>AuxFile Details</p>
             </div>
+            {canEditSatsang && !isEditingAux && (
+              <button onClick={handleEditAux} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "7px", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+                <Pencil size={11} /> Edit
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -2075,26 +2074,17 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
           {isEditingAux && auxEditError && (
             <div style={{ padding: "0 16px", color: "#f87171", fontSize: "0.78rem" }}>{auxEditError}</div>
           )}
-          {/* Edit / Save buttons for Aux File */}
-          <div style={{ padding: "16px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-            {isEditingAux ? (
-              <>
-                <button onClick={handleCancelAuxEdit} style={{ padding: "6px 14px", borderRadius: "6px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
-                  Cancel
-                </button>
-                <button onClick={handleSaveAuxEdit} disabled={isSavingAux} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 16px", borderRadius: "6px", background: "linear-gradient(135deg,#6366f1,#a855f7)", border: "none", color: "white", fontSize: "0.78rem", cursor: isSavingAux ? "not-allowed" : "pointer", fontWeight: 600, opacity: isSavingAux ? 0.7 : 1 }}>
-                  {isSavingAux && <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />}
-                  Save
-                </button>
-              </>
-            ) : (
-                canEditSatsang && (
-                  <button onClick={handleEditAux} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "6px", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}>
-                    <Pencil size={12} /> Edit 
-                  </button>
-                )
-            )}
-          </div>
+          {isEditingAux && (
+            <div style={{ padding: "16px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button onClick={handleCancelAuxEdit} style={{ padding: "6px 14px", borderRadius: "6px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
+                Cancel
+              </button>
+              <button onClick={handleSaveAuxEdit} disabled={isSavingAux} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 16px", borderRadius: "6px", background: "linear-gradient(135deg,#6366f1,#a855f7)", border: "none", color: "white", fontSize: "0.78rem", cursor: isSavingAux ? "not-allowed" : "pointer", fontWeight: 600, opacity: isSavingAux ? 0.7 : 1 }}>
+                {isSavingAux && <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />}
+                Save
+              </button>
+            </div>
+          )}
           </>
         ) : (
           <>
