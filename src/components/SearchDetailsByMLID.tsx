@@ -179,19 +179,6 @@ export function SearchDetailsByMLID() {
     };
   }, []);
 
-  // --- Debounce Logic to trigger search while typing ---
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchTerm.trim()) {
-        setAppliedFilter({ search: searchTerm.trim() });
-      } else {
-        setAppliedFilter(undefined);
-      }
-    }, 500); 
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]); 
-
   const handleManualSearch = () => {
     if (!searchTerm.trim()) {
       setAppliedFilter(undefined);

@@ -387,7 +387,8 @@ function AddAuxMLModal({ token, onClose, onSuccess, initialRelatedML }: AddAuxML
     if (!form["MM Status"]) { setError("Please select an MM Status."); return; }
     setSaving(true);
     setError("");
-    const payload = { ...form, "Status Changed Timestamp": timestamp };
+    const updationId = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+    const payload = { ...form, "Updation ID": updationId, "Status Changed Timestamp": timestamp };
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -1321,13 +1322,20 @@ function AuxMLStatusView({ token, canEdit = false, canViewSatsang = false }: Aux
     };
 
     return rows.filter(row => {
-      const matchesML = filterValues.relatedML.length === 0 || 
+      const q = search.trim().toLowerCase();
+      const matchesSearch = !q ||
+        (row["Related ML"] || "").toLowerCase().includes(q) ||
+        (row["MM Status"] || "").toLowerCase().includes(q) ||
+        (row["Remarks"] || "").toLowerCase().includes(q) ||
+        (row["Updation ID"] || "").toLowerCase().includes(q);
+
+      const matchesML = filterValues.relatedML.length === 0 ||
         filterValues.relatedML.includes(row["Related ML"] || "");
-      
-      const matchesStatus = filterValues.mmStatus.length === 0 || 
+
+      const matchesStatus = filterValues.mmStatus.length === 0 ||
         filterValues.mmStatus.includes(row["MM Status"] || "");
-      
-      const matchesRemarks = !filterValues.remarks || 
+
+      const matchesRemarks = !filterValues.remarks ||
         (row["Remarks"] || "").toLowerCase().includes(filterValues.remarks.toLowerCase());
       
       const itemDate = parseTimestamp(row["Status Changed Timestamp"]);
@@ -1347,9 +1355,9 @@ function AuxMLStatusView({ token, canEdit = false, canViewSatsang = false }: Aux
           }
       }
 
-      return matchesML && matchesStatus && matchesRemarks && matchesTime;
+      return matchesSearch && matchesML && matchesStatus && matchesRemarks && matchesTime;
     });
-  }, [rows, filterValues]);
+  }, [rows, filterValues, search]);
 
   // Group filtered rows dynamically
   const groupedRows = useMemo(() => {
@@ -1404,17 +1412,14 @@ function AuxMLStatusView({ token, canEdit = false, canViewSatsang = false }: Aux
 
       {/* Toolbar */}
       <div style={{ flexShrink: 0, padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(15,23,42,0.6)" }}>
-        <form onSubmit={handleSearch} style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, maxWidth: "360px" }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <Search size={13} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#475569", pointerEvents: "none" }} />
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search AUX ML status…"
-              style={{ width: "100%", paddingLeft: "30px", paddingRight: "10px", paddingTop: "7px", paddingBottom: "7px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "8px", color: "#e2e8f0", fontSize: "0.8rem", outline: "none", boxSizing: "border-box" }}
-            />
-          </div>
-          <button type="submit" style={{ padding: "7px 14px", borderRadius: "8px", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", color: "#a5b4fc", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}>Search</button>
-        </form>
+        <div style={{ position: "relative", flex: 1, maxWidth: "360px" }}>
+          <Search size={13} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#475569", pointerEvents: "none" }} />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search AUX ML status…"
+            style={{ width: "100%", paddingLeft: "30px", paddingRight: "10px", paddingTop: "7px", paddingBottom: "7px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "8px", color: "#e2e8f0", fontSize: "0.8rem", outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
           <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0 8px', border: '1px solid rgba(255,255,255,0.09)' }}>

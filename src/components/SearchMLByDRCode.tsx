@@ -118,7 +118,7 @@ interface DRDetails {
   ProductionBucket?: string;
 }
 
-export function SearchMLByDRCode() {
+export function SearchByDRCode() {
   const [isMobile, setIsMobile] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
@@ -292,7 +292,7 @@ export function SearchMLByDRCode() {
         <div style={{ padding: "24px 20px 16px", backgroundColor: "rgba(15,23,42,0.6)", borderBottom: "1px solid rgba(30,41,59,0.8)", backdropFilter: "blur(12px)", flexShrink: 0 }}>
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "white", display: "flex", alignItems: "center", gap: "8px" }}>
             <Database style={{ width: "20px", height: "20px", color: "#818cf8" }} />
-            Search ML by DR Code
+            Search by DR Code
           </h1>
           <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px" }}>Retrieve all media log entries for a specific Digital Recording code</p>
         </div>
@@ -340,7 +340,7 @@ export function SearchMLByDRCode() {
               </div>
               <div>
                 <CardTitle style={{ fontSize: "24px", fontWeight: "bold", background: "linear-gradient(to right,#fff,#94a3b8)", WebkitBackgroundClip: "text", color: "transparent" }}>
-                  Search ML by DR Code
+                  Search by DR Code
                 </CardTitle>
                 <CardDescription style={{ color: "#94a3b8", marginTop: "4px" }}>
                   Retrieve all media log entries associated with a specific Digital Recording code

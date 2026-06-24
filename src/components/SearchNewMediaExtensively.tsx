@@ -267,7 +267,7 @@ export function SearchNewMediaExtensively() {
              <ClickUpListViewUpdated
                 title=""
                 viewId="extensive_media_search"
-                apiEndpoint="/search-details-global"
+                apiEndpoint="/search-extensive"
                 idKey="MLUniqueID"
                 columns={EXTENSIVE_SEARCH_COLUMNS}
                 initialFilters={appliedFilter}
@@ -514,7 +514,7 @@ export function SearchNewMediaExtensively() {
             <ClickUpListViewUpdated
               title={`Search Results for: "${appliedFilter.search}"`}
               viewId="extensive_media_search"
-              apiEndpoint="/search-details-global" // Triggers backend global search endpoint
+              apiEndpoint="/search-extensive" // Triggers backend global search endpoint
               idKey="MLUniqueID"
               columns={EXTENSIVE_SEARCH_COLUMNS}
               initialFilters={appliedFilter}

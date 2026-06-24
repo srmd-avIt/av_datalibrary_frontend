@@ -32,7 +32,7 @@ import { SearchNewMLEventCode } from "./SearchNewMLEventCode";
 import { SearchDetailsByMLID } from "./SearchDetailsByMLID";
 import { MLSummaryByEventCode } from "./MLSummaryByEventCode";
 import { SearchNewMediaExtensively } from "./SearchNewMediaExtensively";
-import { SearchMLByDRCode } from "./SearchMLByDRCode";
+import { SearchByDRCode } from "./SearchMLByDRCode";
 import { ProjectHubWorkflow } from "./ProjectHubWorkflow";
 import { AdvancedFiltersClickUp } from "./AdvancedFiltersClickUp";
 import { FilterConfig, FilterGroup } from "./types"; // Assuming types are in ./types.ts
@@ -459,7 +459,7 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
   const allTabs = useMemo(() => [
     { id: "check-ml-reference", label: "Check ML Reference", icon: CheckSquare, permissionKey: "Check ML Reference" },
     { id: "search-new-ml-event-code", label: "Search ML by EventCode", icon: Search, permissionKey: "Search ML by EventCode" },
-    { id: "search-ml-by-dr-code", label: "Search ML by DR Code", icon: Database, permissionKey: "Search ML by DR Code" },
+    { id: "search-ml-by-dr-code", label: "Search by DR Code", icon: Database, permissionKey: "Search by DR Code" },
     { id: "Search Details by MLID", label: "Search New Media for Person Event", icon: Eye, permissionKey: "Search New Media for Person Event" },
     { id: "Search New Media Extensively", label: "Search New Media Extensively", icon: SearchCheck, permissionKey: "Search New Media Extensively" },
     { id: "ML Summary by event code", label: "ML Summary by event code", icon: ListTree, permissionKey: "ML Summary by event code" }
@@ -538,7 +538,7 @@ const SubmittersMLHub = ({ onBack }: { onBack: () => void }) => {
             <div style={{ flex: 1, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "20px", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden" }} className="custom-scrollbar">
               {activeTab === "check-ml-reference" && <CheckMLReference />}
               {activeTab === "search-new-ml-event-code" && <SearchNewMLEventCode />}
-              {activeTab === "search-ml-by-dr-code" && <SearchMLByDRCode />}
+              {activeTab === "search-ml-by-dr-code" && <SearchByDRCode />}
               {activeTab === "Search Details by MLID" && <SearchDetailsByMLID />}
               {activeTab === "Search New Media Extensively" && <SearchNewMediaExtensively />}
               {activeTab === "ML Summary by event code" && <MLSummaryByEventCode />}
@@ -808,6 +808,19 @@ const hasProjectHubWriteAccess = useMemo(() => {
         p.resource === "Submitters ML" &&
         (p.actions.includes("read") || p.actions.includes("write"))
     );
+  }, [loggedInUser]);
+
+  const submittersMLModuleCount = useMemo(() => {
+    if (!loggedInUser) return 0;
+    if (loggedInUser.role === "Owner" || loggedInUser.role === "Admin") return 6;
+    const permitted = new Set(
+      (loggedInUser.permissions || [])
+        .filter((p: any) => p.actions.includes("read") || p.actions.includes("write"))
+        .map((p: any) => p.resource)
+    );
+    return ["Check ML Reference", "Search ML by EventCode", "Search by DR Code",
+            "Search New Media for Person Event", "Search New Media Extensively",
+            "ML Summary by event code"].filter(k => permitted.has(k)).length;
   }, [loggedInUser]);
 
   const canViewSRTSubmission = useMemo(() => {
@@ -2462,7 +2475,7 @@ const renderTableRow = (item: any) => {
   isVisible: canViewProjectHubWorkflow // This now correctly points to "Submission & Que Sheet"
 },
   { id: 'video_archival', title: 'Wisdom Reels Archival', description: 'Track satsangs used for reels and manage editing workflow.', icon: Video, color: colors.secondary, stats: { label: 'Picked', value: wisdomPickedCount }, progress: wisdomTotalCount > 0 ? Math.round((wisdomPickedCount / wisdomTotalCount) * 100) : 0, tags: ['Video', 'Archive'], status: "PENDING_APPROVAL", isVisible: canViewWisdomReels },
-  { id: 'submitters_ml', title: 'Submitters ML', description: 'Manage ML references, extensive searches, and ML summaries by event code.', icon: Users, color: colors.success, stats: { label: 'Modules', value: 5 }, tags: ['ML', 'Search'], status: "APPROVED", isVisible: canViewSubmittersML },
+  { id: 'submitters_ml', title: 'Submitters ML', description: 'Manage ML references, extensive searches, and ML summaries by event code.', icon: Users, color: colors.success, stats: { label: 'Modules', value: submittersMLModuleCount }, tags: ['ML', 'Search'], status: "APPROVED", isVisible: canViewSubmittersML },
   { id: 'srt_submission', title: 'Data Library - SRT Submission', description: 'View Satsang Category records and track AUX ML updation status for SRT submissions.', icon: FileText, color: { from: "#6366f1", to: "#a855f7" }, stats: { label: 'Confirmed', value: srtConfirmedCount }, progress: srtProgress, tags: ['Satsang', 'AUX', 'SRT'], status: "APPROVED", isVisible: canViewSRTSubmission }
 ];
       const visibleProjects = allProjects.filter(p => p.isVisible);
