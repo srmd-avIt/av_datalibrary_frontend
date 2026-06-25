@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Search, X, SearchCheck, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
+import { MLDetailPanel } from "./MLDetailPanel";
 
 // --- Renderers ---
 const categoryTagRenderer = (value: string | null | undefined) => {
@@ -143,6 +144,8 @@ const EXTENSIVE_SEARCH_COLUMNS = [
 
 export function SearchNewMediaExtensively() {
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Record<string, any> | null>(null);
+  const handleRowSelect = useCallback((item: any) => { setSelectedItem(item); }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
   const [showMobileResults, setShowMobileResults] = useState(false); // Controls mobile result page view
@@ -273,6 +276,7 @@ export function SearchNewMediaExtensively() {
                 initialFilters={appliedFilter}
                 onViewChange={() => {}}
                 showAddButton={false}
+                onRowSelect={handleRowSelect}
              />
           </div>
         </div>
@@ -514,12 +518,13 @@ export function SearchNewMediaExtensively() {
             <ClickUpListViewUpdated
               title={`Search Results for: "${appliedFilter.search}"`}
               viewId="extensive_media_search"
-              apiEndpoint="/search-extensive" // Triggers backend global search endpoint
+              apiEndpoint="/search-extensive"
               idKey="MLUniqueID"
               columns={EXTENSIVE_SEARCH_COLUMNS}
               initialFilters={appliedFilter}
               onViewChange={() => {}}
               showAddButton={false}
+              onRowSelect={handleRowSelect}
             />
           ) : (
             <div
@@ -565,5 +570,18 @@ export function SearchNewMediaExtensively() {
     </div>
   );
 
-  return isMobile ? renderMobileView() : renderDesktopView();
+  return (
+    <>
+      {isMobile ? renderMobileView() : renderDesktopView()}
+      {selectedItem && (
+        <MLDetailPanel
+          item={selectedItem}
+          columns={EXTENSIVE_SEARCH_COLUMNS}
+          onClose={() => setSelectedItem(null)}
+          isMobile={isMobile}
+          idKey="MLUniqueID"
+        />
+      )}
+    </>
+  );
 }

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Search, X, ArrowRight, ArrowLeft, Database, FileText, Calendar, Disc } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
+import { MLDetailPanel } from "./MLDetailPanel";
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL;
 
@@ -125,6 +126,11 @@ export function SearchByDRCode() {
   const [showMobileResults, setShowMobileResults] = useState(false);
   const [drDetails, setDrDetails] = useState<DRDetails | null>(null);
   const [loadingDR, setLoadingDR] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Record<string, any> | null>(null);
+
+  const handleRowSelect = useCallback((item: any) => {
+    setSelectedItem(item);
+  }, []);
 
   useEffect(() => {
     const checkIsMobile = () => {
@@ -281,6 +287,7 @@ export function SearchByDRCode() {
               initialFilters={appliedFilter}
               onViewChange={() => {}}
               showAddButton={false}
+              onRowSelect={handleRowSelect}
             />
           </div>
         </div>
@@ -329,6 +336,7 @@ export function SearchByDRCode() {
   // DESKTOP VIEW
   // ==========================================
   return (
+    <>
     <div style={{ width: "100%", minHeight: "100vh", display: "flex", flexDirection: "column", background: "rgba(2,6,23,0.5)", padding: "24px 40px" }}>
       <div style={{ maxWidth: "1600px", margin: "0 auto", width: "100%", display: "flex", flexDirection: "column", gap: "24px" }}>
         {/* Search Card */}
@@ -395,6 +403,7 @@ export function SearchByDRCode() {
                 initialFilters={appliedFilter}
                 onViewChange={() => {}}
                 showAddButton={false}
+                onRowSelect={handleRowSelect}
               />
             </>
           ) : (
@@ -411,5 +420,15 @@ export function SearchByDRCode() {
         </div>
       </div>
     </div>
+    {selectedItem && (
+      <MLDetailPanel
+        item={selectedItem}
+        columns={ML_COLUMNS}
+        onClose={() => setSelectedItem(null)}
+        isMobile={isMobile}
+        idKey="MLUniqueID"
+      />
+    )}
+    </>
   );
 }

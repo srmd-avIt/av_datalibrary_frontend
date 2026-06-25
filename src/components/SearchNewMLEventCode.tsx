@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Search, X, MapPin, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
+import { MLDetailPanel } from "./MLDetailPanel";
 
 // --- Helper: Standard Centered Text Renderer ---
 const centeredTextRenderer = (value: any) => {
@@ -150,6 +151,8 @@ const SEARCH_COLUMNS = [
 
 export function SearchNewMLEventCode() {
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Record<string, any> | null>(null);
+  const handleRowSelect = useCallback((item: any) => { setSelectedItem(item); }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
   const [showMobileResults, setShowMobileResults] = useState(false); // Controls mobile result page view
@@ -280,6 +283,7 @@ export function SearchNewMLEventCode() {
                 initialFilters={appliedFilter}
                 onViewChange={() => {}}
                 showAddButton={false}
+                onRowSelect={handleRowSelect}
              />
           </div>
         </div>
@@ -537,6 +541,7 @@ export function SearchNewMLEventCode() {
               initialFilters={appliedFilter}
               onViewChange={() => {}}
               showAddButton={false}
+              onRowSelect={handleRowSelect}
             />
           ) : (
             <div
@@ -582,5 +587,18 @@ export function SearchNewMLEventCode() {
     </div>
   );
 
-  return isMobile ? renderMobileView() : renderDesktopView();
+  return (
+    <>
+      {isMobile ? renderMobileView() : renderDesktopView()}
+      {selectedItem && (
+        <MLDetailPanel
+          item={selectedItem}
+          columns={SEARCH_COLUMNS}
+          onClose={() => setSelectedItem(null)}
+          isMobile={isMobile}
+          idKey="MLUniqueID"
+        />
+      )}
+    </>
+  );
 }

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Search, X, Eye, ArrowRight, ArrowLeft } from "lucide-react";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
+import { MLDetailPanel } from "./MLDetailPanel";
 
 // --- Helper Renderer for Tags (Centered) ---
 const categoryTagRenderer = (value: string | null | undefined) => {
@@ -157,7 +158,12 @@ export function SearchDetailsByMLID() {
   const [isMobile, setIsMobile] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<Record<string, any> | undefined>(undefined);
-  const [showMobileResults, setShowMobileResults] = useState(false); // Controls mobile result page view
+  const [showMobileResults, setShowMobileResults] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Record<string, any> | null>(null);
+
+  const handleRowSelect = useCallback((item: any) => {
+    setSelectedItem(item);
+  }, []);
 
   // --- Check mobile sizing ---
   useEffect(() => {
@@ -285,6 +291,7 @@ export function SearchDetailsByMLID() {
                initialFilters={appliedFilter}
                onViewChange={() => {}}
                showAddButton={false}
+               onRowSelect={handleRowSelect}
              />
           </div>
         </div>
@@ -551,6 +558,7 @@ export function SearchDetailsByMLID() {
               initialFilters={appliedFilter}
               onViewChange={() => {}}
               showAddButton={false}
+              onRowSelect={handleRowSelect}
             />
           ) : (
             <div
@@ -609,5 +617,18 @@ export function SearchDetailsByMLID() {
     </div>
   );
 
-  return isMobile ? renderMobileView() : renderDesktopView();
+  return (
+    <>
+      {isMobile ? renderMobileView() : renderDesktopView()}
+      {selectedItem && (
+        <MLDetailPanel
+          item={selectedItem}
+          columns={SEARCH_COLUMNS}
+          onClose={() => setSelectedItem(null)}
+          isMobile={isMobile}
+          idKey="MLUniqueID"
+        />
+      )}
+    </>
+  );
 }
