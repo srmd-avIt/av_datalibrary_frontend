@@ -1745,6 +1745,8 @@ const handleSaveDraft = async (e: React.FormEvent) => {
           return item;
       }));
       setCommentInput(""); setReplyTo(null); setEditingCommentId(null); setShowUserDropdown(false);
+      const el = document.getElementById("chat-input-field") as HTMLTextAreaElement | null;
+      if (el) el.style.height = "auto";
   };
 
   const handleEditCommentAction = (comment: any) => { setCommentInput(comment.text); setEditingCommentId(comment.id); setReplyTo(null); document.getElementById("chat-input-field")?.focus(); };
@@ -1777,7 +1779,7 @@ const handleSaveDraft = async (e: React.FormEvent) => {
       }));
   };
 
-  const handleCancelChatAction = () => { setReplyTo(null); setEditingCommentId(null); setCommentInput(""); };
+  const handleCancelChatAction = () => { setReplyTo(null); setEditingCommentId(null); setCommentInput(""); const el = document.getElementById("chat-input-field") as HTMLTextAreaElement | null; if (el) el.style.height = "auto"; };
   const toggleSelection = (id: string, e: any) => { e.stopPropagation(); const newSet = new Set(selectedIndices); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedIndices(newSet); };
   
   const handleGroupSelect = (groupItems: any[], e: React.MouseEvent) => {
@@ -3351,7 +3353,7 @@ return (
                          {(replyTo || editingCommentId) && ( <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: "4px 10px", marginBottom: 6, borderRadius: 6, background: editingCommentId ? "rgba(245, 158, 11, 0.15)" : "rgba(59, 130, 246, 0.15)", borderLeft: `3px solid ${editingCommentId ? "#f59e0b" : "#3b82f6"}`, fontSize: "0.75rem", color: "#fff" }}> <span> {editingCommentId ? ( <><b>Editing</b> your message...</> ) : ( <>Replying to: <b>{replyTo.user}</b></> )} </span> <button onClick={handleCancelChatAction} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#cbd5e1" }}> <X size={14} /> </button> </div> )}
                         <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
                             <button type="button" style={{ background: "transparent", border: "none", color: "#3b82f6", cursor: "pointer" }} onClick={handleMentionClick} title="Mention user"><AtSign size={18} /></button>
-                            <input id="chat-input-field" style={{ ...styles.input(colors.core, false, isCompact), flex: 1, borderRadius: 20 }} placeholder={editingCommentId ? "Update your message..." : "Write a comment..."} value={commentInput} onChange={(e) => setCommentInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendComment()} autoComplete="off" />
+                            <textarea id="chat-input-field" rows={1} style={{ ...styles.input(colors.core, false, isCompact), flex: 1, borderRadius: 20, height: "auto", minHeight: isCompact ? "34px" : "38px", maxHeight: "120px", padding: "8px 12px", resize: "none", overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.4, fontFamily: "inherit" }} placeholder={editingCommentId ? "Update your message..." : "Write a comment..."} value={commentInput} onChange={(e) => { setCommentInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`; }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment(); } }} autoComplete="off" />
                             <button onClick={handleSendComment} style={{ background: editingCommentId ? "#f59e0b" : "#3b82f6", border: 'none', borderRadius: '50%', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', transition: 'all 0.2s' }}> {editingCommentId ? <CheckCircle size={16} /> : <Send size={16} />} </button>
                         </div>
                     </div>
