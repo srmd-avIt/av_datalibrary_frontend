@@ -2152,7 +2152,7 @@ const renderTableView = () => {
             width: colWidths[col.id],
             minWidth: colWidths[col.id],
             maxWidth: colWidths[col.id],
-            position: freezeInfo.isFrozen ? 'sticky' : 'static',
+            position: 'sticky',
             left: freezeInfo.isFrozen ? freezeInfo.left : undefined,
             zIndex: freezeInfo.isFrozen ? 21 : 20,
             // Apply shadow only to the last frozen column
