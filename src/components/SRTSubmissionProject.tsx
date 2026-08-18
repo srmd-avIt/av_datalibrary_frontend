@@ -4,6 +4,7 @@ import {
   Plus, Search, ChevronLeft, ChevronDown, Pencil, Check, Filter,
   SlidersHorizontal, CheckSquare, Square, Calendar, Mail, Layers, Lock
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ClickUpListViewUpdated } from "./ClickUpListViewUpdated";
 import { getColorForString } from "./ui/utils";
 import { toast } from "sonner";
@@ -119,24 +120,24 @@ const SATSANG_CATEGORY_COLUMNS = [
       return `${d}${d && s ? " - " : ""}${s}`;
     },
   },
-  { key: "Topic",            label: "Topic",                    sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "SubDuration",      label: "Sub Duration",             sortable: true, editable: false },
-  { key: "Segment Category", label: "Segment Category",         sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "FootageType",      label: "Footage Type",             sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "Synopsis",         label: "Synopsis",                 sortable: true, editable: false },
-  { key: "EditingStatus",    label: "Editing Status",           sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "Language",         label: "Language",                 sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "Remarks",          label: "Remarks",                  sortable: true, editable: false },
-  { key: "SatsangStart",     label: "Satsang Start",            sortable: true, editable: false },
-  { key: "SatsangEnd",       label: "Satsang End",              sortable: true, editable: false },
+  { key: "Topic",            label: "Topic",                    sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "SubDuration",      label: "Sub Duration",             sortable: true, editable: true },
+  { key: "Segment Category", label: "Segment Category",         sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "FootageType",      label: "Footage Type",             sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "Synopsis",         label: "Synopsis",                 sortable: true, editable: true },
+  { key: "EditingStatus",    label: "Editing Status",           sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "Language",         label: "Language",                 sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "Remarks",          label: "Remarks",                  sortable: true, editable: true },
+  { key: "SatsangStart",     label: "Satsang Start",            sortable: true, editable: true },
+  { key: "SatsangEnd",       label: "Satsang End",              sortable: true, editable: true },
   { key: "Masterquality",    label: "Master Quality - DR Table",sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "ContentFrom",      label: "Content From",             sortable: true, editable: false },
-  { key: "fkCity",           label: "City",                     sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "Number",           label: "Number",                   sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "fkOccasion",       label: "Occasion",                 sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "Keywords",         label: "Keywords",                 sortable: true, editable: false, render: categoryTagRenderer },
-  { key: "Guidance",         label: "Guidance",                 sortable: true, editable: false },
-  { key: "fkGranth",         label: "Granth",                   sortable: true, editable: false, render: categoryTagRenderer },
+  { key: "ContentFrom",      label: "Content From",             sortable: true, editable: true },
+  { key: "fkCity",           label: "City",                     sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "Number",           label: "Number",                   sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "fkOccasion",       label: "Occasion",                 sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "Keywords",         label: "Keywords",                 sortable: true, editable: true, render: categoryTagRenderer },
+  { key: "Guidance",         label: "Guidance",                 sortable: true, editable: true },
+  { key: "fkGranth",         label: "Granth",                   sortable: true, editable: true, render: categoryTagRenderer },
   // These are the two columns seen in your screenshot:
   {
     key: "relatedAuxFilesCount",
@@ -1609,9 +1610,11 @@ interface DetailPanelProps {
   onClose: () => void;
   onRefresh: () => void;
   token?: string;
+  userEmail?: string;
   canViewAuxML?: boolean;
   canEditSatsang?: boolean;
   canEditAuxML?: boolean;
+  onRowUpdated?: (updatedRow: any) => void;
 }
 
 const DETAIL_FIELDS: { label: string; get: (r: any) => string }[] = [
@@ -1651,29 +1654,29 @@ const DETAIL_FIELDS: { label: string; get: (r: any) => string }[] = [
   { label: "DR Duration",             get: (r) => r.DRDuration || r.Duration || "" },
 ];
 
-const PANEL_FIELDS: { label: string; get: (r: any) => string }[] = [
-  { label: "ML Unique ID",        get: (r) => r.MLUniqueID },
-  { label: "Year",                get: (r) => r.Yr },
-  { label: "Event Name - Code",   get: (r) => r.EventDisplay || [r.EventName, r.EventCode || r.fkEventCode].filter(Boolean).join(" - ") },
-  { label: "Detail - Sub Detail", get: (r) => r.DetailSub || [r.Detail, r.SubDetail].filter(Boolean).join(" - ") },
-  { label: "Topic",               get: (r) => r.Topic },
-  { label: "Sub Duration",        get: (r) => r.SubDuration },
-  { label: "Segment Category",    get: (r) => r["Segment Category"] || r.SegmentCategory },
-  { label: "Footage Type",        get: (r) => r.FootageType },
-  { label: "Synopsis",            get: (r) => r.Synopsis },
-  { label: "Editing Status",      get: (r) => r.EditingStatus },
-  { label: "Language",            get: (r) => r.Language },
-  { label: "Remarks",             get: (r) => r.Remarks },
-  { label: "Satsang Start",       get: (r) => r.SatsangStart },
-  { label: "Satsang End",         get: (r) => r.SatsangEnd },
-  { label: "Master Quality",      get: (r) => r.Masterquality },
-  { label: "Content From",        get: (r) => r.ContentFrom },
-  { label: "City",                get: (r) => r.fkCity },
-  { label: "Number",              get: (r) => r.Number },
-  { label: "Occasion",            get: (r) => r.fkOccasion },
-  { label: "Keywords",            get: (r) => r.Keywords },
-  { label: "Guidance",            get: (r) => r.Guidance },
-  { label: "Granth",              get: (r) => r.fkGranth },
+const PANEL_FIELDS: { label: string; key?: string; get: (r: any) => string; editable?: boolean }[] = [
+  { label: "ML Unique ID",        get: (r) => r.MLUniqueID, editable: false },
+  { label: "Year",                get: (r) => r.Yr, editable: false },
+  { label: "Event Name - Code",   get: (r) => r.EventDisplay || [r.EventName, r.EventCode || r.fkEventCode].filter(Boolean).join(" - "), editable: false },
+  { label: "Detail - Sub Detail", get: (r) => r.DetailSub || [r.Detail, r.SubDetail].filter(Boolean).join(" - "), editable: false },
+  { label: "Topic",               key: "Topic",             get: (r) => r.Topic, editable: true },
+  { label: "Sub Duration",        key: "SubDuration",       get: (r) => r.SubDuration, editable: true },
+  { label: "Segment Category",    key: "Segment Category",  get: (r) => r["Segment Category"] || r.SegmentCategory, editable: true },
+  { label: "Footage Type",        key: "FootageType",       get: (r) => r.FootageType, editable: true },
+  { label: "Synopsis",            key: "Synopsis",          get: (r) => r.Synopsis, editable: true },
+  { label: "Editing Status",      key: "EditingStatus",     get: (r) => r.EditingStatus, editable: true },
+  { label: "Language",            key: "Language",          get: (r) => r.Language, editable: true },
+  { label: "Remarks",             key: "Remarks",           get: (r) => r.Remarks, editable: true },
+  { label: "Satsang Start",       key: "SatsangStart",      get: (r) => r.SatsangStart, editable: true },
+  { label: "Satsang End",         key: "SatsangEnd",        get: (r) => r.SatsangEnd, editable: true },
+  { label: "Master Quality",      get: (r) => r.Masterquality, editable: false },
+  { label: "Content From",        key: "ContentFrom",       get: (r) => r.ContentFrom, editable: true },
+  { label: "City",                key: "fkCity",            get: (r) => r.fkCity, editable: true },
+  { label: "Number",              key: "Number",            get: (r) => r.Number, editable: true },
+  { label: "Occasion",            key: "fkOccasion",        get: (r) => r.fkOccasion, editable: true },
+  { label: "Keywords",            key: "Keywords",          get: (r) => r.Keywords, editable: true },
+  { label: "Guidance",            key: "Guidance",          get: (r) => r.Guidance, editable: true },
+  { label: "Granth",              key: "fkGranth",          get: (r) => r.fkGranth, editable: true },
 ];
 
 const AUX_DETAIL_FIELDS: { label: string; key: keyof AuxFile }[] = [
@@ -1688,7 +1691,7 @@ const AUX_DETAIL_FIELDS: { label: string; key: keyof AuxFile }[] = [
   { label: "ModifiedBy",   key: "ModifiedBy" },
 ];
 
-function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canViewAuxML = false, canEditSatsang = false, canEditAuxML = false }: DetailPanelProps) {
+function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEmail, canViewAuxML = false, canEditSatsang = false, canEditAuxML = false, onRowUpdated }: DetailPanelProps) {
   const [selectedAux, setSelectedAux]       = useState<AuxFile | null>(null);
   const [selectedMlUpd, setSelectedMlUpd]   = useState<any | null>(null);
   const [mlUpdDrilldown, setMlUpdDrilldown] = useState(false);
@@ -1705,6 +1708,51 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
   const [editSrtLink, setEditSrtLink] = useState("");
   const [isSavingAux, setIsSavingAux] = useState(false);
   const [auxEditError, setAuxEditError] = useState("");
+
+  // Edit States for the main Satsang row (PANEL_FIELDS)
+  const [isEditingRow, setIsEditingRow] = useState(false);
+  const [editRowValues, setEditRowValues] = useState<Record<string, string>>({});
+  const [isSavingRow, setIsSavingRow] = useState(false);
+  const [rowEditError, setRowEditError] = useState("");
+
+  const handleEditRow = () => {
+    const initial: Record<string, string> = {};
+    PANEL_FIELDS.forEach((f) => { if (f.editable && f.key) initial[f.key] = f.get(row) || ""; });
+    setEditRowValues(initial);
+    setIsEditingRow(true);
+    setRowEditError("");
+  };
+
+  const handleCancelRowEdit = () => {
+    setIsEditingRow(false);
+    setRowEditError("");
+  };
+
+  const handleSaveRowEdit = async () => {
+    if (!row?.MLUniqueID) return;
+    setIsSavingRow(true);
+    setRowEditError("");
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const payload: Record<string, any> = { ...row, ...editRowValues };
+      if (userEmail) payload.LastModifiedBy = userEmail;
+      delete payload.LastModifiedTimestamp;
+      const res = await fetch(`${API_BASE}/newmedialog/${encodeURIComponent(row.MLUniqueID)}`, {
+        method: "PUT", headers, body: JSON.stringify(payload),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || d.message || "Failed to update record."); }
+
+      const updatedRow = { ...row, ...editRowValues };
+      setIsEditingRow(false);
+      onRowUpdated?.(updatedRow);
+      toast.success("Satsang details updated successfully!");
+    } catch (err: any) {
+      setRowEditError(err.message || "An error occurred.");
+    } finally {
+      setIsSavingRow(false);
+    }
+  };
 
   const handleEditAux = () => {
     setEditSrtLink(selectedAux?.SRTLink || "");
@@ -1745,6 +1793,7 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
 
   const goBack = () => {
     if (isEditingAux)                                   { handleCancelAuxEdit(); return; }
+    if (isEditingRow)                                   { handleCancelRowEdit(); return; }
     if (satsangFromAux)                                 { setSatsangFromAux(false); return; }
     if (selectedMlUpd && mlUpdDrilldown && selectedAux) { setSelectedAux(null); return; }
     if (selectedMlUpd && mlUpdDrilldown)                { setMlUpdDrilldown(false); return; }
@@ -1869,9 +1918,16 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
                 {[row.EventName, row.EventCode].filter(Boolean).join(" – ") || ""}
               </p>
             </div>
-            <button onClick={onRefresh} title="Refresh" style={{ background: "none", border: "none", color: "#475569", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center" }}>
-              <RefreshCw size={13} />
-            </button>
+            {canEditSatsang && !isEditingRow && (
+              <button onClick={handleEditRow} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "7px", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+                <Pencil size={11} /> Edit
+              </button>
+            )}
+            {!isEditingRow && (
+              <button onClick={onRefresh} title="Refresh" style={{ background: "none", border: "none", color: "#475569", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                <RefreshCw size={13} />
+              </button>
+            )}
           </>
         )}
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center" }}>
@@ -2093,9 +2149,10 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
           </>
         ) : (
           <>
-            {PANEL_FIELDS.map(({ label, get }) => {
+            {PANEL_FIELDS.map(({ label, key, get, editable }) => {
               const val = get(row);
               const display = val !== undefined && val !== null && String(val).trim() !== "" ? String(val) : null;
+              const isEditingThisField = isEditingRow && editable && key;
               return (
                 <div key={label} style={{
                   display: "flex", flexDirection: "column", gap: "2px",
@@ -2105,12 +2162,35 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, canVie
                   <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     {label}
                   </span>
-                  <span style={{ fontSize: "0.82rem", color: display ? "#e2e8f0" : "#334155", lineHeight: 1.5, wordBreak: "break-word" }}>
-                    {display || "—"}
-                  </span>
+                  {isEditingThisField ? (
+                    <input
+                      value={editRowValues[key as string] ?? ""}
+                      onChange={(e) => setEditRowValues((prev) => ({ ...prev, [key as string]: e.target.value }))}
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(99,102,241,0.4)", borderRadius: "6px", padding: "6px 10px", color: "#e2e8f0", fontSize: "0.82rem", outline: "none", boxSizing: "border-box", fontFamily: "inherit", marginTop: "2px" }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: "0.82rem", color: display ? "#e2e8f0" : "#334155", lineHeight: 1.5, wordBreak: "break-word" }}>
+                      {display || "—"}
+                    </span>
+                  )}
                 </div>
               );
             })}
+
+            {isEditingRow && rowEditError && (
+              <div style={{ padding: "0 16px", color: "#f87171", fontSize: "0.78rem" }}>{rowEditError}</div>
+            )}
+            {isEditingRow && (
+              <div style={{ padding: "16px", display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                <button onClick={handleCancelRowEdit} style={{ padding: "6px 14px", borderRadius: "6px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
+                  Cancel
+                </button>
+                <button onClick={handleSaveRowEdit} disabled={isSavingRow} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 16px", borderRadius: "6px", background: "linear-gradient(135deg,#6366f1,#a855f7)", border: "none", color: "white", fontSize: "0.78rem", cursor: isSavingRow ? "not-allowed" : "pointer", fontWeight: 600, opacity: isSavingRow ? 0.7 : 1 }}>
+                  {isSavingRow && <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />}
+                  Save
+                </button>
+              </div>
+            )}
 
             {/* RELATED AUXFILES SECTION WITH ADD BUTTON */}
             <div style={{ padding: "14px 16px 6px" }}>
@@ -2259,6 +2339,7 @@ interface Props {
 
 export function SRTSubmissionProject({ onBack }: Props) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const isPrivileged = user?.role === "Admin" || user?.role === "Owner";
   const hasPerm = (resource: string, action: "read" | "write"): boolean => {
     if (isPrivileged) return true;
@@ -2343,6 +2424,11 @@ export function SRTSubmissionProject({ onBack }: Props) {
     setAuxFiles([]);
   };
 
+  const handleSatsangRowUpdated = useCallback((updatedRow: any) => {
+    setSelectedRow((prev: any) => (prev ? { ...prev, ...updatedRow } : updatedRow));
+    queryClient.invalidateQueries({ queryKey: ["/newmedialog/srt-satsang-category"] });
+  }, [queryClient]);
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#020617", overflow: "hidden" }}>
       <div style={{
@@ -2413,6 +2499,7 @@ export function SRTSubmissionProject({ onBack }: Props) {
               <ClickUpListViewUpdated
                 key="srt_satsang_category"
                 title="Satsang Category"
+                permissionResource="SRT Submission - Satsang Category"
                 viewId="srt_satsang_category"
                 apiEndpoint="/newmedialog/srt-satsang-category"
                 idKey="MLUniqueID"
@@ -2442,9 +2529,11 @@ export function SRTSubmissionProject({ onBack }: Props) {
               onClose={closePanel}
               onRefresh={() => fetchAuxFiles(selectedRow)}
               token={user?.token}
+              userEmail={user?.email}
               canViewAuxML={canViewAuxML}
               canEditSatsang={canEditSatsang}
               canEditAuxML={canEditAuxML}
+              onRowUpdated={handleSatsangRowUpdated}
             />
           </>
         )}

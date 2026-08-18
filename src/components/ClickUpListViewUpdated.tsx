@@ -266,7 +266,8 @@ export function ClickUpListViewUpdated({
   groupEnabled,
   initialFilters,
   onViewChange,
-  onOpenSidebar
+  onOpenSidebar,
+  permissionResource
 }: {
   title: string;
   columns: Column[];
@@ -280,12 +281,15 @@ export function ClickUpListViewUpdated({
   showAddButton?: boolean;
   rowTransformer?: (row: any) => any;
   initialGroupBy?: string | null;
-  initialSortBy?: string; 
-  initialSortDirection?: "asc" | "desc"; 
+  initialSortBy?: string;
+  initialSortDirection?: "asc" | "desc";
   groupEnabled?: boolean;
   initialFilters?: Record<string, any>;
   onViewChange?: () => void;
   onOpenSidebar?: () => void;
+  // Resource name to check against user.permissions when gating add/edit actions.
+  // Defaults to `title` when omitted, which is the historical behavior.
+  permissionResource?: string;
 }) {
   const localStorageKeyPrefix = `view-${viewId}`;
   const { user } = useAuth();
@@ -466,9 +470,11 @@ export function ClickUpListViewUpdated({
     };
   }, [user]);
 
+  const accessResource = permissionResource || title;
+
   const handleCellDoubleClick = (rowIndex: number, column: Column, value: any) => {
     if (!column.editable) return;
-    if (!hasAccess(title, 'write')) {
+    if (!hasAccess(accessResource, 'write')) {
       toast.error(`You don't have permission to edit ${title}.`);
       return;
     }
@@ -1081,7 +1087,7 @@ export function ClickUpListViewUpdated({
   const handleAddFormChange = (key: string, value: any) => { setAddForm(f => ({ ...f, [key]: value })); };
 
   const handleAddSubmit = async () => {
-    if (!hasAccess(title, 'write')) { toast.error("You don't have permission to add entries."); setAddOpen(false); return; }
+    if (!hasAccess(accessResource, 'write')) { toast.error("You don't have permission to add entries."); setAddOpen(false); return; }
     try {
       const token = localStorage.getItem('app-token');
       const userEmail = user?.email || "";
@@ -2164,7 +2170,7 @@ export function ClickUpListViewUpdated({
     `}
   </style>
 </button>
-              {showAddButton && hasAccess(title, 'write') && (<Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>+ Add</Button>)}
+              {showAddButton && hasAccess(accessResource, 'write') && (<Button variant="default" size="sm" className="gap-2 h-8" onClick={() => setAddOpen(true)}>+ Add</Button>)}
             </div>
           </div>
 
@@ -2378,7 +2384,7 @@ export function ClickUpListViewUpdated({
             ))}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)} style={{ width: "120px" }}>Cancel</Button>
-              <Button type="submit" style={{ width: "120px" }} disabled={!hasAccess(title, "write")}>Add</Button>
+              <Button type="submit" style={{ width: "120px" }} disabled={!hasAccess(accessResource, "write")}>Add</Button>
             </DialogFooter>
           </form>
         </DialogContent>
