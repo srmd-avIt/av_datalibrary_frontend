@@ -184,6 +184,27 @@ function MMStatusBadge({ value }: { value: string }) {
   );
 }
 
+// ─── AuxFile entry Status badge (Pending in the sheet vs Confirmed in the DB) ──
+const AUX_STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  "Pending":   { bg: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.4)", text: "#fbbf24" },
+  "Confirmed": { bg: "rgba(52,211,153,0.15)", border: "rgba(52,211,153,0.4)", text: "#34d399" },
+};
+
+function AuxStatusBadge({ status }: { status?: string }) {
+  const value = status || "Pending";
+  const colors = AUX_STATUS_COLORS[value] || { bg: "rgba(100,116,139,0.15)", border: "rgba(100,116,139,0.3)", text: "#94a3b8" };
+  const label = value === "Confirmed" ? "Done" : value;
+  return (
+    <span style={{
+      display: "inline-block", width: "fit-content", padding: "2px 10px", borderRadius: "12px",
+      fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap",
+      background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text,
+    }}>
+      {label}
+    </span>
+  );
+}
+
 // ─── Searchable ML ID dropdown with infinite scroll ───────────────────────────
 interface MLIDDropdownProps {
   value: string;
@@ -539,10 +560,11 @@ function AddAuxFileModal({ token, onClose, onSuccess, initialMLID, existingAuxFi
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       
-      const res = await fetch(`${API_BASE}/srt-submission/related-auxfiles`, {
+      const res = await fetch(`${API_BASE}/google-sheet/aux-srt-entry`, {
         method: "POST", headers, body: JSON.stringify(form),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to save AuxFile"); }
+      toast.success("Saved — pending confirmation before it appears in the database.");
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -1601,6 +1623,7 @@ interface AuxFile {
   CreatedOn?: string;
   ModifiedBy?: string;
   ModifiedOn?: string;
+  Status?: string;
 }
 
 interface DetailPanelProps {
@@ -1772,18 +1795,26 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const payload = { SRTLink: editSrtLink };
-      const res = await fetch(`${API_BASE}/srt-submission/related-auxfiles/${encodeURIComponent(selectedAux.new_auxid)}`, {
-        method: "PUT", headers, body: JSON.stringify(payload),
+      // Edits go through the "Aux SRT entry" sheet as Pending too — they only reach
+      // the AuxFiles table again once re-confirmed.
+      const payload = {
+        AUXID: selectedAux.AUXID,
+        new_auxid: selectedAux.new_auxid,
+        fkMLID: selectedAux.fkMLID,
+        SRTLink: editSrtLink,
+        AuxFileType: selectedAux.AuxFileType,
+      };
+      const res = await fetch(`${API_BASE}/google-sheet/aux-srt-entry`, {
+        method: "POST", headers, body: JSON.stringify(payload),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to update AuxFile."); }
-      
+
       // Update local state and trigger refresh
-      const updatedAux = { ...selectedAux, SRTLink: editSrtLink };
+      const updatedAux = { ...selectedAux, SRTLink: editSrtLink, Status: "Pending" };
       setSelectedAux(updatedAux);
       onRefresh(); // Refresh the parent list of aux files
       setIsEditingAux(false);
-      toast.success("AuxFile updated successfully!");
+      toast.success("Saved — pending confirmation before it appears in the database.");
     } catch (err: any) {
       setAuxEditError(err.message || "An error occurred.");
     } finally {
@@ -1899,7 +1930,10 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
               <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {selectedAux.new_auxid || selectedAux.AUXID || "AuxFile"}
               </p>
-              <p style={{ margin: "1px 0 0", fontSize: "0.68rem", color: "#64748b" }}>AuxFile Details</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                <span style={{ fontSize: "0.68rem", color: "#64748b" }}>AuxFile Details</span>
+                {selectedAux.Status && <AuxStatusBadge status={selectedAux.Status} />}
+              </div>
             </div>
             {canEditSatsang && !isEditingAux && (
               <button onClick={handleEditAux} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 10px", borderRadius: "7px", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
@@ -1958,6 +1992,12 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                 <ChevronRight size={15} style={{ color: "#475569", flexShrink: 0 }} />
               </span>
             </div>
+            {selectedAux.Status && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</span>
+                <AuxStatusBadge status={selectedAux.Status} />
+              </div>
+            )}
             {AUX_DETAIL_FIELDS.map(({ label, key }) => {
               const val = selectedAux[key];
               const display = val !== undefined && val !== null && String(val).trim() !== "" ? String(val) : null;
@@ -2218,7 +2258,7 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.76rem" }}>
                     <thead>
                       <tr style={{ background: "rgba(99,102,241,0.14)", borderBottom: "1px solid rgba(99,102,241,0.2)" }}>
-                        {["SRTLink", "AUXID", "new_auxid", "fkMLID", "CreatedOn", "CreatedBy", "ModifiedOn", "ModifiedBy"].map((h) => (
+                        {["Status", "SRTLink", "AUXID", "new_auxid", "fkMLID", "CreatedOn", "CreatedBy", "ModifiedOn", "ModifiedBy"].map((h) => (
                           <th key={h} style={{ padding: "7px 10px", textAlign: "left", color: "#818cf8", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                         ))}
                       </tr>
@@ -2231,6 +2271,7 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                           onClick={() => setSelectedAux(f)}
                           style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}
                         >
+                          <td style={{ padding: "7px 10px" }}><AuxStatusBadge status={f.Status} /></td>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", maxWidth: "120px" }}>
                             <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.SRTLink || ""}>{f.SRTLink || "—"}</span>
                           </td>
