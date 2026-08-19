@@ -1068,7 +1068,7 @@ const handleSaveEdit = async () => {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.76rem" }}>
                     <thead>
                       <tr style={{ background: "rgba(99,102,241,0.14)", borderBottom: "1px solid rgba(99,102,241,0.2)" }}>
-                        {["new_auxid", "AUXID", "fkMLID", "CreatedOn", "CreatedBy"].map(h => (
+                        {["Status", "SRTLink", "fkMLID", "CreatedOn", "CreatedBy"].map(h => (
                           <th key={h} style={{ padding: "7px 10px", textAlign: "left", color: "#818cf8", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                         ))}
                       </tr>
@@ -1077,8 +1077,10 @@ const handleSaveEdit = async () => {
                       {auxFiles.map((f, i) => (
                         <tr key={i} onClick={() => setSelectedAux(f)}
                           style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)", cursor: "pointer" }}>
-                          <td style={{ padding: "7px 10px", color: "#e2e8f0", whiteSpace: "nowrap" }}>{f.new_auxid || "—"}</td>
-                          <td style={{ padding: "7px 10px", color: "#e2e8f0", whiteSpace: "nowrap" }}>{f.AUXID || "—"}</td>
+                          <td style={{ padding: "7px 10px" }}><AuxStatusBadge status={f.Status} /></td>
+                          <td style={{ padding: "7px 10px", color: "#94a3b8", maxWidth: "120px" }}>
+                            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.SRTLink || ""}>{f.SRTLink || "—"}</span>
+                          </td>
                           <td style={{ padding: "7px 10px", color: "#cbd5e1", whiteSpace: "nowrap" }}>{f.fkMLID || "—"}</td>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", whiteSpace: "nowrap" }}>{f.CreatedOn || "—"}</td>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", whiteSpace: "nowrap" }}>{f.CreatedBy || "—"}</td>
@@ -1140,6 +1142,12 @@ const handleSaveEdit = async () => {
                 <ChevronRight size={15} style={{ color: "#475569", flexShrink: 0 }} />
               </span>
             </div>
+            {selectedAux.Status && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <span style={{ fontSize: "0.67rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</span>
+                <AuxStatusBadge status={selectedAux.Status} />
+              </div>
+            )}
             {AUX_DETAIL_FIELDS.map(({ label, key }) => {
               const val = selectedAux[key];
               const display = val !== undefined && val !== null && String(val).trim() !== "" ? String(val) : null;
@@ -2074,7 +2082,7 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.76rem" }}>
                     <thead>
                       <tr style={{ background: "rgba(99,102,241,0.14)", borderBottom: "1px solid rgba(99,102,241,0.2)" }}>
-                        {["SRTLink", "AUXID", "new_auxid", "fkMLID", "CreatedOn"].map(h => (
+                        {["SRTLink", "fkMLID", "CreatedOn"].map(h => (
                           <th key={h} style={{ padding: "7px 10px", textAlign: "left", color: "#818cf8", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                         ))}
                       </tr>
@@ -2083,8 +2091,6 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                       {auxFiles.map((f, i) => (
                         <tr key={i} className="aux-row" onClick={() => setSelectedAux(f)} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", maxWidth: "100px" }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.SRTLink || ""}>{f.SRTLink || "—"}</span></td>
-                          <td style={{ padding: "7px 10px", color: "#e2e8f0", whiteSpace: "nowrap" }}>{f.AUXID || "—"}</td>
-                          <td style={{ padding: "7px 10px", color: "#e2e8f0", whiteSpace: "nowrap" }}>{f.new_auxid || "—"}</td>
                           <td style={{ padding: "7px 10px", color: "#cbd5e1", whiteSpace: "nowrap" }}>{f.fkMLID || "—"}</td>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", whiteSpace: "nowrap" }}>{f.CreatedOn || "—"}</td>
                         </tr>
@@ -2258,7 +2264,7 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.76rem" }}>
                     <thead>
                       <tr style={{ background: "rgba(99,102,241,0.14)", borderBottom: "1px solid rgba(99,102,241,0.2)" }}>
-                        {["Status", "SRTLink", "AUXID", "new_auxid", "fkMLID", "CreatedOn", "CreatedBy", "ModifiedOn", "ModifiedBy"].map((h) => (
+                        {["Status", "SRTLink", "fkMLID", "CreatedOn", "CreatedBy", "ModifiedOn", "ModifiedBy"].map((h) => (
                           <th key={h} style={{ padding: "7px 10px", textAlign: "left", color: "#818cf8", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                         ))}
                       </tr>
@@ -2275,8 +2281,6 @@ function DetailPanel({ row, auxFiles, loading, onClose, onRefresh, token, userEm
                           <td style={{ padding: "7px 10px", color: "#94a3b8", maxWidth: "120px" }}>
                             <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.SRTLink || ""}>{f.SRTLink || "—"}</span>
                           </td>
-                          <td style={{ padding: "7px 10px", color: "#e2e8f0", whiteSpace: "nowrap" }}>{f.AUXID || "—"}</td>
-                          <td style={{ padding: "7px 10px", color: "#e2e8f0", whiteSpace: "nowrap" }}>{f.new_auxid || "—"} <Mail size={12} style={{ display: 'inline', marginLeft: '4px', verticalAlign: 'middle', opacity: 0.7 }} /></td>
                           <td style={{ padding: "7px 10px", color: "#cbd5e1", whiteSpace: "nowrap" }}>{f.fkMLID || "—"}</td>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", whiteSpace: "nowrap" }}>{f.CreatedOn || "—"}</td>
                           <td style={{ padding: "7px 10px", color: "#94a3b8", whiteSpace: "nowrap" }}>{f.CreatedBy || "—"}</td>
