@@ -181,7 +181,7 @@ export function CheckMLReference() {
       return;
     }
     // Set the filter to trigger the backend query (matching the updated API logic)
-    setAppliedFilter({ EventRefMLID: searchTerm.trim() });
+    setAppliedFilter({ MLUniqueID: searchTerm.trim() });
     
     if (isMobile) {
       setShowMobileResults(true);
@@ -259,7 +259,7 @@ export function CheckMLReference() {
                 Search Results
               </h1>
               <p style={{ color: "#94a3b8", fontSize: "13px", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                EventRefMLID: {appliedFilter.EventRefMLID || appliedFilter.MLUniqueID}
+                MLUniqueID: {appliedFilter.MLUniqueID}
               </p>
             </div>
           </div>
@@ -302,7 +302,7 @@ export function CheckMLReference() {
         {/* Mobile Search Box */}
         <div style={{ padding: "20px", flexShrink: 0 }}>
           <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#cbd5e1", marginBottom: "8px" }}>
-            Enter EventRefMLID
+            Enter MLUniqueID
           </label>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{ position: "relative" }}>
@@ -419,7 +419,7 @@ export function CheckMLReference() {
                       marginTop: "4px"
                     }}
                   >
-                  Search EventRefMLID to see entry details
+                  Search MLUniqueID to see entry details
                   </CardDescription>
                 </div>
               </div>
@@ -444,7 +444,7 @@ export function CheckMLReference() {
                   marginLeft: "4px"
                 }}
               >
-              Enter EventRefMLID
+              Enter MLUniqueID
               </label>
 
               <div
@@ -530,7 +530,7 @@ export function CheckMLReference() {
         <div style={{ minHeight: "420px", marginTop: "6px" }}>
           {appliedFilter ? (
             <ClickUpListViewUpdated
-              title={`Results for EventRefMLID: ${appliedFilter.EventRefMLID || appliedFilter.MLUniqueID}`}
+              title={`Results for MLUniqueID: ${appliedFilter.MLUniqueID}`}
               viewId="check_ml_reference"
               apiEndpoint="/check-ml-reference"
               idKey="MLUniqueID"
@@ -571,11 +571,11 @@ export function CheckMLReference() {
               </div>
 
               <h3 style={{ fontSize: "18px", fontWeight: 500, color: "#cbd5f5", marginBottom: "4px" }}>
-            No EventRefMLID selected
+            No MLUniqueID selected
               </h3>
 
               <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "320px" }}>
-            Enter an EventRefMLID in the search bar above to see entry details.
+            Enter an MLUniqueID in the search bar above to see entry details.
               </p>
             </div>
           )}
