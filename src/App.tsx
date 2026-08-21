@@ -1623,22 +1623,24 @@ export default function App() {
     return [...hardcodedColumns, ...extraColumns];
   }, [activeView, user?.id, layoutVersion]);
 
-  const [eventsLookup, setEventsLookup] = React.useState<Record<string, any>>({});
-
-  React.useEffect(() => {
-    if (activeView === "digitalrecordings") {
-      fetch(`${API_BASE_URL}/events`)
-        .then((res) => res.json())
-        .then((data) => {
-          const lookup: Record<string, any> = {};
-          (Array.isArray(data) ? data : []).forEach((ev) => {
-            if (ev.EventCode) lookup[ev.EventCode] = ev;
-          });
-          setEventsLookup(lookup);
-        })
-        .catch(() => setEventsLookup({}));
-    }
-  }, [activeView]);
+  const { data: eventsLookup = {} } = useQuery<Record<string, any>>({
+    queryKey: ["events-lookup"],
+    queryFn: async () => {
+      const token = localStorage.getItem('app-token');
+      const res = await fetch(`${API_BASE_URL}/events?limit=100000`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const body = await res.json();
+      const events = Array.isArray(body) ? body : (body.data || []);
+      const lookup: Record<string, any> = {};
+      events.forEach((ev: any) => {
+        if (ev.EventCode) lookup[ev.EventCode] = ev;
+      });
+      return lookup;
+    },
+    enabled: activeView === "digitalrecordings",
+    staleTime: 5 * 60 * 1000,
+  });
 
  const renderView = () => {
   switch (activeView) {

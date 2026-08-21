@@ -1555,11 +1555,21 @@ function AuxMediaLogDataTableView({
       const recordingCode = mediaLog.fkDigitalRecordingCode;
       const eventCode = mediaLog.fkEventCode || mediaLog.EventCode;
 
-      // Step 2: Fetch all media logs for the recording code
-      const mediaLogsResponse = await fetch(
-        `${API_BASE_URL}/newmedialog?fkDigitalRecordingCode=${encodeURIComponent(recordingCode)}`,
-        { headers }
-      );
+      // Steps 2 & 4 both only depend on step 1's result, so run them in parallel.
+      // Use an "equals" advanced filter (not the plain query param, which the
+      // API treats as a substring LIKE) so this is an exact, indexable lookup.
+      const recordingCodeFilter = encodeURIComponent(JSON.stringify([
+        { logic: "AND", rules: [{ field: "fkDigitalRecordingCode", operator: "equals", value: recordingCode }] },
+      ]));
+      const [mediaLogsResponse, eventResponse] = await Promise.all([
+        fetch(
+          `${API_BASE_URL}/newmedialog?limit=200&advanced_filters=${recordingCodeFilter}`,
+          { headers }
+        ),
+        eventCode
+          ? fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`, { headers })
+          : Promise.resolve(null),
+      ]);
 
       if (handleAuthError(mediaLogsResponse)) return;
 
@@ -1574,14 +1584,9 @@ function AuxMediaLogDataTableView({
       const filteredMediaLog = allMediaLogs.find((log: any) => log.MLUniqueID === mlid);
       if (!filteredMediaLog) throw new Error("Media log not found in recording");
 
-      // Step 4: Fetch the event if eventCode exists
+      // Step 4: Use the event response fetched above, if any
       let eventData = {};
-      if (eventCode) {
-        const eventResponse = await fetch(
-          `${API_BASE_URL}/events/${encodeURIComponent(eventCode)}`,
-          { headers }
-        );
-
+      if (eventResponse) {
         if (handleAuthError(eventResponse)) return;
 
         if (eventResponse.ok) {

@@ -647,9 +647,9 @@ export function ClickUpListViewUpdated({
 
   const { data: queryData, isLoading, error, isFetching } = useQuery<ApiResponse>({
     queryKey: [
-      effectiveApiEndpoint, currentPage, debouncedSearchTerm, searchTerm,
+      effectiveApiEndpoint, currentPage, debouncedSearchTerm,
       JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), JSON.stringify(initialFilters),
-      activeSortBy, activeSortDirection, 
+      activeSortBy, activeSortDirection,
     ],
     queryFn: () => fetchDataFromApi({
       apiEndpoint: effectiveApiEndpoint, page: currentPage, limit: itemsPerPage, searchTerm: debouncedSearchTerm,
@@ -664,12 +664,12 @@ export function ClickUpListViewUpdated({
 
   const { data: allDataForGrouping, isLoading: isGroupingDataLoading } = useQuery<ApiResponse>({
     queryKey: [
-      effectiveApiEndpoint, 'all-for-grouping', searchTerm,
+      effectiveApiEndpoint, 'all-for-grouping', debouncedSearchTerm,
       JSON.stringify(activeViewFilters), JSON.stringify(advancedFilters), JSON.stringify(initialFilters),
-      activeSortBy, activeSortDirection, 
+      activeSortBy, activeSortDirection,
     ],
     queryFn: () => fetchDataFromApi({
-      apiEndpoint: effectiveApiEndpoint, page: 1, limit: 1000000, searchTerm,
+      apiEndpoint: effectiveApiEndpoint, page: 1, limit: 1000000, searchTerm: debouncedSearchTerm,
       filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
       sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc", 
     }),

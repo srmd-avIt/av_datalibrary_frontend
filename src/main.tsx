@@ -18,7 +18,14 @@ import "./styles/globals.css";
 //   });
 // }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 const rootElement = document.getElementById("root");
 
 if (rootElement) {
