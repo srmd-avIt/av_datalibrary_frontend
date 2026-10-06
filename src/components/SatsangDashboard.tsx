@@ -316,6 +316,7 @@ export function SatsangDashboard({
 
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const ALL_YEARS_OPTION = "__ALL_YEARS__";
 
   // Mobile Accordion State
   const [openSections, setOpenSections] = useState({
@@ -357,6 +358,30 @@ export function SatsangDashboard({
       } catch (error) { console.error(error); }
     };
 
+    const fetchYearOptions = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/years/options`);
+        if (!response.ok) throw new Error("Failed to fetch year options");
+
+        const data = await response.json();
+
+        const uniqueYears = Array.from(new Set(
+          (Array.isArray(data) ? data : [])
+            .map((item: any) => String(item?.Yr ?? item?.year ?? item?.Year ?? "").trim())
+            .filter(Boolean)
+            .filter((value) => /^\d+$/.test(value))
+        )).sort((a, b) => Number(b) - Number(a));
+
+        setYearOptions([
+          { value: ALL_YEARS_OPTION, label: "All Years" },
+          ...uniqueYears.map((year) => ({ value: year, label: year }))
+        ]);
+      } catch (error) {
+        console.error("Failed to fetch year options:", error);
+        setYearOptions([{ value: ALL_YEARS_OPTION, label: "All Years" }]);
+      }
+    };
+
     fetchOptions('/countries/options', 'fkCountry', setCountryOptions);
     fetchOptions('/states/options', 'fkState', setStateOptions);
     fetchOptions('/granths/options', 'fkGranth', setGranthOptions);
@@ -364,28 +389,19 @@ export function SatsangDashboard({
     fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions);
     fetchOptions('/occasion/options', 'fkOccasion', setOccasionOptions);
-    
+    fetchYearOptions();
+
     const specificSegmentCategories = [
       'Prasangik Udbodhan', 'SU', 'SU - GM', 'SU - Revision', 'Satsang', 
       'Informal Satsang', 'Pravachan', 'Product/Webseries', 'SU - Extracted', 
       'Satsang Clips', 'SU - Capsule'
     ].sort();
     setSegmentCategoryOptions(specificSegmentCategories.map(val => ({ value: val, label: val })));
-
-    const currentYear = new Date().getFullYear();
-    const startYear = 2000;
-    const years = Array.from({ length: currentYear - startYear + 1 }, (_, index) => currentYear - index);
-    setYearOptions([
-      { value: ALL_YEARS_OPTION, label: 'All Years' },
-      ...years.map((year) => ({ value: String(year), label: String(year) }))
-    ]);
   }, []);
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setSearchFilters(prev => ({ ...prev, [field]: value }));
   };
-
-  const ALL_YEARS_OPTION = "__ALL_YEARS__";
 
   const handleYearFilterChange = (value: string[]) => {
     const allYearValues = yearOptions
