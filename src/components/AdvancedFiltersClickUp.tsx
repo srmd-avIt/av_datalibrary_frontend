@@ -198,6 +198,39 @@ const OPERATORS = {
   ],
 };
 
+const RANGE_FIELDS = new Set(["Yr", "Year"]);
+
+const getFieldOperators = (field: string) => {
+  const base = [...OPERATORS.text];
+
+  if (RANGE_FIELDS.has(field)) {
+    const exists = base.some((item) => item.value === "range");
+    if (!exists) {
+      const endIndex = base.findIndex((item) => item.value === "is_empty");
+      const insertAt = endIndex >= 0 ? endIndex : base.length;
+      base.splice(insertAt, 0, { value: "range", label: "Between" });
+    }
+  }
+
+  return base;
+};
+
+const getRangeValue = (value: any) => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return {
+      from: value.from ?? "",
+      to: value.to ?? "",
+    };
+  }
+
+  if (typeof value === "string") {
+    const [from = "", to = ""] = value.split("|").map((part) => part.trim());
+    return { from, to };
+  }
+
+  return { from: "", to: "" };
+};
+
 export function AdvancedFiltersClickUp({
   filters,
   onFiltersChange,
@@ -325,6 +358,12 @@ export function AdvancedFiltersClickUp({
         normalized.value = "__EMPTY__";
       } else if (updates.operator === "is_not_empty") {
         normalized.value = "__NOT_EMPTY__";
+      } else if (updates.operator === "range") {
+        const currentRange = getRangeValue((updates as any).value ?? undefined);
+        normalized.value = {
+          from: currentRange.from ?? "",
+          to: currentRange.to ?? "",
+        };
       } else {
         // clear value when operator changes to one that expects a value, unless a value was explicitly provided
         if (!("value" in normalized)) normalized.value = "";
@@ -500,6 +539,29 @@ export function AdvancedFiltersClickUp({
       borderRadius: "0.375rem",
       fontSize: isMobile ? "0.75rem" : "0.875rem",
     };
+
+    if (operator === "range") {
+      const rangeValue = getRangeValue(value);
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <ShadcnInput
+            type="number"
+            value={rangeValue.from}
+            onChange={(e) => updateFilterRule(groupId, rule.id, { value: { ...rangeValue, from: e.target.value } })}
+            placeholder="From"
+            style={{ ...commonStyle, flex: 1 }}
+          />
+          <span style={{ color: "#475569", fontSize: isMobile ? "0.75rem" : "0.875rem", fontWeight: 600 }}>to</span>
+          <ShadcnInput
+            type="number"
+            value={rangeValue.to}
+            onChange={(e) => updateFilterRule(groupId, rule.id, { value: { ...rangeValue, to: e.target.value } })}
+            placeholder="To"
+            style={{ ...commonStyle, flex: 1 }}
+          />
+        </div>
+      );
+    }
 
     // --- Make all dropdowns multi-select ---
     if (multiSelectFields.includes(field)) {
@@ -684,7 +746,7 @@ export function AdvancedFiltersClickUp({
                   <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "0.5rem" : "0.75rem" }}>
                     {group.rules.map((rule, ruleIndex) => {
                       const filterConfig = filters.find((f: FilterConfig) => f.key === rule.field) as FilterConfig | undefined;
-                      const operators = filterConfig ? OPERATORS[filterConfig.type as keyof typeof OPERATORS] || [] : [];
+                      const operators = filterConfig ? getFieldOperators(filterConfig.key) : [];
                       return (
                         <div key={rule.id} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                           {ruleIndex > 0 && (
@@ -713,7 +775,7 @@ export function AdvancedFiltersClickUp({
                                 <StyledButton onClick={() => removeFilterRule(group.id, rule.id)} disabled={false} baseStyle={{ height: "1.75rem", width: "1.75rem", padding: 0, color: "#64748b", backgroundColor: "transparent", flexShrink: 0, borderRadius: "0.25rem" }} hoverStyle={{ backgroundColor: "#e2e8f0", color: "#0f172a" }}><X style={{ width: "0.75rem", height: "0.75rem" }} /></StyledButton>
                               </div>
                               <div>
-                                <ShadcnSelect value={rule.operator} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { operator: value, value: "" })}>
+                                <ShadcnSelect value={rule.operator} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { operator: value, value: value === "range" ? { from: "", to: "" } : "" })}>
                                   <SelectTrigger style={{ height: "1.75rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.25rem", fontSize: "0.75rem", padding: "0 0.5rem" }}><SelectValue placeholder="Operator" /></SelectTrigger>
                                   <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
                                     {operators.map((operator: { value: string; label: string }) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
@@ -736,10 +798,10 @@ export function AdvancedFiltersClickUp({
                                 </ShadcnSelect>
                               </div>
                               <div style={{ gridColumn: "span 3" }}>
-                                <ShadcnSelect value={rule.operator} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { operator: value, value: "" })}>
+                                <ShadcnSelect value={rule.operator} onValueChange={(value: string) => updateFilterRule(group.id, rule.id, { operator: value, value: value === "range" ? { from: "", to: "" } : "" })}>
                                   <SelectTrigger style={{ height: "2rem", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: "0.375rem" }}><SelectValue placeholder="Operator" /></SelectTrigger>
                                   <SelectContent side="bottom" style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}>
-                                    {operators.map((operator: { value: string; label: string }) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
+                                    {getFieldOperators(rule.field).map((operator: { value: string; label: string }) => <StyledSelectItem key={operator.value} value={operator.value}>{operator.label}</StyledSelectItem>)}
                                   </SelectContent>
                                 </ShadcnSelect>
                               </div>

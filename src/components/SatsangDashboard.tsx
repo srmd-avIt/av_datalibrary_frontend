@@ -52,10 +52,22 @@ const MultiSelectCombobox: React.FC<MultiSelectComboboxProps> = ({
     onChange(value.filter(v => v !== val));
   };
 
-  const selectedOptions = useMemo(
-    () => options.filter(o => value.includes(o.value)),
-    [options, value]
+  const allSelectableValues = useMemo(
+    () => options.filter(o => o.value !== '__ALL_YEARS__').map(o => o.value),
+    [options]
   );
+
+  const isAllSelected = useMemo(() => {
+    if (!allSelectableValues.length) return false;
+    return allSelectableValues.every(v => value.includes(v));
+  }, [allSelectableValues, value]);
+
+  const selectedOptions = useMemo(() => {
+    if (isAllSelected && allSelectableValues.length > 0) {
+      return [{ value: '__ALL_YEARS__', label: 'All Years' }];
+    }
+    return options.filter(o => value.includes(o.value));
+  }, [allSelectableValues.length, isAllSelected, options, value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -298,6 +310,7 @@ export function SatsangDashboard({
   const [cityOptions, setCityOptions] = useState<Option[]>([]);
   const [eventCategoryOptions, setEventCategoryOptions] = useState<Option[]>([]);
   const [numberOptions, setNumberOptions] = useState<Option[]>([]);
+  const [yearOptions, setYearOptions] = useState<Option[]>([]);
   const [segmentCategoryOptions, setSegmentCategoryOptions] = useState<Option[]>([]);
   const [occasionOptions, setOccasionOptions] = useState<Option[]>([]);
 
@@ -358,15 +371,57 @@ export function SatsangDashboard({
       'Satsang Clips', 'SU - Capsule'
     ].sort();
     setSegmentCategoryOptions(specificSegmentCategories.map(val => ({ value: val, label: val })));
+
+    const currentYear = new Date().getFullYear();
+    const startYear = 2000;
+    const years = Array.from({ length: currentYear - startYear + 1 }, (_, index) => currentYear - index);
+    setYearOptions([
+      { value: ALL_YEARS_OPTION, label: 'All Years' },
+      ...years.map((year) => ({ value: String(year), label: String(year) }))
+    ]);
   }, []);
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setSearchFilters(prev => ({ ...prev, [field]: value }));
   };
 
+  const ALL_YEARS_OPTION = "__ALL_YEARS__";
+
+  const handleYearFilterChange = (value: string[]) => {
+    const allYearValues = yearOptions
+      .filter(option => option.value !== ALL_YEARS_OPTION)
+      .map(option => option.value);
+
+    const isAllSelected = allYearValues.every(v => value.includes(v));
+
+    if (value.includes(ALL_YEARS_OPTION) && isAllSelected) {
+      handleInputChange('Yr', []);
+      return;
+    }
+
+    if (value.includes(ALL_YEARS_OPTION)) {
+      handleInputChange('Yr', allYearValues);
+      return;
+    }
+
+    handleInputChange('Yr', value);
+  };
+
   const handleSearch = () => {
     const activeFilters = Object.entries(searchFilters).reduce((acc, [key, value]) => {
-      if (value && (Array.isArray(value) ? value.length > 0 : true)) acc[key] = value;
+      if (value && Array.isArray(value)) {
+        const sanitized = value.filter(v => v !== ALL_YEARS_OPTION);
+        if (sanitized.length > 0) {
+          const allYearValues = yearOptions.filter(option => option.value !== ALL_YEARS_OPTION).map(option => option.value);
+          if (key === 'Yr' && sanitized.length === allYearValues.length && allYearValues.every(v => sanitized.includes(v))) {
+            return acc;
+          }
+          acc[key] = sanitized;
+        }
+        return acc;
+      }
+
+      if (value && (!Array.isArray(value) || value.length > 0)) acc[key] = value;
       return acc;
     }, {} as Record<string, any>);
 
@@ -556,7 +611,14 @@ export function SatsangDashboard({
               </div>
               <div>
                 <Label style={mLabelStyle}>Year</Label>
-                <Input placeholder="YYYY" value={searchFilters.Yr || ""} onChange={(e) => handleInputChange("Yr", e.target.value)} style={mInputStyle} />
+                <MultiSelectCombobox
+                  options={yearOptions}
+                  value={Array.isArray(searchFilters.Yr) ? searchFilters.Yr : searchFilters.Yr ? [String(searchFilters.Yr)] : []}
+                  onChange={handleYearFilterChange}
+                  placeholder="Select years..."
+                  style={mSelectStyle}
+                  maxVisibleBadges={2}
+                />
               </div>
             </div>
           </AccordionSection>
@@ -673,7 +735,13 @@ export function SatsangDashboard({
             </div>
             <div>
               <Label htmlFor="Yr" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Year</Label>
-              <Input id="Yr" placeholder="e.g., 2024" value={searchFilters.Yr || ''} onChange={e => handleInputChange('Yr', e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px" }} />
+              <MultiSelectCombobox
+                options={yearOptions}
+                value={Array.isArray(searchFilters.Yr) ? searchFilters.Yr : searchFilters.Yr ? [String(searchFilters.Yr)] : []}
+                onChange={handleYearFilterChange}
+                placeholder="Select years..."
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }}
+              />
             </div>
           </div>
 
