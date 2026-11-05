@@ -273,6 +273,7 @@ export function CheckMLReference() {
              `}</style>
              <ClickUpListViewUpdated
                title=""
+               permissionResource="Check ML Reference"
                viewId="check_ml_reference"
                apiEndpoint="/check-ml-reference"
                idKey="MLUniqueID"
@@ -531,6 +532,7 @@ export function CheckMLReference() {
           {appliedFilter ? (
             <ClickUpListViewUpdated
               title={`Results for MLUniqueID: ${appliedFilter.MLUniqueID}`}
+              permissionResource="Check ML Reference"
               viewId="check_ml_reference"
               apiEndpoint="/check-ml-reference"
               idKey="MLUniqueID"

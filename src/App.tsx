@@ -1455,6 +1455,55 @@ VIEW_CONFIGS.data_sharing_nemiji = {
   columns: DATA_SHARING_COLUMNS
 };
 
+// Maps each view id to the exact resource name stored in user.permissions
+// (must match the labels in Sidebar.tsx and APP_RESOURCES in UserManagement.tsx).
+// View titles often differ from these names, so we can't rely on `title` for permission checks.
+const VIEW_PERMISSION_RESOURCES: Record<string, string> = {
+  digitalrecordings_gsheet: "Project Hub",
+  satsang_dashboard: "Satsang Search",
+  events: "Events",
+  non_event_production: "Non Event Production",
+  eventtimeline: "Event Timeline",
+  digitalrecordings: "Digital Recordings",
+  medialog_all: "ML formal & Informal",
+  medialog_formal: "ML Formal",
+  medialog_pending_gsheet: "MLFormal (Pending Push to DB)",
+  medialog_all_except_satsang: "All Except Satsang",
+  medialog_satsang_extracted_clips: "Satsang Extracted Clips",
+  medialog_satsang_category: "Satsang Category (AS IS)",
+  data_sharing_ps: "PS",
+  data_sharing_su: "SU",
+  data_sharing_dyatra: "Dyatra Satsangs",
+  data_sharing_gm: "GM (PPG Approved)",
+  data_sharing_prasangik: "Prasangik Udbodhan",
+  data_sharing_nemiji: "Nemiji Sessions",
+  aux: "Aux Files",
+  audio: "Audio",
+  auxfiletype: "Aux File Type",
+  bhajanType: "Bhajan Type",
+  digitalMasterCategory: "Digital Master Category",
+  distributionLabel: "Distribution Label",
+  editingstatus: "Editing Status",
+  editingType: "Editing Type",
+  eventCategory: "Event Category",
+  footageType: "Footage Type",
+  formatType: "Format Type",
+  granths: "Granths",
+  language: "Language",
+  masterquality: "Master Quality",
+  newEventCategory: "New Event Category",
+  newCities: "New Cities",
+  newCountries: "New Countries",
+  newStates: "New States",
+  occasions: "Occasions",
+  organization: "Organization",
+  timeOfDay: "Time Of Day",
+  topicNumberSource: "Topic Number Source",
+  topicgivenby: "TopicGivenBy",
+  segmentcategory: "Segment Category",
+  edited_highlights: "List of Edited Highlights",
+};
+
 type SidebarStackItem = {
   type: string;
   data: Record<string, any>;
@@ -1895,6 +1944,7 @@ case "satsang_dashboard":
       <ClickUpListViewUpdated
           key={activeView}
         title={config.title}
+        permissionResource={VIEW_PERMISSION_RESOURCES[activeView] || config.title.trim()}
         viewId={activeView}
         apiEndpoint={config.apiEndpoint}
         idKey={config.idKey}

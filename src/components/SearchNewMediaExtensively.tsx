@@ -269,6 +269,7 @@ export function SearchNewMediaExtensively() {
              `}</style>
              <ClickUpListViewUpdated
                 title=""
+                permissionResource="Search New Media Extensively"
                 viewId="extensive_media_search"
                 apiEndpoint="/search-extensive"
                 idKey="MLUniqueID"
@@ -517,6 +518,7 @@ export function SearchNewMediaExtensively() {
           {appliedFilter ? (
             <ClickUpListViewUpdated
               title={`Search Results for: "${appliedFilter.search}"`}
+              permissionResource="Search New Media Extensively"
               viewId="extensive_media_search"
               apiEndpoint="/search-extensive"
               idKey="MLUniqueID"

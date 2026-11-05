@@ -276,6 +276,7 @@ export function SearchNewMLEventCode() {
              `}</style>
              <ClickUpListViewUpdated
                 title=""
+                permissionResource="Search ML by EventCode"
                 viewId="search-new-ml-event-code"
                 apiEndpoint="/search-new-ml-event-code"
                 idKey="MLUniqueID"
@@ -534,6 +535,7 @@ export function SearchNewMLEventCode() {
           {appliedFilter ? (
             <ClickUpListViewUpdated
               title={`Results for Event Code: ${appliedFilter.EventCode}`}
+              permissionResource="Search ML by EventCode"
               viewId="search-new-ml-event-code"
               apiEndpoint="/search-new-ml-event-code"
               idKey="MLUniqueID"

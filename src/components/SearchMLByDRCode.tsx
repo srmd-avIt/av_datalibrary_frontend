@@ -280,6 +280,7 @@ export function SearchByDRCode() {
             <style>{`.hide-results-bottom-bar div[style*="position: fixed"][style*="bottom"] { display: none !important; }`}</style>
             <ClickUpListViewUpdated
               title=""
+              permissionResource="Search by DR Code"
               viewId="search-ml-by-dr-code"
               apiEndpoint="/search-ml-by-dr-code"
               idKey="MLUniqueID"
@@ -396,6 +397,7 @@ export function SearchByDRCode() {
               {renderDRDetailsCard(appliedFilter.fkDigitalRecordingCode)}
               <ClickUpListViewUpdated
                 title={`ML Entries for DR Code: ${appliedFilter.fkDigitalRecordingCode}`}
+                permissionResource="Search by DR Code"
                 viewId="search-ml-by-dr-code"
                 apiEndpoint="/search-ml-by-dr-code"
                 idKey="MLUniqueID"

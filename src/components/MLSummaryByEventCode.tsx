@@ -231,6 +231,7 @@ export function MLSummaryByEventCode() {
              `}</style>
              <ClickUpListViewUpdated
               title=""
+              permissionResource="ML Summary by event code"
               viewId="ml_summary_event_code"
               apiEndpoint="/ml-summary-event-code"
               idKey="MLUniqueID"
@@ -490,6 +491,7 @@ export function MLSummaryByEventCode() {
           {appliedFilter ? (
             <ClickUpListViewUpdated
               title={`ML Summary for Event: ${appliedFilter.fkEventCode}`}
+              permissionResource="ML Summary by event code"
               viewId="ml_summary_event_code"
               apiEndpoint="/ml-summary-event-code"
               idKey="MLUniqueID"

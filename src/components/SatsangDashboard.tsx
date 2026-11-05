@@ -549,6 +549,7 @@ export function SatsangDashboard({
               <div style={{ backgroundColor: "#0f172a", borderRadius: "12px", overflow: "hidden", border: "1px solid #1e293b" }}>
               <ClickUpListViewUpdated 
                 title="" 
+                permissionResource="Satsang Search"
                 columns={columns || satsangCategoryConfig.columns} // Dynamic Columns from props, fallback to config
                 apiEndpoint="/newmedialog/satsang-dashboard" 
                 viewId="satsang_dashboard" 
@@ -792,6 +793,7 @@ export function SatsangDashboard({
           {satsangCategoryConfig ? (
            <ClickUpListViewUpdated 
             title="Search Results" 
+            permissionResource="Satsang Search"
             columns={columns || satsangCategoryConfig.columns} // Managed columns passed from App.tsx, fallback to config
             apiEndpoint="/newmedialog/satsang-dashboard" 
             viewId="satsang_dashboard"

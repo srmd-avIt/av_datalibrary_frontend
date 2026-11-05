@@ -284,6 +284,7 @@ export function SearchDetailsByMLID() {
              `}</style>
              <ClickUpListViewUpdated
                title=""
+               permissionResource="Search New Media for Person Event"
                viewId="search-details-by-mlid"
                apiEndpoint="/search-details-global"
                idKey="MLUniqueID"
@@ -551,6 +552,7 @@ export function SearchDetailsByMLID() {
           {appliedFilter ? (
             <ClickUpListViewUpdated
               title={`Results for: ${appliedFilter.search}`}
+              permissionResource="Search New Media for Person Event"
               viewId="search-details-by-mlid"
               apiEndpoint="/search-details-global"
               idKey="MLUniqueID"
