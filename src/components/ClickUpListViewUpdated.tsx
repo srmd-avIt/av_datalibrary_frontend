@@ -704,6 +704,10 @@ export function ClickUpListViewUpdated({
   const sortedData = useMemo(() => {
     if (!rows || rows.length === 0) return [];
     if (!activeSortBy || activeSortBy === "none") return rows;
+    // Paginated mode: the API already sorted the WHOLE table (sortBy/sortDirection are sent with
+    // every request). Re-sorting only the current page here would make pages look out of order,
+    // so keep the server order. Client-side sort is only used when all rows are loaded (grouping).
+    if (!shouldFetchAllForGrouping) return rows;
     const keys = activeSortBy.split(',');
     const directions = (activeSortDirection || "").split(',');
     return [...rows].sort((a, b) => {
@@ -732,7 +736,7 @@ export function ClickUpListViewUpdated({
       }
       return 0;
     });
-  }, [rows, activeSortBy, activeSortDirection]);
+  }, [rows, activeSortBy, activeSortDirection, shouldFetchAllForGrouping]);
 
   const finalItems = useMemo(() => {
     if (shouldFetchAllForGrouping) {
