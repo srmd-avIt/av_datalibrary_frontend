@@ -30,14 +30,24 @@ const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL) || "";
 // ===================================================================================
 // --- 1. VIEW CONFIGURATIONS & HELPERS ---
 // ===================================================================================
-const categoryTagRenderer = (value: string | null | undefined) => {
-    if (!value) return <span className="text-slate-500"></span>;
+const categoryTagRenderer = (value: string | string[] | null | undefined) => {
+    if (value === null || value === undefined || value === "") return <span className="text-slate-500"></span>;
+
     const getTextColorForBg = (hex: string): string => {
         if (!hex || hex.length < 7) return "#0f172a";
         const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
         return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.7 ? "#f7f9fcff" : "#f1f5f9";
     };
-    const values = value.split(',').map(v => v.trim()).filter(Boolean);
+
+    const values = Array.isArray(value)
+        ? value.map(v => String(v).trim()).filter(Boolean)
+        : String(value)
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+
+    if (!values.length) return <span className="text-slate-500"></span>;
+
     return (
         <div className="flex flex-wrap justify-center gap-1.5">
             {values.map((val, index) => {
@@ -138,6 +148,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
       { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Dimension", label: "Dimension", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
       { key: "NewEventFrom", label: "Event From Date", sortable: true, editable: true },
       { key: "NewEventTo", label: "Event To Date", sortable: true, editable: true },

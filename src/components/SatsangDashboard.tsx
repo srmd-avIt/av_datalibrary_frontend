@@ -281,6 +281,7 @@ const VIEW_CONFIGS: Record<string, any> = {
       { key: "AudioWAVDRCode", label: "Audio WAV Code", sortable: true, editable: true },
       { key: "AudioMP3DRCode", label: "Audio MP3 Code", sortable: true, editable: true },
       { key: "Masterquality", label: "DR Master Quality", sortable: true, render: categoryTagRenderer, editable: true },
+      { key: "Dimension", label: "Dimension", sortable: true, render: categoryTagRenderer, editable: true },
       { key: "DistributionDriveLink", label: "DR Distribution Link", sortable: true, editable: true },
       { key: "NewEventFrom", label: "Event From Date", sortable: true, editable: true },
       { key: "NewEventTo", label: "Event To Date", sortable: true, editable: true },
@@ -313,6 +314,7 @@ export function SatsangDashboard({
   const [yearOptions, setYearOptions] = useState<Option[]>([]);
   const [segmentCategoryOptions, setSegmentCategoryOptions] = useState<Option[]>([]);
   const [occasionOptions, setOccasionOptions] = useState<Option[]>([]);
+  const [dimensionOptions, setDimensionOptions] = useState<Option[]>([]);
 
   const [searchResult, setSearchResult] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -389,6 +391,7 @@ export function SatsangDashboard({
     fetchOptions('/new-event-category/options', 'NewEventCategory', setEventCategoryOptions);
     fetchOptions('/number/options', 'Number', setNumberOptions);
     fetchOptions('/occasion/options', 'fkOccasion', setOccasionOptions);
+    fetchOptions('/dimension/options', 'Dimension', setDimensionOptions);
     fetchYearOptions();
 
     const specificSegmentCategories = [
@@ -641,7 +644,7 @@ export function SatsangDashboard({
           </AccordionSection>
 
           {/* Advanced / Other Accordion */}
-          <AccordionSection title="Granth & Occasion Details" icon={Hash} sectionKey="advanced" filterKeys={['fkOccasion', 'fkGranth', 'Number', 'MLUniqueID']}>
+          <AccordionSection title="Granth & Occasion Details" icon={Hash} sectionKey="advanced" filterKeys={['fkOccasion', 'fkGranth', 'Number', 'Dimension', 'MLUniqueID']}>
            
               <div>
                 <Label style={mLabelStyle}>Granth</Label>
@@ -655,6 +658,10 @@ export function SatsangDashboard({
             <div>
               <Label style={mLabelStyle}>Occasion</Label>
               <MultiSelectCombobox options={occasionOptions} value={searchFilters.fkOccasion || []} onChange={(v) => handleInputChange("fkOccasion", v)} placeholder="Occasion..." style={mSelectStyle} maxVisibleBadges={2} />
+            </div>
+            <div>
+              <Label style={mLabelStyle}>Dimension</Label>
+              <MultiSelectCombobox options={dimensionOptions} value={searchFilters.Dimension || []} onChange={(v) => handleInputChange("Dimension", v)} placeholder="Dimensions..." style={mSelectStyle} maxVisibleBadges={2} />
             </div>
             <div>
               <Label style={mLabelStyle}>ML Unique ID</Label>
@@ -717,6 +724,10 @@ export function SatsangDashboard({
             <div>
               <Label htmlFor="Number" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Number</Label>
               <MultiSelectCombobox options={numberOptions} value={searchFilters.Number || []} onChange={value => handleInputChange('Number', value)} placeholder="Select numbers..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
+            </div>
+            <div>
+              <Label htmlFor="Dimension" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Dimension</Label>
+              <MultiSelectCombobox options={dimensionOptions} value={searchFilters.Dimension || []} onChange={value => handleInputChange('Dimension', value)} placeholder="Select dimensions..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #474849ff", fontSize: "14px", height: 'auto' }} />
             </div>
             <div>
               <Label htmlFor="fkCountry" style={{ marginBottom: "6px", display: "block", fontWeight: 500, color: "#f7f8faff" }}>Country</Label>
