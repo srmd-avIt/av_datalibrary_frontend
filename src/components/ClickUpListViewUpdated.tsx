@@ -109,18 +109,19 @@ async function fetchDataFromApi({
   sortBy?: string;
   sortDirection?: "asc" | "desc";
 }): Promise<ApiResponse> {
-  const requestLimit = Math.max(250, Math.min(limit, 10000));
+  // Keep page and limit fixed across retries: changing the limit while keeping the
+  // page number would fetch a different row range and silently corrupt exports.
+  const MAX_ATTEMPTS = 4;
+  const REQUEST_TIMEOUT_MS = 90_000;
 
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const effectiveLimit = (() => {
-      if (attempt === 0) return requestLimit;
-      const fallbackLimits = [5000, 2500, 1000];
-      return fallbackLimits[Math.min(attempt - 1, fallbackLimits.length - 1)] ?? 1000;
-    })();
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** (attempt - 1)));
+    }
 
     const params = new URLSearchParams({
       page: page.toString(),
-      limit: effectiveLimit.toString(),
+      limit: limit.toString(),
     });
     if (searchTerm) params.append("search", searchTerm);
 
@@ -165,6 +166,9 @@ async function fetchDataFromApi({
 
     const token = localStorage.getItem('app-token');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
     try {
       const response = await fetch(url.href, {
         method: 'GET',
@@ -173,6 +177,7 @@ async function fetchDataFromApi({
           'Authorization': token ? `Bearer ${token}` : '',
         },
         cache: 'no-store',
+        signal: controller.signal,
       });
 
       if (response.status === 401 || response.status === 403) {
@@ -183,18 +188,28 @@ async function fetchDataFromApi({
         throw new Error("Session expired. Please log in again.");
       }
 
-      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-      return response.json();
+      if (!response.ok) {
+        const err = new Error(`API error: ${response.status} ${response.statusText}`);
+        // Gateway/timeouts from the serverless host are worth retrying; other errors are not.
+        (err as any).retryable = [502, 503, 504].includes(response.status);
+        throw err;
+      }
+      return await response.json();
     } catch (error) {
-      const isTransientNetworkError =
+      const isRetryable =
         error instanceof TypeError ||
+        (error instanceof DOMException && error.name === 'AbortError') ||
+        (error as any)?.retryable === true ||
         (error instanceof Error && /Failed to fetch|ERR_HTTP2_PING_FAILED|NetworkError|load failed/i.test(error.message));
 
-      if (isTransientNetworkError && attempt < 3) {
+      if (isRetryable && attempt < MAX_ATTEMPTS - 1) {
+        console.warn(`Fetch page ${page} failed (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying...`, error);
         continue;
       }
 
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -846,7 +861,9 @@ export function ClickUpListViewUpdated({
     setIsExporting(true);
     toast.info("Preparing your export. This may take a moment for large datasets.");
     try {
-      const CHUNK_SIZE = 2500;
+      // Backend caps list endpoints at 2000 rows per page; request exactly that so
+      // our page numbering matches the server's totalPages.
+      const CHUNK_SIZE = 2000;
       const csvParts: string[] = [];
       let currentExportPage = 1;
       let totalExportPages = 1;
@@ -949,7 +966,7 @@ export function ClickUpListViewUpdated({
     const pushingToast = toast.loading("Preparing data... This might take a few minutes for massive data.");
     
     try {
-      const CHUNK_SIZE = 5000;
+      const CHUNK_SIZE = 2000;
       
       const firstPageResponse = await fetchDataFromApi({
         apiEndpoint: effectiveApiEndpoint, page: 1, limit: CHUNK_SIZE, searchTerm: debouncedSearchTerm,
