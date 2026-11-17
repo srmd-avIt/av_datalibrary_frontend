@@ -822,21 +822,47 @@ export function ClickUpListViewUpdated({
     setIsExporting(true);
     toast.info("Preparing your export. This may take a moment for large datasets.");
     try {
-      // Chunked Export for Massive Data
       const CHUNK_SIZE = 10000;
-      let allItemsToExport: any[] = [];
+      const csvParts: string[] = [];
       let currentExportPage = 1;
       let totalExportPages = 1;
+      let totalRows = 0;
+
+      const extractText = (value: any): string => {
+        if (typeof value === "string" || typeof value === "number") return String(value);
+        if (React.isValidElement(value)) {
+          const props = value.props as { children?: React.ReactNode };
+          const children = props && "children" in props ? props.children : undefined;
+          if (children === undefined || children === null) return "";
+          if (Array.isArray(children)) return children.map(extractText).join(" ");
+          return extractText(children);
+        }
+        if (Array.isArray(value)) {
+          if (value.every(v => typeof v === "string" || typeof v === "number")) return value.join(", ");
+          return value.map(extractText).join(" ");
+        }
+        return "";
+      };
+
+      const rowToCsv = (row: any): string => visibleColumns
+        .map((col) => {
+          let value = row[col.key];
+          if (typeof col.render === "function") value = col.render(value, row);
+          return escapeCsvValue(extractText(value));
+        })
+        .join(',');
+
+      csvParts.push(visibleColumns.map(col => escapeCsvValue(col.label)).join(','));
 
       do {
         const pageDataResponse = await fetchDataFromApi({
-          apiEndpoint: effectiveApiEndpoint, 
-          page: currentExportPage, 
-          limit: CHUNK_SIZE, 
+          apiEndpoint: effectiveApiEndpoint,
+          page: currentExportPage,
+          limit: CHUNK_SIZE,
           searchTerm,
-          filters: { ...activeViewFilters, ...initialFilters }, 
+          filters: { ...activeViewFilters, ...initialFilters },
           advancedFilters,
-          sortBy: activeSortBy, 
+          sortBy: activeSortBy,
           sortDirection: activeSortDirection as "asc" | "desc",
         });
 
@@ -855,47 +881,22 @@ export function ClickUpListViewUpdated({
           itemsChunk = itemsChunk.map(r => rowTransformer(r));
         }
 
-        allItemsToExport = [...allItemsToExport, ...itemsChunk];
+        for (const row of itemsChunk) {
+          csvParts.push(rowToCsv(row));
+          totalRows += 1;
+        }
+
         currentExportPage++;
       } while (currentExportPage <= totalExportPages);
 
-      if (allItemsToExport.length === 0) { 
-        toast.warning("No data to export for the current filters."); 
-        setIsExporting(false); 
-        return; 
+      if (totalRows === 0) {
+        toast.warning("No data to export for the current filters.");
+        setIsExporting(false);
+        return;
       }
 
-      const headers = visibleColumns.map(col => col.label);
-      
-      const extractText = (value: any): string => {
-        if (typeof value === "string" || typeof value === "number") return String(value);
-        if (React.isValidElement(value)) {
-          const props = value.props as { children?: React.ReactNode };
-          const children = props && "children" in props ? props.children : undefined;
-          if (children === undefined || children === null) return "";
-          if (Array.isArray(children)) return children.map(extractText).join(" ");
-          return extractText(children);
-        }
-        if (Array.isArray(value)) {
-          if (value.every(v => typeof v === "string" || typeof v === "number")) return value.join(", ");
-          return value.map(extractText).join(" ");
-        }
-        return ""; 
-      };
-
-      const csvRows = [
-        headers.map(escapeCsvValue).join(','),
-        ...allItemsToExport.map(row => visibleColumns.map(col => {
-            let value = row[col.key];
-            if (typeof col.render === "function") value = col.render(value, row);
-            value = extractText(value);
-            return escapeCsvValue(value);
-          }).join(',')
-        )
-      ];
-
-      const csvContent = csvRows.join('\n');
-      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); 
+      const csvContent = csvParts.join('\n');
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
       const filename = `${title.toLowerCase().replace(/\s+/g, '_')}_export_${new Date().toISOString().slice(0,10)}.csv`;
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -905,6 +906,7 @@ export function ClickUpListViewUpdated({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
       toast.success("Export completed successfully!");
     } catch (err) {
       console.error("Export error:", err);
