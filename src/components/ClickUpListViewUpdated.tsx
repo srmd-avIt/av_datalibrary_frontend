@@ -109,72 +109,96 @@ async function fetchDataFromApi({
   sortBy?: string;
   sortDirection?: "asc" | "desc";
 }): Promise<ApiResponse> {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-  });
-  if (searchTerm) params.append("search", searchTerm);
+  const requestLimit = Math.max(250, Math.min(limit, 10000));
 
-  Object.entries(filters || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "" && value !== "all") {
-      if (Array.isArray(value)) {
-        value.forEach((v) => {
-          if (v !== null && v !== "") params.append(key, String(v));
-        });
-      } else {
-        params.append(key, String(value));
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const effectiveLimit = (() => {
+      if (attempt === 0) return requestLimit;
+      const fallbackLimits = [5000, 2500, 1000];
+      return fallbackLimits[Math.min(attempt - 1, fallbackLimits.length - 1)] ?? 1000;
+    })();
+
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: effectiveLimit.toString(),
+    });
+    if (searchTerm) params.append("search", searchTerm);
+
+    Object.entries(filters || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "" && value !== "all") {
+        if (Array.isArray(value)) {
+          value.forEach((v) => {
+            if (v !== null && v !== "") params.append(key, String(v));
+          });
+        } else {
+          params.append(key, String(value));
+        }
+      }
+    });
+
+    if (advancedFilters && advancedFilters.length > 0) {
+      const sanitizedGroups = advancedFilters
+        .map((group) => ({
+          ...group,
+          rules: group.rules.filter(
+            (rule) =>
+              rule.field && rule.operator && rule.value !== undefined && rule.value !== null && rule.value !== ""
+          ),
+        }))
+        .filter((group) => group.rules.length > 0);
+
+      if (sanitizedGroups.length > 0) {
+        params.append("advanced_filters", JSON.stringify(sanitizedGroups));
       }
     }
-  });
 
-  if (advancedFilters && advancedFilters.length > 0) {
-    const sanitizedGroups = advancedFilters
-      .map((group) => ({
-        ...group,
-        rules: group.rules.filter(
-          (rule) =>
-            rule.field && rule.operator && rule.value !== undefined && rule.value !== null && rule.value !== ""
-        ),
-      }))
-      .filter((group) => group.rules.length > 0);
+    if (sortBy && sortBy !== "none") {
+      params.append("sortBy", sortBy);
+      params.append("sortDirection", sortDirection || "asc");
+    }
 
-    if (sanitizedGroups.length > 0) {
-      params.append("advanced_filters", JSON.stringify(sanitizedGroups));
+    if (!API_BASE_URL) throw new Error("API URL not configured. Set VITE_API_URL in .env");
+
+    const url = new URL(API_BASE_URL);
+    url.pathname += apiEndpoint.startsWith("/") ? apiEndpoint : `/${apiEndpoint}`;
+    url.search = params.toString();
+
+    const token = localStorage.getItem('app-token');
+
+    try {
+      const response = await fetch(url.href, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        cache: 'no-store',
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        console.error("JWT Token is invalid or missing. Redirecting to login...");
+        localStorage.removeItem('app-token');
+        localStorage.removeItem('google-token');
+        window.location.href = '/'; 
+        throw new Error("Session expired. Please log in again.");
+      }
+
+      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+      return response.json();
+    } catch (error) {
+      const isTransientNetworkError =
+        error instanceof TypeError ||
+        (error instanceof Error && /Failed to fetch|ERR_HTTP2_PING_FAILED|NetworkError|load failed/i.test(error.message));
+
+      if (isTransientNetworkError && attempt < 3) {
+        continue;
+      }
+
+      throw error;
     }
   }
 
-  if (sortBy && sortBy !== "none") {
-    params.append("sortBy", sortBy);
-    params.append("sortDirection", sortDirection || "asc");
-  }
-
-  if (!API_BASE_URL) throw new Error("API URL not configured. Set VITE_API_URL in .env");
-
-  const url = new URL(API_BASE_URL);
-  url.pathname += apiEndpoint.startsWith("/") ? apiEndpoint : `/${apiEndpoint}`;
-  url.search = params.toString();
-
-  const token = localStorage.getItem('app-token');
-
-  const response = await fetch(url.href, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '', 
-    }
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    console.error("JWT Token is invalid or missing. Redirecting to login...");
-    localStorage.removeItem('app-token');
-    localStorage.removeItem('google-token');
-    window.location.href = '/'; 
-    throw new Error("Session expired. Please log in again.");
-  }
-
-  if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-    
-  return response.json();
+  throw new Error("Failed to fetch data from the server after retrying.");
 }
 
 // --- SimplePagination ---
@@ -669,7 +693,7 @@ export function ClickUpListViewUpdated({
       activeSortBy, activeSortDirection,
     ],
     queryFn: () => fetchDataFromApi({
-      apiEndpoint: effectiveApiEndpoint, page: 1, limit: 1000000, searchTerm: debouncedSearchTerm,
+      apiEndpoint: effectiveApiEndpoint, page: 1, limit: 25000, searchTerm: debouncedSearchTerm,
       filters: { ...activeViewFilters, ...initialFilters }, advancedFilters,
       sortBy: activeSortBy, sortDirection: activeSortDirection as "asc" | "desc", 
     }),
@@ -822,7 +846,7 @@ export function ClickUpListViewUpdated({
     setIsExporting(true);
     toast.info("Preparing your export. This may take a moment for large datasets.");
     try {
-      const CHUNK_SIZE = 10000;
+      const CHUNK_SIZE = 2500;
       const csvParts: string[] = [];
       let currentExportPage = 1;
       let totalExportPages = 1;
