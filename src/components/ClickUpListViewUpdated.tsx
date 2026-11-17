@@ -861,12 +861,11 @@ export function ClickUpListViewUpdated({
     setIsExporting(true);
     toast.info("Preparing your export. This may take a moment for large datasets.");
     try {
-      // Backend caps list endpoints at 2000 rows per page; request exactly that so
-      // our page numbering matches the server's totalPages.
-      const CHUNK_SIZE = 2000;
+      // Small pages keep each request well under serverless time/size limits.
+      // Several pages are fetched in parallel; each page retries on its own.
+      const CHUNK_SIZE = 1000;
+      const CONCURRENCY = 3;
       const csvParts: string[] = [];
-      let currentExportPage = 1;
-      let totalExportPages = 1;
       let totalRows = 0;
 
       const extractText = (value: any): string => {
@@ -895,10 +894,10 @@ export function ClickUpListViewUpdated({
 
       csvParts.push(visibleColumns.map(col => escapeCsvValue(col.label)).join(','));
 
-      do {
-        const pageDataResponse = await fetchDataFromApi({
+      const fetchPageRows = async (page: number) => {
+        const response = await fetchDataFromApi({
           apiEndpoint: effectiveApiEndpoint,
-          page: currentExportPage,
+          page,
           limit: CHUNK_SIZE,
           searchTerm,
           filters: { ...activeViewFilters, ...initialFilters },
@@ -906,10 +905,7 @@ export function ClickUpListViewUpdated({
           sortBy: activeSortBy,
           sortDirection: activeSortDirection as "asc" | "desc",
         });
-
-        totalExportPages = pageDataResponse.pagination?.totalPages || 1;
-        let itemsChunk = pageDataResponse.data || [];
-
+        let itemsChunk = response.data || [];
         if (keyMap && Object.keys(keyMap).length > 0) {
           itemsChunk = itemsChunk.map(item => {
             const newItem: Record<string, any> = {};
@@ -921,14 +917,39 @@ export function ClickUpListViewUpdated({
         if (rowTransformer && typeof rowTransformer === "function") {
           itemsChunk = itemsChunk.map(r => rowTransformer(r));
         }
+        return { rows: itemsChunk.map(rowToCsv), pagination: response.pagination };
+      };
 
-        for (const row of itemsChunk) {
-          csvParts.push(rowToCsv(row));
-          totalRows += 1;
-        }
+      // Page 1 tells us how many pages exist. All later pages use the same limit,
+      // so the page numbering stays consistent.
+      const first = await fetchPageRows(1);
+      const totalExportPages = Math.max(1, first.pagination?.totalPages || 1);
+      const pageRows: string[][] = new Array(totalExportPages);
+      pageRows[0] = first.rows;
 
-        currentExportPage++;
-      } while (currentExportPage <= totalExportPages);
+      let completed = 1;
+      const progressToast = toast.loading(`Exporting... page 1 of ${totalExportPages}`);
+      try {
+        let nextPage = 2;
+        const worker = async () => {
+          while (nextPage <= totalExportPages) {
+            const page = nextPage++;
+            const { rows } = await fetchPageRows(page);
+            pageRows[page - 1] = rows;
+            completed++;
+            toast.loading(`Exporting... ${completed} of ${totalExportPages} pages`, { id: progressToast });
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, totalExportPages - 1) }, worker));
+      } finally {
+        toast.dismiss(progressToast);
+      }
+
+      for (const rows of pageRows) {
+        if (!rows) continue;
+        for (const line of rows) csvParts.push(line);
+        totalRows += rows.length;
+      }
 
       if (totalRows === 0) {
         toast.warning("No data to export for the current filters.");
